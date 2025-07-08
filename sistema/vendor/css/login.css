@@ -1,0 +1,49 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ecf0c0;
+    height: 100vh;
+}
+
+#login .container #login-row #login-column #login-box {
+    margin-top: 120px;
+    max-width: 600px;
+    height: 400px;
+    border: 1px solid #9C9C9C;
+    background-color: #333604;
+    color: #ecf0c0; /* Esta cor é para o texto dentro da caixa de login */
+}
+
+#login .container #login-row #login-column #login-box #login-form {
+    padding: 20px;
+}
+
+#login .container #login-row #login-column #login-box #login-form #register-link {
+    margin-top: -85px;
+}
+
+/* Para todos os links nav-link dentro da navegação, incluindo os ativos */
+/* Usamos .navbar (a tag nav) e .navbar-nav para aumentar a especificidade */
+.navbar .navbar-nav .nav-link {
+    color: #FF0000 !important; /* Exemplo: Vermelho */
+}
+
+/* Se você quiser uma cor DIFERENTE para o link ATIVO especificamente */
+.navbar .navbar-nav .nav-link.active {
+    color: #0000FF !important; /* Exemplo: Azul (para o ativo) */
+}
+
+/* Para links do dropdown */
+.navbar .dropdown-menu .dropdown-item {
+    color: #333333 !important; /* Exemplo: Cinza escuro */
+}
+
+/* Para o Navbar Brand (logo/nome do site) */
+.navbar .navbar-brand {
+    color: #008000 !important; /* Exemplo: Verde */
+}
+
+/* Cor do texto ao passar o mouse (hover) */
+.navbar .navbar-nav .nav-link:hover {
+    color: #800080 !important; /* Exemplo: Roxo */
+}
