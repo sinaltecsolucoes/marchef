@@ -1,28 +1,60 @@
 <?php
+// autenticar.php
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once("conexao.php");
-@session_start();
-$usuario = $_POST['login-usuario'];
-$senha = $_POST['senha'];
 
-$query = $pdo->prepare("SELECT * FROM tbl_usuarios WHERE (usu_nome = :usuario or usu_login = :usuario) and usu_senha = :senha");
-$query->bindValue(":usuario", $usuario);
-$query->bindValue(":senha", $senha);
-$query->execute();
+$usuario_input = trim($_POST['login-usuario'] ?? '');
+$senha_input = $_POST['senha'] ?? '';
 
-$res = $query->fetchAll(PDO::FETCH_ASSOC);
-$total_reg = @count($res);
-if ($total_reg > 0) {
-    $_SESSION['codUsuario'] = $res[0]['usu_codigo'];
-    $_SESSION['logUsuario'] = $res[0]['usu_login'];
-    $_SESSION['nomeUsuario'] = $res[0]['usu_nome'];
-    $_SESSION['sitUsuario'] = $res[0]['usu_situacao'];
-    $_SESSION['tipoUsuario'] = $res[0]['usu_tipo'];
+$mensagem_feedback = '';
 
-    //REDIRECIONAR O USUARIO DE ACORDO COM O TIPO
-    if ($res[0]['usu_tipo'] == 'Admin') {
-        echo "<script language='javascript'>
-        window.location='painel-admin' </script>";
+if (empty($usuario_input) || empty($senha_input)) {
+    $mensagem_feedback = "Por favor, preencha todos os campos.";
+} else {
+    try {
+        $query = $pdo->prepare("SELECT * FROM tbl_usuarios WHERE usu_nome = :nome_usuario OR usu_login = :login_usuario");
+        $query->bindParam(":nome_usuario", $usuario_input);
+        $query->bindParam(":login_usuario", $usuario_input);
+
+        $query->execute();
+
+        $res = $query->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($res) > 0) {
+            $dados_usuario = $res[0];
+            $hash_armazenado = $dados_usuario['usu_senha'];
+
+            if (password_verify($senha_input, $hash_armazenado)) {
+                $_SESSION['codUsuario'] = $dados_usuario['usu_codigo'];
+                $_SESSION['logUsuario'] = $dados_usuario['usu_login'];
+                $_SESSION['nomeUsuario'] = $dados_usuario['usu_nome'];
+                $_SESSION['sitUsuario'] = $dados_usuario['usu_situacao'];
+                $_SESSION['tipoUsuario'] = $dados_usuario['usu_tipo'];
+
+                if ($dados_usuario['usu_tipo'] == 'Admin') {
+                    header("Location: painel-admin");
+                    exit();
+                } else {
+                    header("Location: ../");
+                    exit();
+                }
+            } else {
+                $mensagem_feedback = "Login ou senha inválidos.";
+            }
+        } else {
+            $mensagem_feedback = "Login ou senha inválidos.";
+        }
+    } catch (PDOException $e) {
+        error_log("Erro no autenticar.php (BD): " . $e->getMessage());
+        $mensagem_feedback = "Ocorreu um erro inesperado. Tente novamente mais tarde.";
     }
 }
 
+$_SESSION['erro_login'] = $mensagem_feedback;
+header("Location: login.php");
+exit();
 ?>

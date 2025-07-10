@@ -1,0 +1,42 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ecf0c0;
+    /* Adicione esta linha para definir a cor de fundo */
+}
+
+/* Estilos para o navbar-brand (seu logo ou nome do site) */
+.navbar-brand {
+    color: #000000;
+    /* Preto puro para o brand */
+}
+
+/* Estilos para todos os links nav-link dentro da navegação */
+.navbar .nav-link {
+    color: #333333;
+    /* Cinza escuro */
+}
+
+/* Estilos para o link ativo */
+.navbar .nav-link.active {
+    color: #000000;
+    /* Preto puro para o ativo */
+}
+
+/* Estilos para links do dropdown */
+.navbar .dropdown-menu .dropdown-item {
+    color: #333333;
+    /* Cinza escuro para itens do dropdown */
+}
+
+/* Estilos para os links quando o mouse passar por cima (hover) */
+.navbar .nav-link:hover {
+    color: #007bff;
+    /* Exemplo: Azul Bootstrap no hover */
+}
+
+/* Diminui a altura do navbar */
+.navbar {
+    padding-top: 0.2rem;   /* Espaçamento superior */
+    padding-bottom: 0.2rem; /* Espaçamento inferior */
+}

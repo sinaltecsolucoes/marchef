@@ -1,57 +1,56 @@
+/* Estilos globais para a página */
 body {
     margin: 0;
     padding: 0;
     background-color: #ecf0c0;
+    /* cor do fundo */
     height: 100vh;
+    /* garante que o corpo ocupe a altura total da viewport */
 }
 
-#login .container #login-row #login-column #login-box {
+/* Estilos da caixa de login */
+#login-box {
     margin-top: 120px;
     max-width: 600px;
-    height: 400px;
+    min-height: 450px;
     border: 1px solid #9C9C9C;
     background-color: #333604;
     color: #ecf0c0;
-    /* Esta cor é para o texto dentro da caixa de login */
-}
-
-#login .container #login-row #login-column #login-box #login-form {
+    /* cor para o texto dentro da caixa de login */
     padding: 20px;
+    /* Espaçamento interno para evitar o uso do seletor #login-form */
 }
 
-#login .container #login-row #login-column #login-box #login-form #register-link {
-    margin-top: -85px;
+/* Estilo para a imagem dentro da caixa de login */
+#login-box img {
+    margin-bottom: 20px;
+    /* Adiciona um espaçamento abaixo da imagem */
 }
 
-/* Para todos os links nav-link dentro da navegação, incluindo os ativos */
-/* Usamos .navbar (a tag nav) e .navbar-nav para aumentar a especificidade */
-.navbar .navbar-nav .nav-link {
-    color: #333333 !important;
-    /* Cinza escuro */
-    /*font-weight: bold !important;
-    /* Linha para negrito */
+/* Estilos para o texto de erro (bootstrap alert) */
+.alert-danger {
+    color: #ecf0c0;
+    /* Garante que o texto seja legível em um fundo escuro */
+    background-color: #ff6961;
+    /* Um tom de vermelho mais escuro */
+    border-color: #ff6961;
 }
 
-/* Para o link ativo (se quiser um tom ligeiramente diferente para ele) */
-.navbar .navbar-nav .nav-link.active {
-    color: #000000 !important;
-    /* Preto puro para o ativo */
+/* Estilos para os labels dos inputs */
+.form-group label {
+    color: #ecf0c0;
+    /* Assegura que o texto dos labels seja visível */
 }
 
-/* Para links do dropdown */
-.navbar .dropdown-menu .dropdown-item {
-    color: #333333 !important;
-    /* Cinza escuro para itens do dropdown */
+/* Estilos para o botão de conectar */
+.btn-info {
+    color: #fff;
+    background-color: #4484bc;
+    border-color: #4484bc;
 }
 
-/* Se você quiser mudar a cor do texto do navbar-brand (seu logo/nome do site) */
-.navbar .navbar-brand {
-    color: #000000 !important;
-    /* Preto puro para o brand */
-}
-
-/* Se quiser mudar a cor dos links quando o mouse passar por cima (hover) */
-.navbar .navbar-nav .nav-link:hover {
-    color: #007bff !important;
-    /* Exemplo: Azul Bootstrap no hover */
+.btn-info:hover {
+    color: #fff;
+    background-color: #50a0d0;
+    border-color: #50a0d0;
 }
