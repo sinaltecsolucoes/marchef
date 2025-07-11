@@ -40,3 +40,22 @@ body {
     padding-top: 0.2rem;   /* Espaçamento superior */
     padding-bottom: 0.2rem; /* Espaçamento inferior */
 }
+
+/* Adiciona espaçamento acima e abaixo dos elementos de controle do DataTables */
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* Adiciona um espaçamento à direita do campo de pesquisa para alinhá-lo */
+.dataTables_wrapper .dataTables_filter {
+    margin-right: 3px; 
+}
+
+/* Adiciona um espaçamento à direita do contêiner da tabela para alinhá-lo */
+.table-responsive {
+    margin-right: 30px; 
+}

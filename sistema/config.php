@@ -28,7 +28,7 @@ $db_config = [
 
     //online
     // 'servidor' => 'sql310.infinityfree.com',
-    // 'usuario' => '	if0_39440979',
+    // 'usuario' => 'if0_39440979',
     // 'senha' => 'SiteMarchef2025',
     // 'banco' => 'if0_39440979_marchef',
 ];
