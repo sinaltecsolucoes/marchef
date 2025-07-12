@@ -46,8 +46,8 @@
                         <label for="nivel">Nível de Acesso</label>
                         <select class="form-control" id="nivel" name="usu_tipo" required>
                             <option value="Admin">Admin</option>
-                            <option value="Comum">Gerente</option>
-                            <option value="Comum">Produção</option>
+                            <option value="Gerente">Gerente</option>
+                            <option value="Producao">Produção</option>
                         </select>
                     </div>
                     <div class="form-group mt-3">
@@ -69,73 +69,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    $(document).ready(function () {
-        // Inicializa o DataTables
-        $('#example').DataTable({
-            "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"row"<"col-sm-12"t>><"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-            "ajax": "../vendor/datatables/listar_usuarios.php",
-            "responsive": true,
-            "columns": [
-                {
-                    "data": "usu_situacao",
-                    "render": function (data, type, row) {
-                        if (data === 'A') {
-                            return "Ativo";
-                        }
-                        return "Inativo";
-                    }
-                },
-                { "data": "usu_login" },
-                { "data": "usu_nome" },
-                { "data": "usu_tipo" },
-                { "data": "usu_codigo" },
-                {
-                    "data": "usu_codigo",
-                    "render": function (data, type, row) {
-                        return '<a href="#" class="btn btn-warning btn-sm">Editar</a> ' +
-                            '<a href="#" class="btn btn-danger btn-sm">Excluir</a>';
-                    }
-                }
-            ],
-            "ordering": true,
-            "language": {
-                "url": "https://cdn.datatables.net/plug-ins/1.10.22/i18n/Portuguese-Brasil.json"
-            }
-        });
-    });
-
-    // Lida com o envio do formulário do modal
-    $('#form-adicionar-usuario').on('submit', function (e) {
-        e.preventDefault();
-
-        // Pega os dados do formulário
-        var formData = $(this).serialize();
-        
-        // Se o switch não estiver marcado, adiciona o valor '0' manualmente
-        if (!$('#situacao').is(':checked')) {
-            formData += '&usu_situacao=0';
-        }
-
-        $.ajax({
-            type: 'POST',
-            url: '../vendor/datatables/cadastrar_usuario.php',
-            data: formData,
-            dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $('#modal-adicionar-usuario').modal('hide');
-                    $('#form-adicionar-usuario')[0].reset();
-                    $('#example').DataTable().ajax.reload();
-                    alert(response.message);
-                } else {
-                    alert('Erro ao cadastrar usuário: ' + response.message);
-                }
-            },
-            error: function (xhr, status, error) {
-                alert('Erro na requisição: ' + error);
-            }
-        });
-    });
-</script>

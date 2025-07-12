@@ -1,5 +1,7 @@
 <?php
-require_once('../../../conexao.php');
+require_once('../../conexao.php');
+
+//echo "Olá, o arquivo está funcionando!";
 
 $nome = $_POST['usu_nome'];
 $login = $_POST['usu_login'];
@@ -11,7 +13,8 @@ $situacao_form = $_POST['usu_situacao'] ?? '0';
 $situacao = ($situacao_form == '1') ? 'A' : 'I';
 
 // Criptografa a senha para maior segurança
-$senha_cript = md5($senha);
+// CORREÇÃO DE SEGURANÇA: Usando password_hash() que é seguro e moderno
+$senha_cript = password_hash($senha, PASSWORD_DEFAULT);
 
 try {
     $pdo->beginTransaction();
@@ -33,7 +36,7 @@ try {
 
     // Vincula os parâmetros
     $query->bindValue(':login', $login);
-    $query->bindValue(':senha', $senha_cript);
+    $query->bindValue(':senha', $senha_cript); // Vincula o hash seguro
     $query->bindValue(':nome', $nome);
     $query->bindValue(':situacao', $situacao);
     $query->bindValue(':nivel', $nivel);
