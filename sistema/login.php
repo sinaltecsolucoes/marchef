@@ -1,4 +1,6 @@
 <?php
+// login.php
+
 // Inicia a sessão para poder acessar e limpar a variável de erro
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -6,26 +8,9 @@ if (session_status() == PHP_SESSION_NONE) {
 
 require_once("conexao.php");
 
-//INSERIR UM USUARIO ADM ADMINISTRADOR, CASO NÃO EXISTA NENHUM
-try {
-    $query = $pdo->query("SELECT * FROM tbl_usuarios WHERE usu_tipo = 'Admin'");
-    $res = $query->fetchAll(PDO::FETCH_ASSOC);
-    $total_reg = count($res);
-
-    if ($total_reg == 0) {
-        $senha_padrao_admin = 'adm@adm';
-        $senha_hashed = password_hash($senha_padrao_admin, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO tbl_usuarios (usu_nome, usu_login, usu_senha, usu_tipo, usu_situacao) VALUES (:nome, :login, :senha, :tipo, :situacao)");
-        $stmt->bindValue(":nome", 'Administrador');
-        $stmt->bindValue(":login", 'adm');
-        $stmt->bindValue(":senha", $senha_hashed);
-        $stmt->bindValue(":tipo", 'Admin');
-        $stmt->bindValue(":situacao", 'A');
-        $stmt->execute();
-    }
-} catch (PDOException $e) {
-    error_log("Erro ao verificar/inserir usuário ADM inicial: " . $e->getMessage());
-}
+// REMOVEMOS AQUI O BLOCO QUE VERIFICAVA E INSERIA O USUÁRIO ADM INICIAL
+// Essa lógica deve ser executada apenas uma vez, durante a configuração inicial do sistema.
+// Por exemplo, em um script de instalação ou manualmente em um ambiente novo.
 
 // Lógica para obter a mensagem de erro da sessão e limpá-la
 $mensagem_erro_login = '';
