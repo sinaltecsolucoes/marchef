@@ -22,12 +22,12 @@ header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
 // 'connect-src 'self' https://viacep.com.br;' - Permite conexões (AJAX, WebSockets) ao próprio domínio e ao ViaCEP.
 // 'form-action 'self'' - Restringe para onde os formulários podem ser enviados.
 header("Content-Security-Policy: default-src 'self'; " .
-       "script-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
-       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
-       "img-src 'self' data:; " .
-       "font-src 'self' https://fonts.gstatic.com; " .
-       "connect-src 'self' https://viacep.com.br https://cdn.datatables.net; " .
-       "form-action 'self';");
+    "script-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
+    "img-src 'self' data:; " .
+    "font-src 'self' https://fonts.gstatic.com; " .
+    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net; " .
+    "form-action 'self';");
 
 // Referrer-Policy
 // 'strict-origin-when-cross-origin' é uma política equilibrada que protege a privacidade
@@ -61,6 +61,10 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Gera um token aleatório de 64 caracteres hexadecimais
 }
 $csrf_token = $_SESSION['csrf_token'];
+
+// NOVO: Variável JavaScript global para o token CSRF
+//echo '<script>const CSRF_TOKEN = "' . htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') . '";</script>';
+
 // ========================================================================
 
 
@@ -171,8 +175,8 @@ if ($tipoUsuarioLogado === 'Admin' && !in_array('permissoes', $paginasPermitidas
 
 // 2. Definir a página padrão (home) para cada tipo de usuário
 $homePadraoPorTipo = [
-    'Admin'    => 'home.php',        // Admin continua usando a home padrão
-    'Gerente'  => 'home_gerente.php',  // Gerentes terão sua própria home
+    'Admin' => 'home.php',        // Admin continua usando a home padrão
+    'Gerente' => 'home_gerente.php',  // Gerentes terão sua própria home
     'Producao' => 'home_producao.php', // Produção terá sua própria home
     // Adicione outros tipos de usuário aqui, se houver, e crie os arquivos home_tipo.php correspondentes
 ];
@@ -218,6 +222,8 @@ else {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($csrf_token); ?>">
+
     <title>Painel Administrativo - MARCHEF</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -287,8 +293,7 @@ else {
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                             aria-expanded="false">
-                            <span
-                                class="text-dark fw-bold"><?php echo get_session_data_attr('nomeUsuario'); ?></span>
+                            <span class="text-dark fw-bold"><?php echo get_session_data_attr('nomeUsuario'); ?></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#perfil">Editar
@@ -322,7 +327,8 @@ else {
                         <div class="mb-3">
                             <label for="selecionar-usuario-perfil" class="form-label">Selecionar Usuário</label>
                             <!-- NOVO: Combobox para selecionar o usuário -->
-                            <select class="form-select" id="selecionar-usuario-perfil" name="usu_codigo_selecionado" required>
+                            <select class="form-select" id="selecionar-usuario-perfil" name="usu_codigo_selecionado"
+                                required>
                                 <option value="">Selecione um usuário...</option>
                                 <!-- As opções serão carregadas via JavaScript -->
                             </select>
@@ -474,6 +480,10 @@ else {
 
     <?php if (isset($pagina) && $pagina === 'clientes'): ?>
         <script src="../js/clientes.js"></script>
+    <?php endif; ?>
+
+    <?php if (isset($pagina) && $pagina === 'fornecedores'): ?>
+        <script src="../js/fornecedores.js"></script>
     <?php endif; ?>
 
 </body>

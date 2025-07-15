@@ -1,0 +1,10 @@
+Executando listar_enderecos.php em: 2025-07-15 17:02:43
+Código da entidade recebido (ent_codigo): 16
+Executando listar_enderecos.php em: 2025-07-15 17:02:59
+Código da entidade recebido (ent_codigo): 18
+Executando listar_enderecos.php em: 2025-07-15 17:03:02
+Código da entidade recebido (ent_codigo): 19
+Executando listar_enderecos.php em: 2025-07-15 17:03:06
+Código da entidade recebido (ent_codigo): 20
+Executando listar_enderecos.php em: 2025-07-15 17:04:20
+Código da entidade recebido (ent_codigo): 16

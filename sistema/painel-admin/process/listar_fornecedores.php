@@ -1,13 +1,13 @@
 <?php
-// Arquivo: painel-admin/process/listar_entidades.php
-// Este arquivo processa requisições AJAX do DataTables para listar entidades (clientes/fornecedores)
+// Arquivo: painel-admin/process/listar_fornecedores.php
+// Este arquivo processa requisições AJAX do DataTables para listar entidades (fornecedores)
 // com server-side processing e filtros.
 
 // Inclui a conexão com o banco de dados
-require_once('../../conexao.php');
+require_once('../../conexao.php'); //
 
 // Inclui o manipulador de erros global para tratamento consistente de exceções
-require_once('../../includes/error_handler.php');
+require_once('../../includes/error_handler.php'); //
 
 // Define o cabeçalho para indicar que a resposta será JSON.
 header('Content-Type: application/json');
@@ -20,7 +20,7 @@ $searchValue = $_POST['search']['value'] ?? ''; // Termo de busca global
 $orderColumnIndex = $_POST['order'][0]['column'] ?? 0; // Índice da coluna para ordenação
 $orderDir = $_POST['order'][0]['dir'] ?? 'asc'; // Direção da ordenação (asc/desc)
 
-// NOVOS PARÂMETROS DE FILTRO
+// NOVO PARÂMETRO DE FILTRO PARA FORNECEDORES (se aplicável, similar aos clientes)
 $filtroSituacao = $_POST['filtro_situacao'] ?? 'Todos'; // 'A', 'I' ou 'Todos'
 
 // Mapeamento das colunas do DataTables para as colunas do banco de dados
@@ -29,7 +29,7 @@ $columns = [
     0 => 'ent_situacao',
     1 => 'ent_tipo_entidade',
     2 => 'ent_razao_social',
-    3 => 'ent_cpf', // Pode ser CPF ou CNPJ, a query vai lidar com isso
+    3 => 'ent_cnpj', // Para fornecedores, geralmente CNPJ
     4 => 'end_logradouro', // Coluna do endereço
     5 => 'ent_codigo' // Coluna de ações (não mapeada diretamente para o DB para ordenação)
 ];
@@ -48,9 +48,9 @@ try {
     $params = [];
 
     // ====================================================================
-    // FILTRO OBRIGATÓRIO: APENAS CLIENTES
-    // Como esta é a tela de Clientes, sempre filtramos por 'Cliente' ou 'Cliente e Fornecedor'
-    $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+    // FILTRO OBRIGATÓRIO: APENAS FORNECEDORES
+    // Esta é a tela de Fornecedores, então filtramos por 'Fornecedor' ou 'Cliente e Fornecedor'
+    $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
     // ====================================================================
 
     // Lógica de filtro por Situação
@@ -61,7 +61,7 @@ try {
 
     // Lógica de busca (filtro global do DataTables)
     if (!empty($searchValue)) {
-        $conditions[] = "(ent.ent_razao_social LIKE :search_value OR ent.ent_cpf LIKE :search_value OR ent.ent_cnpj LIKE :search_value OR end.end_logradouro LIKE :search_value OR end.end_cidade LIKE :search_value)";
+        $conditions[] = "(ent.ent_razao_social LIKE :search_value OR ent.ent_cnpj LIKE :search_value OR end.end_logradouro LIKE :search_value OR end.end_cidade LIKE :search_value)";
         $params[':search_value'] = '%' . $searchValue . '%';
     }
 
@@ -71,9 +71,8 @@ try {
     }
 
     // --- DEBUG LOG: Query de Contagem Filtrada ---
-    $debug_sql_filtered = "SELECT COUNT(ent.ent_codigo) " . $sqlBase . $whereClause;
-    error_log("DEBUG: SQL Filtered Count Query: " . $debug_sql_filtered);
-    error_log("DEBUG: Params for Filtered Count: " . print_r($params, true));
+    error_log("DEBUG: SQL Filtered Count Query (Fornecedores): SELECT COUNT(ent.ent_codigo) " . $sqlBase . $whereClause);
+    error_log("DEBUG: Params for Filtered Count (Fornecedores): " . print_r($params, true));
 
     // --- 2. Contagem Total de Registros (com filtros aplicados, mas sem limite/offset) ---
     $stmtFiltered = $pdo->prepare("SELECT COUNT(ent.ent_codigo) " . $sqlBase . $whereClause);
@@ -81,21 +80,17 @@ try {
     $totalFiltered = $stmtFiltered->fetchColumn();
 
     // ====================================================================
-    // CORREÇÃO: Definir $sqlTotalBase ANTES de seu uso
-    // --- 3. Contagem Total de Registros (sem filtro de busca global, mas com filtro de tipo de entidade) ---
-    // Esta contagem é para o "recordsTotal" do DataTables, que representa o total de registros
-    // que *poderiam* ser exibidos se não houvesse filtro de busca global.
-    // Como a tela é só de clientes, o filtro de tipo de entidade já é um filtro base.
+    // Definir $sqlTotalBase para a contagem total de registros de fornecedores
     $sqlTotalBase = "
         FROM tbl_entidades ent
-        WHERE (ent.ent_tipo_entidade = 'Cliente' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')
+        WHERE (ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')
     ";
     // ====================================================================
 
     // --- DEBUG LOG: Query de Contagem Total ---
-    $debug_sql_total = "SELECT COUNT(ent.ent_codigo) " . $sqlTotalBase;
-    error_log("DEBUG: SQL Total Count Query: " . $debug_sql_total);
+    error_log("DEBUG: SQL Total Count Query (Fornecedores): SELECT COUNT(ent.ent_codigo) " . $sqlTotalBase);
 
+    // --- 3. Contagem Total de Registros (sem filtro de busca global, mas com filtro de tipo de entidade) ---
     $stmtTotal = $pdo->prepare("SELECT COUNT(ent.ent_codigo) " . $sqlTotalBase);
     $stmtTotal->execute();
     $totalRecords = $stmtTotal->fetchColumn();
@@ -103,13 +98,13 @@ try {
 
     // --- 4. Query Final para Obter os Dados ---
     $sqlData = "
-        SELECT 
-            ent.ent_codigo, 
-            ent.ent_razao_social, 
-            ent.ent_tipo_pessoa, 
-            ent.ent_cpf, 
-            ent.ent_cnpj, 
-            ent.ent_tipo_entidade, 
+        SELECT
+            ent.ent_codigo,
+            ent.ent_razao_social,
+            ent.ent_tipo_pessoa,
+            ent.ent_cpf,
+            ent.ent_cnpj,
+            ent.ent_tipo_entidade,
             ent.ent_situacao,
             end.end_logradouro,
             end.end_numero,
@@ -117,7 +112,7 @@ try {
             end.end_bairro,
             end.end_cidade,
             end.end_uf,
-            end.end_tipo_endereco -- Incluir o tipo de endereço para renderização
+            end.end_tipo_endereco -- Incluído para uso no JS
         " . $sqlBase . $whereClause;
 
     // Adicionar Ordenação e Limite
@@ -126,8 +121,8 @@ try {
     $sqlData .= " LIMIT :start, :length";
 
     // --- DEBUG LOG: Query de Dados Final ---
-    error_log("DEBUG: Final Data Query: " . $sqlData);
-    error_log("DEBUG: Final Data Query Params (start, length, others): " . print_r(array_merge([':start' => $start, ':length' => $length], $params), true));
+    error_log("DEBUG: Final Data Query (Fornecedores): " . $sqlData);
+    error_log("DEBUG: Final Data Query Params (Fornecedores) (start, length, others): " . print_r(array_merge([':start' => $start, ':length' => $length], $params), true));
 
 
     // --- 5. Preparar e Executar a Query Final ---
@@ -141,27 +136,27 @@ try {
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // --- DEBUG LOG: Dados Retornados ---
-    error_log("DEBUG: Data Returned for DataTables: " . print_r($data, true));
+    error_log("DEBUG: Data Returned for DataTables (Fornecedores): " . print_r($data, true));
 
     // --- 6. Formatar a Saída para o DataTables ---
     $output = [
         "draw" => (int)$draw,
-        "recordsTotal" => (int)$totalRecords, // Total de clientes (sem filtro de busca global)
-        "recordsFiltered" => (int)$totalFiltered, // Total de clientes com filtro de busca global e situação
+        "recordsTotal" => (int)$totalRecords, // Total de fornecedores (sem filtro de busca global)
+        "recordsFiltered" => (int)$totalFiltered, // Total de fornecedores com filtro de busca global e situação
         "data" => $data
     ];
 
     echo json_encode($output);
 
 } catch (PDOException $e) {
-    error_log("Erro no listar_entidades.php (Server-Side): " . $e->getMessage());
+    error_log("Erro no listar_fornecedores.php (Server-Side): " . $e->getMessage());
     // Retorna um erro amigável para o DataTables
     $output = [
         "draw" => (int)$draw,
         "recordsTotal" => 0,
         "recordsFiltered" => 0,
         "data" => [],
-        "error" => "Erro ao carregar dados das entidades. Tente novamente mais tarde."
+        "error" => "Erro ao carregar dados dos fornecedores. Tente novamente mais tarde."
     ];
     echo json_encode($output);
 }

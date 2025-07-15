@@ -1,6 +1,6 @@
 <?php
 // Arquivo: painel-admin/process/cadastrar_entidade.php
-// Responsável por cadastrar uma nova entidade (cliente/fornecedor) e seu endereço principal.
+// Responsável por cadastrar uma nova entidade (cliente/fornecedor) e seus dados específicos.
 
 session_start(); // Inicia a sessão para acessar o token CSRF e o ID do usuário logado
 
@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // --- 2. Validação e Sanitização de Entradas da Entidade ---
+    // --- 2. Validação e Sanitização de Entradas da Entidade (tbl_entidades) ---
     $razao_social_raw = filter_input(INPUT_POST, 'ent_razao_social', FILTER_SANITIZE_STRING);
     $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,-]+$/u');
     if (!$val_razao_social['valid']) {
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_uf_raw = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);
 
     $has_address_data = !empty($end_cep_raw) || !empty($end_logradouro_raw) || !empty($end_numero_raw) ||
-                        !empty($end_complemento_raw) || !empty($end_bairro_raw) || !empty($end_cidade_raw) || !empty($end_uf_raw);
+        !empty($end_complemento_raw) || !empty($end_bairro_raw) || !empty($end_cidade_raw) || !empty($end_uf_raw);
 
     $end_cep = $end_logradouro = $end_numero = $end_complemento = $end_bairro = $end_cidade = $end_uf = null;
 
@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // Insere a nova entidade
+        // Insere a nova entidade na tbl_entidades
         $query_entidade = $pdo->prepare("
             INSERT INTO tbl_entidades (
                 ent_razao_social, ent_tipo_pessoa, ent_cpf, ent_cnpj, 
@@ -200,6 +200,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $entidade_id = $pdo->lastInsertId(); // Pega o ID da entidade recém-inserida
 
+        // --- Insere na tbl_clientes se a entidade for um Cliente ou Cliente e Fornecedor ---
+        if ($ent_tipo_entidade === 'Cliente' || $ent_tipo_entidade === 'Cliente e Fornecedor') {
+            $query_cliente = $pdo->prepare("
+                INSERT INTO tbl_clientes (
+                    cli_entidade_id, cli_status_cliente, cli_limite_credito, 
+                    cli_data_cadastro, cli_usuario_cadastro_id
+                ) VALUES (
+                    :entidade_id, 'Ativo', 0.00, 
+                    NOW(), :usuario_cadastro_id
+                )
+            ");
+            $query_cliente->bindValue(':entidade_id', $entidade_id, PDO::PARAM_INT);
+            $query_cliente->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
+            $query_cliente->execute();
+        }
+
+        // --- NOVO: Insere na tbl_fornecedores se a entidade for um Fornecedor ou Cliente e Fornecedor ---
+        if ($ent_tipo_entidade === 'Fornecedor' || $ent_tipo_entidade === 'Cliente e Fornecedor') {
+            $query_fornecedor = $pdo->prepare("
+                INSERT INTO tbl_fornecedores (
+                    forn_entidade_id, forn_data_cadastro, forn_usuario_cadastro_id
+                ) VALUES (
+                    :entidade_id, NOW(), :usuario_cadastro_id
+                )
+            ");
+            $query_fornecedor->bindValue(':entidade_id', $entidade_id, PDO::PARAM_INT);
+            $query_fornecedor->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
+            $query_fornecedor->execute();
+        }
+
+
         // Se houver dados de endereço, insere o endereço principal
         if ($has_address_data) {
             $query_endereco = $pdo->prepare("
@@ -208,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     end_numero, end_complemento, end_bairro, end_cidade, end_uf, 
                     end_data_cadastro, end_usuario_cadastro_id
                 ) VALUES (
-                    :entidade_id, :tipo_endereco, :cep, :logradouro, 
+                    :entidade_id, 'Entrega', :cep, :logradouro, 
                     :numero, :complemento, :bairro, :cidade, :uf, 
                     NOW(), :usuario_cadastro_id
                 )
@@ -229,12 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit(); // Confirma a transação
 
         $response['success'] = true;
-        $response['message'] = 'Cliente cadastrado com sucesso!';
+        $response['message'] = 'Entidade cadastrada com sucesso!';
+        $response['ent_codigo'] = $entidade_id; // Retorna o ID da nova entidade
 
     } catch (PDOException $e) {
         $pdo->rollBack(); // Reverte a transação em caso de erro
         error_log('Erro ao cadastrar entidade (cadastrar_entidade.php): ' . $e->getMessage());
-        $response['message'] = 'Erro no servidor ao cadastrar cliente. Por favor, tente novamente mais tarde.';
+        $response['message'] = 'Erro no servidor ao cadastrar entidade. Por favor, tente novamente mais tarde.';
     }
 
 } else {
