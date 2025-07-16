@@ -40,9 +40,21 @@ try {
     // --- 1. Construção da Query Base ---
     // JOIN com tbl_enderecos para pegar o endereço principal (tipo 'Entrega')
     $sqlBase = "
-        FROM tbl_entidades ent
-        LEFT JOIN tbl_enderecos end ON ent.ent_codigo = end.end_entidade_id AND end.end_tipo_endereco = 'Entrega'
-    ";
+    FROM tbl_entidades ent
+    LEFT JOIN (
+        SELECT 
+            *,
+            ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY 
+                CASE end_tipo_endereco
+                    WHEN 'Entrega' THEN 1
+                    WHEN 'Comercial' THEN 2
+                    WHEN 'Cobranca' THEN 3
+                    WHEN 'Residencial' THEN 4
+                    ELSE 5
+                END, end_codigo ASC) as rn
+        FROM tbl_enderecos
+    ) end ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1
+";
 
     $conditions = [];
     $params = [];
@@ -145,9 +157,9 @@ try {
 
     // --- 6. Formatar a Saída para o DataTables ---
     $output = [
-        "draw" => (int)$draw,
-        "recordsTotal" => (int)$totalRecords, // Total de clientes (sem filtro de busca global)
-        "recordsFiltered" => (int)$totalFiltered, // Total de clientes com filtro de busca global e situação
+        "draw" => (int) $draw,
+        "recordsTotal" => (int) $totalRecords, // Total de clientes (sem filtro de busca global)
+        "recordsFiltered" => (int) $totalFiltered, // Total de clientes com filtro de busca global e situação
         "data" => $data
     ];
 
@@ -157,7 +169,7 @@ try {
     error_log("Erro no listar_entidades.php (Server-Side): " . $e->getMessage());
     // Retorna um erro amigável para o DataTables
     $output = [
-        "draw" => (int)$draw,
+        "draw" => (int) $draw,
         "recordsTotal" => 0,
         "recordsFiltered" => 0,
         "data" => [],

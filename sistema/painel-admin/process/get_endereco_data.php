@@ -1,78 +1,55 @@
 <?php
-// Arquivo: painel-admin/process/get_endereco_data.php
-// Responsável por retornar os dados de um endereço específico para edição.
+// Arquivo: painel-adm/process/get_endereco_data.php
+// Responsável por buscar os dados de um único endereço para preencher o formulário de edição.
 
-session_start(); // Inicia a sessão para verificar o token CSRF
+// Requer os arquivos de conexão e o manipulador de erros
+require_once('../../conexao.php');
+require_once('../../includes/error_handler.php');
 
-require_once('../../includes/error_handler.php'); // Inclui o manipulador de erros
-require_once('../../conexao.php'); // Inclui a conexão com o banco de dados
-require_once('../../includes/helpers.php'); // Inclui as funções auxiliares (para validação)
+// Define o cabeçalho da resposta como JSON
+header('Content-Type: application/json');
 
-header('Content-Type: application/json'); // Define o cabeçalho para resposta JSON
-
-$response = ['success' => false, 'message' => 'Erro desconhecido.', 'data' => null];
-
-// Verifica se a requisição é POST e se o ID foi fornecido
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) { // ALTERADO DE GET PARA POST
-    // ========================================================================
-    // Verificação do Token CSRF
-    // ========================================================================
-    $submitted_token = $_POST['csrf_token'] ?? '';
-    if (!isset($_SESSION['csrf_token']) || $submitted_token !== $_SESSION['csrf_token']) {
-        $response['message'] = "Erro de segurança: Requisição inválida (CSRF).";
-        error_log("[CSRF ALERTA] Tentativa de CSRF detectada em get_endereco_data.php. IP: " . $_SERVER['REMOTE_ADDR']);
-        echo json_encode($response);
-        exit();
-    }
-
-    // --- 1. Validação e Sanitização de Entradas ---
-    $endereco_id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT); // ALTERADO DE INPUT_GET PARA INPUT_POST
-    if (!$endereco_id) {
-        $response['message'] = "ID do endereço inválido ou ausente.";
-        echo json_encode($response);
-        exit();
-    }
-
-    // --- 2. Lógica de Negócio e Interação com o Banco de Dados ---
-    try {
-        $query_get_endereco = $pdo->prepare("
-            SELECT
-                end_codigo,
-                end_entidade_id,
-                end_tipo_endereco,
-                end_cep,
-                end_logradouro,
-                end_numero,
-                end_complemento,
-                end_bairro,
-                end_cidade,
-                end_uf
-            FROM
-                tbl_enderecos
-            WHERE
-                end_codigo = :endereco_id
-        ");
-        $query_get_endereco->bindParam(':endereco_id', $endereco_id, PDO::PARAM_INT);
-        $query_get_endereco->execute();
-        $endereco_data = $query_get_endereco->fetch(PDO::FETCH_ASSOC);
-
-        if ($endereco_data) {
-            $response['success'] = true;
-            $response['message'] = 'Dados do endereço carregados com sucesso!';
-            $response['data'] = $endereco_data;
-        } else {
-            $response['message'] = "Endereço não encontrado.";
-        }
-
-    } catch (PDOException $e) {
-        error_log('Erro ao obter dados do endereço (get_endereco_data.php): ' . $e->getMessage());
-        $response['message'] = 'Erro no servidor ao carregar dados do endereço. Por favor, tente novamente mais tarde.';
-    }
-
-} else {
-    $response['message'] = "Requisição inválida. Apenas requisições POST com ID são permitidas."; // ALTERADO
+// Verifica se o método da requisição é GET
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405); // Método não permitido
+    echo json_encode(['success' => false, 'message' => 'Método não permitido.']);
+    exit();
 }
 
-echo json_encode($response);
-exit();
+// Obtém o ID do endereço da query string (?id=...)
+$enderecoId = $_GET['id'] ?? null;
+
+// Valida se o ID foi fornecido e é um número inteiro
+if (!$enderecoId || !filter_var($enderecoId, FILTER_VALIDATE_INT)) {
+    http_response_code(400); // Requisição inválida
+    echo json_encode(['success' => false, 'message' => 'ID do endereço inválido ou não fornecido.']);
+    exit();
+}
+
+try {
+    // Prepara a query para buscar o endereço pelo seu ID
+    $sql = "SELECT * FROM tbl_enderecos WHERE end_codigo = :endereco_id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':endereco_id', $enderecoId, PDO::PARAM_INT);
+    $stmt->execute();
+
+    // Busca o resultado como um array associativo
+    $endereco = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Verifica se um endereço foi encontrado
+    if ($endereco) {
+        // Retorna sucesso e os dados do endereço
+        echo json_encode(['success' => true, 'data' => $endereco]);
+    } else {
+        // Se nenhum endereço foi encontrado com o ID fornecido
+        http_response_code(404); // Não encontrado
+        echo json_encode(['success' => false, 'message' => 'Endereço não encontrado.']);
+    }
+
+} catch (PDOException $e) {
+    // Em caso de erro no banco de dados, loga o erro e retorna uma mensagem genérica
+    error_log("Erro ao buscar dados do endereço: " . $e->getMessage());
+    http_response_code(500); // Erro interno do servidor
+    echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor ao buscar os dados do endereço.']);
+}
 ?>

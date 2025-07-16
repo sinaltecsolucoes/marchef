@@ -7,26 +7,31 @@
 
 <h4 class="fw-bold mb-3">Fornecedores</h4>
 
-<a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-fornecedor" id="btn-adicionar-fornecedor-main">Adicionar Fornecedor</a>
+<!-- Botão Adicionar Fornecedor -->
+<a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-fornecedor"
+   id="btn-adicionar-fornecedor-main">Adicionar Fornecedor</a>
 
+<!-- Filtros de Situação -->
 <div class="row mb-3">
     <div class="col-md-6">
         <label class="form-label">Filtrar por Situação:</label><br>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos-forn" value="Todos" checked>
-            <label class="form-check-label" for="filtro-situacao-todos-forn">Todos</label>
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-todos-fornecedor" value="Todos"
+                   checked>
+            <label class="form-check-label" for="filtro-situacao-todos-fornecedor">Todos</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo-forn" value="A">
-            <label class="form-check-label" for="filtro-situacao-ativo-forn">Ativo</label>
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-ativo-fornecedor" value="A">
+            <label class="form-check-label" for="filtro-situacao-ativo-fornecedor">Ativo</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo-forn" value="I">
-            <label class="form-check-label" for="filtro-situacao-inativo-forn">Inativo</label>
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-inativo-fornecedor" value="I">
+            <label class="form-check-label" for="filtro-situacao-inativo-fornecedor">Inativo</label>
         </div>
     </div>
 </div>
 
+<!-- Área para mensagens de feedback (sucesso/erro) -->
 <div id="feedback-message-area-fornecedor" class="mt-3"></div>
 
 <div class="table-responsive">
@@ -42,11 +47,14 @@
             </tr>
         </thead>
         <tbody>
-            </tbody>
+            <!-- Dados serão carregados via DataTables e AJAX -->
+        </tbody>
     </table>
 </div>
 
-<div class="modal fade" id="modal-adicionar-fornecedor" tabindex="-1" role="dialog" aria-labelledby="modal-adicionar-fornecedor-label" aria-hidden="true">
+<!-- Modal Adicionar/Editar Fornecedor -->
+<div class="modal fade" id="modal-adicionar-fornecedor" tabindex="-1" role="dialog"
+     aria-labelledby="modal-adicionar-fornecedor-label" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -54,57 +62,62 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <ul class="nav nav-tabs" id="myTabForn" role="tablist">
+                <!-- Abas de Navegação -->
+                <ul class="nav nav-tabs" id="myTabFornecedor" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="dados-fornecedor-tab" data-bs-toggle="tab" data-bs-target="#dados-fornecedor" type="button" role="tab" aria-controls="dados-fornecedor" aria-selected="true">Dados do Fornecedor</button>
+                        <button class="nav-link active" id="dados-fornecedor-tab" data-tab-target="#dados-fornecedor"
+                                type="button" role="tab">Dados do Fornecedor</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="enderecos-fornecedor-tab" data-bs-toggle="tab" data-bs-target="#enderecos-fornecedor" type="button" role="tab" aria-controls="enderecos-fornecedor" aria-selected="false">Endereços</button>
+                        <button class="nav-link" id="enderecos-tab-fornecedor" data-tab-target="#enderecos-fornecedor" type="button"
+                                role="tab">Endereços</button>
                     </li>
                 </ul>
 
-                <div class="tab-content" id="myTabFornContent">
-                    <div class="tab-pane fade show active" id="dados-fornecedor" role="tabpanel" aria-labelledby="dados-fornecedor-tab">
-                        <form id="form-fornecedor" class="mt-3">
+                <!-- Conteúdo das Abas -->
+                <div class="tab-content" id="myTabContentFornecedor">
+                    <!-- Aba de Dados do Fornecedor -->
+                    <div class="tab-pane fade show active" id="dados-fornecedor" role="tabpanel">
+                        <form id="form-fornecedor">
                             <input type="hidden" id="ent-codigo-fornecedor" name="ent_codigo">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                             <div id="mensagem-fornecedor" class="mb-3"></div>
 
-                            <div class="mb-3">
+                            <div class="mb-3 mt-3">
                                 <label for="razao-social-fornecedor" class="form-label">Razão Social / Nome Completo</label>
-                                <input type="text" class="form-control" id="razao-social-fornecedor" name="ent_razao_social" placeholder="Razão Social ou Nome Completo" required>
+                                <input type="text" class="form-control" id="razao-social-fornecedor" name="ent_razao_social" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Tipo de Pessoa</label><br>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa" id="tipo-pessoa-fisica-fornecedor" value="F" checked>
+                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa_fornecedor" id="tipo-pessoa-fisica-fornecedor" value="F" checked>
                                     <label class="form-check-label" for="tipo-pessoa-fisica-fornecedor">Física</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa" id="tipo-pessoa-juridica-fornecedor" value="J">
+                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa_fornecedor" id="tipo-pessoa-juridica-fornecedor" value="J">
                                     <label class="form-check-label" for="tipo-pessoa-juridica-fornecedor">Jurídica</label>
                                 </div>
                             </div>
 
                             <div class="mb-3">
                                 <label for="cpf-cnpj-fornecedor" class="form-label" id="label-cpf-cnpj-fornecedor">CPF</label>
-                                <input type="text" class="form-control" id="cpf-cnpj-fornecedor" name="ent_cpf_cnpj" placeholder="000.000.000-00" required>
+                                <input type="text" class="form-control" id="cpf-cnpj-fornecedor" name="ent_cpf_cnpj" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Tipo de Entidade</label><br>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade" id="tipo-entidade-cliente-fornecedor" value="Cliente">
+                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-cliente-fornecedor" value="Cliente">
                                     <label class="form-check-label" for="tipo-entidade-cliente-fornecedor">Cliente</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade" id="tipo-entidade-fornecedor-fornecedor" value="Fornecedor" checked>
+                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-fornecedor-fornecedor" value="Fornecedor" checked>
                                     <label class="form-check-label" for="tipo-entidade-fornecedor-fornecedor">Fornecedor</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade" id="tipo-entidade-ambos-fornecedor" value="Cliente e Fornecedor">
+                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-ambos-fornecedor" value="Cliente e Fornecedor">
                                     <label class="form-check-label" for="tipo-entidade-ambos-fornecedor">Ambos</label>
                                 </div>
                             </div>
@@ -118,31 +131,34 @@
                                     </label>
                                 </div>
                             </div>
-                            <hr class="my-4">
-                            <h5 class="mb-3">Endereços Cadastrados</h5>
-                            <div class="table-responsive">
-                                <table id="tabela-enderecos-fornecedor" class="table table-hover my-4" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>Tipo</th>
-                                            <th>CEP</th>
-                                            <th>Logradouro</th>
-                                            <th>Número</th>
-                                            <th>Bairro</th>
-                                            <th>Cidade/UF</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        </tbody>
-                                </table>
-                            </div>
                         </form>
                     </div>
 
-                    <div class="tab-pane fade" id="enderecos-fornecedor" role="tabpanel" aria-labelledby="enderecos-fornecedor-tab">
+                    <!-- Aba de Endereços -->
+                    <div class="tab-pane fade" id="enderecos-fornecedor" role="tabpanel">
+                        <hr class="my-4">
+                        <h5 class="mb-3">Endereços Cadastrados</h5>
+                        <div class="table-responsive">
+                            <table id="tabela-enderecos-fornecedor" class="table table-hover my-4" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>CEP</th>
+                                        <th>Logradouro</th>
+                                        <th>Número</th>
+                                        <th>Bairro</th>
+                                        <th>Cidade/UF</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <hr>
                         <form id="form-endereco-fornecedor" class="mt-3">
-                            <input type="hidden" id="end-codigo-fornecedor" name="end_codigo"> <input type="hidden" id="end-entidade-id-fornecedor" name="end_entidade_id"> <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+                            <input type="hidden" id="end-codigo-fornecedor" name="end_codigo">
+                            <input type="hidden" id="end-entidade-id-fornecedor" name="end_entidade_id">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                             <div id="mensagem-endereco-fornecedor" class="mb-3"></div>
 
@@ -158,77 +174,79 @@
                                 </select>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="cep-endereco-fornecedor" class="form-label">CEP</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="cep-endereco-fornecedor" name="end_cep" placeholder="00000-000">
-                                    <button class="btn btn-outline-secondary" type="button" id="btn-buscar-cep-fornecedor">Buscar CEP</button>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="cep-endereco-fornecedor" class="form-label">CEP</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="cep-endereco-fornecedor" name="end_cep" placeholder="00000-000">
+                                        <button class="btn btn-outline-secondary" type="button" id="btn-buscar-cep-fornecedor">Buscar CEP</button>
+                                    </div>
+                                    <small id="cep-feedback-fornecedor" class="form-text text-muted"></small>
                                 </div>
-                                <small id="cep-feedback-fornecedor" class="form-text text-muted"></small>
+                                <div class="col-md-4 mb-3">
+                                    <label for="uf-endereco-fornecedor" class="form-label">UF</label>
+                                    <select class="form-select" id="uf-endereco-fornecedor" name="end_uf">
+                                        <option value="">Selecione um Estado</option>
+                                        <option value="AC">Acre</option>
+                                        <option value="AL">Alagoas</option>
+                                        <option value="AP">Amapá</option>
+                                        <option value="AM">Amazonas</option>
+                                        <option value="BA">Bahia</option>
+                                        <option value="CE">Ceará</option>
+                                        <option value="DF">Distrito Federal</option>
+                                        <option value="ES">Espírito Santo</option>
+                                        <option value="GO">Goiás</option>
+                                        <option value="MA">Maranhão</option>
+                                        <option value="MT">Mato Grosso</option>
+                                        <option value="MS">Mato Grosso do Sul</option>
+                                        <option value="MG">Minas Gerais</option>
+                                        <option value="PA">Pará</option>
+                                        <option value="PB">Paraíba</option>
+                                        <option value="PR">Paraná</option>
+                                        <option value="PE">Pernambuco</option>
+                                        <option value="PI">Piauí</option>
+                                        <option value="RJ">Rio de Janeiro</option>
+                                        <option value="RN">Rio Grande do Norte</option>
+                                        <option value="RS">Rio Grande do Sul</option>
+                                        <option value="RO">Rondônia</option>
+                                        <option value="RR">Roraima</option>
+                                        <option value="SC">Santa Catarina</option>
+                                        <option value="SP">São Paulo</option>
+                                        <option value="SE">Sergipe</option>
+                                        <option value="TO">Tocantins</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="mb-3">
                                 <label for="logradouro-endereco-fornecedor" class="form-label">Logradouro</label>
-                                <input type="text" class="form-control" id="logradouro-endereco-fornecedor" name="end_logradouro" placeholder="Rua, Avenida, etc.">
+                                <input type="text" class="form-control" id="logradouro-endereco-fornecedor" name="end_logradouro">
                             </div>
 
                             <div class="row">
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-3 mb-3">
                                     <label for="numero-endereco-fornecedor" class="form-label">Número</label>
-                                    <input type="text" class="form-control" id="numero-endereco-fornecedor" name="end_numero" placeholder="Número">
+                                    <input type="text" class="form-control" id="numero-endereco-fornecedor" name="end_numero">
                                 </div>
-                                <div class="col-md-8 mb-3">
+                                <div class="col-md-9 mb-3">
                                     <label for="complemento-endereco-fornecedor" class="form-label">Complemento</label>
-                                    <input type="text" class="form-control" id="complemento-endereco-fornecedor" name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
+                                    <input type="text" class="form-control" id="complemento-endereco-fornecedor" name="end_complemento">
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="bairro-endereco-fornecedor" class="form-label">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro-endereco-fornecedor" name="end_bairro" placeholder="Bairro">
+                                    <input type="text" class="form-control" id="bairro-endereco-fornecedor" name="end_bairro">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="cidade-endereco-fornecedor" class="form-label">Cidade</label>
-                                    <input type="text" class="form-control" id="cidade-endereco-fornecedor" name="end_cidade" placeholder="Cidade">
+                                    <input type="text" class="form-control" id="cidade-endereco-fornecedor" name="end_cidade">
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="uf-endereco-fornecedor" class="form-label">UF</label>
-                                <select class="form-select" id="uf-endereco-fornecedor" name="end_uf">
-                                    <option value="">Selecione um Estado</option>
-                                    <option value="AC">Acre</option>
-                                    <option value="AL">Alagoas</option>
-                                    <option value="AP">Amapá</option>
-                                    <option value="AM">Amazonas</option>
-                                    <option value="BA">Bahia</option>
-                                    <option value="CE">Ceará</option>
-                                    <option value="DF">Distrito Federal</option>
-                                    <option value="ES">Espírito Santo</option>
-                                    <option value="GO">Goiás</option>
-                                    <option value="MA">Maranhão</option>
-                                    <option value="MT">Mato Grosso</option>
-                                    <option value="MS">Mato Grosso do Sul</option>
-                                    <option value="MG">Minas Gerais</option>
-                                    <option value="PA">Pará</option>
-                                    <option value="PB">Paraíba</option>
-                                    <option value="PR">Paraná</option>
-                                    <option value="PE">Pernambuco</option>
-                                    <option value="PI">Piauí</option>
-                                    <option value="RJ">Rio de Janeiro</option>
-                                    <option value="RN">Rio Grande do Norte</option>
-                                    <option value="RS">Rio Grande do Sul</option>
-                                    <option value="RO">Rondônia</option>
-                                    <option value="RR">Roraima</option>
-                                    <option value="SC">Santa Catarina</option>
-                                    <option value="SP">São Paulo</option>
-                                    <option value="SE">Sergipe</option>
-                                    <option value="TO">Tocantins</option>
-                                </select>
-                            </div>
                             <button type="submit" class="btn btn-primary" id="btn-salvar-endereco-fornecedor">Salvar Endereço</button>
-                            <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-endereco-fornecedor" style="display:none;">Cancelar</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-endereco-fornecedor">Cancelar</button>
                         </form>
                     </div>
                 </div>
@@ -241,16 +259,17 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-confirmar-exclusao-fornecedor" tabindex="-1" role="dialog" aria-labelledby="modal-confirmar-exclusao-fornecedor-label" aria-hidden="true">
+<!-- Modal de Confirmação de Exclusão de Fornecedor -->
+<div class="modal fade" id="modal-confirmar-exclusao-fornecedor" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modal-confirmar-exclusao-fornecedor-label">Confirmar Exclusão de Fornecedor</h5>
+                <h5 class="modal-title">Confirmar Exclusão de Fornecedor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir o fornecedor <strong id="nome-fornecedor-excluir"></strong>?</p>
-                <p class="text-danger">Esta ação é irreversível e excluirá também todos os endereços associados!</p>
+                <p class="text-danger">Esta ação é irreversível!</p>
                 <input type="hidden" id="id-fornecedor-excluir">
             </div>
             <div class="modal-footer">
@@ -261,16 +280,16 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-confirmar-exclusao-endereco-fornecedor" tabindex="-1" role="dialog" aria-labelledby="modal-confirmar-exclusao-endereco-fornecedor-label" aria-hidden="true">
+<!-- Modal de Confirmação de Exclusão de Endereço -->
+<div class="modal fade" id="modal-confirmar-exclusao-endereco-fornecedor" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modal-confirmar-exclusao-endereco-fornecedor-label">Confirmar Exclusão de Endereço</h5>
+                <h5 class="modal-title">Confirmar Exclusão de Endereço</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir este endereço?</p>
-                <p class="text-danger">Esta ação é irreversível!</p>
                 <input type="hidden" id="id-endereco-excluir-fornecedor">
             </div>
             <div class="modal-footer">

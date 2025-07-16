@@ -1,158 +1,150 @@
-// js/fornecedores.js
-
-console.log("fornecedores.js carregado."); // DEBUG: Verifica se o arquivo é carregado
-
 $(document).ready(function () {
-    console.log("jQuery ready no fornecedores.js. Tentando inicializar DataTables."); // DEBUG: Verifica se o DOM está pronto
 
-    // --- Seletores e Variáveis Globais para a Tela de Fornecedores ---
-    var $modalFornecedor = $('#modal-adicionar-fornecedor'); // ID do modal principal de fornecedor
-    var $formFornecedor = $('#form-fornecedor');
-    var $mensagemFornecedor = $('#mensagem-fornecedor'); // Área de feedback dentro da aba "Dados do Fornecedor"
-    var $feedbackMessageAreaFornecedor = $('#feedback-message-area-fornecedor'); // Área de feedback na página principal
+    // =================================================================
+    // Bloco de Configuração Inicial
+    // =================================================================
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
-    // Campos do formulário de Entidade (Fornecedor) na aba "Dados do Fornecedor"
-    var $entCodigoForn = $('#ent-codigo-fornecedor'); // Campo oculto para o ID do fornecedor (usado na edição)
-    var $razaoSocialForn = $('#razao-social-fornecedor');
-    var $tipoPessoaFornFisica = $('#tipo-pessoa-fisica-fornecedor');
-    var $tipoPessoaFornJuridica = $('#tipo-pessoa-juridica-fornecedor');
-    var $labelCpfCnpjForn = $('#label-cpf-cnpj-fornecedor');
-    var $cpfCnpjForn = $('#cpf-cnpj-fornecedor');
-    var $tipoEntidadeClienteForn = $('#tipo-entidade-cliente-fornecedor');
-    var $tipoEntidadeFornecedorForn = $('#tipo-entidade-fornecedor-fornecedor');
-    var $tipoEntidadeAmbosForn = $('#tipo-entidade-ambos-fornecedor');
-    var $situacaoFornecedor = $('#situacao-fornecedor'); // Switch Ativo/Inativo
-    var $textoSituacaoFornecedor = $('#texto-situacao-fornecedor'); // Texto ao lado do switch
-
-    // Seletores para o filtro de situação (radio buttons) na tela principal
-    var $filtroSituacaoRadiosForn = $('input[name="filtro_situacao"]');
-
-    // --- Seletores e Variáveis Globais para a Aba de Endereços do Fornecedor ---
-    var $formEnderecoForn = $('#form-endereco-fornecedor');
-    var $mensagemEnderecoForn = $('#mensagem-endereco-fornecedor'); // Área de feedback dentro da aba "Endereços"
-    var $endCodigoForn = $('#end-codigo-fornecedor'); // Campo oculto para o ID do endereço (edição)
-    var $endEntidadeIdForn = $('#end-entidade-id-fornecedor'); // Campo oculto para o ID da entidade associada ao endereço
-    var $tipoEnderecoForn = $('#tipo-endereco-fornecedor');
-    var $cepEnderecoForn = $('#cep-endereco-fornecedor');
-    var $btnBuscarCepEnderecoForn = $('#btn-buscar-cep-fornecedor');
-    var $cepFeedbackEnderecoForn = $('#cep-feedback-fornecedor');
-    var $logradouroEnderecoForn = $('#logradouro-endereco-fornecedor');
-    var $numeroEnderecoForn = $('#numero-endereco-fornecedor');
-    var $complementoEnderecoForn = $('#complemento-endereco-fornecedor');
-    var $bairroEnderecoForn = $('#bairro-endereco-fornecedor');
-    var $cidadeEnderecoForn = $('#cidade-endereco-fornecedor');
-    var $ufEnderecoForn = $('#uf-endereco-fornecedor');
-    var $btnSalvarEnderecoForn = $('#btn-salvar-endereco-fornecedor');
-    var $btnCancelarEdicaoEnderecoForn = $('#btn-cancelar-edicao-endereco-fornecedor');
-
-    // Instâncias do DataTables
-    var tableFornecedores; // Tabela principal de fornecedores
-    var tableEnderecosForn; // Tabela de endereços dentro do modal
-
-    // --- Funções Auxiliares ---
-
-    // Função para exibir mensagens de feedback na área principal da página ou dentro do modal
-    function showFeedbackMessage(divElement, message, type = 'success') {
-        divElement.empty().removeClass('alert alert-success alert-danger alert-info alert-warning').show(); // Garante que esteja visível
-        var alertClass = '';
-        if (type === 'success') alertClass = 'alert-success';
-        else if (type === 'danger') alertClass = 'alert-danger';
-        else if (type === 'info') alertClass = 'alert-info';
-        else if (type === 'warning') alertClass = 'alert-warning';
-
-        divElement.addClass('alert ' + alertClass).text(message);
-        setTimeout(function () {
-            divElement.fadeOut('slow', function () {
-                $(this).empty().removeClass('alert alert-success alert-danger alert-info alert-warning');
-            });
-        }, 5000); // Mensagem some após 5 segundos
-    }
-
-    // Função para aplicar a máscara correta ao campo CPF/CNPJ para fornecedores
-    function applyCpfCnpjMaskForn() {
-        if ($tipoPessoaFornFisica.is(':checked')) {
-            $labelCpfCnpjForn.text('CPF');
-            $cpfCnpjForn.attr('placeholder', '000.000.000-00').mask('000.000.000-00', { reverse: true });
-        } else {
-            $labelCpfCnpjForn.text('CNPJ');
-            $cpfCnpjForn.attr('placeholder', '00.000.000/0000-00').mask('00.000.000/0000-00', { reverse: true });
+    $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+        if (!options.crossDomain) {
+            jqXHR.setRequestHeader('X-CSRF-TOKEN', csrfToken);
         }
-    }
+    });
 
-    // Função para limpar os campos de endereço do formulário de endereço do fornecedor
-    function clearAddressFormFieldsForn() {
-        $formEnderecoForn[0].reset(); // Reseta o formulário DOM
-        $endCodigoForn.val(''); // Limpa o ID oculto
-        $cepFeedbackEnderecoForn.empty().removeClass('text-success text-danger text-muted');
-        $mensagemEnderecoForn.empty().removeClass('alert alert-success alert-danger alert-warning');
-        $btnSalvarEnderecoForn.text('Salvar Endereço').removeClass('btn-warning').addClass('btn-primary');
-        $btnCancelarEdicaoEnderecoForn.hide();
-    }
+    // =================================================================
+    // Seletores Globais para FORNECEDORES
+    // =================================================================
+    var $modalFornecedor = $('#modal-adicionar-fornecedor');
+    var $formFornecedor = $('#form-fornecedor');
+    var $mensagemFornecedor = $('#mensagem-fornecedor');
+    var $feedbackMessageAreaFornecedor = $('#feedback-message-area-fornecedor');
+    var $btnAdicionarFornecedorMain = $('#btn-adicionar-fornecedor-main');
+    
+    // Campos do formulário de Entidade (com sufixo '-fornecedor' para serem únicos)
+    var $razaoSocial = $('#razao-social-fornecedor');
+    var $tipoPessoaFisica = $('#tipo-pessoa-fisica-fornecedor');
+    var $tipoPessoaJuridica = $('#tipo-pessoa-juridica-fornecedor');
+    var $labelCpfCnpj = $('#label-cpf-cnpj-fornecedor');
+    var $cpfCnpj = $('#cpf-cnpj-fornecedor');
+    var $tipoEntidadeCliente = $('#tipo-entidade-cliente-fornecedor');
+    var $tipoEntidadeFornecedor = $('#tipo-entidade-fornecedor-fornecedor');
+    var $tipoEntidadeAmbos = $('#tipo-entidade-ambos-fornecedor');
+    var $situacaoFornecedor = $('#situacao-fornecedor');
+    var $textoSituacaoFornecedor = $('#texto-situacao-fornecedor');
+    var $entCodigo = $('#ent-codigo-fornecedor');
+    var $filtroSituacaoRadios = $('input[name="filtro_situacao_fornecedor"]');
+    
+    // Campos do formulário de Endereço (com sufixo '-fornecedor')
+    var $formEndereco = $('#form-endereco-fornecedor');
+    var $mensagemEndereco = $('#mensagem-endereco-fornecedor');
+    var $endCodigo = $('#end-codigo-fornecedor');
+    var $endEntidadeId = $('#end-entidade-id-fornecedor');
+    var $tipoEndereco = $('#tipo-endereco-fornecedor');
+    var $cepEndereco = $('#cep-endereco-fornecedor');
+    var $btnBuscarCepEndereco = $('#btn-buscar-cep-fornecedor');
+    var $cepFeedbackEndereco = $('#cep-feedback-fornecedor');
+    var $logradouroEndereco = $('#logradouro-endereco-fornecedor');
+    var $numeroEndereco = $('#numero-endereco-fornecedor');
+    var $complementoEndereco = $('#complemento-endereco-fornecedor');
+    var $bairroEndereco = $('#bairro-endereco-fornecedor');
+    var $cidadeEndereco = $('#cidade-endereco-fornecedor');
+    var $ufEndereco = $('#uf-endereco-fornecedor');
+    var $btnSalvarEndereco = $('#btn-salvar-endereco-fornecedor');
+    var $btnCancelarEdicaoEndereco = $('#btn-cancelar-edicao-endereco-fornecedor');
+    
+    var tableEnderecos;
+    var tableFornecedores;
+    var $triggerButton = null;
 
-    // Função para buscar CEP via ViaCEP (para formulário de endereço do fornecedor)
-    function searchCepEnderecoForn() {
-        var cepValue = $cepEnderecoForn.val().replace(/\D/g, ''); // Remove não-dígitos
-        if (cepValue.length !== 8) {
-            showFeedbackMessage($cepFeedbackEnderecoForn, 'CEP inválido. Digite 8 dígitos.', 'danger');
+    // =================================================================
+    // Controle Manual das Abas
+    // =================================================================
+    var $tabButtons = $modalFornecedor.find('.nav-tabs .nav-link');
+    var $tabPanes = $modalFornecedor.find('.tab-content .tab-pane');
+
+    $tabButtons.on('click', function (e) {
+        e.preventDefault();
+        var $this = $(this);
+        if ($this.hasClass('disabled')) {
             return;
         }
+        $tabButtons.removeClass('active');
+        $this.addClass('active');
+        $tabPanes.removeClass('show active');
+        var targetPaneSelector = $this.data('tab-target');
+        $(targetPaneSelector).addClass('show active');
+    });
 
-        showFeedbackMessage($cepFeedbackEnderecoForn, 'Buscando CEP...', 'info');
-        // Limpa os campos antes de buscar para evitar dados antigos
-        $logradouroEnderecoForn.val('');
-        $numeroEnderecoForn.val('');
-        $complementoEnderecoForn.val('');
-        $bairroEnderecoForn.val('');
-        $cidadeEnderecoForn.val('');
-        $ufEnderecoForn.val('');
+    // =================================================================
+    // Funções Auxiliares
+    // =================================================================
+    function showFeedbackMessageFornecedor(message, type = 'success') {
+        $feedbackMessageAreaFornecedor.empty().removeClass('alert alert-success alert-danger');
+        var alertClass = (type === 'success') ? 'alert-success' : 'alert-danger';
+        $feedbackMessageAreaFornecedor.addClass('alert ' + alertClass).text(message).fadeIn();
+        setTimeout(function () {
+            $feedbackMessageAreaFornecedor.fadeOut('slow');
+        }, 5000);
+    }
 
+    function applyCpfCnpjMask() {
+        if ($tipoPessoaFisica.is(':checked')) {
+            $labelCpfCnpj.text('CPF');
+            $cpfCnpj.attr('placeholder', '000.000.000-00').mask('000.000.000-00', { reverse: true });
+        } else {
+            $labelCpfCnpj.text('CNPJ');
+            $cpfCnpj.attr('placeholder', '00.000.000/0000-00').mask('00.000.000/0000-00', { reverse: true });
+        }
+    }
+
+    function clearAddressFormFields() {
+        $formEndereco[0].reset();
+        $endCodigo.val('');
+        $cepFeedbackEndereco.empty();
+        $mensagemEndereco.empty().removeClass('alert alert-success alert-danger');
+        $btnSalvarEndereco.text('Salvar Endereço');
+    }
+
+    function searchCepEndereco() {
+        var cepValue = $cepEndereco.val().replace(/\D/g, '');
+        if (cepValue.length !== 8) {
+            $cepFeedbackEndereco.text('CEP inválido.').removeClass('text-success').addClass('text-danger');
+            return;
+        }
+        $cepFeedbackEndereco.text('Buscando...').removeClass('text-danger text-success').addClass('text-muted');
         $.ajax({
             url: 'https://viacep.com.br/ws/' + cepValue + '/json/',
             method: 'GET',
             dataType: 'json',
             success: function (data) {
                 if (data.erro) {
-                    showFeedbackMessage($cepFeedbackEnderecoForn, 'CEP não encontrado.', 'danger');
+                    $cepFeedbackEndereco.text('CEP não encontrado.').addClass('text-danger');
                 } else {
-                    $logradouroEnderecoForn.val(data.logradouro);
-                    $bairroEnderecoForn.val(data.bairro);
-                    $cidadeEnderecoForn.val(data.localidade);
-                    $ufEnderecoForn.val(data.uf);
-                    showFeedbackMessage($cepFeedbackEnderecoForn, 'CEP encontrado!', 'success');
-                    $numeroEnderecoForn.focus(); // Foca no campo número
+                    $logradouroEndereco.val(data.logradouro);
+                    $bairroEndereco.val(data.bairro);
+                    $cidadeEndereco.val(data.localidade);
+                    $ufEndereco.val(data.uf);
+                    $cepFeedbackEndereco.text('CEP encontrado!').addClass('text-success');
+                    $numeroEndereco.focus();
                 }
             },
             error: function () {
-                showFeedbackMessage($cepFeedbackEnderecoForn, 'Erro ao buscar CEP. Tente novamente.', 'danger');
+                $cepFeedbackEndereco.text('Erro ao buscar CEP.').addClass('text-danger');
             }
         });
     }
 
-    // Função para carregar a tabela de endereços de uma entidade específica (Fornecedor) no modal
-    function loadEnderecosTableForn(entidadeId) {
-        console.log("DEBUG: loadEnderecosTableForn chamado para entidadeId:", entidadeId);
-        // Destrói a instância existente do DataTables se houver, para recriar com novos dados
+    function loadEnderecosTable(entidadeId) {
         if ($.fn.DataTable.isDataTable('#tabela-enderecos-fornecedor')) {
-            tableEnderecosForn.destroy();
-            console.log("DEBUG: Instância anterior de tabelaEnderecosForn destruída.");
+            tableEnderecos.destroy();
         }
-
-        tableEnderecosForn = $('#tabela-enderecos-fornecedor').DataTable({
+        tableEnderecos = $('#tabela-enderecos-fornecedor').DataTable({
             "ajax": {
-                "url": "process/listar_enderecos.php", // Endpoint para listar endereços
+                "url": "process/listar_enderecos.php",
                 "type": "POST",
                 "data": function (d) {
-                    d.ent_codigo = entidadeId; // Envia o ID da entidade
-                    d.csrf_token = $('input[name="csrf_token"]').val(); // Envia o token CSRF
-                    console.log("DEBUG: Enviando ent_codigo para listar_enderecos.php (fornecedor):", entidadeId);
-                },
-                "dataSrc": function (json) {
-                    console.log("DEBUG: DataTables received data for addresses (listar_enderecos.php - fornecedor):", json.data);
-                    return json.data;
-                },
-                "error": function (xhr, error, thrown) {
-                    console.error("DEBUG: Erro AJAX ao carregar endereços para DataTables (fornecedor):", error, thrown, xhr.responseText);
-                    showFeedbackMessage($mensagemEnderecoForn, 'Erro ao carregar endereços.', 'danger');
+                    d.ent_codigo = entidadeId;
+                    d.csrf_token = csrfToken;
                 }
             },
             "columns": [
@@ -161,334 +153,148 @@ $(document).ready(function () {
                 { "data": "end_logradouro" },
                 { "data": "end_numero" },
                 { "data": "end_bairro" },
-                {
-                    "data": null,
-                    "render": function (data, type, row) {
-                        return row.end_cidade + '/' + row.end_uf;
-                    }
-                },
-                {
-                    "data": "end_codigo",
-                    "render": function (data, type, row) {
-                        return '<button type="button" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="' + row.end_codigo + '">Editar</button>' +
-                            '<button type="button" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="' + row.end_codigo + '">Excluir</button>';
-                    }
-                }
+                { "data": null, "render": function (data, type, row) { return row.end_cidade + '/' + row.end_uf; } },
+                { "data": "end_codigo", "orderable": false, "render": function (data, type, row) { return '<a href="#" class="btn btn-warning btn-sm btn-editar-endereco-fornecedor me-1" data-id="' + data + '">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-endereco-fornecedor" data-id="' + data + '">Excluir</a>'; } }
             ],
-            "paging": false,    // Não paginar
-            "searching": false, // Não mostrar barra de busca
-            "info": false,      // Não mostrar informações de "Mostrando X de Y"
-            "ordering": false,  // Não ordenar
-            // "language": {
-            //     "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Portuguese-Brasil.json"
-            // }
-            "language": {
-                "url": "https://cdn.datatables.net/plug-ins/1.10.22/i18n/Portuguese-Brasil.json"
-            }
+            "paging": false,
+            "searching": false,
+            "info": false,
+            "ordering": false,
+            "language": { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
         });
     }
 
-    // --- Lógica de Inicialização Principal e Eventos ---
+    // =================================================================
+    // Lógica de Eventos
+    // =================================================================
 
-    //console.log("Tentando inicializar DataTables para #example-fornecedores."); // DEBUG: Antes da inicialização
     tableFornecedores = $('#example-fornecedores').DataTable({
-        "processing": true,
-        "serverSide": true,
         "ajax": {
-            "url": "process/listar_fornecedores.php",
+            "url": "process/listar_entidades.php",
             "type": "POST",
             "data": function (d) {
-                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
-            },
-            "error": function (xhr, error, thrown) { // DEBUG: Adicionado manipulador de erro AJAX
-                console.error("DEBUG: Erro AJAX no DataTables principal (listar_fornecedores.php):", error, thrown, xhr.responseText);
-                showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro ao carregar dados dos fornecedores. Verifique o console para detalhes.', 'danger');
+                d.filtro_situacao = $('input[name="filtro_situacao_fornecedor"]:checked').val();
+                d.tipo_entidade = 'Fornecedor';
             }
         },
         "responsive": true,
         "columns": [
-            {
-                "data": "ent_situacao",
-                "render": function (data, type, row) {
-                    return (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>';
-                }
-            },
-            {
-                "data": "ent_tipo_entidade",
-                "render": function (data, type, row) {
-                    return data.charAt(0).toUpperCase() + data.slice(1);
-                }
-            },
+            { "data": "ent_situacao", "render": function (data) { return (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'; } },
+            { "data": "ent_tipo_entidade" },
             { "data": "ent_razao_social" },
-            {
-                "data": null,
-                "render": function (data, type, row) {
-                    return row.ent_tipo_pessoa === 'F' ? (row.ent_cpf ? row.ent_cpf : 'N/A') : (row.ent_cnpj ? row.ent_cnpj : 'N/A');
-                }
-            },
-            {
-                "data": null, // Usaremos render para construir a string de endereço
-                "render": function (data, type, row) {
-                    // O end_logradouro e outros campos vêm do JOIN em listar_fornecedores.php
-                    if (row.end_logradouro) {
-                        return (row.end_tipo_endereco ? row.end_tipo_endereco + ': ' : '') + row.end_logradouro + ', ' + row.end_numero + ' - ' + row.end_bairro + ', ' + row.end_cidade + '/' + row.end_uf;
-                    }
-                    return 'N/A';
-                }
-            },
-            // {
-            //     "data": "ent_codigo",
-            //     "orderable": false, // Ações não são ordenáveis
-            //     "render": function (data, type, row) {
-            //         return '<button type="button" class="btn btn-warning btn-sm btn-editar-fornecedor me-1" data-id="' + row.ent_codigo + '" title="Editar Fornecedor">' +
-            //             '<i class="fas fa-edit"></i></button>' +
-            //             '<button type="button" class="btn btn-danger btn-sm btn-excluir-fornecedor" data-id="' + row.ent_codigo + '" data-nome="' + row.ent_razao_social + '" title="Excluir Fornecedor">' +
-            //             '<i class="fas fa-trash-alt"></i></button>';
-            //     }
-            // }
-
-            {
-                "data": "ent_codigo",
-                "render": function (data, type, row) {
-                    return '<a href="#" class="btn btn-warning btn-sm btn-editar-fornecedor me-1" data-id="' + row.ent_codigo + '">Editar</a>' +
-                        '<a href="#" class="btn btn-danger btn-sm btn-excluir-fornecedor" data-id="' + row.ent_codigo + '" data-nome="' + row.ent_razao_social + '">Excluir</a>';
-                }
-            }
-
-
-
-
+            { "data": null, "render": function (data, type, row) { return row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj; } },
+            { "data": "end_logradouro", "render": function (data, type, row) { return data ? (row.end_tipo_endereco ? row.end_tipo_endereco + ': ' : '') + data + ', ' + row.end_numero : 'N/A'; } },
+            { "data": "ent_codigo", "orderable": false, "render": function (data, type, row) { return '<a href="#" class="btn btn-warning btn-sm btn-editar-fornecedor me-1" data-id="' + data + '">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-fornecedor" data-id="' + data + '" data-nome="' + row.ent_razao_social + '">Excluir</a>'; } }
         ],
         "ordering": true,
-        // "language": {
-        //     "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Portuguese-Brasil.json"
-        // }
-
-        "language": {
-            "url": "https://cdn.datatables.net/plug-ins/1.10.22/i18n/Portuguese-Brasil.json"
-        }
-    });
-    console.log("DataTables para #example-fornecedores inicializado."); // DEBUG: Após a inicialização
-
-    // Evento para mudança dos filtros de situação na tela principal
-    $filtroSituacaoRadiosForn.on('change', function () {
-        tableFornecedores.ajax.reload(null, false); // Recarrega o DataTables
+        "language": { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
     });
 
-    // Evento para mudança de Tipo de Pessoa (Física/Jurídica) do fornecedor no modal
-    $('input[name="ent_tipo_pessoa"]').on('change', applyCpfCnpjMaskForn);
-    applyCpfCnpjMaskForn(); // Aplica a máscara inicial ao carregar a página
+    $('input[name="ent_tipo_pessoa_fornecedor"]').on('change', applyCpfCnpjMask);
+    applyCpfCnpjMask();
 
-    // Evento para o switch de Situação (Ativo/Inativo) do fornecedor no modal
     $situacaoFornecedor.on('change', function () {
         $textoSituacaoFornecedor.text(this.checked ? 'Ativo' : 'Inativo');
-        $(this).val(this.checked ? 'A' : 'I'); // Define o valor do input baseado no estado do switch
-    }).trigger('change'); // Dispara para definir o estado inicial do texto
-
-    // --- Lógica do Modal Adicionar/Editar Fornecedor (com Abas) ---
-
-    // Variável para armazenar o botão que abriu o modal (para gerenciamento de foco)
-    var $triggerButton = null;
-
-    // Evento de abertura do modal (resetar formulário e definir título)
-    $modalFornecedor.on('show.bs.modal', function (event) {
-        showFeedbackMessage($mensagemFornecedor, '', ''); // Limpa mensagens anteriores no modal (aba Dados Fornecedor)
-        clearAddressFormFieldsForn(); // Limpa o formulário de endereço dentro do modal (aba Endereços)
-        showFeedbackMessage($mensagemEnderecoForn, '', ''); // Limpa mensagens anteriores no modal (aba Endereços)
-
-        $triggerButton = $(event.relatedTarget); // Armazena o botão que acionou o modal
-
-        // Se o modal foi acionado pelo botão "Adicionar Fornecedor" principal
-        if ($triggerButton.is($('#btn-adicionar-fornecedor-main'))) { // Use o ID correto do botão
-            console.log("Modal aberto por 'Adicionar Fornecedor'. Forçando reset completo.");
-            $('#modal-adicionar-fornecedor-label').text('Adicionar Fornecedor');
-
-            // Força a limpeza de todos os campos do formulário principal
-            $formFornecedor[0].reset();
-            $entCodigoForn.val(''); // Garante que o ID oculto esteja vazio
-
-            // Redefine os valores padrão para os elementos do formulário principal
-            $situacaoFornecedor.prop('checked', true).val('A'); // Ativo por padrão
-            $textoSituacaoFornecedor.text('Ativo');
-            $tipoPessoaFornFisica.prop('checked', true).trigger('change'); // Pessoa Física e aplica máscara
-            $tipoEntidadeFornecedorForn.prop('checked', true); // "Fornecedor" por padrão
-
-            // Desabilita a aba de endereços para novos cadastros até o fornecedor ser salvo
-            $('#enderecos-fornecedor-tab').addClass('disabled');
-            // Limpa a tabela de endereços
-            if ($.fn.DataTable.isDataTable('#tabela-enderecos-fornecedor')) {
-                tableEnderecosForn.clear().draw();
-            }
-        }
-        // A lógica para "Editar Fornecedor" está no evento de clique do botão ".btn-editar-fornecedor" (abaixo)
-        // e não deve resetar o formulário aqui, pois os dados serão preenchidos por AJAX.
-
-        // Ativa a primeira aba ("Dados do Fornecedor") por padrão em ambos os casos
-        $('#dados-fornecedor-tab').tab('show');
     });
 
-    // Lógica para o botão "Editar" da tabela de fornecedores (principal)
+    $modalFornecedor.on('show.bs.modal', function (event) {
+        $mensagemFornecedor.empty().removeClass();
+        clearAddressFormFields();
+        $triggerButton = $(event.relatedTarget);
+
+        if ($triggerButton.is($btnAdicionarFornecedorMain)) {
+            $('#modal-adicionar-fornecedor-label').text('Adicionar Fornecedor');
+            $formFornecedor[0].reset();
+            $entCodigo.val('');
+            $situacaoFornecedor.prop('checked', true).trigger('change');
+            $tipoPessoaFisica.prop('checked', true).trigger('change');
+            $tipoEntidadeFornecedor.prop('checked', true);
+            $('#enderecos-tab-fornecedor').addClass('disabled');
+            if ($.fn.DataTable.isDataTable('#tabela-enderecos-fornecedor')) {
+                tableEnderecos.clear().draw();
+            }
+        }
+        $('#dados-fornecedor-tab').trigger('click');
+    });
+
     $('#example-fornecedores tbody').on('click', '.btn-editar-fornecedor', function (e) {
         e.preventDefault();
         var idEntidade = $(this).data('id');
-
-        // Resetar o formulário e carregar o modal, mas não redefinir valores padrão ainda
-        $formFornecedor[0].reset();
         $('#modal-adicionar-fornecedor-label').text('Editar Fornecedor');
-        $entCodigoForn.val(idEntidade); // Define o ID da entidade no campo oculto
-        $endEntidadeIdForn.val(idEntidade); // Define o ID da entidade para o formulário de endereço
+        $entCodigo.val(idEntidade);
+        $endEntidadeId.val(idEntidade);
 
-        // Habilita a aba de endereços para edição, pois é um fornecedor existente
-        $('#enderecos-fornecedor-tab').removeClass('disabled');
-
-        // Carrega os dados da entidade específica para preencher o formulário de edição
         $.ajax({
-            url: 'process/get_entidade_data.php', // Endpoint para buscar dados da entidade
-            type: 'POST', // Usamos POST porque estamos enviando um ID
-            data: { id: idEntidade, tipo: 'fornecedor', csrf_token: $('input[name="csrf_token"]').val() }, // Passa o tipo
+            url: 'process/get_entidade_data.php',
+            type: 'GET',
+            data: { id: idEntidade },
             dataType: 'json',
             success: function (response) {
                 if (response.success && response.data) {
                     var entidadeData = response.data;
-                    console.log("Dados da entidade recebidos para edição (fornecedor):", entidadeData);
-
-                    // Preencher dados do fornecedor
-                    $razaoSocialForn.val(entidadeData.ent_razao_social);
-
-                    // Tipo de Pessoa (Física/Jurídica)
-                    if (entidadeData.ent_tipo_pessoa === 'F') {
-                        $tipoPessoaFornFisica.prop('checked', true);
-                    } else {
-                        $tipoPessoaFornJuridica.prop('checked', true);
-                    }
-                    $('input[name="ent_tipo_pessoa"]:checked').trigger('change'); // Dispara o evento change para a máscara
-
-                    // CPF/CNPJ
+                    $razaoSocial.val(entidadeData.ent_razao_social);
+                    if (entidadeData.ent_tipo_pessoa === 'F') { $tipoPessoaFisica.prop('checked', true); } else { $tipoPessoaJuridica.prop('checked', true); }
+                    $('input[name="ent_tipo_pessoa_fornecedor"]:checked').trigger('change');
                     var cpfCnpjValue = entidadeData.ent_tipo_pessoa === 'F' ? entidadeData.ent_cpf : entidadeData.ent_cnpj;
-                    $cpfCnpjForn.val(cpfCnpjValue);
-                    applyCpfCnpjMaskForn(); // Re-aplica a máscara após definir o valor
+                    $cpfCnpj.val(cpfCnpjValue);
+                    applyCpfCnpjMask();
+                    if (entidadeData.ent_tipo_entidade === 'Cliente') { $tipoEntidadeCliente.prop('checked', true); } else if (entidadeData.ent_tipo_entidade === 'Fornecedor') { $tipoEntidadeFornecedor.prop('checked', true); } else if (entidadeData.ent_tipo_entidade === 'Cliente e Fornecedor') { $tipoEntidadeAmbos.prop('checked', true); }
+                    $situacaoFornecedor.prop('checked', entidadeData.ent_situacao === 'A').trigger('change');
 
-                    // Tipo de Entidade (Cliente, Fornecedor, Ambos)
-                    $(`input[name="ent_tipo_entidade"][value="${entidadeData.ent_tipo_entidade}"]`).prop('checked', true);
-
-                    // Situação (Ativo/Inativo)
-                    $situacaoFornecedor.prop('checked', entidadeData.ent_situacao === 'A');
-                    $situacaoFornecedor.trigger('change'); // Dispara o evento change para atualizar o texto visual
-
-                    // Carrega a tabela de endereços para esta entidade no modal
-                    loadEnderecosTableForn(idEntidade);
-
-                    // Abre o modal de edição
-                    $modalFornecedor.modal('show');
-
-                } else {
-                    showFeedbackMessage($feedbackMessageAreaFornecedor, response.message || 'Erro ao carregar dados do fornecedor para edição.', 'danger');
-                    $modalFornecedor.modal('hide'); // Fecha o modal em caso de erro
+                    $('#enderecos-tab-fornecedor').removeClass('disabled');
+                    loadEnderecosTable(idEntidade);
+                    var fornecedorModal = new bootstrap.Modal(document.getElementById('modal-adicionar-fornecedor'));
+                    fornecedorModal.show();
+                    $('#dados-fornecedor-tab').trigger('click');
                 }
-            },
-            error: function (xhr, status, error) {
-                showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro na requisição: ' + error + ' - ' + xhr.responseText, 'danger');
-                console.error("Erro AJAX ao carregar dados do fornecedor: ", status, error, xhr.responseText);
-                $modalFornecedor.modal('hide'); // Fecha o modal em caso de erro
             }
         });
     });
 
-    // Lógica de envio do formulário principal do fornecedor (Aba "Dados do Fornecedor")
-    $formFornecedor.on('submit', function (e) {
+    $('#tabela-enderecos-fornecedor tbody').on('click', '.btn-editar-endereco-fornecedor', function (e) {
         e.preventDefault();
-
-        var idEntidade = $entCodigoForn.val();
-        var url = idEntidade ? 'process/editar_entidade.php' : 'process/cadastrar_entidade.php';
-
-        var formData = new FormData(this);
-        formData.append('csrf_token', $('input[name="csrf_token"]').val());
-        // Opcional: Adicionar ID do usuário logado se o backend esperar
-        // formData.append('usu_cadastro_id', <?php //echo $_SESSION['codUsuario'] ?? 'null'; ?>);
-
+        var idEndereco = $(this).data('id');
         $.ajax({
-            type: 'POST',
-            url: url,
-            data: formData,
+            url: 'process/get_endereco_data.php',
+            type: 'GET',
+            data: { id: idEndereco },
             dataType: 'json',
-            processData: false, // Importante para FormData
-            contentType: false, // Importante para FormData
             success: function (response) {
-                console.log('Resposta do servidor (salvar fornecedor):', response);
-                if (response.success) {
-                    showFeedbackMessage($mensagemFornecedor, response.message, 'success');
-                    // Se for um novo cadastro, define o ID da entidade para permitir adicionar endereços
-                    if (!idEntidade) {
-                        $entCodigoForn.val(response.ent_codigo); // Assume que o backend retorna o ID do novo fornecedor
-                        $endEntidadeIdForn.val(response.ent_codigo); // Define o ID para o formulário de endereço
-                        $('#enderecos-fornecedor-tab').removeClass('disabled'); // Habilita a aba de endereços
-                        loadEnderecosTableForn(response.ent_codigo); // Carrega a tabela de endereços para o novo fornecedor
-                    }
-                    // Recarrega a tabela principal de fornecedores para refletir a mudança
-                    setTimeout(function () {
-                        tableFornecedores.ajax.reload(null, false);
-                    }, 200);
-
-                } else {
-                    showFeedbackMessage($mensagemFornecedor, response.message, 'danger');
+                if (response.success && response.data) {
+                    var enderecoData = response.data;
+                    $endCodigo.val(enderecoData.end_codigo);
+                    $tipoEndereco.val(enderecoData.end_tipo_endereco);
+                    $cepEndereco.val(enderecoData.end_cep);
+                    $logradouroEndereco.val(enderecoData.end_logradouro);
+                    $numeroEndereco.val(enderecoData.end_numero);
+                    $complementoEndereco.val(enderecoData.end_complemento);
+                    $bairroEndereco.val(enderecoData.end_bairro);
+                    $cidadeEndereco.val(enderecoData.end_cidade);
+                    $ufEndereco.val(enderecoData.end_uf);
+                    $btnSalvarEndereco.text('Atualizar Endereço');
+                    $mensagemEndereco.empty();
+                    $('#enderecos-tab-fornecedor').trigger('click');
                 }
-            },
-            error: function (xhr, status, error) {
-                showFeedbackMessage($mensagemFornecedor, 'Erro ao salvar fornecedor: ' + xhr.responseText, 'danger');
-                console.error("Erro AJAX ao salvar fornecedor: ", status, error, xhr.responseText);
             }
         });
     });
-
-    // --- Lógica para o formulário de Endereço (Aba "Endereços") ---
-
-    // Evento de clique no botão "Buscar CEP" do formulário de endereço
-    $btnBuscarCepEnderecoForn.on('click', searchCepEnderecoForn);
-
-    // Evento de "blur" (perda de foco) no campo CEP do formulário de endereço
-    $cepEnderecoForn.on('blur', function () {
-        if ($(this).val().replace(/\D/g, '').length === 8) {
-            searchCepEnderecoForn();
-        }
-    });
-
-    // Lógica de envio do formulário de endereço do fornecedor
-    $formEnderecoForn.on('submit', function (e) {
+    
+    $formEndereco.off('submit').on('submit', function (e) {
         e.preventDefault();
+        if ($btnSalvarEndereco.is(':disabled')) { return; }
+        $btnSalvarEndereco.prop('disabled', true).text('Salvando...');
 
-        var entidadeId = $endEntidadeIdForn.val();
+        var entidadeId = $endEntidadeId.val();
         if (!entidadeId) {
-            showFeedbackMessage($mensagemEnderecoForn, 'Primeiro, salve os dados do fornecedor na aba "Dados do Fornecedor".', 'danger');
+            $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Primeiro, salve os dados do fornecedor.');
+            $btnSalvarEndereco.prop('disabled', false).text('Salvar Endereço');
             return;
         }
-
-        // Validação básica dos campos de endereço
-        const tipoEndereco = $tipoEnderecoForn.val();
-        const cep = $cepEnderecoForn.val().replace(/\D/g, '');
-        const logradouro = $logradouroEnderecoForn.val().trim();
-        const numero = $numeroEnderecoForn.val().trim();
-        const bairro = $bairroEnderecoForn.val().trim();
-        const cidade = $cidadeEnderecoForn.val().trim();
-        const uf = $ufEnderecoForn.val();
-
-        if (!tipoEndereco || !cep || !logradouro || !numero || !bairro || !cidade || !uf) {
-            showFeedbackMessage($mensagemEnderecoForn, 'Preencha todos os campos obrigatórios do endereço (Tipo, CEP, Logradouro, Número, Bairro, Cidade, UF).', 'danger');
-            return;
-        }
-        if (cep.length !== 8) {
-            showFeedbackMessage($mensagemEnderecoForn, 'CEP inválido. Digite 8 dígitos.', 'warning');
-            return;
-        }
-
-        var idEndereco = $endCodigoForn.val();
+        var idEndereco = $endCodigo.val();
         var url = idEndereco ? 'process/editar_endereco.php' : 'process/cadastrar_endereco.php';
-
         var formData = new FormData(this);
-        formData.append('end_entidade_id', entidadeId); // Garante que o ID da entidade está sendo enviado
-        formData.append('csrf_token', $('input[name="csrf_token"]').val());
-        // Opcional: Adicionar ID do usuário logado se o backend esperar
-        // formData.append('end_usuario_cadastro_id', <?php //echo $_SESSION['codUsuario'] ?? 'null'; ?>);
-
+        formData.append('end_entidade_id', entidadeId);
+        
         $.ajax({
             type: 'POST',
             url: url,
@@ -497,220 +303,194 @@ $(document).ready(function () {
             processData: false,
             contentType: false,
             success: function (response) {
-                console.log("DEBUG: Resposta do servidor para salvar/editar endereço (fornecedor):", response);
                 if (response.success) {
-                    clearAddressFormFieldsForn(); // Limpa o formulário de endereço
-                    tableEnderecosForn.ajax.reload(); // Recarrega a tabela de endereços no modal
-                    showFeedbackMessage($mensagemEnderecoForn, response.message, 'success');
-                    // Recarrega a tabela principal com um pequeno atraso para garantir que o BD esteja atualizado
-                    setTimeout(function () {
-                        tableFornecedores.ajax.reload(null, false);
-                    }, 200);
+                    clearAddressFormFields();
+                    tableEnderecos.ajax.reload();
+                    $mensagemEndereco.empty().removeClass().addClass('alert alert-success').text(response.message);
+                    setTimeout(function () { tableFornecedores.ajax.reload(null, false); }, 200);
+                    $('#dados-fornecedor-tab').trigger('click');
                 } else {
-                    showFeedbackMessage($mensagemEnderecoForn, response.message, 'danger');
+                    $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text(response.message);
                 }
             },
-            error: function (xhr, status, error) {
-                showFeedbackMessage($mensagemEnderecoForn, 'Erro na requisição: ' + error + ' - ' + xhr.responseText, 'danger');
-                console.error("Erro AJAX ao salvar endereço (fornecedor): ", status, error, xhr.responseText);
+            error: function (xhr) {
+                $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Erro na requisição: ' + xhr.statusText);
+            },
+            complete: function() {
+                var buttonText = $endCodigo.val() ? 'Atualizar Endereço' : 'Salvar Endereço';
+                $btnSalvarEndereco.prop('disabled', false).text(buttonText);
             }
         });
     });
 
-    // Lógica para o botão "Cancelar" no formulário de endereço do fornecedor
-    $btnCancelarEdicaoEnderecoForn.on('click', function () {
-        clearAddressFormFieldsForn();
-        showFeedbackMessage($mensagemEnderecoForn, 'Edição de endereço cancelada.', 'info');
+    $btnCancelarEdicaoEndereco.on('click', function () {
+        clearAddressFormFields();
+        $('#dados-fornecedor-tab').trigger('click');
     });
-
-    // Lógica para o botão "Editar" da tabela de endereços (dentro do modal do fornecedor)
-    $('#tabela-enderecos-fornecedor tbody').on('click', '.btn-editar-endereco', function (e) {
+    
+    $formFornecedor.off('submit').on('submit', function (e) {
         e.preventDefault();
-        var idEndereco = $(this).data('id');
-        console.log("DEBUG: Clicou em Editar Endereço (fornecedor). ID do Endereço:", idEndereco);
-
-        $.ajax({
-            url: 'process/get_endereco_data.php', // Endpoint para buscar dados de um endereço
-            type: 'POST', // Usamos POST para consistência com outros endpoints, embora GET também funcionaria
-            data: { id: idEndereco, csrf_token: $('input[name="csrf_token"]').val() },
-            dataType: 'json',
-            success: function (response) {
-                console.log("DEBUG: Dados do endereço recebidos para edição (fornecedor):", response);
-                if (response.success && response.data) {
-                    var enderecoData = response.data;
-                    $endCodigoForn.val(enderecoData.end_codigo);
-                    $tipoEnderecoForn.val(enderecoData.end_tipo_endereco);
-                    $cepEnderecoForn.val(enderecoData.end_cep).trigger('blur'); // Aciona blur para máscara e busca
-                    $logradouroEnderecoForn.val(enderecoData.end_logradouro);
-                    $numeroEnderecoForn.val(enderecoData.end_numero);
-                    $complementoEnderecoForn.val(enderecoData.end_complemento);
-                    $bairroEnderecoForn.val(enderecoData.end_bairro);
-                    $cidadeEnderecoForn.val(enderecoData.end_cidade);
-                    $ufEnderecoForn.val(enderecoData.end_uf);
-                    $btnSalvarEnderecoForn.text('Atualizar Endereço').removeClass('btn-primary').addClass('btn-warning');
-                    $btnCancelarEdicaoEnderecoForn.show();
-                    showFeedbackMessage($mensagemEnderecoForn, '', ''); // Limpa mensagens anteriores
-                    // Ativa a aba de endereços e foca nela
-                    var someTabTriggerEl = document.querySelector('#enderecos-fornecedor-tab');
-                    var tab = new bootstrap.Tab(someTabTriggerEl);
-                    tab.show();
-                } else {
-                    showFeedbackMessage($mensagemEnderecoForn, response.message || 'Erro ao carregar dados do endereço.', 'danger');
-                }
-            },
-            error: function (xhr, status, error) {
-                showFeedbackMessage($mensagemEnderecoForn, 'Erro na requisição: ' + error + ' - ' + xhr.responseText, 'danger');
-                console.error("Erro AJAX ao carregar dados do endereço (fornecedor): ", status, error, xhr.responseText);
-            }
-        });
-    });
-
-    // Lógica para o botão "Excluir" da tabela de endereços (dentro do modal do fornecedor)
-    $('#tabela-enderecos-fornecedor tbody').on('click', '.btn-excluir-endereco', function (e) {
-        e.preventDefault();
-        var idEndereco = $(this).data('id');
-        $('#id-endereco-excluir-fornecedor').val(idEndereco); // Define o ID do endereço a ser excluído
-
-        var confirmModalEnderecoForn = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
-        confirmModalEnderecoForn.show();
-    });
-
-    // Lógica para o botão "Sim, Excluir" dentro do modal de confirmação de exclusão de endereço do fornecedor
-    $('#btn-confirmar-exclusao-endereco-fornecedor').on('click', function () {
-        var idEndereco = $('#id-endereco-excluir-fornecedor').val();
-        var csrfToken = $('input[name="csrf_token"]').val();
-        console.log("DEBUG: Confirmando exclusão de endereço (fornecedor). ID:", idEndereco);
-
+        var idEntidade = $entCodigo.val();
+        var url = idEntidade ? 'process/editar_entidade.php' : 'process/cadastrar_entidade.php';
+        var formData = new FormData(this);
         $.ajax({
             type: 'POST',
-            url: 'process/excluir_endereco.php', // Endpoint para excluir endereço
+            url: url,
+            data: formData,
+            dataType: 'json',
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                if (response.success) {
+                    if (!idEntidade) {
+                        $entCodigo.val(response.ent_codigo);
+                        $endEntidadeId.val(response.ent_codigo);
+                        loadEnderecosTable(response.ent_codigo);
+                        $('#enderecos-tab-fornecedor').removeClass('disabled');
+                    }
+                    setTimeout(function () { tableFornecedores.ajax.reload(null, false); }, 200);
+                    $mensagemFornecedor.empty().removeClass().addClass('alert alert-success').text(response.message);
+                } else {
+                    $mensagemFornecedor.empty().removeClass().addClass('alert alert-danger').text(response.message);
+                }
+            }
+        });
+    });
+    
+    $('#tabela-enderecos-fornecedor tbody').on('click', '.btn-excluir-endereco-fornecedor', function (e) {
+        e.preventDefault();
+        var idEndereco = $(this).data('id');
+        $.ajax({
+            url: 'process/get_endereco_data.php',
+            type: 'GET',
+            data: { id: idEndereco },
+            dataType: 'json',
+            success: function (response) {
+                if (response.success && response.data) {
+                    var enderecoData = response.data;
+                    $endCodigo.val(enderecoData.end_codigo);
+                    $tipoEndereco.val(enderecoData.end_tipo_endereco);
+                    $cepEndereco.val(enderecoData.end_cep);
+                    $logradouroEndereco.val(enderecoData.end_logradouro);
+                    $numeroEndereco.val(enderecoData.end_numero);
+                    $complementoEndereco.val(enderecoData.end_complemento);
+                    $bairroEndereco.val(enderecoData.end_bairro);
+                    $cidadeEndereco.val(enderecoData.end_cidade);
+                    $ufEndereco.val(enderecoData.end_uf);
+                    
+                    $('#enderecos-tab-fornecedor').trigger('click');
+                    $('#id-endereco-excluir-fornecedor').val(idEndereco);
+                    
+                    var confirmModalEndereco = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
+                    confirmModalEndereco.show();
+                } else {
+                    showFeedbackMessageFornecedor('Erro ao carregar dados do endereço para exclusão.', 'danger');
+                }
+            },
+            error: function() {
+                showFeedbackMessageFornecedor('Falha na requisição para carregar dados do endereço.', 'danger');
+            }
+        });
+    });
+
+    $('#btn-confirmar-exclusao-endereco-fornecedor').off('click').on('click', function () {
+        var $this = $(this);
+        if ($this.is(':disabled')) { return; }
+        $this.prop('disabled', true).text('Excluindo...');
+
+        var idEndereco = $('#id-endereco-excluir-fornecedor').val();
+        $.ajax({
+            type: 'POST',
+            url: 'process/excluir_endereco.php',
             data: { end_codigo: idEndereco, csrf_token: csrfToken },
             dataType: 'json',
             success: function (response) {
-                console.log("DEBUG: Resposta do servidor para exclusão de endereço (fornecedor):", response);
-                var confirmModalEnderecoForn = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
-                confirmModalEnderecoForn.hide();
+                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
+                if (confirmModal) { confirmModal.hide(); }
 
                 if (response.success) {
-                    tableEnderecosForn.ajax.reload(); // Recarrega a tabela de endereços no modal
-                    showFeedbackMessage($feedbackMessageAreaFornecedor, response.message, 'success'); // Mensagem na página principal
-                    // Recarrega a tabela principal com um pequeno atraso para garantir que o BD esteja atualizado
-                    setTimeout(function () {
-                        tableFornecedores.ajax.reload(null, false);
-                    }, 200);
+                    clearAddressFormFields();
+                    tableEnderecos.ajax.reload();
+                    showFeedbackMessageFornecedor(response.message, 'success');
+                    setTimeout(function () { tableFornecedores.ajax.reload(null, false); }, 200);
+                    $('#dados-fornecedor-tab').trigger('click');
                 } else {
-                    showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro ao excluir endereço: ' + response.message, 'danger');
+                    showFeedbackMessageFornecedor('Erro ao excluir endereço: ' + response.message, 'danger');
                 }
             },
-            error: function (xhr, status, error) {
-                var confirmModalEnderecoForn = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
-                confirmModalEnderecoForn.hide();
-                showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro na requisição de exclusão de endereço: ' + error + ' - ' + xhr.responseText, 'danger');
+            error: function() {
+                 var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco-fornecedor'));
+                 if (confirmModal) { confirmModal.hide(); }
+                 showFeedbackMessageFornecedor('Falha na requisição de exclusão.', 'danger');
+            },
+            complete: function() {
+                $this.prop('disabled', false).text('Sim, Excluir');
             }
         });
     });
 
-
-    // --- Lógica do Botão Excluir Fornecedor (principal) ---
     $('#example-fornecedores tbody').on('click', '.btn-excluir-fornecedor', function (e) {
         e.preventDefault();
         var idEntidade = $(this).data('id');
         var nomeEntidade = $(this).data('nome');
-
         $('#nome-fornecedor-excluir').text(nomeEntidade);
         $('#id-fornecedor-excluir').val(idEntidade);
-
-        var confirmModalForn = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-fornecedor'));
-        confirmModalForn.show();
+        var confirmModal = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-fornecedor'));
+        confirmModal.show();
     });
 
-    // Lógica para o botão "Sim, Excluir" dentro do modal de confirmação de exclusão de fornecedor
-    $('#btn-confirmar-exclusao-fornecedor').on('click', function () {
-        var idEntidade = $('#id-fornecedor-excluir').val();
-        var csrfToken = $('input[name="csrf_token"]').val();
+    $('#btn-confirmar-exclusao-fornecedor').off('click').on('click', function () {
+        var $this = $(this);
+        if ($this.is(':disabled')) { return; }
+        $this.prop('disabled', true).text('Excluindo...');
 
+        var idEntidade = $('#id-fornecedor-excluir').val();
         $.ajax({
             type: 'POST',
-            url: 'process/excluir_entidade.php', // Endpoint para excluir entidade
+            url: 'process/excluir_entidade.php',
             data: { ent_codigo: idEntidade, csrf_token: csrfToken },
             dataType: 'json',
             success: function (response) {
-                var confirmModalForn = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-fornecedor'));
-                confirmModalForn.hide();
-
+                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-fornecedor'));
+                if (confirmModal) { confirmModal.hide(); }
+                
                 if (response.success) {
-                    // Recarrega a tabela principal
-                    setTimeout(function () {
-                        tableFornecedores.ajax.reload(null, false);
-                    }, 200);
-                    showFeedbackMessage($feedbackMessageAreaFornecedor, response.message, 'success');
+                    setTimeout(function () { tableFornecedores.ajax.reload(null, false); }, 200);
+                    showFeedbackMessageFornecedor(response.message, 'success');
                 } else {
-                    showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro ao excluir fornecedor: ' + response.message, 'danger');
+                    showFeedbackMessageFornecedor('Erro ao excluir fornecedor: ' + response.message, 'danger');
                 }
             },
-            error: function (xhr, status, error) {
-                var confirmModalForn = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-fornecedor'));
-                confirmModalForn.hide();
-                showFeedbackMessage($feedbackMessageAreaFornecedor, 'Erro na requisição de exclusão: ' + error + ' - ' + xhr.responseText, 'danger');
+            complete: function() {
+                $this.prop('disabled', false).text('Sim, Excluir');
             }
         });
     });
 
-    // --- Gerenciamento de Foco para Acessibilidade (após fechar modais) ---
-    // Evento que dispara quando o modal de fornecedor é COMPLETAMENTE FECHADO
     $modalFornecedor.on('hidden.bs.modal', function () {
-        console.log("Modal de Fornecedor escondido. Forçando reset completo.");
-        $(this).find(':focus').blur(); // Desfoca qualquer elemento dentro do modal
-
-        // Reseta o formulário principal do fornecedor
+        $(this).find(':focus').blur();
         $formFornecedor[0].reset();
-        $entCodigoForn.val('');
-
-        // Redefine os valores padrão do formulário principal
-        $situacaoFornecedor.prop('checked', true).val('A');
-        $textoSituacaoFornecedor.text('Ativo');
-        $tipoPessoaFornFisica.prop('checked', true).trigger('change');
-        $tipoEntidadeFornecedorForn.prop('checked', true);
-
-        // Desabilita a aba de endereços e limpa a tabela de endereços (garantir estado inicial)
-        $('#enderecos-fornecedor-tab').addClass('disabled');
+        $entCodigo.val('');
+        $situacaoFornecedor.prop('checked', true).trigger('change');
+        $tipoPessoaFisica.prop('checked', true).trigger('change');
+        $tipoEntidadeFornecedor.prop('checked', true);
         if ($.fn.DataTable.isDataTable('#tabela-enderecos-fornecedor')) {
-            tableEnderecosForn.clear().draw();
+            tableEnderecos.clear().draw();
         }
-        clearAddressFormFieldsForn(); // Limpa também o formulário de endereço
-
-        // Move o foco de volta para o botão que abriu o modal
+        clearAddressFormFields();
+        $('#enderecos-tab-fornecedor').addClass('disabled');
         if ($triggerButton && $triggerButton.length) {
-            setTimeout(function () {
-                $triggerButton.focus();
-                $triggerButton = null; // Limpa a referência
-            }, 100);
+            setTimeout(function () { $triggerButton.focus(); $triggerButton = null; }, 100);
         } else {
-            setTimeout(function () {
-                $('#btn-adicionar-fornecedor-main').focus(); // Fallback: foca no botão principal de adicionar fornecedor
-            }, 100);
+            setTimeout(function () { $btnAdicionarFornecedorMain.focus(); }, 100);
         }
     });
 
-    $('#modal-confirmar-exclusao-fornecedor').on('hidden.bs.modal', function () {
+    $('#modal-confirmar-exclusao-fornecedor, #modal-confirmar-exclusao-endereco-fornecedor').on('hidden.bs.modal', function () {
         $(this).find(':focus').blur();
-        setTimeout(function () {
-            $('#btn-adicionar-fornecedor-main').focus();
-        }, 100);
     });
 
-    $('#modal-confirmar-exclusao-endereco-fornecedor').on('hidden.bs.modal', function () {
-        $(this).find(':focus').blur();
-        if ($modalFornecedor.hasClass('show')) { // Se o modal principal de fornecedor estiver aberto
-            var someTabTriggerEl = document.querySelector('#enderecos-fornecedor-tab');
-            var tab = new bootstrap.Tab(someTabTriggerEl);
-            tab.show();
-            // Tenta focar no botão Salvar Endereço dentro da aba
-            $('#btn-salvar-endereco-fornecedor').focus();
-        } else {
-            setTimeout(function () {
-                $('#btn-adicionar-fornecedor-main').focus();
-            }, 100);
-        }
+    $filtroSituacaoRadios.on('change', function () {
+        tableFornecedores.ajax.reload(null, false);
     });
 });
