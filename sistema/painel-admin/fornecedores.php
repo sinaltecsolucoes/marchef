@@ -9,23 +9,25 @@
 
 <!-- Botão Adicionar Fornecedor -->
 <a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-fornecedor"
-   id="btn-adicionar-fornecedor-main">Adicionar Fornecedor</a>
+    id="btn-adicionar-fornecedor-main">Adicionar Fornecedor</a>
 
 <!-- Filtros de Situação -->
 <div class="row mb-3">
     <div class="col-md-6">
         <label class="form-label">Filtrar por Situação:</label><br>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-todos-fornecedor" value="Todos"
-                   checked>
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor"
+                id="filtro-situacao-todos-fornecedor" value="Todos" checked>
             <label class="form-check-label" for="filtro-situacao-todos-fornecedor">Todos</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-ativo-fornecedor" value="A">
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor"
+                id="filtro-situacao-ativo-fornecedor" value="A">
             <label class="form-check-label" for="filtro-situacao-ativo-fornecedor">Ativo</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor" id="filtro-situacao-inativo-fornecedor" value="I">
+            <input class="form-check-input" type="radio" name="filtro_situacao_fornecedor"
+                id="filtro-situacao-inativo-fornecedor" value="I">
             <label class="form-check-label" for="filtro-situacao-inativo-fornecedor">Inativo</label>
         </div>
     </div>
@@ -54,7 +56,7 @@
 
 <!-- Modal Adicionar/Editar Fornecedor -->
 <div class="modal fade" id="modal-adicionar-fornecedor" tabindex="-1" role="dialog"
-     aria-labelledby="modal-adicionar-fornecedor-label" aria-hidden="true">
+    aria-labelledby="modal-adicionar-fornecedor-label" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -66,58 +68,72 @@
                 <ul class="nav nav-tabs" id="myTabFornecedor" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="dados-fornecedor-tab" data-tab-target="#dados-fornecedor"
-                                type="button" role="tab">Dados do Fornecedor</button>
+                            type="button" role="tab">Dados do Fornecedor</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="enderecos-tab-fornecedor" data-tab-target="#enderecos-fornecedor" type="button"
-                                role="tab">Endereços</button>
+                        <button class="nav-link" id="enderecos-tab-fornecedor" data-tab-target="#enderecos-fornecedor"
+                            type="button" role="tab">Endereços</button>
                     </li>
                 </ul>
 
                 <!-- Conteúdo das Abas -->
                 <div class="tab-content" id="myTabContentFornecedor">
                     <!-- Aba de Dados do Fornecedor -->
-                    <div class="tab-pane fade show active" id="dados-fornecedor" role="tabpanel">
+                    <div class="tab-pane fade show active" id="dados-fornecedor" role="tabpanel"
+                        aria-labelledby="dados-fornecedor-tab">
                         <form id="form-fornecedor">
+                            <!-- Campo oculto para o ID do cliente (para edição) -->
                             <input type="hidden" id="ent-codigo-fornecedor" name="ent_codigo">
-                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+                            <!-- Campo oculto para o token CSRF -->
+                            <input type="hidden" name="csrf_token"
+                                value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                             <div id="mensagem-fornecedor" class="mb-3"></div>
 
                             <div class="mb-3 mt-3">
-                                <label for="razao-social-fornecedor" class="form-label">Razão Social / Nome Completo</label>
-                                <input type="text" class="form-control" id="razao-social-fornecedor" name="ent_razao_social" required>
+                                <label for="razao-social-fornecedor" class="form-label">Razão Social / Nome
+                                    Completo</label>
+                                <input type="text" class="form-control" id="razao-social-fornecedor"
+                                    name="ent_razao_social" placeholder="Razão Social ou Nome Completo" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Tipo de Pessoa</label><br>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa_fornecedor" id="tipo-pessoa-fisica-fornecedor" value="F" checked>
+                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
+                                        id="tipo-pessoa-fisica-fornecedor" value="F" checked>
                                     <label class="form-check-label" for="tipo-pessoa-fisica-fornecedor">Física</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa_fornecedor" id="tipo-pessoa-juridica-fornecedor" value="J">
-                                    <label class="form-check-label" for="tipo-pessoa-juridica-fornecedor">Jurídica</label>
+                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
+                                        id="tipo-pessoa-juridica-fornecedor" value="J">
+                                    <label class="form-check-label"
+                                        for="tipo-pessoa-juridica-fornecedor">Jurídica</label>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="cpf-cnpj-fornecedor" class="form-label" id="label-cpf-cnpj-fornecedor">CPF</label>
-                                <input type="text" class="form-control" id="cpf-cnpj-fornecedor" name="ent_cpf_cnpj" required>
+                                <label for="cpf-cnpj-fornecedor" class="form-label"
+                                    id="label-cpf-cnpj-fornecedor">CPF</label>
+                                <input type="text" class="form-control" id="cpf-cnpj-fornecedor" name="ent_cpf_cnpj"
+                                    placeholder="000.000.000-00" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Tipo de Entidade</label><br>
+                                
+                                <!-- Opção "Apenas Fornecedor" -->
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-cliente-fornecedor" value="Cliente">
-                                    <label class="form-check-label" for="tipo-entidade-cliente-fornecedor">Cliente</label>
+                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                        id="tipo-entidade-fornecedor-fornecedor" value="Fornecedor" checked>
+                                    <label class="form-check-label"
+                                        for="tipo-entidade-fornecedor-fornecedor">Fornecedor</label>
                                 </div>
+                                
+                                <!-- Opção "Cliente e Fornecedor" -->
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-fornecedor-fornecedor" value="Fornecedor" checked>
-                                    <label class="form-check-label" for="tipo-entidade-fornecedor-fornecedor">Fornecedor</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade_fornecedor" id="tipo-entidade-ambos-fornecedor" value="Cliente e Fornecedor">
+                                    <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                        id="tipo-entidade-ambos-fornecedor" value="Cliente e Fornecedor">
                                     <label class="form-check-label" for="tipo-entidade-ambos-fornecedor">Ambos</label>
                                 </div>
                             </div>
@@ -125,46 +141,55 @@
                             <div class="mb-3">
                                 <label class="form-label" for="situacao-fornecedor">Situação</label>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="situacao-fornecedor" name="ent_situacao" value="A" checked>
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        id="situacao-fornecedor" name="ent_situacao" value="A" checked>
                                     <label class="form-check-label" for="situacao-fornecedor">
                                         <span id="texto-situacao-fornecedor">Ativo</span>
                                     </label>
                                 </div>
                             </div>
+
+                            <hr class="my-4">
+                            <h5 class="mb-3">Endereços Cadastrados</h5>
+                            <div class="table-responsive">
+                                <table id="tabela-enderecos-fornecedor" class="table table-hover my-4"
+                                    style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Tipo</th>
+                                            <th>CEP</th>
+                                            <th>Logradouro</th>
+                                            <th>Número</th>
+                                            <th>Bairro</th>
+                                            <th>Cidade/UF</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Endereços serão carregados via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </form>
                     </div>
 
                     <!-- Aba de Endereços -->
-                    <div class="tab-pane fade" id="enderecos-fornecedor" role="tabpanel">
-                        <hr class="my-4">
-                        <h5 class="mb-3">Endereços Cadastrados</h5>
-                        <div class="table-responsive">
-                            <table id="tabela-enderecos-fornecedor" class="table table-hover my-4" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>Tipo</th>
-                                        <th>CEP</th>
-                                        <th>Logradouro</th>
-                                        <th>Número</th>
-                                        <th>Bairro</th>
-                                        <th>Cidade/UF</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                        <hr>
+                    <div class="tab-pane fade" id="enderecos-fornecedor" role="tabpanel"
+                        aria-labelledby="enderecos-tab">
                         <form id="form-endereco-fornecedor" class="mt-3">
-                            <input type="hidden" id="end-codigo-fornecedor" name="end_codigo">
+                            <input type="hidden" id="end-codigo-fornecedor"
+                                name="end_codigo"><!-- Para edição de endereço -->
                             <input type="hidden" id="end-entidade-id-fornecedor" name="end_entidade_id">
-                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+                            <!-- ID da entidade associada -->
+                            <input type="hidden" name="csrf_token"
+                                value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                             <div id="mensagem-endereco-fornecedor" class="mb-3"></div>
 
                             <div class="mb-3">
                                 <label for="tipo-endereco-fornecedor" class="form-label">Tipo de Endereço</label>
-                                <select class="form-select" id="tipo-endereco-fornecedor" name="end_tipo_endereco" required>
+                                <select class="form-select" id="tipo-endereco-fornecedor" name="end_tipo_endereco"
+                                    required>
                                     <option value="">Selecione o Tipo</option>
                                     <option value="Entrega">Entrega</option>
                                     <option value="Cobranca">Cobrança</option>
@@ -178,8 +203,10 @@
                                 <div class="col-md-8 mb-3">
                                     <label for="cep-endereco-fornecedor" class="form-label">CEP</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="cep-endereco-fornecedor" name="end_cep" placeholder="00000-000">
-                                        <button class="btn btn-outline-secondary" type="button" id="btn-buscar-cep-fornecedor">Buscar CEP</button>
+                                        <input type="text" class="form-control" id="cep-endereco-fornecedor"
+                                            name="end_cep" placeholder="00000-000">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            id="btn-buscar-cep-fornecedor">Buscar CEP</button>
                                     </div>
                                     <small id="cep-feedback-fornecedor" class="form-text text-muted"></small>
                                 </div>
@@ -220,39 +247,48 @@
 
                             <div class="mb-3">
                                 <label for="logradouro-endereco-fornecedor" class="form-label">Logradouro</label>
-                                <input type="text" class="form-control" id="logradouro-endereco-fornecedor" name="end_logradouro">
+                                <input type="text" class="form-control" id="logradouro-endereco-fornecedor"
+                                    name="end_logradouro" placeholder="Rua, Avenida, etc.">
                             </div>
 
                             <div class="row">
                                 <div class="col-md-3 mb-3">
                                     <label for="numero-endereco-fornecedor" class="form-label">Número</label>
-                                    <input type="text" class="form-control" id="numero-endereco-fornecedor" name="end_numero">
+                                    <input type="text" class="form-control" id="numero-endereco-fornecedor"
+                                        name="end_numero" placeholder="Número">
                                 </div>
                                 <div class="col-md-9 mb-3">
                                     <label for="complemento-endereco-fornecedor" class="form-label">Complemento</label>
-                                    <input type="text" class="form-control" id="complemento-endereco-fornecedor" name="end_complemento">
+                                    <input type="text" class="form-control" id="complemento-endereco-fornecedor"
+                                        name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="bairro-endereco-fornecedor" class="form-label">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro-endereco-fornecedor" name="end_bairro">
+                                    <input type="text" class="form-control" id="bairro-endereco-fornecedor"
+                                        name="end_bairro" placeholder="Bairro">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="cidade-endereco-fornecedor" class="form-label">Cidade</label>
-                                    <input type="text" class="form-control" id="cidade-endereco-fornecedor" name="end_cidade">
+                                    <input type="text" class="form-control" id="cidade-endereco-fornecedor"
+                                        name="end_cidade" placeholder="Cidade">
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary" id="btn-salvar-endereco-fornecedor">Salvar Endereço</button>
-                            <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-endereco-fornecedor">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-endereco-fornecedor">Salvar
+                                Endereço</button>
+                            <button type="button" class="btn btn-secondary"
+                                id="btn-cancelar-edicao-endereco-fornecedor">Cancelar</button>
                         </form>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="submit" form="form-fornecedor" class="btn btn-primary" id="btn-submit-fornecedor-modal">Salvar Fornecedor</button>
+                <!-- Botão Salvar para o formulário principal do cliente -->
+                <button type="submit" form="form-fornecedor" class="btn btn-primary"
+                    id="btn-submit-fornecedor-modal">Salvar Fornecedor</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
@@ -270,18 +306,21 @@
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir o fornecedor <strong id="nome-fornecedor-excluir"></strong>?</p>
                 <p class="text-danger">Esta ação é irreversível!</p>
+                <!-- Campo oculto para armazenar o ID do cliente a ser excluído -->
                 <input type="hidden" id="id-fornecedor-excluir">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
-                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-fornecedor">Sim, Excluir</button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-fornecedor">Sim,
+                    Excluir</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Modal de Confirmação de Exclusão de Endereço -->
-<div class="modal fade" id="modal-confirmar-exclusao-endereco-fornecedor" tabindex="-1" role="dialog">
+<div class="modal fade" id="modal-confirmar-exclusao-endereco-fornecedor" tabindex="-1" role="dialog"
+    aria-labelledby="modal-confirmar-exclusao-endereco-label" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -290,11 +329,14 @@
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir este endereço?</p>
+                <p class="text-danger">Esta ação é irreversível!</p>
+                <!-- Campo oculto para armazenar o ID do endereço a ser excluído -->
                 <input type="hidden" id="id-endereco-excluir-fornecedor">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
-                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-endereco-fornecedor">Sim, Excluir</button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-endereco-fornecedor">Sim,
+                    Excluir</button>
             </div>
         </div>
     </div>

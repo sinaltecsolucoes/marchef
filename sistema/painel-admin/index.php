@@ -3,7 +3,6 @@
 
 // ========================================================================
 // HTTP Security Headers
-// Defina estes headers o mais cedo possível no script.
 // ========================================================================
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY"); // Ou 'SAMEORIGIN' se você precisar que o site possa ser enquadrado pelo próprio domínio
@@ -13,7 +12,6 @@ header("X-Frame-Options: DENY"); // Ou 'SAMEORIGIN' se você precisar que o site
 header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
 
 // Content-Security-Policy (CSP)
-// Esta é uma política básica. Você precisará ajustá-la e testá-la cuidadosamente.
 // 'default-src 'self'' - Permite que recursos sejam carregados apenas do mesmo domínio.
 // 'script-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net' - Permite scripts do próprio domínio e dos CDNs.
 // 'style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net' - Permite estilos do próprio domínio e do CDN. 'unsafe-inline' é necessário para estilos inline (como style="background-color: #e3f2fd;"), idealmente deve ser removido refatorando para classes CSS.
@@ -22,7 +20,7 @@ header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
 // 'connect-src 'self' https://viacep.com.br;' - Permite conexões (AJAX, WebSockets) ao próprio domínio e ao ViaCEP.
 // 'form-action 'self'' - Restringe para onde os formulários podem ser enviados.
 header("Content-Security-Policy: default-src 'self'; " .
-    "script-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
+    "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "img-src 'self' data:; " .
     "font-src 'self' https://fonts.gstatic.com; " .
@@ -80,6 +78,7 @@ $paginasPermitidas = [
     'clientes' => 'clientes.php',
     'fornecedores' => 'fornecedores.php',
     'produtos' => 'produtos.php',
+    'editarPerfil' => 'editar-perfil.php',
     'permissoes' => 'permissoes.php', // Certifique-se que 'permissoes' está aqui
 ];
 
@@ -160,6 +159,9 @@ try {
     foreach ($resPermissoes as $item) {
         $paginasPermitidasUsuario[] = $item['permissao_pagina'];
     }
+    $permissaoParaEditarOutros = 'editar-perfil';
+    $podeEditarOutrosUsuarios = ($_SESSION['tipoUsuario'] === 'Admin' || in_array($permissaoParaEditarOutros, $paginasPermitidasUsuario));
+
 
 } catch (PDOException $e) {
     error_log("Erro ao buscar permissões do usuário " . $tipoUsuarioLogado . ": " . $e->getMessage());
@@ -234,9 +236,14 @@ else {
     <link rel="stylesheet" type="text/css" href="../vendor/DataTables/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css" />
+
+    <script>
+        const PODE_EDITAR_OUTROS_USUARIOS = <?php echo $podeEditarOutrosUsuarios ? 'true' : 'false'; ?>;
+        const LOGGED_IN_USER_ID = <?php echo json_encode($_SESSION['codUsuario'] ?? null); ?>;
+    </script>
 </head>
 
-<body>
+<body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>">
     <nav class="navbar navbar-expand-lg" style="background-color: #e3f2fd;" data-bs-theme="light">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -324,15 +331,18 @@ else {
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                     <div class="modal-body">
                         <div id="mensagem-perfil" class="mb-3"></div>
-                        <div class="mb-3">
-                            <label for="selecionar-usuario-perfil" class="form-label">Selecionar Usuário</label>
-                            <!-- NOVO: Combobox para selecionar o usuário -->
-                            <select class="form-select" id="selecionar-usuario-perfil" name="usu_codigo_selecionado"
-                                required>
-                                <option value="">Selecione um usuário...</option>
-                                <!-- As opções serão carregadas via JavaScript -->
-                            </select>
-                        </div>
+
+                        <?php if ($podeEditarOutrosUsuarios): ?>
+                            <div class="mb-3" id="bloco-selecionar-usuario">
+                                <label for="selecionar-usuario-perfil" class="form-label">Selecionar Usuário</label>
+                                <!-- NOVO: Combobox para selecionar o usuário -->
+                                <select class="form-select" id="selecionar-usuario-perfil" name="usu_codigo_selecionado">
+                                    <option value="">Selecione um usuário...</option>
+                                    <!-- As opções serão carregadas via JavaScript -->
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="mb-3">
                             <label for="nome-perfil" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="nome-perfil" name="nome_perfil"
@@ -357,25 +367,29 @@ else {
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="situacao-perfil">Situação</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="situacao-perfil"
-                                    name="situacao_perfil" value="1">
-                                <label class="form-check-label" for="situacao-perfil">
-                                    <span id="texto-situacao-perfil">Ativo</span>
-                                </label>
+
+                        <?php if ($podeEditarOutrosUsuarios): ?>
+                            <div class="mb-3">
+                                <label class="form-label" for="situacao-perfil">Situação</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="situacao-perfil"
+                                        name="situacao_perfil" value="1">
+                                    <label class="form-check-label" for="situacao-perfil">
+                                        <span id="texto-situacao-perfil">Ativo</span>
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="nivel-perfil" class="form-label">Nível de Acesso</label>
-                            <select class="form-select" id="nivel-perfil" aria-label="Selecione o nível de acesso"
-                                name="nivel_perfil">
-                                <option value="Admin">Administrador</option>
-                                <option value="Gerente">Gerente</option>
-                                <option value="Producao">Produção</option>
-                            </select>
-                        </div>
+                            <div class="mb-3">
+                                <label for="nivel-perfil" class="form-label">Nível de Acesso</label>
+                                <select class="form-select" id="nivel-perfil" aria-label="Selecione o nível de acesso"
+                                    name="nivel_perfil">
+                                    <option value="Admin">Administrador</option>
+                                    <option value="Gerente">Gerente</option>
+                                    <option value="Producao">Produção</option>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
@@ -430,52 +444,8 @@ else {
     <script src="../js/enviar-dados-perfil.js"></script>
     <script src="../js/usuarios.js"></script>
 
-
     <?php if (isset($pagina) && $pagina === 'permissoes'): ?>
-
-        <script>
-            $(document).ready(function () {
-                const formPermissoes = $('#form-gerenciar-permissoes');
-                const mensagemDiv = $('#mensagem-permissoes');
-
-                formPermissoes.on('submit', function (e) {
-                    e.preventDefault(); // Impede o envio padrão do formulário
-
-                    // Limpa mensagens anteriores
-                    mensagemDiv.empty().removeClass('alert alert-success alert-danger');
-
-                    // Pega todos os dados do formulário serializados
-                    // NOTA: .serialize() NÃO inclui campos desabilitados.
-                    // Nossa correção no salvar_permissoes.php lida com isso para o 'Admin'.
-                    let formData = formPermissoes.serialize();
-
-                    // Envia os dados via AJAX
-                    $.ajax({
-                        type: 'POST',
-                        url: 'salvar_permissoes.php', // Caminho para o seu script de backend
-                        data: formData,
-                        dataType: 'json', // Espera uma resposta JSON
-                        success: function (response) {
-                            if (response.success) {
-                                mensagemDiv.addClass('alert alert-success').text(response.message);
-                                // Opcional: recarregar a página para mostrar o estado salvo
-                                // setTimeout(function() {
-                                //      location.reload();
-                                // }, 1500); // Recarrega após 1.5 segundos
-                            } else {
-                                mensagemDiv.addClass('alert alert-danger').text(response.message);
-                            }
-                        },
-                        error: function (xhr, status, error) {
-                            mensagemDiv.addClass('alert alert-danger').text('Erro na requisição: ' + error + ' - ' + xhr.responseText);
-                            console.error('Erro:', status, error, xhr.responseText);
-                        }
-                    });
-                });
-            });
-        </script>
-
-
+        <script src="../js/permissoes.js"></script>
     <?php endif; ?>
 
     <?php if (isset($pagina) && $pagina === 'clientes'): ?>
@@ -484,6 +454,10 @@ else {
 
     <?php if (isset($pagina) && $pagina === 'fornecedores'): ?>
         <script src="../js/fornecedores.js"></script>
+    <?php endif; ?>
+
+    <?php if (isset($pagina) && $pagina === 'produtos'): ?>
+        <script src="../js/produtos.js"></script>
     <?php endif; ?>
 
 </body>

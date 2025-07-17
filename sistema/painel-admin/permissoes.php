@@ -1,78 +1,80 @@
 <?php
-// Inclui a conexão com o banco de dados
-require_once('../conexao.php');
+// permissoes.php
 
-// Define os tipos de usuários (perfis) disponíveis
-// É crucial que esta lista esteja sincronizada com os tipos de usuário que você usa no seu sistema (ex: Admin, Gerente, Producao)
-$perfis_disponiveis = ['Admin', 'Gerente', 'Producao']; 
+// Apenas o Admin pode acessar esta página.
+if ($_SESSION['tipoUsuario'] !== 'Admin') {
+    echo "<h1 class='text-danger'>Acesso Negado!</h1>";
+    exit();
+}
 
-// Define as páginas que podem ter permissões.
-// Esta lista DEVE estar sincronizada com o array $paginasPermitidas no seu index.php.
-// Você pode adicionar um título mais amigável para cada página aqui.
-$paginas_disponiveis = [
-    'home' => 'Página Inicial',
-    'usuarios' => 'Usuários',
-    'clientes' => 'Clientes',
-    'fornecedores' => 'Fornecedores',
-    'produtos' => 'Produtos',
-    // A página 'permissoes' (esta própria tela) não precisa ser listada para controle de acesso,
-    // pois o acesso a ela já é restrito a Admin pelo menu.
+// Lista de todas as páginas e ações disponíveis no sistema
+// A permissão foi renomeada para ser mais clara sobre sua função.
+$paginas_e_acoes_disponiveis = [
+    'home' => 'Página Inicial (Home)',
+    'usuarios' => 'Gerenciar Usuários (Ver Lista)',
+    'clientes' => 'Gerenciar Clientes',
+    'fornecedores' => 'Gerenciar Fornecedores',
+    'produtos' => 'Gerenciar Produtos',
+    'editar_outros_usuarios' => 'Ação: Editar Outros Usuários' // Permissão específica para a ação
 ];
 
-// Carrega as permissões atuais do banco de dados
-// A estrutura será: $permissoes_atuais['nome_da_pagina']['nome_do_perfil'] = true;
+// Perfis de usuário que podem ter permissões configuradas
+$perfis_disponiveis = ['Admin', 'Gerente', 'Producao'];
+
+// Busca as permissões atuais do banco de dados
 $permissoes_atuais = [];
 try {
     $stmt = $pdo->query("SELECT permissao_pagina, permissao_perfil FROM tbl_permissoes");
+    // Agrupa os resultados para facilitar a verificação
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $permissoes_atuais[$row['permissao_pagina']][$row['permissao_perfil']] = true;
     }
 } catch (PDOException $e) {
     error_log("Erro ao carregar permissões do banco de dados: " . $e->getMessage());
-    // Em produção, você pode exibir uma mensagem amigável ao usuário
     echo '<div class="alert alert-danger" role="alert">Erro ao carregar permissões. Por favor, tente novamente.</div>';
 }
 ?>
 
 <div class="container-fluid mt-3">
-    <h1>Gerenciar Permissões</h1>
-    <p>Defina quais perfis de usuário podem acessar cada tela do sistema. Marque para permitir, desmarque para negar.</p>
+    <h4 class="fw-bold mb-3">Gerenciar Permissões</h4>
+    <p>Defina quais perfis de usuário podem acessar cada tela e executar ações importantes no sistema.</p>
 
     <div class="alert alert-info" role="alert">
-        <strong>Aviso:</strong> A página "Gerenciar Permissões" só pode ser acessada por administradores.
+        <strong>Aviso:</strong> O perfil "Admin" tem acesso total e irrestrito. Suas permissões não podem ser alteradas.
     </div>
 
     <form id="form-gerenciar-permissoes">
+        <!-- Token CSRF para segurança do formulário -->
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+        
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead class="table-light">
                     <tr>
-                        <th>Página</th>
+                        <th>Página / Ação</th>
                         <?php foreach ($perfis_disponiveis as $perfil): ?>
                             <th class="text-center"><?php echo htmlspecialchars($perfil); ?></th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($paginas_disponiveis as $nome_pagina_chave => $nome_pagina_amigavel): ?>
+                    <?php foreach ($paginas_e_acoes_disponiveis as $chave_permissao => $descricao): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($nome_pagina_amigavel); ?></td>
+                            <td><?php echo htmlspecialchars($descricao); ?></td>
                             <?php foreach ($perfis_disponiveis as $perfil): ?>
                                 <td class="text-center">
                                     <?php 
-                                    // 'Admin' sempre tem acesso total, não deve ser desmarcado aqui
-                                    // Para 'Admin', o checkbox pode ser desabilitado e marcado
                                     $is_admin_column = ($perfil === 'Admin');
-                                    $is_checked = isset($permissoes_atuais[$nome_pagina_chave][$perfil]);
+                                    // Para o admin, a permissão está sempre marcada. Para outros, verifica no array.
+                                    $is_checked = $is_admin_column || (isset($permissoes_atuais[$chave_permissao][$perfil]));
                                     ?>
                                     <div class="form-check form-switch d-inline-block">
                                         <input class="form-check-input" type="checkbox" role="switch" 
-                                               id="switch-<?php echo htmlspecialchars($nome_pagina_chave); ?>-<?php echo htmlspecialchars($perfil); ?>" 
-                                               name="permissoes[<?php echo htmlspecialchars($nome_pagina_chave); ?>][]" 
-                                               value="<?php echo htmlspecialchars($perfil); ?>"
+                                               id="switch-<?php echo htmlspecialchars($chave_permissao); ?>-<?php echo htmlspecialchars($perfil); ?>" 
+                                               name="permissoes[<?php echo htmlspecialchars($perfil); ?>][]" 
+                                               value="<?php echo htmlspecialchars($chave_permissao); ?>"
                                                <?php echo $is_checked ? 'checked' : ''; ?>
                                                <?php echo $is_admin_column ? 'disabled' : ''; ?>>
-                                        <label class="form-check-label" for="switch-<?php echo htmlspecialchars($nome_pagina_chave); ?>-<?php echo htmlspecialchars($perfil); ?>"></label>
                                     </div>
                                 </td>
                             <?php endforeach; ?>
@@ -85,5 +87,4 @@ try {
     </form>
 
     <div id="mensagem-permissoes" class="mt-3"></div>
-  
 </div>

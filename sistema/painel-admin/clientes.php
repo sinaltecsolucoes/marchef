@@ -133,17 +133,15 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Tipo de Entidade</< /label><br>
+
+                                    <!-- Opção "Apenas Clientes" -->
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-cliente" value="Cliente" checked>
                                         <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
                                     </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-fornecedor" value="Fornecedor">
-                                        <label class="form-check-label"
-                                            for="tipo-entidade-fornecedor">Fornecedor</label>
-                                    </div>
+                                    
+                                    <!-- Opção "Cliente e Fornecedor" -->
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-ambos" value="Cliente e Fornecedor">

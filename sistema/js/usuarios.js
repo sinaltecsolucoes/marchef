@@ -8,8 +8,8 @@ $(document).ready(function () {
         var alertClass = (type === 'success') ? 'alert-success' : 'alert-danger';
         $feedbackMessageArea.addClass('alert ' + alertClass).text(message);
         // Opcional: esconder a mensagem após alguns segundos
-        setTimeout(function() {
-            $feedbackMessageArea.fadeOut('slow', function() {
+        setTimeout(function () {
+            $feedbackMessageArea.fadeOut('slow', function () {
                 $(this).empty().removeClass('alert alert-success alert-danger').show();
             });
         }, 5000); // Mensagem some após 5 segundos
@@ -27,15 +27,17 @@ $(document).ready(function () {
         "ajax": "process/listar_usuarios.php", // Caminho atualizado para o script PHP
         "responsive": true,
         "columns": [
-            {
-                "data": "usu_situacao",
-                "render": function (data, type, row) {
-                    if (data === 'A') {
-                        return "Ativo";
-                    }
-                    return "Inativo";
-                }
-            },
+            // {
+            //     "data": "usu_situacao",
+            //     "render": function (data, type, row) {
+            //         if (data === 'A') {
+            //             return "Ativo";
+            //         }
+            //         return "Inativo";
+            //     }
+            // },
+
+            { "data": "usu_situacao", "render": function (data, type, row) { return (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'; } },
             { "data": "usu_login" },
             { "data": "usu_nome" },
             { "data": "usu_tipo" },
@@ -45,7 +47,7 @@ $(document).ready(function () {
                 "render": function (data, type, row) {
                     // Adiciona data-id e data-nome aos botões para fácil acesso
                     return '<a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1" data-id="' + row.usu_codigo + '">Editar</a>' +
-                           '<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="' + row.usu_codigo + '" data-nome="' + row.usu_nome + '">Excluir</a>';
+                        '<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="' + row.usu_codigo + '" data-nome="' + row.usu_nome + '">Excluir</a>';
                 }
             }
         ],
@@ -170,8 +172,8 @@ $(document).ready(function () {
     // Lógica para gerenciar o foco ao fechar o modal de adicionar usuário
     $('#modal-adicionar-usuario').on('hidden.bs.modal', function () {
         // Remove o foco de qualquer elemento dentro do modal que possa ter retido-o
-        $(this).find(':focus').blur(); 
-        
+        $(this).find(':focus').blur();
+
         // Retorna o foco para o botão que abriu o modal (o botão "Adicionar Usuário")
         $('#btn-adicionar-usuario-main').focus(); // NOVO: Adiciona um ID ao botão principal
     });
@@ -179,8 +181,8 @@ $(document).ready(function () {
     // NOVO: Lógica para gerenciar o foco ao fechar o modal de confirmação de exclusão
     $('#modal-confirmar-exclusao').on('hidden.bs.modal', function () {
         // Remove o foco de qualquer elemento dentro do modal que possa ter retido-o
-        $(this).find(':focus').blur(); 
-        
+        $(this).find(':focus').blur();
+
         // Retorna o foco para o botão "Adicionar Usuário" como um fallback seguro
         // Ou você pode tentar focar no botão "Excluir" da linha da tabela, se tiver o ID
         $('#btn-adicionar-usuario-main').focus(); // NOVO: Adiciona um ID ao botão principal
