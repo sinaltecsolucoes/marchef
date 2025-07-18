@@ -7,7 +7,7 @@
 
 <!-- Botão Adicionar Produto -->
 <a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-produto"
-   id="btn-adicionar-produto-main">Adicionar Produto</a>
+    id="btn-adicionar-produto-main">Adicionar Produto</a>
 
 <!-- Área para mensagens de feedback -->
 <div id="feedback-message-area-produto" class="mt-3"></div>
@@ -34,7 +34,7 @@
 
 <!-- Modal Adicionar/Editar Produto -->
 <div class="modal fade" id="modal-adicionar-produto" tabindex="-1" role="dialog"
-     aria-labelledby="modal-adicionar-produto-label" aria-hidden="true">
+    aria-labelledby="modal-adicionar-produto-label" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -74,18 +74,21 @@
                         </div>
                         <div class="col-md-3 mb-3">
                             <label for="peso_embalagem_secundaria" class="form-label">Peso Emb. Secundária</label>
-                            <input type="text" class="form-control" id="peso_embalagem_secundaria" name="prod_peso_embalagem_secundaria" placeholder="Ex: 10.000">
+                            <input type="text" class="form-control" id="peso_embalagem_secundaria"
+                                name="prod_peso_embalagem_secundaria" placeholder="Ex: 10.000">
                         </div>
                         <div class="col-md-3 mb-3">
-                             <label class="form-label">Unidades Primárias</label>
-                             <input type="text" class="form-control" id="unidades_primarias" readonly disabled>
+                            <label class="form-label">Unidades Primárias</label>
+                            <input type="text" class="form-control" id="unidades_primarias" readonly disabled>
                         </div>
                     </div>
 
                     <!-- Linha 2: Código Interno, Tipo e Subtipo -->
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label for="prod_codigo_interno" class="form-label">Código Interno</label>
+                            <!--<label for="prod_codigo_interno" class="form-label">Código Interno</label>-->
+                            <label for="prod_codigo_interno" class="form-label">Código Interno <span class="text-danger"
+                                    id="asterisco-codigo-interno" style="display: none;">*</span></label>
                             <input type="text" class="form-control" id="prod_codigo_interno" name="prod_codigo_interno">
                         </div>
                         <div class="col-md-3 mb-3">
@@ -100,7 +103,8 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="prod_subtipo" class="form-label">Subtipo</label>
-                            <input type="text" class="form-control" id="prod_subtipo" name="prod_subtipo" placeholder="Ex: Sem Cabeça, P&D, Posta...">
+                            <input type="text" class="form-control" id="prod_subtipo" name="prod_subtipo"
+                                placeholder="Ex: Sem Cabeça, P&D, Posta...">
                         </div>
                     </div>
 
@@ -122,7 +126,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <!-- Linha 4: Características de Produção -->
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -142,7 +146,8 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="prod_fator_producao" class="form-label">Fator de Produção (%)</label>
-                            <input type="number" step="0.01" class="form-control" id="prod_fator_producao" name="prod_fator_producao" placeholder="Ex: 65.50">
+                            <input type="number" step="0.01" class="form-control" id="prod_fator_producao"
+                                name="prod_fator_producao" placeholder="Ex: 65.50">
                         </div>
                     </div>
 
@@ -150,11 +155,13 @@
                     <div id="bloco-embalagem-primaria" class="row">
                         <div class="col-md-4 mb-3">
                             <label for="prod_peso_embalagem" class="form-label">Peso Embalagem (kg)</label>
-                            <input type="text" class="form-control" id="prod_peso_embalagem" name="prod_peso_embalagem" placeholder="Ex: 2.000">
+                            <input type="text" class="form-control" id="prod_peso_embalagem" name="prod_peso_embalagem"
+                                placeholder="Ex: 2.000">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="prod_total_pecas" class="form-label">Total de Peças</label>
-                            <input type="text" class="form-control" id="prod_total_pecas" name="prod_total_pecas" placeholder="Ex: 55 a 60">
+                            <input type="text" class="form-control" id="prod_total_pecas" name="prod_total_pecas"
+                                placeholder="Ex: 55 a 60">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="prod_ean13" class="form-label">Cód. Barras (EAN-13)</label>

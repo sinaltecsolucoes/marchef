@@ -1,14 +1,6 @@
 <?php
 // clientes.php
 // Esta página será incluída por index.php, então já terá acesso a $pdo, $_SESSION, $csrf_token, etc.
-
-// Certifique-se de que o usuário tem permissão para acessar esta página
-// Esta verificação já é feita em index.php, mas é uma boa prática ter uma camada extra aqui se necessário.
-// if (!in_array('clientes', $paginasPermitidasUsuario)) {
-//     echo "<h1 class='text-danger'>Acesso Negado! Você não tem permissão para acessar a página de Clientes.</h1>";
-//     exit();
-// }
-
 // O token CSRF já deve estar disponível via $csrf_token do index.php
 ?>
 
@@ -59,10 +51,12 @@
     </table>
 </div>
 
-<!-- Modal Adicionar/Editar Cliente -->
-<div class="modal fade" id="modal-adicionar-cliente" tabindex="-1" role="dialog"
+<!-- ============================================================================== -->
+<!-- ======================= MODAL ADICIONAR/EDITAR CLIENTE ======================= -->
+<!-- ============================================================================== -->
+<div class="modal fade" id="modal-adicionar-cliente" tabindex="-1" role="document"
     aria-labelledby="modal-adicionar-cliente-label" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal-adicionar-cliente-label">Adicionar Cliente</h5>
@@ -86,69 +80,139 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="enderecos-tab" data-tab-target="#enderecos" type="button"
-                            role="tab">Endereços</button>
+                            role="tab">Endereços Adicionais</button>
                     </li>
                 </ul>
 
-
                 <!-- Conteúdo das Abas -->
                 <div class="tab-content" id="myTabContent">
-                    <!-- Aba de Dados do Cliente -->
+                    <!-- ======================================================================= -->
+                    <!-- ======================= ABA 1: DADOS PRINCIPAIS ======================= -->
+                    <!-- ======================================================================= -->
                     <div class="tab-pane fade show active" id="dados-cliente" role="tabpanel"
                         aria-labelledby="dados-cliente-tab">
-                        <form id="form-cliente">
-                            <!-- Campo oculto para o ID do cliente (para edição) -->
+                        <form id="form-cliente" class="mt-3">
+                            <!-- Campos ocultos -->
                             <input type="hidden" id="ent-codigo" name="ent_codigo">
-                            <!-- Campo oculto para o token CSRF -->
                             <input type="hidden" name="csrf_token"
                                 value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                             <div id="mensagem-cliente" class="mb-3"></div>
 
-                            <div class="mb-3 mt-3">
-                                <label for="razao-social" class="form-label">Razão Social / Nome Completo</label>
-                                <input type="text" class="form-control" id="razao-social" name="ent_razao_social"
-                                    placeholder="Razão Social ou Nome Completo" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Tipo de Pessoa</label><br>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
-                                        id="tipo-pessoa-fisica" value="F" checked>
-                                    <label class="form-check-label" for="tipo-pessoa-fisica">Física</label>
+                            <!-- Linha: Tipo Pessoa e CPF/CNPJ -->
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Tipo de Pessoa</label><br>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
+                                            id="tipo-pessoa-fisica" value="F" checked>
+                                        <label class="form-check-label" for="tipo-pessoa-fisica">Física</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
+                                            id="tipo-pessoa-juridica" value="J">
+                                        <label class="form-check-label" for="tipo-pessoa-juridica">Jurídica</label>
+                                    </div>
                                 </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="ent_tipo_pessoa"
-                                        id="tipo-pessoa-juridica" value="J">
-                                    <label class="form-check-label" for="tipo-pessoa-juridica">Jurídica</label>
+                                <div class="col-md-8 mb-3">
+                                    <label for="cpf-cnpj" class="form-label" id="label-cpf-cnpj">CPF</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="cpf-cnpj" name="ent_cpf_cnpj"
+                                            placeholder="000.000.000-00" required>
+                                        <button class="btn btn-outline-secondary" type="button" id="btn-buscar-cnpj"
+                                            style="display: none;">Buscar Dados</button>
+                                    </div>
+                                    <small id="cnpj-feedback" class="form-text text-muted"></small>
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="cpf-cnpj" class="form-label" id="label-cpf-cnpj">CPF</label>
-                                <input type="text" class="form-control" id="cpf-cnpj" name="ent_cpf_cnpj"
-                                    placeholder="000.000.000-00" required>
+                            <!-- Linha: Razão Social e Nome Fantasia -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="razao-social" class="form-label">Razão Social / Nome
+                                        Completo</label>
+                                    <input type="text" class="form-control" id="razao-social" name="ent_razao_social"
+                                        required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="nome-fantasia" class="form-label">Nome Fantasia / Apelido</label>
+                                    <input type="text" class="form-control" id="nome-fantasia" name="ent_nome_fantasia">
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Tipo de Entidade</< /label><br>
-
-                                    <!-- Opção "Apenas Clientes" -->
+                            <!-- Linha: Tipo Entidade e IE -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tipo de Entidade</label><br>
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-cliente" value="Cliente" checked>
                                         <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
                                     </div>
-                                    
-                                    <!-- Opção "Cliente e Fornecedor" -->
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-ambos" value="Cliente e Fornecedor">
                                         <label class="form-check-label" for="tipo-entidade-ambos">Ambos</label>
                                     </div>
+                                </div>
+                                <div class="col-md-6 mb-3" id="div-inscricao-estadual">
+                                    <label for="inscricao-estadual" class="form-label">Inscrição Estadual</label>
+                                    <input type="text" class="form-control" id="inscricao-estadual"
+                                        name="ent_inscricao_estadual">
+                                </div>
                             </div>
 
+                            <hr>
+                            <h5 class="mb-3">Endereço Principal</h5>
+
+                            <!-- Linha: CEP e Logradouro -->
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="cep-endereco" class="form-label">CEP</label>
+                                    <input type="text" class="form-control" id="cep-endereco" name="end_cep"
+                                        placeholder="00000-000">
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <label for="logradouro-endereco" class="form-label">Logradouro</label>
+                                    <input type="text" class="form-control" id="logradouro-endereco"
+                                        name="end_logradouro" placeholder="Rua, Avenida, etc.">
+                                </div>
+                            </div>
+
+                            <!-- Linha: Número e Complemento -->
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="numero-endereco" class="form-label">Número</label>
+                                    <input type="text" class="form-control" id="numero-endereco" name="end_numero"
+                                        placeholder="Número">
+                                </div>
+                                <div class="col-md-9 mb-3">
+                                    <label for="complemento-endereco" class="form-label">Complemento</label>
+                                    <input type="text" class="form-control" id="complemento-endereco"
+                                        name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
+                                </div>
+                            </div>
+
+                            <!-- Linha: Bairro, Cidade e UF -->
+                            <div class="row">
+                                <div class="col-md-5 mb-3">
+                                    <label for="bairro-endereco" class="form-label">Bairro</label>
+                                    <input type="text" class="form-control" id="bairro-endereco" name="end_bairro"
+                                        placeholder="Bairro">
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label for="cidade-endereco" class="form-label">Cidade</label>
+                                    <input type="text" class="form-control" id="cidade-endereco" name="end_cidade"
+                                        placeholder="Cidade">
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <label for="uf-endereco" class="form-label">UF</label>
+                                    <input type="text" class="form-control" id="uf-endereco" name="end_uf"
+                                        maxlength="2">
+                                </div>
+                            </div>
+
+                            <!-- Linha: Situação -->
                             <div class="mb-3">
                                 <label class="form-label" for="situacao-cliente">Situação</label>
                                 <div class="form-check form-switch">
@@ -159,137 +223,112 @@
                                     </label>
                                 </div>
                             </div>
-
-                            <hr class="my-4">
-                            <h5 class="mb-3">Endereços Cadastrados</h5>
-                            <div class="table-responsive">
-                                <table id="tabela-enderecos-cliente" class="table table-hover my-4" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>Tipo</th>
-                                            <th>CEP</th>
-                                            <th>Logradouro</th>
-                                            <th>Número</th>
-                                            <th>Bairro</th>
-                                            <th>Cidade/UF</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Endereços serão carregados via JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
                         </form>
                     </div>
 
-                    <!-- Aba de Endereços -->
+                    <!-- =========================================================================== -->
+                    <!-- ======================= ABA 2: ENDEREÇOS ADICIONAIS ======================= -->
+                    <!-- =========================================================================== -->
                     <div class="tab-pane fade" id="enderecos" role="tabpanel" aria-labelledby="enderecos-tab">
-                        <form id="form-endereco" class="mt-3">
-                            <input type="hidden" id="end-codigo" name="end_codigo"> <!-- Para edição de endereço -->
+                        <h5 class="mt-3">Adicionar / Editar Endereço Adicional</h5>
+                        <form id="form-endereco" class="mt-3 border p-3 rounded bg-light">
+                            <!-- Campos Ocultos -->
+                            <input type="hidden" id="end-codigo" name="end_codigo">
                             <input type="hidden" id="end-entidade-id" name="end_entidade_id">
-                            <!-- ID da entidade associada -->
                             <input type="hidden" name="csrf_token"
                                 value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
-
                             <div id="mensagem-endereco" class="mb-3"></div>
 
-                            <div class="mb-3">
-                                <label for="tipo-endereco" class="form-label">Tipo de Endereço</label>
-                                <select class="form-select" id="tipo-endereco" name="end_tipo_endereco" required>
-                                    <option value="">Selecione o Tipo</option>
-                                    <option value="Entrega">Entrega</option>
-                                    <option value="Cobranca">Cobrança</option>
-                                    <option value="Residencial">Residencial</option>
-                                    <option value="Comercial">Comercial</option>
-                                    <option value="Outro">Outro</option>
-                                </select>
-                            </div>
-
+                            <!-- Linha 1: Tipo de Endereço e CEP -->
                             <div class="row">
-                                <div class="col-md-8 mb-3">
-                                    <label for="cep" class="form-label">CEP</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="cep-endereco" name="end_cep"
-                                            placeholder="00000-000">
-                                        <button class="btn btn-outline-secondary" type="button"
-                                            id="btn-buscar-cep-endereco">Buscar CEP</button>
-                                    </div>
-                                    <small id="cep-feedback-endereco" class="form-text text-muted"></small>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="uf" class="form-label">UF</label>
-                                    <select class="form-select" id="uf-endereco" name="end_uf">
-                                        <option value="">Selecione um Estado</option>
-                                        <option value="AC">Acre</option>
-                                        <option value="AL">Alagoas</option>
-                                        <option value="AP">Amapá</option>
-                                        <option value="AM">Amazonas</option>
-                                        <option value="BA">Bahia</option>
-                                        <option value="CE">Ceará</option>
-                                        <option value="DF">Distrito Federal</option>
-                                        <option value="ES">Espírito Santo</option>
-                                        <option value="GO">Goiás</option>
-                                        <option value="MA">Maranhão</option>
-                                        <option value="MT">Mato Grosso</option>
-                                        <option value="MS">Mato Grosso do Sul</option>
-                                        <option value="MG">Minas Gerais</option>
-                                        <option value="PA">Pará</option>
-                                        <option value="PB">Paraíba</option>
-                                        <option value="PR">Paraná</option>
-                                        <option value="PE">Pernambuco</option>
-                                        <option value="PI">Piauí</option>
-                                        <option value="RJ">Rio de Janeiro</option>
-                                        <option value="RN">Rio Grande do Norte</option>
-                                        <option value="RS">Rio Grande do Sul</option>
-                                        <option value="RO">Rondônia</option>
-                                        <option value="RR">Roraima</option>
-                                        <option value="SC">Santa Catarina</option>
-                                        <option value="SP">São Paulo</option>
-                                        <option value="SE">Sergipe</option>
-                                        <option value="TO">Tocantins</option>
+                                <div class="col-md-6 mb-3">
+                                    <label for="tipo-endereco" class="form-label">Tipo de Endereço</label>
+                                    <select class="form-select" id="tipo-endereco" name="end_tipo_endereco" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="Principal">Principal</option>
+                                        <option value="Entrega">Entrega</option>
+                                        <option value="Cobranca">Cobrança</option>
+                                        <option value="Residencial">Residencial</option>
+                                        <option value="Comercial">Comercial</option>
+                                        <option value="Outro">Outro</option>
                                     </select>
                                 </div>
-                            </div>
-
-
-                            <div class="mb-3">
-                                <label for="logradouro" class="form-label">Logradouro</label>
-                                <input type="text" class="form-control" id="logradouro-endereco" name="end_logradouro"
-                                    placeholder="Rua, Avenida, etc.">
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <label for="numero" class="form-label">Número</label>
-                                    <input type="text" class="form-control" id="numero-endereco" name="end_numero"
-                                        placeholder="Número">
-                                </div>
-                                <div class="col-md-9 mb-3">
-                                    <label for="complemento" class="form-label">Complemento</label>
-                                    <input type="text" class="form-control" id="complemento-endereco"
-                                        name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
-                                </div>
-                            </div>
-
-                            <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="bairro" class="form-label">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro-endereco" name="end_bairro"
-                                        placeholder="Bairro">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="cidade" class="form-label">Cidade</label>
-                                    <input type="text" class="form-control" id="cidade-endereco" name="end_cidade"
-                                        placeholder="Cidade">
+                                    <label for="cep-endereco-adicional" class="form-label">CEP</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="cep-endereco-adicional"
+                                            name="end_cep" placeholder="00000-000">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            id="btn-buscar-cep-adicional">Buscar</button>
+                                    </div>
+                                    <small id="cep-feedback-adicional" class="form-text text-muted"></small>
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary" id="btn-salvar-endereco">Salvar
-                                Endereço</button>
-                            <button type="button" class="btn btn-secondary"
-                                id="btn-cancelar-edicao-endereco">Cancelar</button>
+                            <!-- Linha 2: Logradouro -->
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="logradouro-endereco-adicional" class="form-label">Logradouro</label>
+                                    <input type="text" class="form-control" id="logradouro-endereco-adicional"
+                                        name="end_logradouro">
+                                </div>
+                            </div>
+
+                            <!-- Linha 3: Número e Complemento -->
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="numero-endereco-adicional" class="form-label">Número</label>
+                                    <input type="text" class="form-control" id="numero-endereco-adicional"
+                                        name="end_numero">
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <label for="complemento-endereco-adicional" class="form-label">Complemento</label>
+                                    <input type="text" class="form-control" id="complemento-endereco-adicional"
+                                        name="end_complemento">
+                                </div>
+                            </div>
+
+                            <!-- Linha 4: Bairro, Cidade e UF -->
+                            <div class="row">
+                                <div class="col-md-5 mb-3">
+                                    <label for="bairro-endereco-adicional" class="form-label">Bairro</label>
+                                    <input type="text" class="form-control" id="bairro-endereco-adicional"
+                                        name="end_bairro">
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label for="cidade-endereco-adicional" class="form-label">Cidade</label>
+                                    <input type="text" class="form-control" id="cidade-endereco-adicional"
+                                        name="end_cidade">
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <label for="uf-endereco-adicional" class="form-label">UF</label>
+                                    <input type="text" class="form-control" id="uf-endereco-adicional"
+                                        name="end_uf" maxlength="2">
+                                </div>
+                            </div>
+
+                            <!-- Botões -->
+                            <button type="submit" class="btn btn-success" id="btn-salvar-endereco">Salvar Endereço
+                                Adicional</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-endereco">Limpar /
+                                Cancelar</button>
                         </form>
+
+                        <hr class="my-4">
+                        <h5 class="mb-3">Endereços Cadastrados</h5>
+                        <div class="table-responsive">
+                            <table id="tabela-enderecos-cliente" class="table table-hover my-4" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Logradouro</th>
+                                        <th>Cidade/UF</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

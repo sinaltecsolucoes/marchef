@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $tipo_endereco_raw = filter_input(INPUT_POST, 'end_tipo_endereco', FILTER_SANITIZE_STRING);
-    $allowed_tipos_endereco = ['Entrega', 'Cobranca', 'Residencial', 'Comercial', 'Outro'];
+    $allowed_tipos_endereco = ['Principal', 'Entrega', 'Cobranca', 'Residencial', 'Comercial', 'Outro'];
     $val_tipo_endereco = validate_selection($tipo_endereco_raw, $allowed_tipos_endereco);
     if (!$val_tipo_endereco['valid']) {
         $response['message'] = "Tipo de Endereço: " . $val_tipo_endereco['message'];

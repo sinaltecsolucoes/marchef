@@ -24,7 +24,7 @@ header("Content-Security-Policy: default-src 'self'; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "img-src 'self' data:; " .
     "font-src 'self' https://fonts.gstatic.com; " .
-    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net; " .
+    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br; " .  
     "form-action 'self';");
 
 // Referrer-Policy

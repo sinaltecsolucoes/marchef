@@ -18,6 +18,15 @@ if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST
 }
 
 // --- Validação de Campos Obrigatórios (ID e Descrição) ---
+
+if ($_POST['prod_tipo_embalagem'] === 'SECUNDARIA' && empty(trim($_POST['prod_codigo_interno']))) {
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Para produtos de embalagem secundária, o Código Interno é obrigatório.'
+    ]);
+    exit;
+}
+
 if (empty($_POST['prod_codigo']) || !filter_var($_POST['prod_codigo'], FILTER_VALIDATE_INT)) {
     echo json_encode(['success' => false, 'message' => 'ID do produto ausente ou inválido.']);
     exit;
@@ -60,7 +69,7 @@ try {
     $tipo_embalagem = $_POST['prod_tipo_embalagem'];
     
     $peso_embalagem = ($tipo_embalagem === 'SECUNDARIA')
-        ? (!empty($_POST['peso_embalagem_secundaria']) ? str_replace(',', '.', $_POST['peso_embalagem_secundaria']) : null)
+        ? (!empty($_POST['prod_peso_embalagem_secundaria']) ? str_replace(',', '.', $_POST['prod_peso_embalagem_secundaria']) : null)
         : (!empty($_POST['prod_peso_embalagem']) ? str_replace(',', '.', $_POST['prod_peso_embalagem']) : null);
     
     $prod_fator_producao = !empty($_POST['prod_fator_producao']) ? str_replace(',', '.', $_POST['prod_fator_producao']) : null;
@@ -95,22 +104,47 @@ try {
         'message' => 'Produto atualizado com sucesso!'
     ]);
 
+// } catch (PDOException $e) {
+//     $pdo->rollBack();
+
+//     if ($e->getCode() == '23000') {
+//         if (strpos(strtolower($e->getMessage()), 'prod_codigo_interno') !== false) {
+//             $message = 'Erro: O Código Interno informado já pertence a outro produto.';
+//         } else {
+//             $message = 'Erro de violação de dados. Verifique os campos.';
+//         }
+//         echo json_encode(['success' => false, 'message' => $message]);
+//     } else {
+//         error_log("Erro em editar_produto.php: " . $e->getMessage());
+//         echo json_encode([
+//             'success' => false,
+//             'message' => 'Ocorreu um erro ao atualizar o produto. Tente novamente.'
+//         ]);
+//     }
+//}
+
 } catch (PDOException $e) {
+    // Desfaz a transação em caso de erro
     $pdo->rollBack();
 
+    // Verifica se o erro é de chave única duplicada (código 23000)
     if ($e->getCode() == '23000') {
-        if (strpos(strtolower($e->getMessage()), 'prod_codigo_interno') !== false) {
-            $message = 'Erro: O Código Interno informado já pertence a outro produto.';
+        // Verifica se a mensagem de erro contém o nome do nosso novo índice
+        if (strpos($e->getMessage(), 'idx_unique_codigo_secundario') !== false) {
+            $message = 'Erro: O Código Interno informado já está em uso por outro produto de embalagem secundária.';
         } else {
-            $message = 'Erro de violação de dados. Verifique os campos.';
+            // Mensagem genérica para outras violações de chave
+            $message = 'Erro: Violação de dados. Um campo único já existe no banco de dados.';
         }
         echo json_encode(['success' => false, 'message' => $message]);
     } else {
-        error_log("Erro em editar_produto.php: " . $e->getMessage());
+        // Para todos os outros erros de banco de dados
+        error_log("Erro no script: " . $e->getMessage()); // Loga o erro real
         echo json_encode([
             'success' => false,
-            'message' => 'Ocorreu um erro ao atualizar o produto. Tente novamente.'
+            'message' => 'Ocorreu um erro inesperado ao salvar o produto. Tente novamente.'
         ]);
     }
 }
+
 ?>

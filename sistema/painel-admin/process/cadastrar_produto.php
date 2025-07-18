@@ -3,7 +3,7 @@
 // Responsável por receber dados do formulário e cadastrar um novo produto.
 
 // Inclui arquivos essenciais
-require_once('../../conexao.php'); 
+require_once('../../conexao.php');
 require_once('../../includes/error_handler.php');
 
 // Inicia a sessão para validar o token CSRF
@@ -25,6 +25,14 @@ if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST
 }
 
 // --- Validação de Campos Obrigatórios ---
+if ($_POST['prod_tipo_embalagem'] === 'SECUNDARIA' && empty(trim($_POST['prod_codigo_interno']))) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Para produtos de embalagem secundária, o Código Interno é obrigatório.'
+    ]);
+    exit;
+}
+
 if (empty($_POST['prod_descricao']) || empty($_POST['prod_tipo_embalagem'])) {
     echo json_encode([
         'success' => false,
@@ -50,15 +58,15 @@ try {
                 :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, :prod_total_pecas,
                 :prod_primario_id, :prod_ean13, :prod_dun14
             )";
-    
+
     $stmt = $pdo->prepare($sql);
 
     // --- Lógica para Tratar Campos Vazios e Tipos de Embalagem ---
     $tipo_embalagem = $_POST['prod_tipo_embalagem'];
-    
+
     // Define o peso da embalagem com base no tipo
-    $peso_embalagem = ($tipo_embalagem === 'SECUNDARIA') 
-        ? (!empty($_POST['peso_embalagem_secundaria']) ? str_replace(',', '.', $_POST['peso_embalagem_secundaria']) : null)
+    $peso_embalagem = ($tipo_embalagem === 'SECUNDARIA')
+        ? (!empty($_POST['prod_peso_embalagem_secundaria']) ? str_replace(',', '.', $_POST['prod_peso_embalagem_secundaria']) : null)
         : (!empty($_POST['prod_peso_embalagem']) ? str_replace(',', '.', $_POST['prod_peso_embalagem']) : null);
 
     // Converte strings vazias em NULL para campos que permitem nulos
@@ -82,7 +90,7 @@ try {
     $stmt->bindValue(':prod_primario_id', $prod_primario_id, PDO::PARAM_INT);
     $stmt->bindValue(':prod_ean13', !empty($_POST['prod_ean13']) ? $_POST['prod_ean13'] : null, PDO::PARAM_STR);
     $stmt->bindValue(':prod_dun14', !empty($_POST['prod_dun14']) ? $_POST['prod_dun14'] : null, PDO::PARAM_STR);
-    
+
     // Executa a query
     $stmt->execute();
 
@@ -98,22 +106,25 @@ try {
     // Desfaz a transação em caso de erro
     $pdo->rollBack();
 
-    // Verifica se o erro é de chave única duplicada (código interno)
-    if ($e->getCode() == '23000') { // Código de erro SQL para violação de integridade
-        // A mensagem de erro pode variar, mas geralmente contém o nome da chave
-        if (strpos(strtolower($e->getMessage()), 'prod_codigo_interno') !== false) {
-            $message = 'Erro: O Código Interno informado já existe. Por favor, utilize outro.';
-        } else {
-            $message = 'Erro de violação de dados. Verifique os campos.';
-        }
-        echo json_encode(['success' => false, 'message' => $message]);
-    } else {
-        // Para outros erros de banco de dados
-        error_log("Erro em cadastrar_produto.php: " . $e->getMessage());
-        echo json_encode([
-            'success' => false,
-            'message' => 'Ocorreu um erro ao cadastrar o produto. Tente novamente.'
-        ]);
-    }
+    // --- INÍCIO DO BLOCO DE DEPURAÇÃO ---
+    // Prepara um array com informações detalhadas para depuração
+    $debug_info = [
+        'causa' => 'Exceção PDO capturada.',
+        'codigo_erro_sql' => $e->getCode(), // Ex: 23000
+        'mensagem_completa_sql' => $e->getMessage(), // A mensagem exata do banco de dados
+        'dados_enviados_pelo_formulario' => $_POST // Todos os dados que o formulário enviou
+    ];
+
+    // Monta uma mensagem amigável para o usuário
+    $user_message = "Erro de violação de dados. A depuração foi ativada.";
+
+    // Envia a resposta JSON com a mensagem para o usuário e os detalhes de depuração
+    echo json_encode([
+        'success' => false,
+        'message' => $user_message,
+        'debug' => $debug_info // Adiciona o novo campo 'debug' na resposta
+    ]);
+    
+    // --- FIM DO NOVO BLOCO DE DEPURAÇÃO ---
 }
 ?>

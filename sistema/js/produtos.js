@@ -37,7 +37,7 @@ $(document).ready(function () {
     // =================================================================
 
     // Função para controlar a visibilidade dos campos com base no tipo de embalagem
-    function toggleEmbalagemFields() {
+    /*  function toggleEmbalagemFields() {
         var tipo = $tipoEmbalagemSelect.val();
         if (tipo === 'SECUNDARIA') {
             $blocoEmbalagemSecundaria.show();
@@ -48,6 +48,34 @@ $(document).ready(function () {
             $blocoEmbalagemSecundaria.hide();
             $blocoEmbalagemPrimaria.show();
             $blocoDun14.hide();
+        }
+    }*/
+
+    // Função para controlar a visibilidade dos campos com base no tipo de embalagem (VERSÃO ATUALIZADA)
+    function toggleEmbalagemFields() {
+        var tipo = $tipoEmbalagemSelect.val();
+        var $inputCodigoInterno = $('#prod_codigo_interno');
+        var $asteriscoCodigoInterno = $('#asterisco-codigo-interno');
+
+        if (tipo === 'SECUNDARIA') {
+            $blocoEmbalagemSecundaria.show();
+            $blocoEmbalagemPrimaria.hide();
+            $blocoDun14.show();
+
+            // TORNA O CÓDIGO INTERNO OBRIGATÓRIO
+            $asteriscoCodigoInterno.show();
+            $inputCodigoInterno.prop('required', true);
+
+            // Carrega os produtos primários no dropdown
+            loadProdutosPrimarios();
+        } else { // PRIMARIA
+            $blocoEmbalagemSecundaria.hide();
+            $blocoEmbalagemPrimaria.show();
+            $blocoDun14.hide();
+
+            // TORNA O CÓDIGO INTERNO OPCIONAL
+            $asteriscoCodigoInterno.hide();
+            $inputCodigoInterno.prop('required', false);
         }
     }
 
@@ -101,13 +129,51 @@ $(document).ready(function () {
     // Evento de mudança no produto primário selecionado
     $produtoPrimarioSelect.on('change', function () {
         var selectedId = $(this).val();
-        if (selectedId && produtoPrimarioCache[selectedId]) {
+
+        // Limpa o formulário se nenhum produto for selecionado
+        if (!selectedId) {
+            // Você pode adicionar aqui uma lógica para limpar os campos se desejar
+            return;
+        }
+
+        if (produtoPrimarioCache[selectedId]) {
             var produto = produtoPrimarioCache[selectedId];
-            // Preenche campos herdados
-            $descricaoProduto.val(produto.prod_descricao + ' (Caixa)');
+
+            // =================================================================
+            // 1. PREENCHE OS CAMPOS HERDADOS DO PRODUTO PRIMÁRIO
+            // =================================================================
+            $('#prod_descricao').val(produto.prod_descricao + ' (Caixa)'); // Adiciona um sufixo
             $('#prod_tipo').val(produto.prod_tipo);
             $('#prod_subtipo').val(produto.prod_subtipo);
-            // ... preencher outros campos herdados conforme necessário ...
+            $('#prod_classificacao').val(produto.prod_classificacao);
+            $('#prod_especie').val(produto.prod_especie);
+            $('#prod_origem').val(produto.prod_origem);
+            $('#prod_conservacao').val(produto.prod_conservacao);
+            $('#prod_congelamento').val(produto.prod_congelamento);
+            $('#prod_fator_producao').val(produto.prod_fator_producao);
+            $('#prod_total_pecas').val(produto.prod_total_pecas);
+            $('#prod_codigo_interno').val(produto.prod_codigo_interno);
+
+            // =================================================================
+            // 2. LIMPA OS CAMPOS QUE DEVEM SER ÚNICOS OU ESPECÍFICOS
+            // =================================================================
+
+            // **ESTA É A CORREÇÃO PRINCIPAL PARA O ERRO DE VIOLAÇÃO DE DADOS**
+            //$('#prod_codigo_interno').val('');
+
+            // Limpa os campos de peso e códigos de barras da embalagem secundária
+            $('#peso_embalagem_secundaria').val('');
+            $('#prod_dun14').val('');
+
+            // Também limpa campos que pertencem exclusivamente à embalagem primária
+            $('#prod_ean13').val('');
+            //$('#prod_total_pecas').val('');
+
+            // Foca no campo de código interno para o usuário preencher
+            //$('#prod_codigo_interno').focus();
+            $('#prod_descricao').focus();
+
+            // Calcula as unidades (se o peso já for preenchido)
             calcularUnidades();
         }
     });
@@ -149,6 +215,7 @@ $(document).ready(function () {
 
     // Envio do formulário (Cadastrar/Editar)
     $formProduto.on('submit', function (e) {
+        console.log('Função de salvar acionada!'); // <--- ADICIONE ESTA LINHA
         e.preventDefault();
         var url = $('#prod_codigo').val() ? 'process/editar_produto.php' : 'process/cadastrar_produto.php';
         var formData = new FormData(this);

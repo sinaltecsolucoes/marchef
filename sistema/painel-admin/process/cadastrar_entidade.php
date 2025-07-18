@@ -97,6 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_bairro_raw = filter_input(INPUT_POST, 'end_bairro', FILTER_SANITIZE_STRING);
     $end_cidade_raw = filter_input(INPUT_POST, 'end_cidade', FILTER_SANITIZE_STRING);
     $end_uf_raw = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);
+    $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
+    $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
+
 
     $has_address_data = !empty($end_cep_raw) || !empty($end_logradouro_raw) || !empty($end_numero_raw) ||
         !empty($end_complemento_raw) || !empty($end_bairro_raw) || !empty($end_cidade_raw) || !empty($end_uf_raw);
@@ -179,20 +182,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // Insere a nova entidade na tbl_entidades
         $query_entidade = $pdo->prepare("
-            INSERT INTO tbl_entidades (
-                ent_razao_social, ent_tipo_pessoa, ent_cpf, ent_cnpj, 
-                ent_tipo_entidade, ent_situacao, ent_data_cadastro, ent_usuario_cadastro_id
-            ) VALUES (
-                :razao_social, :tipo_pessoa, :cpf, :cnpj, 
-                :tipo_entidade, :situacao, NOW(), :usuario_cadastro_id
-            )
-        ");
+        INSERT INTO tbl_entidades (
+            ent_razao_social, ent_nome_fantasia, ent_tipo_pessoa, ent_cpf, ent_cnpj, 
+            ent_inscricao_estadual, ent_tipo_entidade, ent_situacao, ent_data_cadastro, ent_usuario_cadastro_id
+        ) VALUES (
+            :razao_social, :nome_fantasia, :tipo_pessoa, :cpf, :cnpj, 
+            :inscricao_estadual, :tipo_entidade, :situacao, NOW(), :usuario_cadastro_id
+        )
+    ");
+
         $query_entidade->bindValue(':razao_social', $ent_razao_social);
+        $query_entidade->bindValue(':nome_fantasia', $ent_nome_fantasia);
         $query_entidade->bindValue(':tipo_pessoa', $ent_tipo_pessoa);
         $query_entidade->bindValue(':cpf', $ent_cpf);
         $query_entidade->bindValue(':cnpj', $ent_cnpj);
+        $query_entidade->bindValue(':inscricao_estadual', $ent_inscricao_estadual);
         $query_entidade->bindValue(':tipo_entidade', $ent_tipo_entidade);
         $query_entidade->bindValue(':situacao', $ent_situacao);
         $query_entidade->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
@@ -219,33 +224,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- NOVO: Insere na tbl_fornecedores se a entidade for um Fornecedor ou Cliente e Fornecedor ---
         if ($ent_tipo_entidade === 'Fornecedor' || $ent_tipo_entidade === 'Cliente e Fornecedor') {
             $query_fornecedor = $pdo->prepare("
-                INSERT INTO tbl_fornecedores (
-                    forn_entidade_id, forn_data_cadastro, forn_usuario_cadastro_id
-                ) VALUES (
-                    :entidade_id, NOW(), :usuario_cadastro_id
-                )
-            ");
+                      INSERT INTO tbl_fornecedores (
+                          forn_entidade_id, forn_data_cadastro, forn_usuario_cadastro_id
+                      ) VALUES (
+                          :entidade_id, NOW(), :usuario_cadastro_id
+                      )
+                  ");
             $query_fornecedor->bindValue(':entidade_id', $entidade_id, PDO::PARAM_INT);
             $query_fornecedor->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
             $query_fornecedor->execute();
         }
 
-
-        // Se houver dados de endereço, insere o endereço principal
         if ($has_address_data) {
             $query_endereco = $pdo->prepare("
-                INSERT INTO tbl_enderecos (
-                    end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, 
-                    end_numero, end_complemento, end_bairro, end_cidade, end_uf, 
-                    end_data_cadastro, end_usuario_cadastro_id
-                ) VALUES (
-                    :entidade_id, 'Entrega', :cep, :logradouro, 
-                    :numero, :complemento, :bairro, :cidade, :uf, 
-                    NOW(), :usuario_cadastro_id
-                )
-            ");
+            INSERT INTO tbl_enderecos (
+                end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, 
+                end_numero, end_complemento, end_bairro, end_cidade, end_uf, 
+                end_data_cadastro, end_usuario_cadastro_id
+            ) VALUES (
+                :entidade_id, 'Principal', :cep, :logradouro, 
+                :numero, :complemento, :bairro, :cidade, :uf, 
+                NOW(), :usuario_cadastro_id
+            )
+        ");
             $query_endereco->bindValue(':entidade_id', $entidade_id, PDO::PARAM_INT);
-            $query_endereco->bindValue(':tipo_endereco', 'Entrega'); // Endereço principal como 'Entrega'
             $query_endereco->bindValue(':cep', $end_cep);
             $query_endereco->bindValue(':logradouro', $end_logradouro);
             $query_endereco->bindValue(':numero', $end_numero);
@@ -255,18 +257,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $query_endereco->bindValue(':uf', $end_uf);
             $query_endereco->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
             $query_endereco->execute();
+
         }
 
         $pdo->commit(); // Confirma a transação
 
         $response['success'] = true;
-        $response['message'] = 'Entidade cadastrada com sucesso!';
+        $response['message'] = 'Entidade e Endereços cadastrados com sucesso!'; // Nova mensagem de sucesso
         $response['ent_codigo'] = $entidade_id; // Retorna o ID da nova entidade
-
     } catch (PDOException $e) {
         $pdo->rollBack(); // Reverte a transação em caso de erro
-        error_log('Erro ao cadastrar entidade (cadastrar_entidade.php): ' . $e->getMessage());
-        $response['message'] = 'Erro no servidor ao cadastrar entidade. Por favor, tente novamente mais tarde.';
+        $response['message'] = 'ERRO DE BANCO DE DADOS: ' . $e->getMessage();
     }
 
 } else {

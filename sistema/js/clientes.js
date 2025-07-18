@@ -1,10 +1,22 @@
+/**
+ * clientes.js
+ * Gerencia toda a interatividade da página de Clientes.
+ * - Inicialização de DataTables
+ * - Manipulação de modais e abas
+ * - Busca de dados via API (CNPJ e CEP)
+ * - Submissão de formulários via AJAX para CRUD de entidades e endereços.
+ */
 $(document).ready(function () {
 
     // =================================================================
-    // Bloco de Configuração Inicial
+    // I. CONFIGURAÇÃO E VARIÁVEIS DE ESTADO
     // =================================================================
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
+    let tableClientes, tableEnderecos;
+    let triggerButton = null; // Rastreia o botão que abriu o modal
+    let lastCnpjRequest = ''; // Armazena o último CNPJ consultado para evitar chamadas repetidas
 
+    // Configuração global do AJAX para enviar o token CSRF
     $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
         if (!options.crossDomain) {
             jqXHR.setRequestHeader('X-CSRF-TOKEN', csrfToken);
@@ -12,121 +24,130 @@ $(document).ready(function () {
     });
 
     // =================================================================
-    // Seletores Globais
+    // II. SELETORES GLOBAIS (CACHE DE ELEMENTOS)
     // =================================================================
-    var $modalCliente = $('#modal-adicionar-cliente');
-    var $formCliente = $('#form-cliente');
-    var $mensagemCliente = $('#mensagem-cliente');
-    var $feedbackMessageAreaCliente = $('#feedback-message-area-cliente');
-    var $btnAdicionarClienteMain = $('#btn-adicionar-cliente-main');
-    var $razaoSocial = $('#razao-social');
-    var $tipoPessoaFisica = $('#tipo-pessoa-fisica');
-    var $tipoPessoaJuridica = $('#tipo-pessoa-juridica');
-    var $labelCpfCnpj = $('#label-cpf-cnpj');
-    var $cpfCnpj = $('#cpf-cnpj');
-    var $tipoEntidadeCliente = $('#tipo-entidade-cliente');
-    var $tipoEntidadeFornecedor = $('#tipo-entidade-fornecedor');
-    var $tipoEntidadeAmbos = $('#tipo-entidade-ambos');
-    var $situacaoCliente = $('#situacao-cliente');
-    var $textoSituacaoCliente = $('#texto-situacao-cliente');
-    var $entCodigo = $('#ent-codigo');
-    var $filtroSituacaoRadios = $('input[name="filtro_situacao"]');
-    var $formEndereco = $('#form-endereco');
-    var $mensagemEndereco = $('#mensagem-endereco');
-    var $endCodigo = $('#end-codigo');
-    var $endEntidadeId = $('#end-entidade-id');
-    var $tipoEndereco = $('#tipo-endereco');
-    var $cepEndereco = $('#cep-endereco');
-    var $btnBuscarCepEndereco = $('#btn-buscar-cep-endereco');
-    var $cepFeedbackEndereco = $('#cep-feedback-endereco');
-    var $logradouroEndereco = $('#logradouro-endereco');
-    var $numeroEndereco = $('#numero-endereco');
-    var $complementoEndereco = $('#complemento-endereco');
-    var $bairroEndereco = $('#bairro-endereco');
-    var $cidadeEndereco = $('#cidade-endereco');
-    var $ufEndereco = $('#uf-endereco');
-    var $btnSalvarEndereco = $('#btn-salvar-endereco');
-    var $btnCancelarEdicaoEndereco = $('#btn-cancelar-edicao-endereco');
-    var tableEnderecos;
-    var tableClientes;
-    var $triggerButton = null;
+    const $modalCliente = $('#modal-adicionar-cliente');
+    const $formCliente = $('#form-cliente');
+    const $formEndereco = $('#form-endereco');
+    const $cpfCnpj = $('#cpf-cnpj');
 
     // =================================================================
-    // Controle Manual das Abas (Versão Única e Correta)
+    // III. FUNÇÕES AUXILIARES E PRINCIPAIS
     // =================================================================
-    var $tabButtons = $modalCliente.find('.nav-tabs .nav-link');
-    var $tabPanes = $modalCliente.find('.tab-content .tab-pane');
 
-    $tabButtons.on('click', function (e) {
-        e.preventDefault();
-        var $this = $(this);
-        if ($this.hasClass('disabled')) {
-            return;
+    function showFeedbackMessage(message, type = 'success', area = '#feedback-message-area-cliente') {
+        const $area = $(area);
+        const alertClass = (type === 'success') ? 'alert-success' : 'alert-danger';
+        $area.empty().removeClass('alert-success alert-danger').addClass(`alert ${alertClass}`).text(message).fadeIn();
+        setTimeout(() => $area.fadeOut('slow'), 5000);
+    }
+
+    /**
+     * Mostra ou esconde o campo de Inscrição Estadual com base no tipo de pessoa.
+     */
+    function toggleInscricaoEstadualField() {
+        const isJuridica = $('#tipo-pessoa-juridica').is(':checked');
+        const $divInscricaoEstadual = $('#div-inscricao-estadual');
+
+        if (isJuridica) {
+            $divInscricaoEstadual.show();
+        } else {
+            $divInscricaoEstadual.hide();
+            $('#inscricao-estadual').val(''); // Limpa o valor ao esconder
         }
-        $tabButtons.removeClass('active');
-        $this.addClass('active');
-        $tabPanes.removeClass('show active');
-        var targetPaneSelector = $this.data('tab-target');
-        $(targetPaneSelector).addClass('show active');
-    });
-
-    // =================================================================
-    // Funções Auxiliares
-    // =================================================================
-    function showFeedbackMessageCliente(message, type = 'success') {
-        $feedbackMessageAreaCliente.empty().removeClass('alert alert-success alert-danger');
-        var alertClass = (type === 'success') ? 'alert-success' : 'alert-danger';
-        $feedbackMessageAreaCliente.addClass('alert ' + alertClass).text(message).fadeIn();
-        setTimeout(function () {
-            $feedbackMessageAreaCliente.fadeOut('slow');
-        }, 5000);
     }
 
     function applyCpfCnpjMask() {
-        if ($tipoPessoaFisica.is(':checked')) {
-            $labelCpfCnpj.text('CPF');
+        if ($('#tipo-pessoa-fisica').is(':checked')) {
+            $('#label-cpf-cnpj').text('CPF');
             $cpfCnpj.attr('placeholder', '000.000.000-00').mask('000.000.000-00', { reverse: true });
         } else {
-            $labelCpfCnpj.text('CNPJ');
+            $('#label-cpf-cnpj').text('CNPJ');
             $cpfCnpj.attr('placeholder', '00.000.000/0000-00').mask('00.000.000/0000-00', { reverse: true });
         }
+        toggleInscricaoEstadualField(); // Garante que o campo IE seja atualizado
     }
-
-    function clearAddressFormFields() {
+    
+    /**
+     * Bloqueia ou desbloqueia os campos de endereço principal.
+     * @param {boolean} isReadonly - true para bloquear, false para desbloquear.
+     */
+    function setPrincipalAddressFieldsReadonly(isReadonly) {
+        const fields = '#cep-endereco, #logradouro-endereco, #numero-endereco, #complemento-endereco, #bairro-endereco, #cidade-endereco, #uf-endereco';
+        $(fields).prop('readonly', isReadonly);
+        $(fields).toggleClass('bg-light', isReadonly);
+    }
+    
+    function resetClientModal() {
+        $formCliente[0].reset();
         $formEndereco[0].reset();
-        $endCodigo.val('');
-        $cepFeedbackEndereco.empty();
-        $mensagemEndereco.empty().removeClass('alert alert-success alert-danger');
-        $btnSalvarEndereco.text('Salvar Endereço');
+        $('#ent-codigo, #end-codigo, #end-entidade-id').val('');
+        $('#mensagem-cliente, #mensagem-endereco, #cnpj-feedback, #cep-feedback-adicional, #cep-feedback-principal').empty().removeClass();
+        $('#situacao-cliente').prop('checked', true).trigger('change');
+        $('#tipo-pessoa-fisica').prop('checked', true).trigger('change');
+        $('#tipo-entidade-cliente').prop('checked', true);
+        $('#enderecos-tab').addClass('disabled');
+        if (tableEnderecos) tableEnderecos.clear().draw();
+        $('#dados-cliente-tab').trigger('click');
+        setPrincipalAddressFieldsReadonly(false); // Garante que os campos estejam editáveis para um novo cliente
+        lastCnpjRequest = ''; // Limpa o CNPJ cacheado ao resetar
     }
 
-    function searchCepEndereco() {
-        var cepValue = $cepEndereco.val().replace(/\D/g, '');
+    function buscarCnpj(cnpj) {
+        // Verifica se a requisição é para o mesmo CNPJ da última vez
+        if (cnpj === lastCnpjRequest) {
+            return; // Não faz nada se o CNPJ for o mesmo
+        }
+
+        const feedback = $('#cnpj-feedback');
+        feedback.text('Buscando dados...').removeClass('text-danger text-success').addClass('text-muted');
+        
+        fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+            .then(response => response.ok ? response.json() : Promise.reject('CNPJ não encontrado ou inválido.'))
+            .then(data => {
+                feedback.text('Dados encontrados!').removeClass('text-muted').addClass('text-success');
+                lastCnpjRequest = cnpj; // Armazena o CNPJ que foi consultado com sucesso
+                
+                $('#razao-social').val(data.razao_social);
+                $('#nome-fantasia').val(data.nome_fantasia);
+                $('#cep-endereco').val(data.cep).trigger('blur');
+                $('#logradouro-endereco').val(data.logradouro);
+                $('#numero-endereco').val(data.numero);
+                $('#complemento-endereco').val(data.complemento);
+                $('#bairro-endereco').val(data.bairro);
+                $('#cidade-endereco').val(data.municipio);
+                $('#uf-endereco').val(data.uf);
+                $('#razao-social').focus();
+            })
+            .catch(error => {
+                feedback.text(error.toString()).removeClass('text-muted').addClass('text-danger');
+                lastCnpjRequest = ''; // Limpa o cache em caso de erro para permitir nova tentativa
+            });
+    }
+
+    function searchCep(cep, feedbackSelector, fields) {
+        const $feedback = $(feedbackSelector);
+        const cepValue = (cep || '').replace(/\D/g, '');
         if (cepValue.length !== 8) {
-            $cepFeedbackEndereco.text('CEP inválido.').removeClass('text-success').addClass('text-danger');
+            if (cep) $feedback.text('CEP inválido.').removeClass('text-success').addClass('text-danger');
             return;
         }
-        $cepFeedbackEndereco.text('Buscando...').removeClass('text-danger text-success').addClass('text-muted');
-        $.ajax({
-            url: 'https://viacep.com.br/ws/' + cepValue + '/json/',
-            method: 'GET',
-            dataType: 'json',
-            success: function (data) {
+        $feedback.text('Buscando...').removeClass('text-danger text-success').addClass('text-muted');
+        fetch(`https://viacep.com.br/ws/${cepValue}/json/`)
+            .then(response => response.ok ? response.json() : Promise.reject('Erro na busca.'))
+            .then(data => {
                 if (data.erro) {
-                    $cepFeedbackEndereco.text('CEP não encontrado.').addClass('text-danger');
+                    $feedback.text('CEP não encontrado.').addClass('text-danger');
                 } else {
-                    $logradouroEndereco.val(data.logradouro);
-                    $bairroEndereco.val(data.bairro);
-                    $cidadeEndereco.val(data.localidade);
-                    $ufEndereco.val(data.uf);
-                    $cepFeedbackEndereco.text('CEP encontrado!').addClass('text-success');
-                    $numeroEndereco.focus();
+                    $(fields.logradouro).val(data.logradouro);
+                    $(fields.bairro).val(data.bairro);
+                    $(fields.cidade).val(data.localidade);
+                    $(fields.uf).val(data.uf);
+                    $feedback.text('CEP encontrado!').addClass('text-success');
+                    $(fields.numero).focus();
                 }
-            },
-            error: function () {
-                $cepFeedbackEndereco.text('Erro ao buscar CEP.').addClass('text-danger');
-            }
-        });
+            })
+            .catch(() => $feedback.text('Erro ao buscar CEP.').addClass('text-danger'));
     }
 
     function loadEnderecosTable(entidadeId) {
@@ -134,561 +155,277 @@ $(document).ready(function () {
             tableEnderecos.destroy();
         }
         tableEnderecos = $('#tabela-enderecos-cliente').DataTable({
-            "ajax": {
-                "url": "process/listar_enderecos.php",
-                "type": "POST",
-                "data": function (d) {
-                    d.ent_codigo = entidadeId;
-                    d.csrf_token = csrfToken;
-                }
+            ajax: {
+                url: "process/listar_enderecos.php",
+                type: "POST",
+                data: { ent_codigo: entidadeId, csrf_token: csrfToken }
             },
-            "columns": [
+            columns: [
                 { "data": "end_tipo_endereco" },
-                { "data": "end_cep" },
                 { "data": "end_logradouro" },
-                { "data": "end_numero" },
-                { "data": "end_bairro" },
-                { "data": null, "render": function (data, type, row) { return row.end_cidade + '/' + row.end_uf; } },
-                { "data": "end_codigo", "orderable": false, "render": function (data, type, row) { return '<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="' + data + '">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="' + data + '">Excluir</a>'; } }
+                { "data": null, "render": (data, type, row) => `${row.end_cidade || ''}/${row.end_uf || ''}` },
+                { "data": "end_codigo", "orderable": false, "render": data => `<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}">Excluir</a>` }
             ],
-            "paging": false,
-            "searching": false,
-            "info": false,
-            "ordering": false,
-            "language": { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
+            paging: false, searching: false, info: false,
+            language: { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
         });
     }
 
     // =================================================================
-    // Lógica de Eventos
+    // IV. INICIALIZAÇÃO DA TABELA PRINCIPAL
     // =================================================================
-
-    // Inicializa o DataTables principal para clientes
     tableClientes = $('#example-clientes').DataTable({
-        "ajax": {
-            "url": "process/listar_entidades.php",
-            "type": "POST",
-            "data": function (d) {
+        ajax: {
+            url: "process/listar_entidades.php",
+            type: "POST",
+            data: d => {
                 d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
                 d.tipo_entidade = 'Cliente';
             }
         },
-        "responsive": true,
-        "columns": [
-            { "data": "ent_situacao", "render": function (data) { return (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'; } },
+        responsive: true,
+        columns: [
+            { "data": "ent_situacao", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
             { "data": "ent_tipo_entidade" },
             { "data": "ent_razao_social" },
-            { "data": null, "render": function (data, type, row) { return row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj; } },
-            { "data": "end_logradouro", "render": function (data, type, row) { return data ? (row.end_tipo_endereco ? row.end_tipo_endereco + ': ' : '') + data + ', ' + row.end_numero : 'N/A'; } },
-            { "data": "ent_codigo", "orderable": false, "render": function (data, type, row) { return '<a href="#" class="btn btn-warning btn-sm btn-editar-cliente me-1" data-id="' + data + '">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-cliente" data-id="' + data + '" data-nome="' + row.ent_razao_social + '">Excluir</a>'; } }
+            { "data": null, "render": (data, type, row) => row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj },
+            { "data": "end_logradouro", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
+            { "data": "ent_codigo", "orderable": false, "render": (data, type, row) => `<a href="#" class="btn btn-warning btn-sm btn-editar-cliente me-1" data-id="${data}">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-cliente" data-id="${data}" data-nome="${row.ent_razao_social}">Excluir</a>` }
         ],
-        "ordering": true,
-        "language": { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
+        language: { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
     });
 
-    // Evento para mudança de Tipo de Pessoa (Física/Jurídica)
-    $('input[name="ent_tipo_pessoa"]').on('change', applyCpfCnpjMask);
-    applyCpfCnpjMask();
+    // =================================================================
+    // V. EVENT HANDLERS (Manipuladores de Eventos)
+    // =================================================================
 
-    // Evento para o switch de Situação (Ativo/Inativo)
-    $situacaoCliente.on('change', function () {
-        $textoSituacaoCliente.text(this.checked ? 'Ativo' : 'Inativo');
-    });
+    // Filtro de situação da tabela principal
+    $('input[name="filtro_situacao"]').on('change', () => tableClientes.ajax.reload());
 
-    // Evento de abertura do modal
+    // Abertura do modal
     $modalCliente.on('show.bs.modal', function (event) {
-        $mensagemCliente.empty().removeClass();
-        clearAddressFormFields();
-        $triggerButton = $(event.relatedTarget);
-
-        if ($triggerButton.is($btnAdicionarClienteMain)) {
+        triggerButton = $(event.relatedTarget);
+        if (triggerButton && triggerButton.is('#btn-adicionar-cliente-main')) {
+            resetClientModal();
             $('#modal-adicionar-cliente-label').text('Adicionar Cliente');
-            $formCliente[0].reset();
-            $entCodigo.val('');
-            $situacaoCliente.prop('checked', true).trigger('change');
-            $tipoPessoaFisica.prop('checked', true).trigger('change');
-            $tipoEntidadeCliente.prop('checked', true);
-            $('#enderecos-tab').addClass('disabled');
-            if ($.fn.DataTable.isDataTable('#tabela-enderecos-cliente')) {
-                tableEnderecos.clear().draw();
-            }
         }
-        // Ativa a aba principal sempre que o modal abrir
-        $('#dados-cliente-tab').trigger('click');
     });
 
-    // Lógica para o botão "Editar" da tabela de clientes (Abre o Modal)
+    $modalCliente.on('hidden.bs.modal', function () {
+        if (triggerButton && triggerButton.length) {
+            setTimeout(() => { triggerButton.focus(); triggerButton = null; }, 100);
+        }
+    });
+
+    // Navegação por abas
+    $('.nav-tabs .nav-link').on('click', function (e) {
+        e.preventDefault();
+        if ($(this).hasClass('disabled')) return;
+        $('.nav-tabs .nav-link, .tab-content .tab-pane').removeClass('active show');
+        $(this).addClass('active');
+        $($(this).data('tab-target')).addClass('show active');
+    });
+
+    // Eventos do formulário principal
+    $('input[name="ent_tipo_pessoa"]').on('change', function () {
+        applyCpfCnpjMask();
+        $('#btn-buscar-cnpj').toggle($(this).val() === 'J');
+    }).trigger('change');
+
+    $('#btn-buscar-cnpj').on('click', () => {
+        const cnpjValue = $cpfCnpj.val().replace(/\D/g, '');
+        if (cnpjValue.length === 14) buscarCnpj(cnpjValue);
+    });
+
+    $cpfCnpj.on('blur', function () {
+        if ($('#tipo-pessoa-juridica').is(':checked')) {
+            const cnpjValue = $(this).val().replace(/\D/g, '');
+            if (cnpjValue.length === 14) buscarCnpj(cnpjValue);
+        }
+    });
+    
+    $('#situacao-cliente').on('change', function () {
+        $('#texto-situacao-cliente').text(this.checked ? 'Ativo' : 'Inativo');
+    });
+
+    // Ação de Editar Cliente
     $('#example-clientes tbody').on('click', '.btn-editar-cliente', function (e) {
         e.preventDefault();
-        var idEntidade = $(this).data('id');
-        $('#modal-adicionar-cliente-label').text('Editar Cliente');
-        $entCodigo.val(idEntidade);
-        $endEntidadeId.val(idEntidade);
-
-        $.ajax({
-            url: 'process/get_entidade_data.php',
-            type: 'GET',
-            data: { id: idEntidade },
-            dataType: 'json',
-            success: function (response) {
+        const idEntidade = $(this).data('id');
+        $.getJSON('process/get_entidade_data.php', { id: idEntidade })
+            .done(response => {
                 if (response.success && response.data) {
-                    var entidadeData = response.data;
-                    $razaoSocial.val(entidadeData.ent_razao_social);
-                    if (entidadeData.ent_tipo_pessoa === 'F') { $tipoPessoaFisica.prop('checked', true); } else { $tipoPessoaJuridica.prop('checked', true); }
+                    resetClientModal(); // Reseta primeiro para garantir um estado limpo
+                    const data = response.data;
+                    $('#modal-adicionar-cliente-label').text('Editar Cliente');
+                    $('#ent-codigo, #end-entidade-id').val(data.ent_codigo);
+                    $('#razao-social').val(data.ent_razao_social);
+                    $('#nome-fantasia').val(data.ent_nome_fantasia);
+                    $('#inscricao-estadual').val(data.ent_inscricao_estadual);
+                    if (data.ent_tipo_pessoa === 'F') $('#tipo-pessoa-fisica').prop('checked', true); else $('#tipo-pessoa-juridica').prop('checked', true);
+                    $cpfCnpj.val(data.ent_tipo_pessoa === 'F' ? data.ent_cpf : data.ent_cnpj);
                     $('input[name="ent_tipo_pessoa"]:checked').trigger('change');
-                    var cpfCnpjValue = entidadeData.ent_tipo_pessoa === 'F' ? entidadeData.ent_cpf : entidadeData.ent_cnpj;
-                    $cpfCnpj.val(cpfCnpjValue);
-                    applyCpfCnpjMask();
-                    if (entidadeData.ent_tipo_entidade === 'Cliente') { $tipoEntidadeCliente.prop('checked', true); } else if (entidadeData.ent_tipo_entidade === 'Fornecedor') { $tipoEntidadeFornecedor.prop('checked', true); } else if (entidadeData.ent_tipo_entidade === 'Cliente e Fornecedor') { $tipoEntidadeAmbos.prop('checked', true); }
-                    $situacaoCliente.prop('checked', entidadeData.ent_situacao === 'A').trigger('change');
-
+                    if (data.ent_tipo_entidade === 'Cliente') $('#tipo-entidade-cliente').prop('checked', true); else if (data.ent_tipo_entidade === 'Cliente e Fornecedor') $('#tipo-entidade-ambos').prop('checked', true);
+                    $('#situacao-cliente').prop('checked', data.ent_situacao === 'A').trigger('change');
+                    $('#cep-endereco').val(data.end_cep);
+                    $('#logradouro-endereco').val(data.end_logradouro);
+                    $('#numero-endereco').val(data.end_numero);
+                    $('#complemento-endereco').val(data.end_complemento);
+                    $('#bairro-endereco').val(data.end_bairro);
+                    $('#cidade-endereco').val(data.end_cidade);
+                    $('#uf-endereco').val(data.end_uf);
+                    
+                    setPrincipalAddressFieldsReadonly(true); // Bloqueia os campos de endereço principal
+                    
                     $('#enderecos-tab').removeClass('disabled');
-                    loadEnderecosTable(idEntidade);
-                    var clienteModal = new bootstrap.Modal(document.getElementById('modal-adicionar-cliente'));
-                    clienteModal.show();
-                    $('#dados-cliente-tab').trigger('click');
-                }
-            }
-        });
-    });
-
-    // Lógica para o botão "Editar" da tabela de endereços (Troca para a aba de formulário)
-    $('#tabela-enderecos-cliente tbody').on('click', '.btn-editar-endereco', function (e) {
-        e.preventDefault();
-        var idEndereco = $(this).data('id');
-        $.ajax({
-            url: 'process/get_endereco_data.php',
-            type: 'GET',
-            data: { id: idEndereco },
-            dataType: 'json',
-            success: function (response) {
-                if (response.success && response.data) {
-                    var enderecoData = response.data;
-                    $endCodigo.val(enderecoData.end_codigo);
-                    $tipoEndereco.val(enderecoData.end_tipo_endereco);
-                    $cepEndereco.val(enderecoData.end_cep);
-                    $logradouroEndereco.val(enderecoData.end_logradouro);
-                    $numeroEndereco.val(enderecoData.end_numero);
-                    $complementoEndereco.val(enderecoData.end_complemento);
-                    $bairroEndereco.val(enderecoData.end_bairro);
-                    $cidadeEndereco.val(enderecoData.end_cidade);
-                    $ufEndereco.val(enderecoData.end_uf);
-                    $btnSalvarEndereco.text('Atualizar Endereço');
-                    $mensagemEndereco.empty();
-                    // Dispara o clique na aba de endereços para mostrar o formulário
-                    $('#enderecos-tab').trigger('click');
-                }
-            }
-        });
-    });
-
-    // Lógica de envio do formulário de endereço
-    $formEndereco.off('submit').on('submit', function (e) {
-        e.preventDefault();
-
-        if ($btnSalvarEndereco.is(':disabled')) {
-            return; 
-        }
-        $btnSalvarEndereco.prop('disabled', true).text('Salvando...');
-
-        var entidadeId = $endEntidadeId.val();
-        if (!entidadeId) {
-            $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Primeiro, salve os dados do cliente.');
-            $btnSalvarEndereco.prop('disabled', false).text('Salvar Endereço');
-            return;
-        }
-        var idEndereco = $endCodigo.val();
-        var url = idEndereco ? 'process/editar_endereco.php' : 'process/cadastrar_endereco.php';
-        var formData = new FormData(this);
-        formData.append('end_entidade_id', entidadeId);
-        
-        $.ajax({
-            type: 'POST',
-            url: url,
-            data: formData,
-            dataType: 'json',
-            processData: false,
-            contentType: false,
-            success: function (response) {
-                if (response.success) {
-                    clearAddressFormFields();
-                    tableEnderecos.ajax.reload();
-                    $mensagemEndereco.empty().removeClass().addClass('alert alert-success').text(response.message);
-                    setTimeout(function () { tableClientes.ajax.reload(null, false); }, 200);
-                    $('#dados-cliente-tab').trigger('click');
+                    loadEnderecosTable(data.ent_codigo);
+                    
+                    new bootstrap.Modal($modalCliente[0]).show();
                 } else {
-                    $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text(response.message);
+                    showFeedbackMessage(response.message || 'Erro ao carregar dados.', 'danger');
                 }
-            },
-            error: function (xhr) {
-                $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Erro na requisição: ' + xhr.statusText);
-            },
-            complete: function() {
-                var buttonText = $endCodigo.val() ? 'Atualizar Endereço' : 'Salvar Endereço';
-                $btnSalvarEndereco.prop('disabled', false).text(buttonText);
-            }
-        });
+            })
+            .fail(() => showFeedbackMessage('Falha na comunicação com o servidor.', 'danger'));
     });
 
-    // Lógica para o botão "Cancelar" no formulário de endereço
-    $btnCancelarEdicaoEndereco.on('click', function () {
-        clearAddressFormFields();
-        // Volta para a aba principal
-        $('#dados-cliente-tab').trigger('click');
-    });
-
-    // Lógica de envio do formulário principal do cliente
+    // Submissão do formulário principal (Cliente)
     $formCliente.on('submit', function (e) {
         e.preventDefault();
-        var idEntidade = $entCodigo.val();
-        var url = idEntidade ? 'process/editar_entidade.php' : 'process/cadastrar_entidade.php';
-        var formData = new FormData(this);
+        const idEntidade = $('#ent-codigo').val();
+        const url = idEntidade ? 'process/editar_entidade.php' : 'process/cadastrar_entidade.php';
         $.ajax({
-            type: 'POST',
-            url: url,
-            data: formData,
-            dataType: 'json',
-            processData: false,
-            contentType: false,
-            success: function (response) {
+            type: 'POST', url: url, data: new FormData(this), dataType: 'json', processData: false, contentType: false,
+            success: response => {
                 if (response.success) {
-                    if (!idEntidade) {
-                        $entCodigo.val(response.ent_codigo);
-                        $endEntidadeId.val(response.ent_codigo);
-                        loadEnderecosTable(response.ent_codigo);
+                    if (!idEntidade && response.ent_codigo) {
+                        $('#ent-codigo, #end-entidade-id').val(response.ent_codigo);
                         $('#enderecos-tab').removeClass('disabled');
+                        loadEnderecosTable(response.ent_codigo);
                     }
-                    setTimeout(function () { tableClientes.ajax.reload(null, false); }, 200);
-                    $mensagemCliente.empty().removeClass().addClass('alert alert-success').text(response.message);
+                    tableClientes.ajax.reload(null, false);
+                    showFeedbackMessage(response.message, 'success', '#mensagem-cliente');
                 } else {
-                    $mensagemCliente.empty().removeClass().addClass('alert alert-danger').text(response.message);
+                    showFeedbackMessage(response.message, 'danger', '#mensagem-cliente');
                 }
-            }
+            },
+            error: () => showFeedbackMessage('Erro de comunicação ao salvar.', 'danger', '#mensagem-cliente')
         });
     });
 
-    // --- Lógica para o formulário de Endereço (Aba "Endereços") ---
-
-    // Evento de clique no botão "Buscar CEP" do formulário de endereço
-    $btnBuscarCepEndereco.on('click', searchCepEndereco);
-
-    // Evento de "blur" (perda de foco) no campo CEP do formulário de endereço
-    $cepEndereco.on('blur', function () {
-        if ($(this).val().replace(/\D/g, '').length === 8) {
-            searchCepEndereco();
-        }
+    // --- Eventos da Aba de Endereços Adicionais e Endereço Principal ---
+    $('#cep-endereco').on('blur', function() {
+        const cepValue = $(this).val();
+        searchCep(cepValue, '#cep-feedback-principal', {
+            logradouro: '#logradouro-endereco',
+            bairro: '#bairro-endereco',
+            cidade: '#cidade-endereco',
+            uf: '#uf-endereco',
+            numero: '#numero-endereco'
+        });
     });
 
-    // Lógica de envio do formulário de endereço
+    $('#btn-buscar-cep-adicional').on('click', function() {
+        searchCep($('#cep-endereco-adicional').val(), '#cep-feedback-adicional', {
+            logradouro: '#logradouro-endereco-adicional',
+            bairro: '#bairro-endereco-adicional',
+            cidade: '#cidade-endereco-adicional',
+            uf: '#uf-endereco-adicional',
+            numero: '#numero-endereco-adicional'
+        });
+    });
+
+    $('#btn-cancelar-edicao-endereco').on('click', () => {
+        $formEndereco[0].reset();
+        $('#end-codigo').val('');
+        $('#btn-salvar-endereco').text('Salvar Endereço Adicional');
+    });
+
     $formEndereco.on('submit', function (e) {
         e.preventDefault();
-
-        // Trava o botão para evitar duplo clique
-        if ($btnSalvarEndereco.is(':disabled')) {
-            return;
-        }
-        $btnSalvarEndereco.prop('disabled', true).text('Salvando...');
-
-        var entidadeId = $endEntidadeId.val();
-        if (!entidadeId) {
-            $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Primeiro, salve os dados do cliente.');
-            $btnSalvarEndereco.prop('disabled', false).text('Salvar Endereço'); // Reabilita o botão em caso de erro
-            return;
-        }
-        var idEndereco = $endCodigo.val();
-        var url = idEndereco ? 'process/editar_endereco.php' : 'process/cadastrar_endereco.php';
-        var formData = new FormData(this);
-        formData.append('end_entidade_id', entidadeId);
-
+        const idEndereco = $('#end-codigo').val();
+        const url = idEndereco ? 'process/editar_endereco.php' : 'process/cadastrar_endereco.php';
         $.ajax({
-            type: 'POST',
-            url: url,
-            data: formData,
-            dataType: 'json',
-            processData: false,
-            contentType: false,
-            success: function (response) {
+            type: 'POST', url: url, data: new FormData(this), dataType: 'json', processData: false, contentType: false,
+            success: response => {
                 if (response.success) {
-                    clearAddressFormFields();
+                    $formEndereco[0].reset();
+                    $('#end-codigo').val('');
+                    $('#btn-salvar-endereco').text('Salvar Endereço Adicional');
                     tableEnderecos.ajax.reload();
-                    $mensagemEndereco.empty().removeClass().addClass('alert alert-success').text(response.message);
-                    setTimeout(function () { tableClientes.ajax.reload(null, false); }, 200);
-                    // Volta para a aba principal após salvar
-                    $('#dados-cliente-tab').trigger('click');
+                    tableClientes.ajax.reload(null, false);
+                    showFeedbackMessage(response.message, 'success', '#mensagem-endereco');
                 } else {
-                    $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text(response.message);
+                    showFeedbackMessage(response.message, 'danger', '#mensagem-endereco');
                 }
             },
-            error: function (xhr) {
-                $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Erro na requisição: ' + xhr.statusText);
-            },
-            complete: function () {
-                // Reabilita o botão ao final da requisição (sucesso ou erro)
-                var buttonText = $endCodigo.val() ? 'Atualizar Endereço' : 'Salvar Endereço';
-                $btnSalvarEndereco.prop('disabled', false).text(buttonText);
-            }
+            error: () => showFeedbackMessage('Erro de comunicação ao salvar endereço.', 'danger', '#mensagem-endereco')
         });
     });
 
-    // Lógica para o botão "Cancelar" no formulário de endereço
-    $btnCancelarEdicaoEndereco.on('click', function () {
-        clearAddressFormFields();
-    });
-
-    // Lógica para o botão "Editar" da tabela de endereços (dentro do modal)
     $('#tabela-enderecos-cliente tbody').on('click', '.btn-editar-endereco', function (e) {
         e.preventDefault();
-        var idEndereco = $(this).data('id');
-        console.log("DEBUG: Clicou em Editar Endereço. ID do Endereço:", idEndereco); // LOG AQUI
-
-        $.ajax({
-            url: 'process/get_endereco_data.php', // Novo endpoint para buscar dados de um endereço
-            type: 'GET',
-            data: { id: idEndereco },
-            dataType: 'json',
-            success: function (response) {
-                console.log("DEBUG: Dados do endereço recebidos para edição:", response); // LOG AQUI
+        const idEndereco = $(this).data('id');
+        $.getJSON('process/get_endereco_data.php', { id: idEndereco })
+            .done(response => {
                 if (response.success && response.data) {
-                    var enderecoData = response.data;
-                    $endCodigo.val(enderecoData.end_codigo);
-                    $tipoEndereco.val(enderecoData.end_tipo_endereco);
-                    $cepEndereco.val(enderecoData.end_cep);
-                    $logradouroEndereco.val(enderecoData.end_logradouro);
-                    $numeroEndereco.val(enderecoData.end_numero);
-                    $complementoEndereco.val(enderecoData.end_complemento);
-                    $bairroEndereco.val(enderecoData.end_bairro);
-                    $cidadeEndereco.val(enderecoData.end_cidade); // CORRIGIDO: end_localidade para cidade
-                    $ufEndereco.val(enderecoData.end_uf);
-                    $btnSalvarEndereco.text('Atualizar Endereço');
-                    $mensagemEndereco.empty(); // Limpa mensagens anteriores
-                    // Ativa a aba de endereços e foca nela
-                    var someTabTriggerEl = document.querySelector('#enderecos-tab')
-                    var tab = new bootstrap.Tab(someTabTriggerEl)
-                    tab.show();
-                } else {
-                    $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text(response.message || 'Erro ao carregar dados do endereço.');
+                    const data = response.data;
+                    $('#end-codigo').val(data.end_codigo);
+                    $('#tipo-endereco').val(data.end_tipo_endereco);
+                    $('#cep-endereco-adicional').val(data.end_cep);
+                    $('#logradouro-endereco-adicional').val(data.end_logradouro);
+                    $('#numero-endereco-adicional').val(data.end_numero);
+                    $('#complemento-endereco-adicional').val(data.end_complemento);
+                    $('#bairro-endereco-adicional').val(data.end_bairro);
+                    $('#cidade-endereco-adicional').val(data.end_cidade);
+                    $('#uf-endereco-adicional').val(data.end_uf);
+                    $('#btn-salvar-endereco').text('Atualizar Endereço');
                 }
-            },
-            error: function (xhr, status, error) {
-                $mensagemEndereco.empty().removeClass().addClass('alert alert-danger').text('Erro na requisição: ' + error);
-                console.error("Erro AJAX ao carregar dados do endereço: ", status, error, xhr.responseText);
-            }
-        });
+            });
     });
 
-    // Lógica para o botão "Excluir" da tabela de endereços (dentro do modal)
-    $('#tabela-enderecos-cliente tbody').on('click', '.btn-excluir-endereco', function (e) {
-        e.preventDefault();
-        var idEndereco = $(this).data('id');
-
-        // Busca os dados do endereço para exibi-los antes de confirmar
-        $.ajax({
-            url: 'process/get_endereco_data.php',
-            type: 'GET',
-            data: { id: idEndereco },
-            dataType: 'json',
-            success: function (response) {
-                if (response.success && response.data) {
-                    var enderecoData = response.data;
-                    // Preenche o formulário para o usuário ver o que está excluindo
-                    $endCodigo.val(enderecoData.end_codigo);
-                    $tipoEndereco.val(enderecoData.end_tipo_endereco);
-                    $cepEndereco.val(enderecoData.end_cep);
-                    $logradouroEndereco.val(enderecoData.end_logradouro);
-                    $numeroEndereco.val(enderecoData.end_numero);
-                    $complementoEndereco.val(enderecoData.end_complemento);
-                    $bairroEndereco.val(enderecoData.end_bairro);
-                    $cidadeEndereco.val(enderecoData.end_cidade);
-                    $ufEndereco.val(enderecoData.end_uf);
-
-                    // Muda para a aba de endereço
-                    $('#enderecos-tab').trigger('click');
-
-                    // Armazena o ID no modal de confirmação
-                    $('#id-endereco-excluir').val(idEndereco);
-
-                    // Mostra o modal de confirmação
-                    var confirmModalEndereco = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-endereco'));
-                    confirmModalEndereco.show();
-                } else {
-                    showFeedbackMessageCliente('Erro ao carregar dados do endereço para exclusão.', 'danger');
-                }
-            },
-            error: function () {
-                showFeedbackMessageCliente('Falha na requisição para carregar dados do endereço.', 'danger');
-            }
-        });
-    });
-
-    // Lógica para o botão "Sim, Excluir" dentro do modal de confirmação de exclusão de endereço
-    $('#btn-confirmar-exclusao-endereco').on('click', function () {
-        var idEndereco = $('#id-endereco-excluir').val();
-        $.ajax({
-            type: 'POST',
-            url: 'process/excluir_endereco.php',
-            data: { end_codigo: idEndereco, csrf_token: csrfToken },
-            dataType: 'json',
-            success: function (response) {
-                // Esconde o modal de confirmação
-                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco'));
-                if (confirmModal) {
-                    confirmModal.hide();
-                }
-
-                if (response.success) {
-                    // Limpa o formulário de endereço
-                    clearAddressFormFields();
-                    // Recarrega a tabela de endereços
-                    tableEnderecos.ajax.reload();
-                    // Mostra a mensagem de sucesso
-                    showFeedbackMessageCliente(response.message, 'success');
-                    // Recarrega a tabela principal de clientes
-                    setTimeout(function () { tableClientes.ajax.reload(null, false); }, 200);
-                    // Volta para a aba principal
-                    $('#dados-cliente-tab').trigger('click');
-                } else {
-                    showFeedbackMessageCliente('Erro ao excluir endereço: ' + response.message, 'danger');
-                }
-            },
-            error: function () {
-                bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-endereco')).hide();
-                showFeedbackMessageCliente('Falha na requisição de exclusão.', 'danger');
-            }
-        });
-    });
-
-    // --- Lógica do Botão Excluir Cliente (principal) ---
+    // Ação de Excluir Cliente (principal)
     $('#example-clientes tbody').on('click', '.btn-excluir-cliente', function (e) {
         e.preventDefault();
-        var idEntidade = $(this).data('id');
-        var nomeEntidade = $(this).data('nome');
-
-        $('#nome-cliente-excluir').text(nomeEntidade);
-        $('#id-cliente-excluir').val(idEntidade);
-
-        var confirmModal = new bootstrap.Modal(document.getElementById('modal-confirmar-exclusao-cliente'));
-        confirmModal.show();
+        $('#nome-cliente-excluir').text($(this).data('nome'));
+        $('#id-cliente-excluir').val($(this).data('id'));
+        new bootstrap.Modal($('#modal-confirmar-exclusao-cliente')[0]).show();
     });
 
-    // Lógica para o botão "Sim, Excluir" dentro do modal de confirmação de exclusão de cliente
     $('#btn-confirmar-exclusao-cliente').on('click', function () {
-        var idEntidade = $('#id-cliente-excluir').val();
-        var csrfToken = $('input[name="csrf_token"]').val();
-        //var csrfToken = CSRF_TOKEN;
-
-        $.ajax({
-            type: 'POST',
-            url: 'process/excluir_entidade.php',
-            data: { ent_codigo: idEntidade, csrf_token: csrfToken },
-            dataType: 'json',
-            success: function (response) {
-                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-cliente'));
-                confirmModal.hide();
-
-                if (response.success) {
-                    // NOVO: Recarrega a tabela principal com um pequeno atraso para garantir que o BD esteja atualizado
-                    setTimeout(function () {
-                        tableClientes.ajax.reload(null, false); // false para manter a paginação atual
-                    }, 200);
-                    showFeedbackMessageCliente(response.message, 'success');
+        const idEntidade = $('#id-cliente-excluir').val();
+        $.post('process/excluir_entidade.php', { ent_codigo: idEntidade, csrf_token: csrfToken })
+            .done(response => {
+                if(response.success) {
+                    tableClientes.ajax.reload(null, false);
+                    showFeedbackMessage(response.message, 'success');
                 } else {
-                    showFeedbackMessageCliente('Erro ao excluir cliente: ' + response.message, 'danger');
+                    showFeedbackMessage(response.message, 'danger');
                 }
-            },
-            error: function (xhr, status, error) {
-                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('modal-confirmar-exclusao-cliente'));
-                confirmModal.hide();
-                showFeedbackMessageCliente('Erro na requisição de exclusão: ' + error, 'danger');
-            }
-        });
+            })
+            .fail(() => showFeedbackMessage('Erro de comunicação.', 'danger'))
+            .always(() => bootstrap.Modal.getInstance($('#modal-confirmar-exclusao-cliente')[0]).hide());
+    });
+    
+    // Ação de Excluir Endereço (adicional)
+    $('#tabela-enderecos-cliente tbody').on('click', '.btn-excluir-endereco', function (e) {
+        e.preventDefault();
+        $('#id-endereco-excluir').val($(this).data('id'));
+        new bootstrap.Modal($('#modal-confirmar-exclusao-endereco')[0]).show();
     });
 
-    // --- Gerenciamento de Foco para Acessibilidade ---
-    // Evento que dispara quando o modal de cliente é COMPLETAMENTE FECHADO
-    $modalCliente.on('hidden.bs.modal', function () {
-        //console.log("Modal de Cliente escondido. Forçando reset completo.");
-        // NOVO: Desfoca qualquer elemento dentro do modal para garantir que nenhum foco residual persista.
-        $(this).find(':focus').blur();
-
-        // Reseta o formulário principal do cliente
-        $formCliente[0].reset();
-        $entCodigo.val(''); // Garante que o ID oculto esteja vazio
-
-        // Redefine os valores padrão para os elementos do formulário principal
-        $situacaoCliente.prop('checked', true).val('A');
-        $textoSituacaoCliente.text('Ativo');
-        $tipoPessoaFisica.prop('checked', true); // Define Pessoa Física como padrão
-        applyCpfCnpjMask(); // Aplica a máscara de CPF
-        $tipoEntidadeCliente.prop('checked', true); // Define como 'Cliente' por padrão
-
-        // Desabilita a aba de endereços e limpa a tabela de endereços
-        $('#tabela-enderecos-cliente tbody').empty(); // Limpa a tabela de endereços
-        clearAddressFormFields(); // Limpa também o formulário de endereço
-
-        // Tenta remover a classe 'disabled' da aba de endereços
-        $('#enderecos-tab').addClass('disabled');
-
-        // Move o foco de volta para o botão que abriu o modal
-        // ou para um elemento padrão se o botão não for rastreado.
-        if ($triggerButton && $triggerButton.length) {
-            // Pequeno atraso para garantir que o modal esteja completamente fechado
-            setTimeout(function () {
-                $triggerButton.focus();
-                $triggerButton = null; // Limpa a referência
-            }, 100);
-        } else {
-            // Fallback: foca no botão principal de adicionar cliente
-            setTimeout(function () {
-                $btnAdicionarClienteMain.focus();
-            }, 100);
-        }
-    });
-
-    $('#modal-confirmar-exclusao-cliente').on('hidden.bs.modal', function () {
-        // NOVO: Desfoca qualquer elemento dentro do modal para garantir que nenhum foco residual persista.
-        $(this).find(':focus').blur();
-
-        // Move o foco para o botão que abriu o modal principal, se estiver aberto.
-        // Ou para o botão principal de adicionar cliente.
-        if ($modalCliente.hasClass('show')) {
-            // Se o modal de cliente ainda estiver aberto, retorna o foco para a aba de endereços
-            var someTabTriggerEl = document.querySelector('#enderecos-tab')
-            var tab = new bootstrap.Tab(someTabTriggerEl)
-            tab.show();
-            $('#btn-salvar-endereco').focus(); // Foca no botão de salvar endereço
-        } else if ($triggerButton && $triggerButton.length) {
-            setTimeout(function () {
-                $triggerButton.focus();
-                $triggerButton = null;
-            }, 100);
-        } else {
-            setTimeout(function () {
-                $btnAdicionarClienteMain.focus();
-            }, 100);
-        }
-    });
-
-    $('#modal-confirmar-exclusao-endereco').on('hidden.bs.modal', function () {
-        // NOVO: Desfoca qualquer elemento dentro do modal para garantir que nenhum foco residual persista.
-        $(this).find(':focus').blur();
-
-        // Após fechar o modal de confirmação de endereço, foca na aba de endereços do modal principal.
-        // O modal de cliente DEVE estar aberto para que isso faça sentido.
-        if ($modalCliente.hasClass('show')) {
-            var someTabTriggerEl = document.querySelector('#enderecos-tab')
-            var tab = new bootstrap.Tab(someTabTriggerEl)
-            tab.show();
-            // Tenta focar no botão Salvar Endereço dentro da aba
-            $('#btn-salvar-endereco').focus();
-        } else { // Se o modal principal não estiver aberto (cenário improvável, mas fallback)
-            setTimeout(function () {
-                $btnAdicionarClienteMain.focus();
-            }, 100);
-        }
-    });
-
-    // --- Eventos para os Filtros de Situação (Radio Buttons) ---
-    $filtroSituacaoRadios.on('change', function () {
-        tableClientes.ajax.reload(null, false); // Recarrega o DataTables quando o filtro de situação muda, mantendo a paginação
+    $('#btn-confirmar-exclusao-endereco').on('click', function() {
+        const idEndereco = $('#id-endereco-excluir').val();
+        $.post('process/excluir_endereco.php', { end_codigo: idEndereco, csrf_token: csrfToken })
+            .done(response => {
+                 if(response.success) {
+                    tableEnderecos.ajax.reload();
+                    tableClientes.ajax.reload(null, false);
+                    showFeedbackMessage(response.message, 'success');
+                } else {
+                    showFeedbackMessage(response.message, 'danger');
+                }
+            })
+            .fail(() => showFeedbackMessage('Erro de comunicação.', 'danger'))
+            .always(() => bootstrap.Modal.getInstance($('#modal-confirmar-exclusao-endereco')[0]).hide());
     });
 });

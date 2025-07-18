@@ -10,7 +10,6 @@ require_once('../../conexao.php'); // Inclui a conexão com o banco de dados
 require_once('../../includes/helpers.php'); // Inclui as funções auxiliares (para validação)
 
 header('Content-Type: application/json'); // Define o cabeçalho para resposta JSON
-
 $response = ['success' => false, 'message' => 'Erro desconhecido.'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -18,7 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verificação do Token CSRF
     // ========================================================================
     $submitted_token = $_POST['csrf_token'] ?? '';
-    if (!isset($_SESSION['csrf_token']) || $submitted_token !== $_SESSION['csrf_token']) {
+
+    //if (!isset($_SESSION['csrf_token']) || $submitted_token !== $_SESSION['csrf_token']) {
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $submitted_token)) {
         $response['message'] = "Erro de segurança: Requisição inválida (CSRF).";
         error_log("[CSRF ALERTA] Tentativa de CSRF detectada em editar_entidade.php. IP: " . $_SERVER['REMOTE_ADDR']);
         echo json_encode($response);
@@ -26,12 +27,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Verifica se o usuário está logado
-    if (!isset($_SESSION['codUsuario']) || empty($_SESSION['codUsuario'])) {
+    // if (!isset($_SESSION['codUsuario']) || empty($_SESSION['codUsuario'])) {
+    //     $response['message'] = "Erro: Usuário não autenticado.";
+    //     echo json_encode($response);
+    //     exit();
+    // }
+    // $usuario_logado_id = $_SESSION['codUsuario'];
+
+    $usuario_logado_id = $_SESSION['codUsuario'] ?? null;
+    if (!$usuario_logado_id) {
         $response['message'] = "Erro: Usuário não autenticado.";
         echo json_encode($response);
         exit();
     }
-    $usuario_logado_id = $_SESSION['codUsuario'];
+
 
     // --- 1. Validação e Sanitização de Entradas ---
     $ent_codigo = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
@@ -95,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
     // Dados do Endereço (podem ser opcionais para atualização)
-    $end_cep_raw = filter_input(INPUT_POST, 'end_cep', FILTER_SANITIZE_STRING);
+  /*  $end_cep_raw = filter_input(INPUT_POST, 'end_cep', FILTER_SANITIZE_STRING);
     $end_cep = preg_replace('/\D/', '', $end_cep_raw);
 
     $end_logradouro = filter_input(INPUT_POST, 'end_logradouro', FILTER_SANITIZE_STRING);
@@ -103,7 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_complemento = filter_input(INPUT_POST, 'end_complemento', FILTER_SANITIZE_STRING);
     $end_bairro = filter_input(INPUT_POST, 'end_bairro', FILTER_SANITIZE_STRING);
     $end_cidade = filter_input(INPUT_POST, 'end_cidade', FILTER_SANITIZE_STRING);
-    $end_uf = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);
+    $end_uf = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);*/
+    $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
+    $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
 
     // --- 2. Lógica de Negócio e Interação com o Banco de Dados ---
     try {
@@ -127,17 +138,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query_entidade = $pdo->prepare("
             UPDATE tbl_entidades SET
                 ent_razao_social = :razao_social,
+                ent_nome_fantasia = :nome_fantasia, 
                 ent_tipo_pessoa = :tipo_pessoa,
                 ent_cpf = :cpf,
                 ent_cnpj = :cnpj,
+                ent_inscricao_estadual = :inscricao_estadual,   
                 ent_tipo_entidade = :tipo_entidade,
                 ent_situacao = :situacao
             WHERE ent_codigo = :ent_codigo
         ");
         $query_entidade->bindParam(':razao_social', $ent_razao_social);
+        $query_entidade->bindValue(':nome_fantasia', $ent_nome_fantasia);
         $query_entidade->bindParam(':tipo_pessoa', $ent_tipo_pessoa);
         $query_entidade->bindParam(':cpf', $ent_cpf);
         $query_entidade->bindParam(':cnpj', $ent_cnpj);
+        $query_entidade->bindValue(':inscricao_estadual', $ent_inscricao_estadual);
         $query_entidade->bindParam(':tipo_entidade', $ent_tipo_entidade);
         $query_entidade->bindParam(':situacao', $ent_situacao);
         $query_entidade->bindParam(':ent_codigo', $ent_codigo, PDO::PARAM_INT);
@@ -201,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Lógica para atualizar/inserir endereço principal (tipo 'Entrega')
         // Primeiro, verifica se já existe um endereço principal para esta entidade
-        $query_check_endereco = $pdo->prepare("SELECT end_codigo FROM tbl_enderecos WHERE end_entidade_id = :ent_codigo AND end_tipo_endereco = 'Entrega'");
+     /*   $query_check_endereco = $pdo->prepare("SELECT end_codigo FROM tbl_enderecos WHERE end_entidade_id = :ent_codigo AND end_tipo_endereco = 'Entrega'");
         $query_check_endereco->bindParam(':ent_codigo', $ent_codigo, PDO::PARAM_INT);
         $query_check_endereco->execute();
         $endereco_existente = $query_check_endereco->fetchColumn();
@@ -262,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $query_delete_endereco = $pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :end_codigo");
             $query_delete_endereco->bindParam(':end_codigo', $endereco_existente, PDO::PARAM_INT);
             $query_delete_endereco->execute();
-        }
+        }*/
 
         $pdo->commit();
 

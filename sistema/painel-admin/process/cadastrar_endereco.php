@@ -15,7 +15,7 @@ $response = ['success' => false, 'message' => 'Erro desconhecido.'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- 1. Verificação do Token CSRF ---
     $submitted_token = $_POST['csrf_token'] ?? '';
-    if (!isset($_SESSION['csrf_token']) || $submitted_token !== $_SESSION['csrf_token']) {
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $submitted_token)) {
         $response['message'] = "Erro de segurança: Requisição inválida (CSRF).";
         error_log("[CSRF ALERTA] Tentativa de CSRF detectada em cadastrar_endereco.php. IP: " . $_SERVER['REMOTE_ADDR']);
         echo json_encode($response);
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $tipo_endereco_raw = filter_input(INPUT_POST, 'end_tipo_endereco', FILTER_SANITIZE_STRING);
-    $allowed_tipos_endereco = ['Entrega', 'Cobranca', 'Residencial', 'Comercial', 'Outro'];
+    $allowed_tipos_endereco = ['Principal', 'Entrega', 'Cobranca', 'Residencial', 'Comercial', 'Outro'];
     $val_tipo_endereco = validate_selection($tipo_endereco_raw, $allowed_tipos_endereco);
     if (!$val_tipo_endereco['valid']) {
         $response['message'] = "Tipo de Endereço: " . $val_tipo_endereco['message'];
@@ -44,6 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_cep = preg_replace('/[^0-9]/', '', $cep_raw);
     if (empty($end_cep) || !preg_match('/^\d{8}$/', $end_cep)) {
         $response['message'] = "CEP: Formato inválido. Deve conter 8 dígitos.";
+        
+        // Bloco de Depuração para ver o que está sendo enviado
+        $response['debug_dados_recebidos'] = $_POST;
+
         echo json_encode($response);
         exit();
     }
@@ -111,10 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query = $pdo->prepare("
             INSERT INTO tbl_enderecos (
                 end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, 
-                end_numero, end_complemento, end_bairro, end_cidade, end_uf
+                end_numero, end_complemento, end_bairro, end_cidade, end_uf,
+                end_data_cadastro, end_usuario_cadastro_id
             ) VALUES (
                 :entidade_id, :tipo_endereco, :cep, :logradouro, 
-                :numero, :complemento, :bairro, :cidade, :uf
+                :numero, :complemento, :bairro, :cidade, :uf,
+                NOW(), :usuario_cadastro_id
             )
         ");
         $query->bindValue(':entidade_id', $entidade_id, PDO::PARAM_INT);
@@ -126,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $query->bindValue(':bairro', $end_bairro);
         $query->bindValue(':cidade', $end_cidade);
         $query->bindValue(':uf', $end_uf);
+        $query->bindValue(':usuario_cadastro_id', $usuario_cadastro_id, PDO::PARAM_INT);
         
         $query->execute();
 
