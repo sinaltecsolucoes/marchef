@@ -135,6 +135,7 @@
                                 <option value="CRU">Cru</option>
                                 <option value="COZIDO">Cozido</option>
                                 <option value="PARC. COZIDO">Parc. Cozido</option>
+                                <option value="EMPANADO">Empanado</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">

@@ -24,7 +24,7 @@ header("Content-Security-Policy: default-src 'self'; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "img-src 'self' data:; " .
     "font-src 'self' https://fonts.gstatic.com; " .
-    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br; " .  
+    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br; " .
     "form-action 'self';");
 
 // Referrer-Policy
@@ -84,6 +84,12 @@ $paginasPermitidas = [
 
 // Determina a página a ser carregada, padrão 'home'
 $pagina = $_GET['pag'] ?? 'home';
+$pageType = '';
+if ($pagina === 'clientes') {
+    $pageType = 'cliente';
+} elseif ($pagina === 'fornecedores') {
+    $pageType = 'fornecedor';
+}
 
 // ========================================================================================
 // OTIMIZAÇÃO: Carregamento de Dados do Usuário da Sessão ou Banco de Dados
@@ -243,7 +249,8 @@ else {
     </script>
 </head>
 
-<body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>">
+<body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>"
+    data-page-type="<?php echo $pageType; ?>">
     <nav class="navbar navbar-expand-lg" style="background-color: #e3f2fd;" data-bs-theme="light">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -448,16 +455,12 @@ else {
         <script src="../js/permissoes.js"></script>
     <?php endif; ?>
 
-    <?php if (isset($pagina) && $pagina === 'clientes'): ?>
-        <script src="../js/clientes.js"></script>
-    <?php endif; ?>
-
-    <?php if (isset($pagina) && $pagina === 'fornecedores'): ?>
-        <script src="../js/fornecedores.js"></script>
-    <?php endif; ?>
-
     <?php if (isset($pagina) && $pagina === 'produtos'): ?>
         <script src="../js/produtos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
+        <script src="../js/entidades.js"></script>
     <?php endif; ?>
 
 </body>
