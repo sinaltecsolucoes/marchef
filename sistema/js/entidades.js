@@ -25,6 +25,7 @@ $(document).ready(function () {
             // Seletores do Modal
             modalLabel: '#modal-adicionar-cliente-label',
             entCodigo: '#ent-codigo',
+            codigoInterno: '#codigo-interno',
             endEntidadeId: '#end-entidade-id',
             endCodigo: '#end-codigo',
             razaoSocial: '#razao-social',
@@ -83,6 +84,7 @@ $(document).ready(function () {
             // Seletores do Modal
             modalLabel: '#modal-adicionar-fornecedor-label',
             entCodigo: '#ent-codigo-forn',
+            codigoInterno: '#codigo-interno-forn',
             endEntidadeId: '#end-entidade-id-forn',
             endCodigo: '#end-codigo-forn',
             razaoSocial: '#razao-social-forn',
@@ -181,15 +183,16 @@ $(document).ready(function () {
         }
         toggleInscricaoEstadualField();
     }
-    
+
     function setPrincipalAddressFieldsReadonly(isReadonly) {
         const fields = `${C.cep}, ${C.logradouro}, ${C.numero}, ${C.complemento}, ${C.bairro}, ${C.cidade}, ${C.uf}`;
         $(fields).prop('readonly', isReadonly).toggleClass('bg-light', isReadonly);
     }
-    
+
     function resetModal() {
         $formEntidade[0].reset();
         $formEndereco[0].reset();
+        $(`${C.entCodigo}, ${C.endCodigo}, ${C.endEntidadeId}, ${C.codigoInterno}`).val('');
         $(`${C.entCodigo}, ${C.endCodigo}, ${C.endEntidadeId}`).val('');
         $(`${C.mensagem}, ${C.mensagemEndereco}, ${C.cnpjFeedback}, #cep-feedback-principal-forn, #cep-feedback-adicional-forn`).empty().removeClass();
         $(C.situacao).prop('checked', true).trigger('change');
@@ -263,6 +266,7 @@ $(document).ready(function () {
         columns: [
             { "data": "ent_situacao", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
             { "data": "ent_tipo_entidade" },
+            { "data": "ent_codigo_interno" },
             { "data": "ent_razao_social" },
             { "data": null, "render": (data, type, row) => row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj },
             { "data": "end_logradouro", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
@@ -313,7 +317,7 @@ $(document).ready(function () {
             if (cnpjValue.length === 14) buscarCnpj(cnpjValue);
         }
     });
-    
+
     $(C.situacao).on('change', function () {
         $(C.textoSituacao).text(this.checked ? 'Ativo' : 'Inativo');
     });
@@ -328,6 +332,7 @@ $(document).ready(function () {
                     const data = response.data;
                     $(C.modalLabel).text(`Editar ${C.entityName}`);
                     $(C.entCodigo + ', ' + C.endEntidadeId).val(data.ent_codigo);
+                    $(C.codigoInterno).val(data.ent_codigo_interno); 
                     $(C.razaoSocial).val(data.ent_razao_social);
                     $(C.nomeFantasia).val(data.ent_nome_fantasia);
                     $(C.inscricaoEstadual).val(data.ent_inscricao_estadual);
@@ -378,7 +383,7 @@ $(document).ready(function () {
     });
 
     // --- Eventos da Aba de Endereços Adicionais ---
-    $modal.on('click', C.btnBuscarCepAdicional, function() {
+    $modal.on('click', C.btnBuscarCepAdicional, function () {
         searchCep($(C.cepAdicional).val(), C.cepFeedbackAdicional, {
             logradouro: C.logradouroAdicional,
             bairro: C.bairroAdicional,
@@ -436,7 +441,7 @@ $(document).ready(function () {
                 }
             });
     });
-    
+
     $(C.mainTable).on('click', C.btnExcluir, function (e) {
         e.preventDefault();
         $(C.nomeExcluir).text($(this).data('nome'));
@@ -448,7 +453,7 @@ $(document).ready(function () {
         const idEntidade = $(C.idExcluir).val();
         $.post('process/excluir_entidade.php', { ent_codigo: idEntidade, csrf_token: csrfToken })
             .done(response => {
-                if(response.success) {
+                if (response.success) {
                     tableEntidades.ajax.reload(null, false);
                     showFeedbackMessage(response.message, 'success');
                 } else {

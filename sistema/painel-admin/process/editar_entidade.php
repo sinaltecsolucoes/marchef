@@ -26,14 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Verifica se o usuário está logado
-    // if (!isset($_SESSION['codUsuario']) || empty($_SESSION['codUsuario'])) {
-    //     $response['message'] = "Erro: Usuário não autenticado.";
-    //     echo json_encode($response);
-    //     exit();
-    // }
-    // $usuario_logado_id = $_SESSION['codUsuario'];
-
     $usuario_logado_id = $_SESSION['codUsuario'] ?? null;
     if (!$usuario_logado_id) {
         $response['message'] = "Erro: Usuário não autenticado.";
@@ -41,11 +33,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-
     // --- 1. Validação e Sanitização de Entradas ---
     $ent_codigo = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
     if (!$ent_codigo) {
         $response['message'] = "ID da entidade inválido ou ausente.";
+        echo json_encode($response);
+        exit();
+    }
+
+    $ent_codigo_interno = filter_input(INPUT_POST, 'ent_codigo_interno', FILTER_SANITIZE_STRING);
+    if (empty($ent_codigo_interno)) {
+        $response['message'] = "O Código Interno é obrigatório.";
         echo json_encode($response);
         exit();
     }
@@ -104,15 +102,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
     // Dados do Endereço (podem ser opcionais para atualização)
-  /*  $end_cep_raw = filter_input(INPUT_POST, 'end_cep', FILTER_SANITIZE_STRING);
-    $end_cep = preg_replace('/\D/', '', $end_cep_raw);
+    /*  $end_cep_raw = filter_input(INPUT_POST, 'end_cep', FILTER_SANITIZE_STRING);
+      $end_cep = preg_replace('/\D/', '', $end_cep_raw);
 
-    $end_logradouro = filter_input(INPUT_POST, 'end_logradouro', FILTER_SANITIZE_STRING);
-    $end_numero = filter_input(INPUT_POST, 'end_numero', FILTER_SANITIZE_STRING);
-    $end_complemento = filter_input(INPUT_POST, 'end_complemento', FILTER_SANITIZE_STRING);
-    $end_bairro = filter_input(INPUT_POST, 'end_bairro', FILTER_SANITIZE_STRING);
-    $end_cidade = filter_input(INPUT_POST, 'end_cidade', FILTER_SANITIZE_STRING);
-    $end_uf = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);*/
+      $end_logradouro = filter_input(INPUT_POST, 'end_logradouro', FILTER_SANITIZE_STRING);
+      $end_numero = filter_input(INPUT_POST, 'end_numero', FILTER_SANITIZE_STRING);
+      $end_complemento = filter_input(INPUT_POST, 'end_complemento', FILTER_SANITIZE_STRING);
+      $end_bairro = filter_input(INPUT_POST, 'end_bairro', FILTER_SANITIZE_STRING);
+      $end_cidade = filter_input(INPUT_POST, 'end_cidade', FILTER_SANITIZE_STRING);
+      $end_uf = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);*/
     $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
     $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
 
@@ -137,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Atualiza a entidade principal
         $query_entidade = $pdo->prepare("
             UPDATE tbl_entidades SET
+                ent_codigo_interno = :codigo_interno,
                 ent_razao_social = :razao_social,
                 ent_nome_fantasia = :nome_fantasia, 
                 ent_tipo_pessoa = :tipo_pessoa,
@@ -147,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ent_situacao = :situacao
             WHERE ent_codigo = :ent_codigo
         ");
+        $query_entidade->bindValue(':codigo_interno', $ent_codigo_interno);
         $query_entidade->bindParam(':razao_social', $ent_razao_social);
         $query_entidade->bindValue(':nome_fantasia', $ent_nome_fantasia);
         $query_entidade->bindParam(':tipo_pessoa', $ent_tipo_pessoa);
@@ -216,68 +216,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Lógica para atualizar/inserir endereço principal (tipo 'Entrega')
         // Primeiro, verifica se já existe um endereço principal para esta entidade
-     /*   $query_check_endereco = $pdo->prepare("SELECT end_codigo FROM tbl_enderecos WHERE end_entidade_id = :ent_codigo AND end_tipo_endereco = 'Entrega'");
-        $query_check_endereco->bindParam(':ent_codigo', $ent_codigo, PDO::PARAM_INT);
-        $query_check_endereco->execute();
-        $endereco_existente = $query_check_endereco->fetchColumn();
+        /*   $query_check_endereco = $pdo->prepare("SELECT end_codigo FROM tbl_enderecos WHERE end_entidade_id = :ent_codigo AND end_tipo_endereco = 'Entrega'");
+           $query_check_endereco->bindParam(':ent_codigo', $ent_codigo, PDO::PARAM_INT);
+           $query_check_endereco->execute();
+           $endereco_existente = $query_check_endereco->fetchColumn();
 
-        // Verifica se há dados de endereço válidos para processar
-        $has_valid_address_data = !empty($end_logradouro) && !empty($end_numero) && !empty($end_bairro) && !empty($end_cidade) && !empty($end_uf);
+           // Verifica se há dados de endereço válidos para processar
+           $has_valid_address_data = !empty($end_logradouro) && !empty($end_numero) && !empty($end_bairro) && !empty($end_cidade) && !empty($end_uf);
 
-        if ($has_valid_address_data) {
-            if ($endereco_existente) {
-                // Atualiza o endereço existente
-                $query_update_endereco = $pdo->prepare("
-                    UPDATE tbl_enderecos SET
-                        end_cep = :cep,
-                        end_logradouro = :logradouro,
-                        end_numero = :numero,
-                        end_complemento = :complemento,
-                        end_bairro = :bairro,
-                        end_cidade = :cidade,
-                        end_uf = :uf
-                    WHERE end_codigo = :end_codigo
-                ");
-                $query_update_endereco->bindParam(':cep', $end_cep);
-                $query_update_endereco->bindParam(':logradouro', $end_logradouro);
-                $query_update_endereco->bindParam(':numero', $end_numero);
-                $query_update_endereco->bindParam(':complemento', $end_complemento);
-                $query_update_endereco->bindParam(':bairro', $end_bairro);
-                $query_update_endereco->bindParam(':cidade', $end_cidade);
-                $query_update_endereco->bindParam(':uf', $end_uf);
-                $query_update_endereco->bindParam(':end_codigo', $endereco_existente, PDO::PARAM_INT);
-                $query_update_endereco->execute();
-            } else {
-                // Insere um novo endereço principal
-                $query_insert_endereco = $pdo->prepare("
-                    INSERT INTO tbl_enderecos (
-                        end_entidade_id, end_tipo_endereco, end_cep, end_logradouro,
-                        end_numero, end_complemento, end_bairro, end_cidade, end_uf,
-                        end_data_cadastro, end_usuario_cadastro_id
-                    ) VALUES (
-                        :ent_id, 'Entrega', :cep, :logradouro,
-                        :numero, :complemento, :bairro, :cidade, :uf,
-                        CURRENT_TIMESTAMP, :usuario_cadastro_id
-                    )
-                ");
-                $query_insert_endereco->bindParam(':ent_id', $ent_codigo, PDO::PARAM_INT);
-                $query_insert_endereco->bindParam(':cep', $end_cep);
-                $query_insert_endereco->bindParam(':logradouro', $end_logradouro);
-                $query_insert_endereco->bindParam(':numero', $end_numero);
-                $query_insert_endereco->bindParam(':complemento', $end_complemento);
-                $query_insert_endereco->bindParam(':bairro', $end_bairro);
-                $query_insert_endereco->bindParam(':cidade', $end_cidade);
-                $query_insert_endereco->bindParam(':uf', $end_uf);
-                $query_insert_endereco->bindParam(':usuario_cadastro_id', $usuario_logado_id, PDO::PARAM_INT);
-                $query_insert_endereco->execute();
-            }
-        } else if ($endereco_existente) {
-            // Se os campos de endereço não foram preenchidos (ou foram esvaziados), mas um endereço principal existe,
-            // deleta o endereço principal.
-            $query_delete_endereco = $pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :end_codigo");
-            $query_delete_endereco->bindParam(':end_codigo', $endereco_existente, PDO::PARAM_INT);
-            $query_delete_endereco->execute();
-        }*/
+           if ($has_valid_address_data) {
+               if ($endereco_existente) {
+                   // Atualiza o endereço existente
+                   $query_update_endereco = $pdo->prepare("
+                       UPDATE tbl_enderecos SET
+                           end_cep = :cep,
+                           end_logradouro = :logradouro,
+                           end_numero = :numero,
+                           end_complemento = :complemento,
+                           end_bairro = :bairro,
+                           end_cidade = :cidade,
+                           end_uf = :uf
+                       WHERE end_codigo = :end_codigo
+                   ");
+                   $query_update_endereco->bindParam(':cep', $end_cep);
+                   $query_update_endereco->bindParam(':logradouro', $end_logradouro);
+                   $query_update_endereco->bindParam(':numero', $end_numero);
+                   $query_update_endereco->bindParam(':complemento', $end_complemento);
+                   $query_update_endereco->bindParam(':bairro', $end_bairro);
+                   $query_update_endereco->bindParam(':cidade', $end_cidade);
+                   $query_update_endereco->bindParam(':uf', $end_uf);
+                   $query_update_endereco->bindParam(':end_codigo', $endereco_existente, PDO::PARAM_INT);
+                   $query_update_endereco->execute();
+               } else {
+                   // Insere um novo endereço principal
+                   $query_insert_endereco = $pdo->prepare("
+                       INSERT INTO tbl_enderecos (
+                           end_entidade_id, end_tipo_endereco, end_cep, end_logradouro,
+                           end_numero, end_complemento, end_bairro, end_cidade, end_uf,
+                           end_data_cadastro, end_usuario_cadastro_id
+                       ) VALUES (
+                           :ent_id, 'Entrega', :cep, :logradouro,
+                           :numero, :complemento, :bairro, :cidade, :uf,
+                           CURRENT_TIMESTAMP, :usuario_cadastro_id
+                       )
+                   ");
+                   $query_insert_endereco->bindParam(':ent_id', $ent_codigo, PDO::PARAM_INT);
+                   $query_insert_endereco->bindParam(':cep', $end_cep);
+                   $query_insert_endereco->bindParam(':logradouro', $end_logradouro);
+                   $query_insert_endereco->bindParam(':numero', $end_numero);
+                   $query_insert_endereco->bindParam(':complemento', $end_complemento);
+                   $query_insert_endereco->bindParam(':bairro', $end_bairro);
+                   $query_insert_endereco->bindParam(':cidade', $end_cidade);
+                   $query_insert_endereco->bindParam(':uf', $end_uf);
+                   $query_insert_endereco->bindParam(':usuario_cadastro_id', $usuario_logado_id, PDO::PARAM_INT);
+                   $query_insert_endereco->execute();
+               }
+           } else if ($endereco_existente) {
+               // Se os campos de endereço não foram preenchidos (ou foram esvaziados), mas um endereço principal existe,
+               // deleta o endereço principal.
+               $query_delete_endereco = $pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :end_codigo");
+               $query_delete_endereco->bindParam(':end_codigo', $endereco_existente, PDO::PARAM_INT);
+               $query_delete_endereco->execute();
+           }*/
 
         $pdo->commit();
 

@@ -23,6 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // --- 2. Validação e Sanitização de Entradas da Entidade (tbl_entidades) ---
+    $ent_codigo_interno = filter_input(INPUT_POST, 'ent_codigo_interno', FILTER_SANITIZE_STRING);
+    if (empty($ent_codigo_interno)) {
+        $response['message'] = "O Código Interno é obrigatório.";
+        echo json_encode($response);
+        exit();
+    }
     $razao_social_raw = filter_input(INPUT_POST, 'ent_razao_social', FILTER_SANITIZE_STRING);
     $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,-]+$/u');
     if (!$val_razao_social['valid']) {
@@ -99,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_uf_raw = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);
     $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
     $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
-
 
     $has_address_data = !empty($end_cep_raw) || !empty($end_logradouro_raw) || !empty($end_numero_raw) ||
         !empty($end_complemento_raw) || !empty($end_bairro_raw) || !empty($end_cidade_raw) || !empty($end_uf_raw);
@@ -184,14 +189,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $query_entidade = $pdo->prepare("
         INSERT INTO tbl_entidades (
+            ent_codigo_interno,
             ent_razao_social, ent_nome_fantasia, ent_tipo_pessoa, ent_cpf, ent_cnpj, 
             ent_inscricao_estadual, ent_tipo_entidade, ent_situacao, ent_data_cadastro, ent_usuario_cadastro_id
         ) VALUES (
-            :razao_social, :nome_fantasia, :tipo_pessoa, :cpf, :cnpj, 
+            :codigo_interno, :razao_social, :nome_fantasia, :tipo_pessoa, :cpf, :cnpj, 
             :inscricao_estadual, :tipo_entidade, :situacao, NOW(), :usuario_cadastro_id
         )
     ");
 
+        $query_entidade->bindValue(':codigo_interno', $ent_codigo_interno);
         $query_entidade->bindValue(':razao_social', $ent_razao_social);
         $query_entidade->bindValue(':nome_fantasia', $ent_nome_fantasia);
         $query_entidade->bindValue(':tipo_pessoa', $ent_tipo_pessoa);

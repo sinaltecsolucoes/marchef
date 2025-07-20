@@ -28,10 +28,11 @@ $tipoEntidade = $_POST['tipo_entidade'] ?? 'Cliente'; // 'Cliente' ou 'Fornecedo
 $columns = [
     0 => 'ent_situacao',
     1 => 'ent_tipo_entidade',
-    2 => 'ent_razao_social',
-    3 => 'ent_cpf',
-    4 => 'end_logradouro',
-    5 => 'ent_codigo'
+    2 => 'ent_codigo_interno',
+    3 => 'ent_razao_social',
+    4 => 'ent_cpf',
+    5 => 'end_logradouro',
+    6 => 'ent_codigo'
 ];
 $orderColumn = $columns[$orderColumnIndex] ?? 'ent_codigo';
 
@@ -58,7 +59,6 @@ try {
     $params = [];
 
     // ====================================================================
-    // >> INÍCIO DA CORREÇÃO <<
     // Filtro dinâmico para Clientes ou Fornecedores
     // ====================================================================
     if ($tipoEntidade === 'Cliente') {
@@ -67,7 +67,7 @@ try {
         $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
     }
     // ====================================================================
-    // >> FIM DA CORREÇÃO <<
+    // >> FIM DO FILTRO DINÂMICO <<
     // ====================================================================
 
     // Lógica de filtro por Situação
@@ -78,7 +78,7 @@ try {
 
     // Lógica de busca global
     if (!empty($searchValue)) {
-        $conditions[] = "(ent.ent_razao_social LIKE :search_value OR ent.ent_cpf LIKE :search_value OR ent.ent_cnpj LIKE :search_value)";
+        $conditions[] = "(ent.ent_razao_social LIKE :search_value OR ent.ent_cpf LIKE :search_value OR ent.ent_cnpj LIKE :search_value OR ent.ent_codigo_interno LIKE :search_value)";
         $params[':search_value'] = '%' . $searchValue . '%';
     }
 
@@ -111,7 +111,8 @@ try {
         SELECT 
             ent.ent_codigo, ent.ent_razao_social, ent.ent_tipo_pessoa, 
             ent.ent_cpf, ent.ent_cnpj, ent.ent_tipo_entidade, ent.ent_situacao,
-            end.end_logradouro, end.end_numero, end.end_tipo_endereco
+            end.end_logradouro, end.end_numero, end.end_tipo_endereco,
+            ent.ent_codigo_interno 
         " . $sqlBase . $whereClause;
     
     $sqlData .= " GROUP BY ent.ent_codigo"; // Agrupa para evitar duplicatas do JOIN

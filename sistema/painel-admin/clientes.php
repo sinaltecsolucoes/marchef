@@ -39,6 +39,7 @@
             <tr>
                 <th>Situação</th>
                 <th>Tipo</th>
+                <th>Código Interno</th>
                 <th>Razão Social</th>
                 <th>CPF/CNPJ</th>
                 <th>Endereço Principal</th>
@@ -63,16 +64,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <!-- Abas de Navegação -->
-                <!-- <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="dados-cliente-tab" data-bs-toggle="tab" data-bs-target="#dados-cliente" type="button" role="tab" aria-controls="dados-cliente" aria-selected="true">Dados do Cliente</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="enderecos-tab" data-bs-toggle="tab" data-bs-target="#enderecos" type="button" role="tab" aria-controls="enderecos" aria-selected="false" disabled>Endereços</button>
-                    </li>
-                </ul> -->
-
                 <ul class="nav nav-tabs" id="myTab" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="dados-cliente-tab" data-tab-target="#dados-cliente"
@@ -99,7 +90,7 @@
 
                             <div id="mensagem-cliente" class="mb-3"></div>
 
-                            <!-- Linha: Tipo Pessoa e CPF/CNPJ -->
+                            <!-- Linha: Tipo Pessoa, CPF/CNPJ e Código Interno -->
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Tipo de Pessoa</label><br>
@@ -114,7 +105,7 @@
                                         <label class="form-check-label" for="tipo-pessoa-juridica">Jurídica</label>
                                     </div>
                                 </div>
-                                <div class="col-md-8 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="cpf-cnpj" class="form-label" id="label-cpf-cnpj">CPF</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="cpf-cnpj" name="ent_cpf_cnpj"
@@ -124,105 +115,114 @@
                                     </div>
                                     <small id="cnpj-feedback" class="form-text text-muted"></small>
                                 </div>
-                            </div>
-
-                            <!-- Linha: Razão Social e Nome Fantasia -->
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="razao-social" class="form-label">Razão Social / Nome
-                                        Completo</label>
-                                    <input type="text" class="form-control" id="razao-social" name="ent_razao_social"
-                                        required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="nome-fantasia" class="form-label">Nome Fantasia / Apelido</label>
-                                    <input type="text" class="form-control" id="nome-fantasia" name="ent_nome_fantasia">
-                                </div>
-                            </div>
-
-                            <!-- Linha: Tipo Entidade e IE -->
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tipo de Entidade</label><br>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-cliente" value="Cliente" checked>
-                                        <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-ambos" value="Cliente e Fornecedor">
-                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3" id="div-inscricao-estadual">
-                                    <label for="inscricao-estadual" class="form-label">Inscrição Estadual</label>
-                                    <input type="text" class="form-control" id="inscricao-estadual"
-                                        name="ent_inscricao_estadual">
-                                </div>
-                            </div>
-
-                            <hr>
-                            <h5 class="mb-3">Endereço Principal</h5>
-
-                            <!-- Linha: CEP e Logradouro -->
-                            <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label for="cep-endereco" class="form-label">CEP</label>
-                                    <input type="text" class="form-control" id="cep-endereco" name="end_cep"
-                                        placeholder="00000-000">
+                                    <label for="codigo-interno" class="form-label">Código Interno</label>
+                                    <input type="text" class="form-control" id="codigo-interno"
+                                        name="ent_codigo_interno" required>
                                 </div>
-                                <div class="col-md-8 mb-3">
-                                    <label for="logradouro-endereco" class="form-label">Logradouro</label>
-                                    <input type="text" class="form-control" id="logradouro-endereco"
-                                        name="end_logradouro" placeholder="Rua, Avenida, etc.">
-                                </div>
-                            </div>
+                                < </div>
 
-                            <!-- Linha: Número e Complemento -->
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <label for="numero-endereco" class="form-label">Número</label>
-                                    <input type="text" class="form-control" id="numero-endereco" name="end_numero"
-                                        placeholder="Número">
-                                </div>
-                                <div class="col-md-9 mb-3">
-                                    <label for="complemento-endereco" class="form-label">Complemento</label>
-                                    <input type="text" class="form-control" id="complemento-endereco"
-                                        name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
-                                </div>
-                            </div>
+                                    <!-- Linha: Razão Social e Nome Fantasia -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="razao-social" class="form-label">Razão Social / Nome
+                                                Completo</label>
+                                            <input type="text" class="form-control" id="razao-social"
+                                                name="ent_razao_social" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="nome-fantasia" class="form-label">Nome Fantasia /
+                                                Apelido</label>
+                                            <input type="text" class="form-control" id="nome-fantasia"
+                                                name="ent_nome_fantasia">
+                                        </div>
+                                    </div>
 
-                            <!-- Linha: Bairro, Cidade e UF -->
-                            <div class="row">
-                                <div class="col-md-5 mb-3">
-                                    <label for="bairro-endereco" class="form-label">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro-endereco" name="end_bairro"
-                                        placeholder="Bairro">
-                                </div>
-                                <div class="col-md-5 mb-3">
-                                    <label for="cidade-endereco" class="form-label">Cidade</label>
-                                    <input type="text" class="form-control" id="cidade-endereco" name="end_cidade"
-                                        placeholder="Cidade">
-                                </div>
-                                <div class="col-md-2 mb-3">
-                                    <label for="uf-endereco" class="form-label">UF</label>
-                                    <input type="text" class="form-control" id="uf-endereco" name="end_uf"
-                                        maxlength="2">
-                                </div>
-                            </div>
+                                    <!-- Linha: Tipo Entidade e IE -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Tipo de Entidade</label><br>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                                    id="tipo-entidade-cliente" value="Cliente" checked>
+                                                <label class="form-check-label"
+                                                    for="tipo-entidade-cliente">Cliente</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                                    id="tipo-entidade-ambos" value="Cliente e Fornecedor">
+                                                <label class="form-check-label" for="tipo-entidade-ambos">Ambos</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3" id="div-inscricao-estadual">
+                                            <label for="inscricao-estadual" class="form-label">Inscrição
+                                                Estadual</label>
+                                            <input type="text" class="form-control" id="inscricao-estadual"
+                                                name="ent_inscricao_estadual">
+                                        </div>
+                                    </div>
 
-                            <!-- Linha: Situação -->
-                            <div class="mb-3">
-                                <label class="form-label" for="situacao-cliente">Situação</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="situacao-cliente"
-                                        name="ent_situacao" value="A" checked>
-                                    <label class="form-check-label" for="situacao-cliente">
-                                        <span id="texto-situacao-cliente">Ativo</span>
-                                    </label>
-                                </div>
-                            </div>
+                                    <hr>
+                                    <h5 class="mb-3">Endereço Principal</h5>
+
+                                    <!-- Linha: CEP e Logradouro -->
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="cep-endereco" class="form-label">CEP</label>
+                                            <input type="text" class="form-control" id="cep-endereco" name="end_cep"
+                                                placeholder="00000-000">
+                                        </div>
+                                        <div class="col-md-8 mb-3">
+                                            <label for="logradouro-endereco" class="form-label">Logradouro</label>
+                                            <input type="text" class="form-control" id="logradouro-endereco"
+                                                name="end_logradouro" placeholder="Rua, Avenida, etc.">
+                                        </div>
+                                    </div>
+
+                                    <!-- Linha: Número e Complemento -->
+                                    <div class="row">
+                                        <div class="col-md-3 mb-3">
+                                            <label for="numero-endereco" class="form-label">Número</label>
+                                            <input type="text" class="form-control" id="numero-endereco"
+                                                name="end_numero" placeholder="Número">
+                                        </div>
+                                        <div class="col-md-9 mb-3">
+                                            <label for="complemento-endereco" class="form-label">Complemento</label>
+                                            <input type="text" class="form-control" id="complemento-endereco"
+                                                name="end_complemento" placeholder="Apto, Bloco, etc. (Opcional)">
+                                        </div>
+                                    </div>
+
+                                    <!-- Linha: Bairro, Cidade e UF -->
+                                    <div class="row">
+                                        <div class="col-md-5 mb-3">
+                                            <label for="bairro-endereco" class="form-label">Bairro</label>
+                                            <input type="text" class="form-control" id="bairro-endereco"
+                                                name="end_bairro" placeholder="Bairro">
+                                        </div>
+                                        <div class="col-md-5 mb-3">
+                                            <label for="cidade-endereco" class="form-label">Cidade</label>
+                                            <input type="text" class="form-control" id="cidade-endereco"
+                                                name="end_cidade" placeholder="Cidade">
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <label for="uf-endereco" class="form-label">UF</label>
+                                            <input type="text" class="form-control" id="uf-endereco" name="end_uf"
+                                                maxlength="2">
+                                        </div>
+                                    </div>
+
+                                    <!-- Linha: Situação -->
+                                    <div class="mb-3">
+                                        <label class="form-label" for="situacao-cliente">Situação</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                id="situacao-cliente" name="ent_situacao" value="A" checked>
+                                            <label class="form-check-label" for="situacao-cliente">
+                                                <span id="texto-situacao-cliente">Ativo</span>
+                                            </label>
+                                        </div>
+                                    </div>
                         </form>
                     </div>
 
@@ -302,8 +302,8 @@
                                 </div>
                                 <div class="col-md-2 mb-3">
                                     <label for="uf-endereco-adicional" class="form-label">UF</label>
-                                    <input type="text" class="form-control" id="uf-endereco-adicional"
-                                        name="end_uf" maxlength="2">
+                                    <input type="text" class="form-control" id="uf-endereco-adicional" name="end_uf"
+                                        maxlength="2">
                                 </div>
                             </div>
 
