@@ -36,21 +36,6 @@ $(document).ready(function () {
     // Funções Auxiliares
     // =================================================================
 
-    // Função para controlar a visibilidade dos campos com base no tipo de embalagem
-    /*  function toggleEmbalagemFields() {
-        var tipo = $tipoEmbalagemSelect.val();
-        if (tipo === 'SECUNDARIA') {
-            $blocoEmbalagemSecundaria.show();
-            $blocoEmbalagemPrimaria.hide();
-            $blocoDun14.show();
-            loadProdutosPrimarios();
-        } else { // PRIMARIA
-            $blocoEmbalagemSecundaria.hide();
-            $blocoEmbalagemPrimaria.show();
-            $blocoDun14.hide();
-        }
-    }*/
-
     // Função para controlar a visibilidade dos campos com base no tipo de embalagem (VERSÃO ATUALIZADA)
     function toggleEmbalagemFields() {
         var tipo = $tipoEmbalagemSelect.val();
@@ -183,6 +168,7 @@ $(document).ready(function () {
 
     // Inicializa a tabela de produtos
     var tableProdutos = $('#tabela-produtos').DataTable({
+        "serverSide": true,
         "ajax": {
             "url": "process/listar_produtos.php",
             "type": "POST"

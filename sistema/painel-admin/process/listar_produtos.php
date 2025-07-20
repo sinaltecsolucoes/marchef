@@ -1,87 +1,80 @@
 <?php
 // Arquivo: painel-adm/process/listar_produtos.php
-// Este arquivo processa requisições AJAX do DataTables para listar os produtos.
+// Versão robusta para processar requisições do DataTables com lógica separada para busca.
 
 require_once('../../conexao.php');
 require_once('../../includes/error_handler.php');
 
 header('Content-Type: application/json');
 
-// Parâmetros do DataTables
-$draw = $_POST['draw'] ?? 1;
-$start = $_POST['start'] ?? 0;
-$length = $_POST['length'] ?? 10;
-$searchValue = $_POST['search']['value'] ?? '';
-$orderColumnIndex = $_POST['order'][0]['column'] ?? 1; // Ordenar por Cód. Interno por padrão
-$orderDir = $_POST['order'][0]['dir'] ?? 'asc';
-
-// Mapeamento das colunas do DataTables para as colunas do banco de dados
-$columns = [
-    0 => 'prod_situacao',
-    1 => 'prod_codigo_interno',
-    2 => 'prod_descricao',
-    3 => 'prod_tipo',
-    4 => 'prod_tipo_embalagem',
-    5 => 'prod_peso_embalagem',
-    6 => null // Coluna de Ações, não ordenável
-];
-
-$orderColumn = $columns[$orderColumnIndex] ?? 'prod_codigo_interno';
-
 try {
-    // --- 1. Construção da Query Base ---
-    $sqlBase = "FROM tbl_produtos";
-    $conditions = [];
-    $params = [];
+    // Parâmetros do DataTables
+    $draw = $_POST['draw'] ?? 1;
+    $start = $_POST['start'] ?? 0;
+    $length = $_POST['length'] ?? 10;
+    $searchValue = $_POST['search']['value'] ?? '';
+    $orderColumnIndex = $_POST['order'][0]['column'] ?? 1;
+    $orderDir = $_POST['order'][0]['dir'] ?? 'asc';
 
-    // Lógica de busca (filtro global do DataTables)
-    if (!empty($searchValue)) {
-        $conditions[] = "(prod_codigo_interno LIKE :search_value OR prod_descricao LIKE :search_value OR prod_tipo LIKE :search_value)";
-        $params[':search_value'] = '%' . $searchValue . '%';
-    }
+    $columns = [
+        0 => 'prod_situacao', 1 => 'prod_codigo_interno', 2 => 'prod_descricao',
+        3 => 'prod_tipo', 4 => 'prod_tipo_embalagem', 5 => 'prod_peso_embalagem',
+        6 => null
+    ];
+    $orderColumn = $columns[$orderColumnIndex] ?? 'prod_codigo_interno';
 
-    $whereClause = "";
-    if (!empty($conditions)) {
-        $whereClause = " WHERE " . implode(" AND ", $conditions);
-    }
-
-    // --- 2. Contagem Total de Registros (com filtros aplicados) ---
-    $stmtFiltered = $pdo->prepare("SELECT COUNT(prod_codigo) " . $sqlBase . $whereClause);
-    $stmtFiltered->execute($params);
-    $totalFiltered = $stmtFiltered->fetchColumn();
-
-    // --- 3. Contagem Total de Registros (sem nenhum filtro) ---
+    // --- 1. Contagem Total de Registros (sempre necessária) ---
     $stmtTotal = $pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos");
     $totalRecords = $stmtTotal->fetchColumn();
 
-    // --- 4. Query Final para Obter os Dados ---
-    $sqlData = "SELECT 
-                    prod_codigo,
-                    prod_situacao,
-                    prod_codigo_interno,
-                    prod_descricao,
-                    prod_tipo,
-                    prod_tipo_embalagem,
-                    prod_peso_embalagem
-                " . $sqlBase . $whereClause;
+    $data = [];
+    $totalFiltered = 0;
 
-    // Adicionar Ordenação e Limite
-    if ($orderColumn) {
-        $sqlData .= " ORDER BY " . $orderColumn . " " . strtoupper($orderDir);
+    // --- 2. Lógica separada baseada na existência de um termo de busca ---
+    if (!empty($searchValue)) {
+        // --- LÓGICA QUANDO HÁ BUSCA ---
+        $searchTerm = '%' . $searchValue . '%';
+        $whereClause = "WHERE (prod_codigo_interno LIKE :search1 OR prod_descricao LIKE :search2 OR prod_tipo LIKE :search3 
+OR prod_tipo_embalagem LIKE :search4 OR prod_situacao LIKE :search5 OR prod_peso_embalagem LIKE :search6)";
+
+        // Contagem de registros filtrados
+        $stmtFiltered = $pdo->prepare("SELECT COUNT(prod_codigo) FROM tbl_produtos " . $whereClause);
+        $stmtFiltered->bindParam(':search1', $searchTerm);
+        $stmtFiltered->bindParam(':search2', $searchTerm);
+        $stmtFiltered->bindParam(':search3', $searchTerm);
+        $stmtFiltered->bindParam(':search4', $searchTerm);
+        $stmtFiltered->bindParam(':search5', $searchTerm);
+        $stmtFiltered->bindParam(':search6', $searchTerm);
+        $stmtFiltered->execute();
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        // Busca dos dados da página atual
+        $sql = "SELECT * FROM tbl_produtos " . $whereClause . " ORDER BY " . $orderColumn . " " . $orderDir . " LIMIT :start, :length";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':search1', $searchTerm);
+        $stmt->bindParam(':search2', $searchTerm);
+        $stmt->bindParam(':search3', $searchTerm);
+        $stmt->bindParam(':search4', $searchTerm);
+        $stmt->bindParam(':search5', $searchTerm);
+        $stmt->bindParam(':search6', $searchTerm);
+        $stmt->bindValue(':start', (int)$start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int)$length, PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        // --- LÓGICA QUANDO NÃO HÁ BUSCA ---
+        $totalFiltered = $totalRecords; // Se não há busca, o total filtrado é o total de registros
+
+        // Busca dos dados da página atual
+        $sql = "SELECT * FROM tbl_produtos ORDER BY " . $orderColumn . " " . $orderDir . " LIMIT :start, :length";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':start', (int)$start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int)$length, PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    $sqlData .= " LIMIT :start, :length";
 
-    // --- 5. Preparar e Executar a Query Final ---
-    $stmt = $pdo->prepare($sqlData);
-    $stmt->bindParam(':start', $start, PDO::PARAM_INT);
-    $stmt->bindParam(':length', $length, PDO::PARAM_INT);
-    foreach ($params as $key => &$val) {
-        $stmt->bindParam($key, $val);
-    }
-    $stmt->execute();
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // --- 6. Formatar a Saída para o DataTables ---
+    // --- 3. Formatar a Saída para o DataTables ---
     $output = [
         "draw" => (int)$draw,
         "recordsTotal" => (int)$totalRecords,
@@ -93,13 +86,12 @@ try {
 
 } catch (PDOException $e) {
     error_log("Erro no listar_produtos.php: " . $e->getMessage());
-    $output = [
-        "draw" => (int)$draw,
+    echo json_encode([
+        "draw" => (int)($_POST['draw'] ?? 1),
         "recordsTotal" => 0,
         "recordsFiltered" => 0,
         "data" => [],
-        "error" => "Erro ao carregar dados dos produtos. Tente novamente."
-    ];
-    echo json_encode($output);
+        "error" => "Erro de Base de Dados: " . $e->getMessage()
+    ]);
 }
 ?>
