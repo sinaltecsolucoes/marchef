@@ -9,6 +9,28 @@
 <a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-produto"
     id="btn-adicionar-produto-main">Adicionar Produto</a>
 
+<!-- Filtros de Situação -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Filtrar por Situação:</label><br>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
+                value="Todos" checked>
+            <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
+                value="A">
+            <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
+                value="I">
+            <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+        </div>
+    </div>
+</div>
+
 <!-- Área para mensagens de feedback -->
 <div id="feedback-message-area-produto" class="mt-3"></div>
 

@@ -171,7 +171,10 @@ $(document).ready(function () {
         "serverSide": true,
         "ajax": {
             "url": "process/listar_produtos.php",
-            "type": "POST"
+            "type": "POST",
+            "data": function (d) {
+                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
+            }
         },
         "responsive": true,
         "columns": [
@@ -185,6 +188,17 @@ $(document).ready(function () {
         ],
         "language": { "url": "../vendor/DataTables/Portuguese-Brasil.json" }
     });
+
+    // =================================================================
+    // FILTRO SITUAÇÃO: Evento para recarregar a tabela ao mudar o filtro
+    // =================================================================
+    $('input[name="filtro_situacao"]').on('change', function () {
+        tableProdutos.ajax.reload();
+    });
+    // =================================================================
+    // FIM
+    // =================================================================
+
 
     // Resetar o modal ao abrir para um novo produto
     $modalProduto.on('show.bs.modal', function (event) {
