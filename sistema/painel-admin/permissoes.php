@@ -15,6 +15,7 @@ $paginas_e_acoes_disponiveis = [
     'clientes' => 'Gerenciar Clientes',
     'fornecedores' => 'Gerenciar Fornecedores',
     'produtos' => 'Gerenciar Produtos',
+    'lotes' => 'Gerenciar Lotes',
     'editar_outros_usuarios' => 'Ação: Editar Outros Usuários' // Permissão específica para a ação
 ];
 

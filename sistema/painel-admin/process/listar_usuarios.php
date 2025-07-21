@@ -16,10 +16,11 @@ try {
     foreach ($users as $user) {
         $data[] = [
             "usu_situacao" => $user['usu_situacao'],
-            "usu_login"    => $user['usu_login'],
-            "usu_nome"     => $user['usu_nome'],
-            "usu_tipo"     => $user['usu_tipo'],
-            "usu_codigo"   => $user['usu_codigo']
+            "usu_codigo" => $user['usu_codigo'],
+            "usu_login" => $user['usu_login'],
+            "usu_nome" => $user['usu_nome'],
+            "usu_tipo" => $user['usu_tipo']
+
         ];
     }
 

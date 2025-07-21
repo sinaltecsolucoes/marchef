@@ -26,6 +26,17 @@ $(document).ready(function () {
     var produtoPrimarioCache = {}; // Cache para armazenar dados dos produtos primários
 
     // =================================================================
+    // Inicialização do Select2 no Dropdown de Produto Primário
+    // =================================================================
+    $produtoPrimarioSelect.select2({
+        placeholder: 'Digite para buscar um produto...',
+        language: "pt-BR",
+        theme: "bootstrap-5",
+        // Esta opção é CRUCIAL para que o Select2 funcione dentro de um modal do Bootstrap
+        dropdownParent: $modalProduto
+    });
+
+    // =================================================================
     // Função de Feedback ao Usuário
     // =================================================================
     function showFeedbackMessage(msg, type = 'success') {
@@ -83,6 +94,9 @@ $(document).ready(function () {
                         );
                         produtoPrimarioCache[produto.prod_codigo] = produto;
                     });
+                    // Informa ao Select2 para atualizar sua visualização após carregar novos dados.
+                    // Isso é útil se os dados forem carregados depois da inicialização.
+                    $produtoPrimarioSelect.trigger('change');
                 }
             }
         });
@@ -268,6 +282,7 @@ $(document).ready(function () {
                     $('#prod_ean13').val(produto.prod_ean13);
                     $('#prod_dun14').val(produto.prod_dun14);
                     $('#prod_total_pecas').val(produto.prod_total_pecas);
+                    $('#prod_validade_meses').val(produto.prod_validade_meses);
 
                     $('#prod_tipo_embalagem').val(produto.prod_tipo_embalagem);
                     toggleEmbalagemFields();

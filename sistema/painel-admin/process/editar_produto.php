@@ -21,7 +21,7 @@ if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST
 
 if ($_POST['prod_tipo_embalagem'] === 'SECUNDARIA' && empty(trim($_POST['prod_codigo_interno']))) {
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'message' => 'Para produtos de embalagem secundária, o Código Interno é obrigatório.'
     ]);
     exit;
@@ -37,6 +37,9 @@ if (empty($_POST['prod_descricao'])) {
 }
 
 $prod_codigo = $_POST['prod_codigo'];
+
+$validade_meses = !empty($_POST['prod_validade_meses']) ? (int) $_POST['prod_validade_meses'] : null;
+
 
 // --- Início do Processamento da Edição ---
 $pdo->beginTransaction();
@@ -57,21 +60,22 @@ try {
                 prod_tipo_embalagem = :prod_tipo_embalagem,
                 prod_peso_embalagem = :prod_peso_embalagem,
                 prod_total_pecas = :prod_total_pecas,
+                prod_validade_meses = :validade_meses,
                 prod_primario_id = :prod_primario_id,
                 prod_ean13 = :prod_ean13,
                 prod_dun14 = :prod_dun14
             WHERE
                 prod_codigo = :prod_codigo";
-    
+
     $stmt = $pdo->prepare($sql);
 
     // --- Lógica para Tratar Campos (similar ao cadastro) ---
     $tipo_embalagem = $_POST['prod_tipo_embalagem'];
-    
+
     $peso_embalagem = ($tipo_embalagem === 'SECUNDARIA')
         ? (!empty($_POST['prod_peso_embalagem_secundaria']) ? str_replace(',', '.', $_POST['prod_peso_embalagem_secundaria']) : null)
         : (!empty($_POST['prod_peso_embalagem']) ? str_replace(',', '.', $_POST['prod_peso_embalagem']) : null);
-    
+
     $prod_fator_producao = !empty($_POST['prod_fator_producao']) ? str_replace(',', '.', $_POST['prod_fator_producao']) : null;
     $prod_primario_id = !empty($_POST['prod_primario_id']) ? $_POST['prod_primario_id'] : null;
 
@@ -89,13 +93,14 @@ try {
     $stmt->bindValue(':prod_tipo_embalagem', $tipo_embalagem, PDO::PARAM_STR);
     $stmt->bindValue(':prod_peso_embalagem', $peso_embalagem, PDO::PARAM_STR);
     $stmt->bindValue(':prod_total_pecas', !empty($_POST['prod_total_pecas']) ? $_POST['prod_total_pecas'] : null, PDO::PARAM_STR);
+    $stmt->bindValue(':validade_meses', $validade_meses, $validade_meses === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $stmt->bindValue(':prod_primario_id', $prod_primario_id, PDO::PARAM_INT);
     $stmt->bindValue(':prod_ean13', !empty($_POST['prod_ean13']) ? $_POST['prod_ean13'] : null, PDO::PARAM_STR);
     $stmt->bindValue(':prod_dun14', !empty($_POST['prod_dun14']) ? $_POST['prod_dun14'] : null, PDO::PARAM_STR);
-    
+
     // Vincula o ID do produto para a cláusula WHERE
     $stmt->bindValue(':prod_codigo', $prod_codigo, PDO::PARAM_INT);
-    
+
     $stmt->execute();
     $pdo->commit();
 
@@ -104,10 +109,10 @@ try {
         'message' => 'Produto atualizado com sucesso!'
     ]);
 
-// } catch (PDOException $e) {
+    // } catch (PDOException $e) {
 //     $pdo->rollBack();
 
-//     if ($e->getCode() == '23000') {
+    //     if ($e->getCode() == '23000') {
 //         if (strpos(strtolower($e->getMessage()), 'prod_codigo_interno') !== false) {
 //             $message = 'Erro: O Código Interno informado já pertence a outro produto.';
 //         } else {

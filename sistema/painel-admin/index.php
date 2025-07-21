@@ -78,6 +78,7 @@ $paginasPermitidas = [
     'clientes' => 'clientes.php',
     'fornecedores' => 'fornecedores.php',
     'produtos' => 'produtos.php',
+    'lotes' => 'lotes.php',
     'editarPerfil' => 'editar-perfil.php',
     'permissoes' => 'permissoes.php', // Certifique-se que 'permissoes' está aqui
 ];
@@ -146,7 +147,6 @@ if (!isset($_SESSION['nomeUsuario'])) {
 // ========================================================================================
 // FIM DA OTIMIZAÇÃO DE CARREGAMENTO DE DADOS DO USUÁRIO
 // ========================================================================================
-
 
 // ====================================================================================================
 // INÍCIO DAS MODIFICAÇÕES PARA GERENCIAMENTO DE PERMISSÕES E PÁGINAS INICIAIS POR PERFIL
@@ -446,6 +446,12 @@ else {
         src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
+
 
     <script src="../js/exibe-senha.js"></script>
     <script src="../js/enviar-dados-perfil.js"></script>
@@ -462,6 +468,11 @@ else {
     <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
         <script src="../js/entidades.js"></script>
     <?php endif; ?>
+
+    <?php if (isset($pagina) && $pagina === 'lotes'): ?>
+        <script src="../js/lotes.js"></script>
+    <?php endif; ?>
+
 
 </body>
 

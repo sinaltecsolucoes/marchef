@@ -38,10 +38,10 @@ $(document).ready(function () {
             // },
 
             { "data": "usu_situacao", "render": function (data, type, row) { return (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'; } },
+            { "data": "usu_codigo" },
             { "data": "usu_login" },
             { "data": "usu_nome" },
             { "data": "usu_tipo" },
-            { "data": "usu_codigo" },
             {
                 "data": "usu_codigo",
                 "render": function (data, type, row) {

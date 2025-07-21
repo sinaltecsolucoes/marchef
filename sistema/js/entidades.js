@@ -332,7 +332,7 @@ $(document).ready(function () {
                     const data = response.data;
                     $(C.modalLabel).text(`Editar ${C.entityName}`);
                     $(C.entCodigo + ', ' + C.endEntidadeId).val(data.ent_codigo);
-                    $(C.codigoInterno).val(data.ent_codigo_interno); 
+                    $(C.codigoInterno).val(data.ent_codigo_interno);
                     $(C.razaoSocial).val(data.ent_razao_social);
                     $(C.nomeFantasia).val(data.ent_nome_fantasia);
                     $(C.inscricaoEstadual).val(data.ent_inscricao_estadual);
@@ -442,25 +442,71 @@ $(document).ready(function () {
             });
     });
 
-    $(C.mainTable).on('click', C.btnExcluir, function (e) {
+
+    // =================================================================
+    // VII. LÓGICA DE EXCLUSÃO (INATIVAÇÃO)
+    // =================================================================
+
+    // Ação para o botão "Excluir" na tabela principal de entidades
+    $(C.mainTable + ' tbody').on('click', `.btn-excluir-${pageType}`, function (e) {
         e.preventDefault();
-        $(C.nomeExcluir).text($(this).data('nome'));
-        $(C.idExcluir).val($(this).data('id'));
-        new bootstrap.Modal($(C.modalConfirmarExclusao)[0]).show();
+
+        const entidadeId = $(this).data('id');
+        const entidadeNome = $(this).data('nome');
+
+        // Seleciona o modal correto (usando o de cliente como base)
+        const $modalExclusao = $('#modal-confirmar-exclusao-cliente');
+
+        // Preenche o modal de confirmação
+        $modalExclusao.find('#id-cliente-excluir').val(entidadeId);
+        $modalExclusao.find('#nome-cliente-excluir').text(entidadeNome);
+
+        // Ajusta os textos para "Inativar" em vez de "Excluir" para mais clareza
+        $modalExclusao.find('.modal-title').text('Confirmar Inativação');
+        $modalExclusao.find('.modal-body p:first').html(`Tem certeza que deseja <strong>inativar</strong> o registro <strong id="nome-cliente-excluir">${entidadeNome}</strong>?`);
+        $modalExclusao.find('.modal-body p.text-danger').text('O registro não será mais exibido nas listagens principais, mas seu histórico será mantido.');
+        $modalExclusao.find('#btn-confirmar-exclusao-cliente').text('Sim, Inativar').removeClass('btn-danger').addClass('btn-warning');
+
+        // Abre o modal
+        $modalExclusao.modal('show');
     });
 
-    $(C.btnConfirmarExclusao).on('click', function () {
-        const idEntidade = $(C.idExcluir).val();
-        $.post('process/excluir_entidade.php', { ent_codigo: idEntidade, csrf_token: csrfToken })
-            .done(response => {
+    // Ação do botão de confirmação final, DENTRO do modal
+    // Usamos o ID do botão do modal de cliente, pois o HTML é da página clientes.php
+    $('#btn-confirmar-exclusao-cliente').on('click', function () {
+        const entidadeId = $('#id-cliente-excluir').val();
+        const $modalExclusao = $('#modal-confirmar-exclusao-cliente');
+
+        $.ajax({
+            url: 'process/inativar_entidade.php',
+            type: 'POST',
+            data: {
+                ent_codigo: entidadeId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json',
+            success: function (response) {
                 if (response.success) {
-                    tableEntidades.ajax.reload(null, false);
                     showFeedbackMessage(response.message, 'success');
+                    tableEntidades.ajax.reload(null, false);
                 } else {
                     showFeedbackMessage(response.message, 'danger');
                 }
-            })
-            .fail(() => showFeedbackMessage('Erro de comunicação.', 'danger'))
-            .always(() => bootstrap.Modal.getInstance($(C.modalConfirmarExclusao)[0]).hide());
+            },
+            error: function () {
+                showFeedbackMessage('Erro de comunicação ao tentar inativar.', 'danger');
+            },
+            complete: function () {
+                $modalExclusao.modal('hide');
+            }
+        });
     });
+
+
+});
+
+$('#modal-confirmar-exclusao-cliente').on('hidden.bs.modal', function () {
+    // Retorna o foco para o corpo do documento. Isso remove o foco de qualquer
+    // elemento que estava dentro do modal, resolvendo o aviso.
+    $('body').focus();
 });

@@ -41,6 +41,8 @@ if (empty($_POST['prod_descricao']) || empty($_POST['prod_tipo_embalagem'])) {
     exit;
 }
 
+$validade_meses = !empty($_POST['prod_validade_meses']) ? (int) $_POST['prod_validade_meses'] : null;
+
 
 // --- Início do Processamento do Cadastro ---
 $pdo->beginTransaction();
@@ -51,12 +53,12 @@ try {
                 prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo,
                 prod_classificacao, prod_especie, prod_origem, prod_conservacao, prod_congelamento,
                 prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas,
-                prod_primario_id, prod_ean13, prod_dun14
+                prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14
             ) VALUES (
                 :prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, :prod_subtipo,
                 :prod_classificacao, :prod_especie, :prod_origem, :prod_conservacao, :prod_congelamento,
                 :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, :prod_total_pecas,
-                :prod_primario_id, :prod_ean13, :prod_dun14
+                :validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14
             )";
 
     $stmt = $pdo->prepare($sql);
@@ -87,6 +89,7 @@ try {
     $stmt->bindValue(':prod_tipo_embalagem', $tipo_embalagem, PDO::PARAM_STR);
     $stmt->bindValue(':prod_peso_embalagem', $peso_embalagem, PDO::PARAM_STR);
     $stmt->bindValue(':prod_total_pecas', !empty($_POST['prod_total_pecas']) ? $_POST['prod_total_pecas'] : null, PDO::PARAM_STR);
+    $stmt->bindValue(':validade_meses', $validade_meses, $validade_meses === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
     $stmt->bindValue(':prod_primario_id', $prod_primario_id, PDO::PARAM_INT);
     $stmt->bindValue(':prod_ean13', !empty($_POST['prod_ean13']) ? $_POST['prod_ean13'] : null, PDO::PARAM_STR);
     $stmt->bindValue(':prod_dun14', !empty($_POST['prod_dun14']) ? $_POST['prod_dun14'] : null, PDO::PARAM_STR);
@@ -124,7 +127,7 @@ try {
         'message' => $user_message,
         'debug' => $debug_info // Adiciona o novo campo 'debug' na resposta
     ]);
-    
+
     // --- FIM DO NOVO BLOCO DE DEPURAÇÃO ---
 }
 ?>

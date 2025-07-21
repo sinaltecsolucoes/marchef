@@ -6,10 +6,10 @@
         <thead>
             <tr>
                 <th>Situação</th>
+                <th>Código</th>
                 <th>Login</th>
                 <th>Nome</th>
                 <th>Nível</th>
-                <th>Código</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -78,22 +78,22 @@
     aria-labelledby="modal-confirmar-exclusao-label" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title" id="modal-confirmar-exclusao-label">Confirmar Exclusão</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir o usuário <strong id="nome-usuario-excluir"></strong>?</p>
-                <p class="text-danger">Esta ação é irreversível!</p>
+                <p class="text-danger fw-bold">Atenção: Esta ação é irreversível!</p>
                 <!-- Campo oculto para armazenar o ID do usuário a ser excluído -->
                 <input type="hidden" id="id-usuario-excluir">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não, cancelar</button>
                 <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao">Sim, Excluir</button>
             </div>
         </div>
     </div>
 </div>
+
+

@@ -14,18 +14,16 @@
     <div class="col-md-6">
         <label class="form-label">Filtrar por Situação:</label><br>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
-                value="Todos" checked>
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos" value="Todos"
+                checked>
             <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
-                value="A">
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo" value="A">
             <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
-                value="I">
+            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo" value="I">
             <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
         </div>
     </div>
@@ -192,12 +190,24 @@
                         </div>
                     </div>
 
-                    <!-- Linha 6: Código de Barras DUN para Embalagem Secundária -->
-                    <div id="bloco-dun14" class="row" style="display: none;">
-                        <div class="col-md-4 mb-3">
+                    <!-- Linha 6: Código de Barras DUN para Embalagem Secundária e Validade em Meses -->
+                    <div class="row">
+
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                <label for="prod_validade_meses" class="form-label">Validade Padrão (em meses)</label>
+                                <input type="number" class="form-control" id="prod_validade_meses"
+                                    name="prod_validade_meses" placeholder="Ex: 12">
+                                <small class="form-text text-muted">Para 1 ano, digite 12. Para 1 ano e 6 meses,
+                                    18.</small>
+                            </div>
+                        </div>
+
+                        <div id="bloco-dun14" class="col-md-6 mb-3" style="display: none;">
                             <label for="prod_dun14" class="form-label">Cód. Barras (DUN-14)</label>
                             <input type="text" class="form-control" id="prod_dun14" name="prod_dun14" maxlength="14">
                         </div>
+
                     </div>
                 </form>
             </div>
