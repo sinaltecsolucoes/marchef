@@ -3,6 +3,10 @@
 // Responsável por editar os dados de uma entidade (cliente/fornecedor) e seu endereço principal,
 // além de gerenciar seus papéis em tbl_clientes e tbl_fornecedores.
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start(); // Inicia a sessão para acessar o ID do usuário logado
 
 require_once('../../includes/error_handler.php'); // Inclui o manipulador de erros
@@ -41,15 +45,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    $ent_codigo_interno = filter_input(INPUT_POST, 'ent_codigo_interno', FILTER_SANITIZE_STRING);
+    /*   $ent_codigo_interno = filter_input(INPUT_POST, 'ent_codigo_interno', FILTER_SANITIZE_STRING);
+       if (empty($ent_codigo_interno)) {
+           $response['message'] = "O Código Interno é obrigatório.";
+           echo json_encode($response);
+           exit();
+       }*/
+
+    $ent_codigo_interno = htmlspecialchars($_POST['ent_codigo_interno'] ?? '', ENT_QUOTES, 'UTF-8');
     if (empty($ent_codigo_interno)) {
         $response['message'] = "O Código Interno é obrigatório.";
         echo json_encode($response);
         exit();
     }
 
-    $razao_social_raw = filter_input(INPUT_POST, 'ent_razao_social', FILTER_SANITIZE_STRING);
-    $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\s.,-]+$/u');
+    // $razao_social_raw = filter_input(INPUT_POST, 'ent_razao_social', FILTER_SANITIZE_STRING);
+    //$val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\s.,-]+$/u');
+    // LINHA CORRIGIDA E MAIS SEGURA
+    $razao_social_raw = htmlspecialchars($_POST['ent_razao_social'] ?? '', ENT_QUOTES, 'UTF-8');
+    //$val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,-&]+$/u');
+    $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sáéíóúàèìòùãõâêîôûçÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß.,-&]+$/u');
     if (!$val_razao_social['valid']) {
         $response['message'] = "Razão Social: " . $val_razao_social['message'];
         echo json_encode($response);
@@ -57,7 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $ent_razao_social = $val_razao_social['value'];
 
-    $tipo_pessoa_raw = filter_input(INPUT_POST, 'ent_tipo_pessoa', FILTER_SANITIZE_STRING);
+    /* $tipo_pessoa_raw = filter_input(INPUT_POST, 'ent_tipo_pessoa', FILTER_SANITIZE_STRING);
+     $val_tipo_pessoa = validate_selection($tipo_pessoa_raw, ['F', 'J']);
+     if (!$val_tipo_pessoa['valid']) {
+         $response['message'] = "Tipo de Pessoa: " . $val_tipo_pessoa['message'];
+         echo json_encode($response);
+         exit();
+     }
+     $ent_tipo_pessoa = $val_tipo_pessoa['value'];*/
+
+    $tipo_pessoa_raw = $_POST['ent_tipo_pessoa'] ?? '';
     $val_tipo_pessoa = validate_selection($tipo_pessoa_raw, ['F', 'J']);
     if (!$val_tipo_pessoa['valid']) {
         $response['message'] = "Tipo de Pessoa: " . $val_tipo_pessoa['message'];
@@ -66,7 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $ent_tipo_pessoa = $val_tipo_pessoa['value'];
 
-    $cpf_cnpj_raw = filter_input(INPUT_POST, 'ent_cpf_cnpj', FILTER_SANITIZE_STRING);
+    /* $cpf_cnpj_raw = filter_input(INPUT_POST, 'ent_cpf_cnpj', FILTER_SANITIZE_STRING);
+     $cpf_cnpj_limpo = preg_replace('/\D/', '', $cpf_cnpj_raw);*/ // Remove não-dígitos
+
+    $cpf_cnpj_raw = $_POST['ent_cpf_cnpj'] ?? '';
     $cpf_cnpj_limpo = preg_replace('/\D/', '', $cpf_cnpj_raw); // Remove não-dígitos
 
     $ent_cpf = null;
@@ -88,7 +115,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ent_cnpj = $cpf_cnpj_limpo;
     }
 
-    $tipo_entidade_raw = filter_input(INPUT_POST, 'ent_tipo_entidade', FILTER_SANITIZE_STRING);
+    /*  $tipo_entidade_raw = filter_input(INPUT_POST, 'ent_tipo_entidade', FILTER_SANITIZE_STRING);
+      $val_tipo_entidade = validate_selection($tipo_entidade_raw, ['Cliente', 'Fornecedor', 'Cliente e Fornecedor']);
+      if (!$val_tipo_entidade['valid']) {
+          $response['message'] = "Tipo de Entidade: " . $val_tipo_entidade['message'];
+          echo json_encode($response);
+          exit();
+      }
+      $ent_tipo_entidade = $val_tipo_entidade['value'];*/
+
+
+    $tipo_entidade_raw = $_POST['ent_tipo_entidade'] ?? '';
     $val_tipo_entidade = validate_selection($tipo_entidade_raw, ['Cliente', 'Fornecedor', 'Cliente e Fornecedor']);
     if (!$val_tipo_entidade['valid']) {
         $response['message'] = "Tipo de Entidade: " . $val_tipo_entidade['message'];
@@ -97,22 +134,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $ent_tipo_entidade = $val_tipo_entidade['value'];
 
-    $situacao_form = filter_input(INPUT_POST, 'ent_situacao', FILTER_SANITIZE_STRING);
+  /*  $situacao_form = filter_input(INPUT_POST, 'ent_situacao', FILTER_SANITIZE_STRING);
+    $ent_situacao = ($situacao_form === 'A') ? 'A' : 'I';*/
+
+    $situacao_form = $_POST['ent_situacao'] ?? '';
     $ent_situacao = ($situacao_form === 'A') ? 'A' : 'I';
 
 
     // Dados do Endereço (podem ser opcionais para atualização)
-    /*  $end_cep_raw = filter_input(INPUT_POST, 'end_cep', FILTER_SANITIZE_STRING);
-      $end_cep = preg_replace('/\D/', '', $end_cep_raw);
+    // $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
+    //$razao_social_raw = htmlspecialchars($_POST['ent_razao_social'] ?? '', ENT_QUOTES, 'UTF-8');
+    // $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
 
-      $end_logradouro = filter_input(INPUT_POST, 'end_logradouro', FILTER_SANITIZE_STRING);
-      $end_numero = filter_input(INPUT_POST, 'end_numero', FILTER_SANITIZE_STRING);
-      $end_complemento = filter_input(INPUT_POST, 'end_complemento', FILTER_SANITIZE_STRING);
-      $end_bairro = filter_input(INPUT_POST, 'end_bairro', FILTER_SANITIZE_STRING);
-      $end_cidade = filter_input(INPUT_POST, 'end_cidade', FILTER_SANITIZE_STRING);
-      $end_uf = filter_input(INPUT_POST, 'end_uf', FILTER_SANITIZE_STRING);*/
-    $ent_nome_fantasia = filter_input(INPUT_POST, 'ent_nome_fantasia', FILTER_SANITIZE_STRING);
-    $ent_inscricao_estadual = filter_input(INPUT_POST, 'ent_inscricao_estadual', FILTER_SANITIZE_STRING);
+    $ent_nome_fantasia = htmlspecialchars($_POST['ent_nome_fantasia'] ?? '', ENT_QUOTES, 'UTF-8');
+    $ent_inscricao_estadual = htmlspecialchars($_POST['ent_inscricao_estadual'] ?? '', ENT_QUOTES, 'UTF-8');
 
     // --- 2. Lógica de Negócio e Interação com o Banco de Dados ---
     try {

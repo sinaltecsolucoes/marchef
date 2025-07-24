@@ -30,7 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     $razao_social_raw = filter_input(INPUT_POST, 'ent_razao_social', FILTER_SANITIZE_STRING);
-    $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,-]+$/u');
+    //$val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,-]+$/u');
+    $val_razao_social = validate_string($razao_social_raw, 3, 255, '/^[a-zA-Z0-9\sÀ-ú.,&\/]+$/u');
     if (!$val_razao_social['valid']) {
         $response['message'] = "Razão Social/Nome: " . $val_razao_social['message'];
         echo json_encode($response);
@@ -128,7 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $end_logradouro = $val_logradouro['value'];
 
-        $val_numero = validate_string($end_numero_raw, 1, 20, '/^[a-zA-Z0-9\s-]+$/'); // Permite números, letras e hífen
+        //$val_numero = validate_string($end_numero_raw, 1, 20, '/^[a-zA-Z0-9\s-]+$/'); // Permite números, letras e hífen
+        $val_numero = validate_string($end_numero_raw, 1, 50, '/^[a-zA-Z0-9\s-\/]+$/');
         if (!$val_numero['valid']) {
             $response['message'] = "Número: " . $val_numero['message'];
             echo json_encode($response);

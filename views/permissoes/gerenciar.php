@@ -1,10 +1,10 @@
 <?php
-// permissoes.php
+// /views/permissoes/gerenciar.php
 
 // Apenas o Admin pode acessar esta página.
 if ($_SESSION['tipoUsuario'] !== 'Admin') {
     echo "<h1 class='text-danger'>Acesso Negado!</h1>";
-    exit();
+    return;
 }
 
 // Lista de todas as páginas e ações disponíveis no sistema

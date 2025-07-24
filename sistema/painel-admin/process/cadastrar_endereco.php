@@ -62,7 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_logradouro = $val_logradouro['value'];
 
     $numero_raw = filter_input(INPUT_POST, 'end_numero', FILTER_SANITIZE_STRING);
-    $val_numero = validate_string($numero_raw, 1, 50, '/^[a-zA-Z0-9\s-]+$/');
+   // $val_numero = validate_string($numero_raw, 1, 50, '/^[a-zA-Z0-9\s-]+$/');
+    $val_numero = validate_string($numero_raw, 1, 50, '/^[a-zA-Z0-9\s-\/]+$/');
     if (!$val_numero['valid']) {
         $response['message'] = "Número: " . $val_numero['message'];
         echo json_encode($response);

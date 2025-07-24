@@ -1,4 +1,4 @@
-$(document).ready(function () {
+/*$(document).ready(function () {
     const formPermissoes = $('#form-gerenciar-permissoes');
     const mensagemDiv = $('#mensagem-permissoes');
     const submitButton = formPermissoes.find('button[type="submit"]');
@@ -31,6 +31,39 @@ $(document).ready(function () {
             },
             complete: function() {
                 // Habilita o botão novamente ao final da requisição
+                submitButton.prop('disabled', false).text('Salvar Permissões');
+            }
+        });
+    });
+});
+*/
+
+$(document).ready(function () {
+    const formPermissoes = $('#form-gerenciar-permissoes');
+    const mensagemDiv = $('#mensagem-permissoes');
+    const submitButton = formPermissoes.find('button[type="submit"]');
+
+    formPermissoes.on('submit', function (e) {
+        e.preventDefault();
+        submitButton.prop('disabled', true).text('Salvando...');
+        mensagemDiv.empty().removeClass('alert alert-success alert-danger');
+
+        $.ajax({
+            type: 'POST',
+            url: 'ajax_router.php?action=salvarPermissoes', // ROTA CORRIGIDA
+            data: formPermissoes.serialize(),
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    mensagemDiv.addClass('alert alert-success').text(response.message);
+                } else {
+                    mensagemDiv.addClass('alert alert-danger').text(response.message || 'Ocorreu um erro.');
+                }
+            },
+            error: function () {
+                mensagemDiv.addClass('alert alert-danger').text('Erro na requisição.');
+            },
+            complete: function() {
                 submitButton.prop('disabled', false).text('Salvar Permissões');
             }
         });

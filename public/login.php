@@ -6,7 +6,7 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once("conexao.php");
+require_once("../src/bootstrap.php");
 
 // REMOVEMOS AQUI O BLOCO QUE VERIFICAVA E INSERIA O USUÁRIO ADM INICIAL
 // Essa lógica deve ser executada apenas uma vez, durante a configuração inicial do sistema.
