@@ -22,6 +22,7 @@ spl_autoload_register(function ($class) {
 
 use App\Core\Database;
 use App\Produtos\ProdutoRepository;
+use App\Entidades\EntidadeRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -44,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Inicialização centralizada
 try {
     $pdo = Database::getConnection();
-    $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório
+    $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório para Produto
+    $entidadeRepo = new EntidadeRepository($pdo);// Cria a instância do repositório para Entidade
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -67,8 +69,22 @@ switch ($action) {
     case 'excluirProduto':
         excluirProduto($produtoRepo);
         break;
-    case 'listarProdutosPrimarios': // <-- NOVA ROTA
+    case 'listarProdutosPrimarios':
         listarProdutosPrimarios($produtoRepo);
+        break;
+
+    // --- ROTAS DE ENTIDADES ---
+    case 'listarEntidades':
+        listarEntidades($entidadeRepo);
+        break;
+    case 'getEntidade':
+        getEntidade($entidadeRepo);
+        break;
+    case 'salvarEntidade':
+        salvarEntidade($entidadeRepo, $_SESSION['codUsuario']);
+        break;
+    case 'inativarEntidade':
+        inativarEntidade($entidadeRepo);
         break;
 
     // ... suas outras rotas (salvarPermissoes, etc.)
@@ -134,11 +150,75 @@ function excluirProduto(ProdutoRepository $repo)
     }
 }
 
-function listarProdutosPrimarios(ProdutoRepository $repo) {
+function listarProdutosPrimarios(ProdutoRepository $repo)
+{
     $produtos = $repo->findPrimarios();
     if ($produtos) {
         echo json_encode(['success' => true, 'data' => $produtos]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Nenhum produto primário encontrado.']);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA ENTIDADES ---
+function listarEntidades(EntidadeRepository $repo)
+{
+    try {
+        $output = $repo->findAllForDataTable($_POST);
+        echo json_encode($output);
+    } catch (Exception $e) {
+        // Tratar erro e retornar JSON formatado para DataTables
+        echo json_encode(["error" => $e->getMessage()]);
+    }
+}
+
+function getEntidade(EntidadeRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido fornecido.']);
+        return;
+    }
+    $entidade = $repo->find($id);
+    if ($entidade) {
+        echo json_encode(['success' => true, 'data' => $entidade]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Entidade não encontrada.']);
+    }
+}
+
+function salvarEntidade(EntidadeRepository $repo, int $userId)
+{
+    $id = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
+    try {
+        if ($id) {
+            $repo->update($id, $_POST, $userId);
+            $message = 'Atualizado com sucesso!';
+        } else {
+            $newId = $repo->create($_POST, $userId);
+            $message = 'Cadastrado com sucesso!';
+        }
+        echo json_encode(['success' => true, 'message' => $message, 'ent_codigo' => $newId ?? $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function inativarEntidade(EntidadeRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido fornecido.']);
+        return;
+    }
+    try {
+        if ($repo->inactivate($id)) {
+            echo json_encode(['success' => true, 'message' => 'Entidade inativada com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Entidade não encontrada ou já inativa.']);
+        }
+    } catch (Exception $e) {
+        error_log("Erro em inativarEntidade: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor.']);
     }
 }

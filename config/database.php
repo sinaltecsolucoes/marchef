@@ -11,7 +11,8 @@ const TELEFONE_WHATSAPP_LINK = '5588992432756';
 // Retorna um array com as configurações do banco de dados.
 return [
 //localhost
-    'host' => 'localhost', 
+    'host' => 'localhost',
+    'port' => '3306',
     'dbname' => 'marchef',
     'user' => 'root',
     'password' => '',

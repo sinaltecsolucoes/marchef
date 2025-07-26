@@ -23,6 +23,11 @@ class Database
             // Define o DSN (Data Source Name)
             $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
 
+            // Adiciona a porta ao DSN, se ela estiver definida no arquivo de configuração
+            if (isset($config['port'])) {
+                $dsn .= ";port={$config['port']}";
+            }
+
             $opcoes_pdo = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_EMULATE_PREPARES => false,
