@@ -86,6 +86,18 @@ switch ($action) {
     case 'inativarEntidade':
         inativarEntidade($entidadeRepo);
         break;
+    case 'listarEnderecos':
+        listarEnderecos($entidadeRepo);
+        break;
+    case 'getEndereco':
+        getEndereco($entidadeRepo);
+        break;
+    case 'salvarEndereco':
+        salvarEndereco($entidadeRepo, $_SESSION['codUsuario']);
+        break;
+    case 'excluirEndereco':
+        excluirEndereco($entidadeRepo);
+        break;
 
     // ... suas outras rotas (salvarPermissoes, etc.)
 
@@ -220,5 +232,68 @@ function inativarEntidade(EntidadeRepository $repo)
     } catch (Exception $e) {
         error_log("Erro em inativarEntidade: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor.']);
+    }
+}
+
+function listarEnderecos(EntidadeRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'ent_codigo', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID de entidade inválido.']);
+        return;
+    }
+    try {
+        $enderecos = $repo->findEnderecosByEntidadeId($id);
+        echo json_encode(['data' => $enderecos]);
+    } catch (PDOException $e) {
+        error_log("Erro em listarEnderecos: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar endereços: ' . $e->getMessage()]);
+    }
+}
+
+function getEndereco(EntidadeRepository $repo)
+{
+    // CORREÇÃO: Ler do POST e usar o nome de campo correto 'end_codigo'.
+    $id = filter_input(INPUT_POST, 'end_codigo', FILTER_VALIDATE_INT);
+
+    if (!$id) {
+        // Adicionando tratamento de erro que estava faltando
+        echo json_encode(['success' => false, 'message' => 'ID de endereço inválido.']);
+        return;
+    }
+
+    try {
+        $endereco = $repo->findEndereco($id);
+        if ($endereco) {
+            echo json_encode(['success' => true, 'data' => $endereco]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Endereço não encontrado.']);
+        }
+    } catch (PDOException $e) {
+        // Adicionando um bloco try/catch por segurança
+        error_log("Erro em getEndereco: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro de banco de dados ao buscar endereço.']);
+    }
+}
+
+function salvarEndereco(EntidadeRepository $repo, int $userId)
+{
+    try {
+        $repo->saveEndereco($_POST, $userId);
+        echo json_encode(['success' => true, 'message' => 'Endereço salvo com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirEndereco(EntidadeRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'end_codigo', FILTER_VALIDATE_INT);
+    if (!$id) { /* tratamento de erro */
+    }
+    if ($repo->deleteEndereco($id)) {
+        echo json_encode(['success' => true, 'message' => 'Endereço excluído com sucesso!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir endereço.']);
     }
 }

@@ -84,14 +84,6 @@
     <div class="container-fluid mt-3 mx-4">
         <?php
         // ### PONTO DE INCLUSÃO DINÂMICO ###
-        // O Controlador vai definir a variável $viewParaIncluir e este template só vai incluí-la.
-        /*     if (isset($viewParaIncluir) && file_exists($viewParaIncluir)) {
-                 require_once($viewParaIncluir);
-             } else {
-                 echo "<h1 class='text-danger'>Erro 404: Página não encontrada.</h1>";
-                 echo "<p>O arquivo da view não foi encontrado no servidor.</p>";
-             }*/
-
         // Lógica original de inclusão da página
         if (isset($viewParaIncluir) && file_exists($viewParaIncluir)) {
             require_once($viewParaIncluir);
@@ -103,18 +95,25 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+
     <script type="text/javascript" src="<?php echo BASE_URL; ?>/libs/datatables.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
 
     <script src="<?php echo BASE_URL; ?>/js/exibe-senha.js"></script>
