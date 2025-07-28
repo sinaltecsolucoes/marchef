@@ -23,6 +23,9 @@ spl_autoload_register(function ($class) {
 use App\Core\Database;
 use App\Produtos\ProdutoRepository;
 use App\Entidades\EntidadeRepository;
+use App\Usuarios\UsuarioRepository;
+use App\Lotes\LoteRepository;
+use App\Permissions\PermissionRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -47,6 +50,9 @@ try {
     $pdo = Database::getConnection();
     $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório para Produto
     $entidadeRepo = new EntidadeRepository($pdo);// Cria a instância do repositório para Entidade
+    $usuarioRepo = new UsuarioRepository($pdo);// Cria a instância do repositório para Usuário
+    $loteRepo = new LoteRepository($pdo);
+    $permissionRepo = new PermissionRepository($pdo);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -72,6 +78,9 @@ switch ($action) {
     case 'listarProdutosPrimarios':
         listarProdutosPrimarios($produtoRepo);
         break;
+    case 'getProdutoOptions':
+        getProdutoOptions($produtoRepo);
+        break;
 
     // --- ROTAS DE ENTIDADES ---
     case 'listarEntidades':
@@ -86,6 +95,9 @@ switch ($action) {
     case 'inativarEntidade':
         inativarEntidade($entidadeRepo);
         break;
+    case 'getFornecedorOptions':
+        getFornecedorOptions($entidadeRepo);
+        break;
     case 'listarEnderecos':
         listarEnderecos($entidadeRepo);
         break;
@@ -99,7 +111,54 @@ switch ($action) {
         excluirEndereco($entidadeRepo);
         break;
 
-    // ... suas outras rotas (salvarPermissoes, etc.)
+    // --- ROTAS DE USUÁRIOS ---
+    case 'listarUsuarios':
+        listarUsuarios($usuarioRepo);
+        break;
+    case 'getUsuario':
+        getUsuario($usuarioRepo);
+        break;
+    case 'salvarUsuario':
+        salvarUsuario($usuarioRepo);
+        break;
+    case 'excluirUsuario':
+        excluirUsuario($usuarioRepo, $_SESSION['codUsuario']);
+        break;
+
+
+    // --- ROTAS DE LOTES ---
+    case 'listarLotes':
+        listarLotes($loteRepo);
+        break;
+    case 'buscarLote':
+        buscarLote($loteRepo);
+        break;
+    case 'getProximoNumeroLote':
+        getProximoNumeroLote($loteRepo);
+        break;
+    case 'salvarLoteHeader':
+        salvarLoteHeader($loteRepo, $_SESSION['codUsuario']);
+        break;
+    case 'salvarLoteItem':
+        salvarLoteItem($loteRepo);
+        break;
+    case 'excluirLoteItem':
+        excluirLoteItem($loteRepo);
+        break;
+    case 'excluirLote':
+        excluirLote($loteRepo);
+        break;
+    case 'finalizarLote':
+        finalizarLote($loteRepo);
+        break;
+    case 'getLoteItem':
+        getLoteItem($loteRepo);
+        break;
+
+    // --- ROTA DE PERMISSÕES ---
+    case 'salvarPermissoes':
+        salvarPermissoes($permissionRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -170,6 +229,12 @@ function listarProdutosPrimarios(ProdutoRepository $repo)
     } else {
         echo json_encode(['success' => false, 'message' => 'Nenhum produto primário encontrado.']);
     }
+}
+
+function getProdutoOptions(ProdutoRepository $repo)
+{
+    $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
+    echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ENTIDADES ---
@@ -295,5 +360,184 @@ function excluirEndereco(EntidadeRepository $repo)
         echo json_encode(['success' => true, 'message' => 'Endereço excluído com sucesso!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Erro ao excluir endereço.']);
+    }
+}
+
+function getFornecedorOptions(EntidadeRepository $repo)
+{
+    echo json_encode(['success' => true, 'data' => $repo->getFornecedorOptions()]);
+}
+
+// --- FUNÇÕES DE CONTROLE PARA USUARIOS ---
+function listarUsuarios(UsuarioRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getUsuario(UsuarioRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'usu_codigo', FILTER_VALIDATE_INT);
+    if (!$id) { /* tratamento de erro */
+    }
+    echo json_encode(['success' => true, 'data' => $repo->find($id)]);
+}
+
+function salvarUsuario(UsuarioRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'usu_codigo', FILTER_VALIDATE_INT);
+    try {
+        if ($id) { // Editando
+            $repo->update($id, $_POST);
+            $message = 'Usuário atualizado com sucesso!';
+        } else { // Cadastrando
+            $repo->create($_POST);
+            $message = 'Usuário cadastrado com sucesso!';
+        }
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (PDOException $e) {
+        if ($e->getCode() == '23000') {
+            echo json_encode(['success' => false, 'message' => 'Erro: Este login já está em uso.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
+        }
+    }
+}
+
+function excluirUsuario(UsuarioRepository $repo, int $loggedInUserId)
+{
+    $id = filter_input(INPUT_POST, 'usu_codigo', FILTER_VALIDATE_INT);
+    if (!$id) { /* tratamento de erro */
+    }
+
+    if ($id === $loggedInUserId) {
+        echo json_encode(['success' => false, 'message' => 'Você não pode excluir seu próprio perfil.']);
+        return;
+    }
+
+    if ($repo->delete($id)) {
+        echo json_encode(['success' => true, 'message' => 'Usuário excluído com sucesso!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir usuário.']);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA LOTES ---
+function listarLotes(LoteRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function buscarLote(LoteRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    $lote = $repo->findLoteComItens($id);
+    echo json_encode(['success' => !!$lote, 'data' => $lote]);
+}
+
+function getProximoNumeroLote(LoteRepository $repo)
+{
+    echo json_encode(['success' => true, 'proximo_numero' => $repo->getNextNumero()]);
+}
+
+function salvarLoteHeader(LoteRepository $repo, int $userId)
+{
+    try {
+        $loteId = $repo->saveHeader($_POST, $userId);
+        echo json_encode(['success' => true, 'message' => 'Cabeçalho do lote salvo com sucesso!', 'novo_lote_id' => $loteId]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar cabeçalho: ' . $e->getMessage()]);
+    }
+}
+
+function salvarLoteItem(LoteRepository $repo)
+{
+    try {
+        $repo->saveItem($_POST);
+        echo json_encode(['success' => true, 'message' => 'Item salvo com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar item: ' . $e->getMessage()]);
+    }
+}
+
+function excluirLoteItem(LoteRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    if ($repo->deleteItem($id)) {
+        echo json_encode(['success' => true, 'message' => 'Item excluído com sucesso!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir item.']);
+    }
+}
+
+function excluirLote(LoteRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    try {
+        $repo->delete($id);
+        echo json_encode(['success' => true, 'message' => 'Lote excluído com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir lote: ' . $e->getMessage()]);
+    }
+}
+
+function finalizarLote(LoteRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    try {
+        $repo->finalize($id);
+        echo json_encode(['success' => true, 'message' => 'Lote finalizado e estoque gerado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getLoteItem(LoteRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
+        return;
+    }
+
+    $item = $repo->findItem($id);
+    if ($item) {
+        echo json_encode(['success' => true, 'data' => $item]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Item não encontrado.']);
+    }
+}
+
+function salvarPermissoes(PermissionRepository $repo)
+{
+    // Apenas o Admin pode salvar permissões. Verificação dupla de segurança.
+    if (!isset($_SESSION['tipoUsuario']) || $_SESSION['tipoUsuario'] !== 'Admin') {
+        echo json_encode(['success' => false, 'message' => 'Acesso negado.']);
+        return;
+    }
+
+    try {
+        // O formulário envia os dados no array 'permissoes'
+        $permissoes = $_POST['permissoes'] ?? [];
+        $repo->save($permissoes);
+        echo json_encode(['success' => true, 'message' => 'Permissões salvas com sucesso!']);
+    } catch (Exception $e) {
+        error_log("Erro em salvarPermissoes: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor ao salvar as permissões.']);
     }
 }

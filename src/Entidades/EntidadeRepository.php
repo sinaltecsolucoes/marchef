@@ -101,9 +101,6 @@ class EntidadeRepository
     /**
      * Lógica de cadastrar_entidade.php
      */
-    /**
-     * Cria uma nova entidade e gerencia os vínculos em tbl_clientes e tbl_fornecedores.
-     */
     public function create(array $data, int $userId): ?int
     {
         $this->pdo->beginTransaction();
@@ -242,9 +239,9 @@ class EntidadeRepository
                 if ($existingEnderecoId) {
                     // ATUALIZA o endereço principal existente
                     $sqlEndereco = "UPDATE tbl_enderecos SET
-                                        end_cep = :cep, end_logradouro = :logradouro, end_numero = :numero,
-                                        end_complemento = :complemento, end_bairro = :bairro,
-                                        end_cidade = :cidade, end_uf = :uf
+                                        end_cep = :cep, end_logradouro = :logradouro, 
+                                        end_numero = :numero, end_complemento = :complemento, 
+                                        end_bairro = :bairro, end_cidade = :cidade, end_uf = :uf
                                     WHERE end_codigo = :end_id";
                     $params[':end_id'] = $existingEnderecoId;
                 } else {
@@ -365,5 +362,11 @@ class EntidadeRepository
     {
         $stmt = $this->pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :id");
         return $stmt->execute([':id' => $id]);
+    }
+
+    public function getFornecedorOptions(): array
+    {
+        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno FROM tbl_entidades WHERE (ent_tipo_entidade = 'Fornecedor' OR ent_tipo_entidade = 'Cliente e Fornecedor') AND ent_situacao = 'A' ORDER BY ent_razao_social ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -395,6 +395,9 @@ $(document).ready(function () {
                     // 3. Preenche o valor no campo já com a máscara correta
                     const cpfCnpjValor = tipoPessoaDoBanco === 'F' ? data.ent_cpf : data.ent_cnpj;
                     $cpfCnpjInput.val(cpfCnpjValor);
+                    // 4. "Avisamos" o plugin para aplicar a máscara no valor que acabamos de inserir
+                    $cpfCnpjInput.trigger('input'); 
+
 
                     // --- Endereço Principal ---
                     $('#cep-endereco').val(data.end_cep);

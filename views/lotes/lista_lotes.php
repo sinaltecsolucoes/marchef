@@ -1,6 +1,6 @@
 <?php
-// lotes.php
-// Esta página será incluída por index.php, então já tem acesso a $pdo, $csrf_token, etc.
+// /views/lotes/lista_lotes.php
+// O controlador (index.php) já fornece a variável $csrf_token.
 ?>
 
 <h4 class="fw-bold mb-3">Gestão de Lotes de Produção</h4>
@@ -28,10 +28,8 @@
     </table>
 </div>
 
-
-<div class="modal fade" id="modal-lote" tabindex="-1" role="document" aria-labelledby="modal-lote-label"
-    aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+<div class="modal fade" id="modal-lote" tabindex="-1" aria-labelledby="modal-lote-label" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal-lote-label">Adicionar Novo Lote</h5>
@@ -44,20 +42,18 @@
                             data-bs-target="#aba-info-lote" type="button" role="tab">1. Informações do Lote</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="aba-add-produtos-tab" data-bs-toggle="tab"
+                        <button class="nav-link disabled" id="aba-add-produtos-tab" data-bs-toggle="tab"
                             data-bs-target="#aba-add-produtos" type="button" role="tab">2. Incluir Produtos</button>
                     </li>
                 </ul>
 
                 <div class="tab-content mt-3" id="lote-tabs-content-modal">
-
                     <div class="tab-pane fade show active" id="aba-info-lote" role="tabpanel">
                         <form id="form-lote-header">
                             <input type="hidden" id="lote_id" name="lote_id">
                             <input type="hidden" name="csrf_token"
                                 value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
                             <div id="mensagem-lote-header" class="mb-3"></div>
-
                             <div class="row g-3">
                                 <div class="col-md-2"><label for="lote_numero" class="form-label">Número</label><input
                                         type="text" class="form-control" id="lote_numero" name="lote_numero"></div>
@@ -76,12 +72,9 @@
                                         id="lote_completo_calculado" name="lote_completo_calculado"></div>
                             </div>
                         </form>
-
                         <hr class="my-4">
-
                         <h6>Produtos Incluídos neste Lote</h6>
-                        <div id="lista-produtos-deste-lote" class="table-responsive">
-                        </div>
+                        <div id="lista-produtos-deste-lote" class="table-responsive"></div>
                     </div>
 
                     <div class="tab-pane fade" id="aba-add-produtos" role="tabpanel">
@@ -92,7 +85,7 @@
                             <div id="mensagem-add-produto" class="mb-3"></div>
 
                             <div class="row g-3 align-items-end">
-                                <div class="col-12 mb-1">
+                                <div class="col-12 mb-2">
                                     <label class="form-label fw-bold">Filtrar produtos por embalagem:</label>
                                     <div>
                                         <div class="form-check form-check-inline">
@@ -121,17 +114,17 @@
                                         class="form-label">Quantidade</label><input type="number" step="0.001"
                                         class="form-control" id="item_quantidade" name="item_quantidade">
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     <label for="item_peso_total" class="form-label">Peso Total (kg)</label>
                                     <input type="text" class="form-control" id="item_peso_total" readonly
                                         style="font-weight: bold;">
                                 </div>
-                                <div class="col-md-3"><label for="item_data_validade"
+                                <div class="col-md-4"><label for="item_data_validade"
                                         class="form-label">Validade</label><input type="date" class="form-control"
                                         id="item_data_validade" name="item_data_validade" readonly>
                                 </div>
-                                <div class="col-12">
-                                    <div class="form-check form-switch mt-1"><input class="form-check-input"
+                                <div class="col-md-8">
+                                    <div class="form-check form-switch mt-4 pt-2"><input class="form-check-input"
                                             type="checkbox" id="liberar_edicao_validade"><label class="form-check-label"
                                             for="liberar_edicao_validade">Editar validade manualmente</label>
                                     </div>
@@ -141,21 +134,17 @@
                         <button type="button" id="btn-incluir-produto" class="btn btn-success">Incluir Produto</button>
                         <button type="button" id="btn-cancelar-inclusao" class="btn btn-secondary">Limpar</button>
                     </div>
-
                 </div>
             </div>
-
-
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" id="btn-salvar-lote" class="btn btn-primary">Salvar Lote</button>
+                <button type="button" id="btn-salvar-lote" class="btn btn-primary">Salvar Cabeçalho</button>
             </div>
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="modal-confirmar-finalizar-lote" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="modal-confirmar-finalizar-lote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">Confirmar Finalização de Lote</h5>
@@ -180,12 +169,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-confirmar-exclusao-lote" tabindex="-1" role="dialog"
-    aria-labelledby="modal-confirmar-exclusao-lote-label" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="modal-confirmar-exclusao-lote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="modal-confirmar-exclusao-lote-label">Confirmar Exclusão de Lote</h5>
+                <h5 class="modal-title">Confirmar Exclusão de Lote</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">

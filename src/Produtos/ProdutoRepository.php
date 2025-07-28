@@ -127,12 +127,29 @@ class ProdutoRepository
 
     /**
      * Atualiza um produto existente.
-     * Lógica movida de editar_produto.php
      */
     public function update(int $id, array $data): bool
     {
         $data['prod_codigo'] = $id; // Adiciona o ID para o binding
-        $sql = "UPDATE tbl_produtos SET prod_codigo_interno = :prod_codigo_interno, prod_descricao = :prod_descricao, prod_tipo = :prod_tipo, prod_subtipo = :prod_subtipo, prod_classificacao = :prod_classificacao, prod_especie = :prod_especie, prod_origem = :prod_origem, prod_conservacao = :prod_conservacao, prod_congelamento = :prod_congelamento, prod_fator_producao = :prod_fator_producao, prod_tipo_embalagem = :prod_tipo_embalagem, prod_peso_embalagem = :prod_peso_embalagem, prod_total_pecas = :prod_total_pecas, prod_validade_meses = :validade_meses, prod_primario_id = :prod_primario_id, prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14 WHERE prod_codigo = :prod_codigo";
+        $sql = "UPDATE tbl_produtos 
+        SET prod_codigo_interno = :prod_codigo_interno, 
+            prod_descricao = :prod_descricao, 
+            prod_tipo = :prod_tipo, 
+            prod_subtipo = :prod_subtipo,
+            prod_classificacao = :prod_classificacao, 
+            prod_especie = :prod_especie, 
+            prod_origem = :prod_origem, 
+            prod_conservacao = :prod_conservacao, 
+            prod_congelamento = :prod_congelamento, 
+            prod_fator_producao = :prod_fator_producao, 
+            prod_tipo_embalagem = :prod_tipo_embalagem, 
+            prod_peso_embalagem = :prod_peso_embalagem, 
+            prod_total_pecas = :prod_total_pecas, 
+            prod_validade_meses = :prod_validade_meses, 
+            prod_primario_id = :prod_primario_id, 
+            prod_ean13 = :prod_ean13, 
+            prod_dun14 = :prod_dun14 
+        WHERE prod_codigo = :prod_codigo";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($this->prepareData($data));
     }
@@ -183,4 +200,26 @@ class ProdutoRepository
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $result ?: null;
     }
+
+    public function getProdutoOptions(string $tipoEmbalagem): array
+    {
+        $sql = "SELECT 
+                    prod_codigo, 
+                    prod_descricao, 
+                    prod_validade_meses, 
+                    prod_peso_embalagem, 
+                    prod_codigo_interno 
+                FROM tbl_produtos 
+                WHERE prod_situacao = 'A'";
+        $params = [];
+        if ($tipoEmbalagem !== 'Todos') {
+            $sql .= " AND prod_tipo_embalagem = :tipo";
+            $params[':tipo'] = $tipoEmbalagem;
+        }
+        $sql .= " ORDER BY prod_descricao ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
