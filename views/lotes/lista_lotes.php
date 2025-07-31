@@ -189,3 +189,35 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-imprimir-etiqueta" tabindex="-1" aria-labelledby="imprimirEtiquetaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imprimirEtiquetaLabel">Imprimir Etiqueta de Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selecione o cliente de destino para gerar a etiqueta com os dados corretos.</p>
+
+                <input type="hidden" id="item-id-para-impressao">
+
+                <div class="form-group">
+                    <label for="select-cliente-etiqueta" class="form-label">Cliente</label>
+                    <select class="form-select" id="select-cliente-etiqueta" style="width: 100%;">
+                        <option value="">Selecione um cliente...</option>
+                    </select>
+                </div>
+
+                <div id="feedback-impressao-area" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirmar-impressao">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    Gerar PDF da Etiqueta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

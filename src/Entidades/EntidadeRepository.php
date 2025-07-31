@@ -178,7 +178,6 @@ class EntidadeRepository
 
             $this->pdo->commit();
             return $entidadeId;
-
         } catch (PDOException $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -284,7 +283,6 @@ class EntidadeRepository
 
             $this->pdo->commit();
             return true;
-
         } catch (PDOException $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -367,6 +365,29 @@ class EntidadeRepository
     public function getFornecedorOptions(): array
     {
         $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno FROM tbl_entidades WHERE (ent_tipo_entidade = 'Fornecedor' OR ent_tipo_entidade = 'Cliente e Fornecedor') AND ent_situacao = 'A' ORDER BY ent_razao_social ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca o endereço principal de uma entidade.
+     *
+     * @param int $entidadeId O ID da entidade.
+     * @return array|false Os dados do endereço ou false se não for encontrado.
+     */
+    public function findEnderecoPrincipal(int $entidadeId)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM tbl_enderecos WHERE end_entidade_id = :id AND end_tipo_endereco = 'Principal' LIMIT 1");
+        $stmt->execute([':id' => $entidadeId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getClienteOptions(): array
+    {
+        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social 
+                                FROM tbl_entidades 
+                                WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
+                                AND ent_situacao = 'A' 
+                                ORDER BY ent_razao_social ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

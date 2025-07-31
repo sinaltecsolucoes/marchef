@@ -66,6 +66,27 @@
                     <input type="hidden" id="prod_codigo" name="prod_codigo">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
+                    <div class="row">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="prod_categoria" class="form-label">Categoria (IQF)</label>
+                            <select class="form-select" id="prod_categoria" name="prod_categoria">
+                                <option value="">Nenhuma</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A3">A3</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label for="prod_classe" class="form-label">Classe (Descrição para Etiqueta)</label>
+                            <input type="text" class="form-control" id="prod_classe" name="prod_classe" placeholder="Será calculado automaticamente...">
+                        </div>
+                    </div>
+                    <div class="row">
+                    </div>
+
                     <div id="mensagem-produto" class="mb-3"></div>
 
                     <!-- Linha 1: Tipo de Embalagem e Descrição -->

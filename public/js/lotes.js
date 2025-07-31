@@ -4,6 +4,10 @@ $(document).ready(function () {
     // --- Seletores e Variáveis Globais ---
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $modalLote = $('#modal-lote');
+    const $modalImpressao = $('#modal-imprimir-etiqueta');
+    const $selectCliente = $('#select-cliente-etiqueta');
+    const $btnConfirmarImpressao = $('#btn-confirmar-impressao');
+
     let tableLotes;
 
     // =================================================================
@@ -13,6 +17,14 @@ $(document).ready(function () {
         placeholder: 'Selecione uma opção',
         dropdownParent: $modalLote, // Essencial para funcionar no modal
         theme: "bootstrap-5"
+    });
+
+    // Inicialização para o select do modal de Impressão
+    $('#select-cliente-etiqueta').select2({
+        placeholder: 'Digite para buscar um cliente...',
+        language: "pt-BR",
+        theme: "bootstrap-5",
+        dropdownParent: $modalImpressao // Aponta para o modal de Impressão
     });
 
     // =================================================================
@@ -44,6 +56,40 @@ $(document).ready(function () {
             // Lógica de ERRO DE COMUNICAÇÃO
             console.error('Erro na requisição AJAX:', status, error);
         });
+    }
+
+    /**
+  * Função para carregar os clientes no dropdown do modal de impressão,
+  * seguindo as melhores práticas do projeto.
+  */
+    function carregarClientesParaImpressao() {
+        // Usamos $.get e retornamos a 'promise' do ajax
+        return $.get('ajax_router.php?action=getClienteOptions')
+            .done(function (response) {
+                // Bloco executado em caso de sucesso na comunicação
+                if (response.success) {
+                    // A variável $selectCliente já foi definida no topo do arquivo
+                    $selectCliente.empty().append('<option value="">Selecione um cliente...</option>');
+
+                    response.data.forEach(function (cliente) {
+                        // Usando a mesma sintaxe jQuery para criar o <option>
+                        $selectCliente.append($('<option>', {
+                            value: cliente.ent_codigo,
+                            text: cliente.ent_razao_social // Para clientes, usamos apenas a Razão Social
+                        }));
+                    });
+
+                    // Essencial: Notifica o Select2 que as opções foram alteradas
+                    $selectCliente.trigger('change.select2');
+                } else {
+                    // Trata o erro de negócio (ex: success: false) retornado pelo PHP
+                    console.error('Erro ao carregar clientes:', response.message);
+                }
+            })
+            .fail(function (xhr, status, error) {
+                // Bloco executado em caso de falha na comunicação (erro de rede, erro 500, etc.)
+                console.error('Erro na requisição AJAX para carregar clientes:', status, error);
+            });
     }
 
     /**
@@ -149,54 +195,148 @@ $(document).ready(function () {
         $('#item_peso_total').val(pesoTotal.toFixed(3));
     }
 
+    /**
+* Exibe uma mensagem de feedback (alerta) para o usuário.
+* @param {string} msg - A mensagem a ser exibida.
+* @param {string} type - 'success' ou 'danger'.
+* @param {string} area - O seletor da div onde a mensagem aparecerá.
+*/
+    function showFeedbackMessage(msg, type = 'success', area = '#feedback-message-area-lote') {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const $feedbackArea = $(area);
+
+        $feedbackArea.empty()
+            .removeClass('alert-success alert-danger')
+            .addClass(`alert ${alertClass}`)
+            .text(msg)
+            .fadeIn();
+
+        // A mensagem desaparece após 5 segundos
+        setTimeout(() => {
+            $feedbackArea.fadeOut('slow');
+        }, 5000);
+    }
+
     // Gatilhos para o cálculo
     $('#item_produto_id').on('change', calcularPesoTotal);
     $('#item_quantidade').on('keyup change', calcularPesoTotal);
+
+    // Gatilho para o botão IMPRIMIR na linha da tabela de itens
+    // $('#tabela-itens-lote').on('click', '.btn-imprimir-item', function (e) {
+    $('#lista-produtos-deste-lote').on('click', '.btn-imprimir-item', function (e) {
+        e.preventDefault();
+        const itemId = $(this).data('item-id');
+
+        // Guarda o ID do item no input oculto do modal
+        $('#item-id-para-impressao').val(itemId);
+
+        // Limpa seleções anteriores e carrega os clientes
+        $selectCliente.val('').trigger('change');
+        carregarClientesParaImpressao();
+
+        // Abre o modal
+        $modalImpressao.modal('show');
+    });
+
 
     /**
      * Função para renderizar a tabela de itens dentro do modal
      * @param {*} items 
      * @returns 
      */
+    /* function renderizarItensDoLote(items) {
+         const $container = $('#lista-produtos-deste-lote');
+         if (!items || items.length === 0) {
+             $container.html('<p class="text-muted">Nenhum produto incluído ainda.</p>');
+             return;
+         }
+         let tableHtml = `<table class="table table-sm table-striped">
+         <thead>
+             <tr>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Peso Total (kg)</th>
+                <th>Validade</th>
+                <th>Ações</th>
+            </tr>
+         </thead>
+         <tbody>`;
+         items.forEach(function (item) {
+             const dataValidade = new Date(item.item_data_validade + 'T00:00:00').toLocaleDateString('pt-BR');
+             const validadeISO = item.item_data_validade;
+             const pesoTotalItem = (parseFloat(item.item_quantidade) * parseFloat(item.prod_peso_embalagem)).toFixed(3);
+ 
+             tableHtml += `
+        <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
+            <td>${item.prod_descricao}</td>
+            <td>${item.item_quantidade}</td>
+            <td>${pesoTotalItem}</td>
+            <td>${dataValidade}</td>
+            <td>
+                <button class="btn btn-secondary btn-sm btn-editar-item" data-item-id="${item.item_id}">Editar</button>
+                <button class="btn btn-outline-danger btn-sm btn-excluir-item" data-item-id="${item.item_id}">Excluir</button>
+                <button class="btn btn-outline-dark btn-sm btn-imprimir-etiqueta" data-item-id="${item.item_id}" title="Imprimir Etiqueta"><i class="fa-solid fa-barcode"></i></button>
+            </td>
+        </tr>
+    `;
+         });
+         tableHtml += '</tbody></table>';
+         $container.html(tableHtml);
+     }*/
+
+
+
     function renderizarItensDoLote(items) {
         const $container = $('#lista-produtos-deste-lote');
+        const isLoteFinalizado = $('#lote_status_hidden').val() === 'FINALIZADO'; // Verificamos o status do lote
+
         if (!items || items.length === 0) {
             $container.html('<p class="text-muted">Nenhum produto incluído ainda.</p>');
             return;
         }
-        let tableHtml = `<table class="table table-sm table-striped">
-        <thead>
-            <tr>
-               <th>Produto</th>
-               <th>Quantidade</th>
-               <th>Peso Total (kg)</th>
-               <th>Validade</th>
-               <th>Ações</th>
-           </tr>
-        </thead>
-        <tbody>`;
+
+        let tableHtml = `<table class="table table-sm table-striped" id="tabela-itens-lote-modal">
+    <thead>
+        <tr>
+           <th>Produto</th>
+           <th>Quantidade</th>
+           <th>Peso Total (kg)</th>
+           <th>Validade</th>
+           <th>Ações</th>
+       </tr>
+    </thead>
+    <tbody>`;
+
         items.forEach(function (item) {
             const dataValidade = new Date(item.item_data_validade + 'T00:00:00').toLocaleDateString('pt-BR');
             const validadeISO = item.item_data_validade;
             const pesoTotalItem = (parseFloat(item.item_quantidade) * parseFloat(item.prod_peso_embalagem)).toFixed(3);
+            const disabled = isLoteFinalizado ? 'disabled' : ''; // Desabilita botões se o lote estiver finalizado
 
             tableHtml += `
-       <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
-           <td>${item.prod_descricao}</td>
-           <td>${item.item_quantidade}</td>
-           <td>${pesoTotalItem}</td>
-           <td>${dataValidade}</td>
-           <td>
-               <button class="btn btn-secondary btn-sm btn-editar-item" data-item-id="${item.item_id}">Editar</button>
-               <button class="btn btn-outline-danger btn-sm btn-excluir-item" data-item-id="${item.item_id}">Excluir</button>
-               <button class="btn btn-outline-dark btn-sm btn-imprimir-etiqueta" data-item-id="${item.item_id}" title="Imprimir Etiqueta"><i class="fa-solid fa-barcode"></i></button>
-           </td>
-       </tr>
-   `;
+           <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
+               <td>${item.prod_descricao}</td>
+               <td>${item.item_quantidade}</td>
+               <td>${pesoTotalItem}</td>
+               <td>${dataValidade}</td>
+               <td>
+                    <button class="btn btn-info btn-sm btn-imprimir-item" data-item-id="${item.item_id}" title="Imprimir Etiqueta"> Imprimir</button>
+                    <button class="btn btn-warning btn-sm btn-editar-item" data-item-id="${item.item_id}" ${disabled}>Editar</button>
+                    <button class="btn btn-danger btn-sm btn-excluir-item" data-item-id="${item.item_id}" ${disabled}>Excluir</button>
+               </td>
+           </tr>
+       `;
         });
+
         tableHtml += '</tbody></table>';
         $container.html(tableHtml);
     }
+
+
+
+
+
+
 
     /**
      * Função para recarregar a lista de itens de um lote
@@ -725,6 +865,49 @@ $(document).ready(function () {
 
         // 3. Volta para a primeira aba (Opcional, mas melhora a experiência)
         new bootstrap.Tab($('#aba-info-lote-tab')[0]).show();
+    });
+
+    // Gatilho para o botão GERAR PDF dentro do modal
+    $btnConfirmarImpressao.on('click', function () {
+        const loteItemId = $('#item-id-para-impressao').val();
+        const clienteId = $selectCliente.val();
+        const $spinner = $(this).find('.spinner-border');
+
+        if (!loteItemId) {
+            alert('Erro: ID do item não encontrado.');
+            return;
+        }
+
+        // Mostra o spinner e desabilita o botão para evitar cliques duplos
+        $spinner.removeClass('d-none');
+        $(this).prop('disabled', true);
+
+        // Requisição AJAX para a nossa nova rota de impressão
+        $.ajax({
+            url: `ajax_router.php?action=imprimirEtiquetaItem`,
+            type: 'POST',
+            data: {
+                loteItemId: loteItemId,
+                clienteId: clienteId,
+                csrf_token: csrfToken // Token CSRF global do lotes.js
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success && response.pdfUrl) {
+                // Sucesso! Abre o PDF em uma nova aba
+                window.open(response.pdfUrl, '_blank');
+                $modalImpressao.modal('hide');
+            } else {
+                // Exibe erro dentro do modal
+                showFeedbackMessage(response.message || 'Ocorreu um erro desconhecido.', 'danger', '#feedback-impressao-area');
+            }
+        }).fail(function () {
+            showFeedbackMessage('Erro de comunicação com o servidor. Tente novamente.', 'danger', '#feedback-impressao-area');
+        }).always(function () {
+            // Esconde o spinner e reabilita o botão
+            $spinner.addClass('d-none');
+            $btnConfirmarImpressao.prop('disabled', false);
+        });
     });
 
     $('#modal-lote').on('hidden.bs.modal', function () {

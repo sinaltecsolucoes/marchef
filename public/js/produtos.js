@@ -42,13 +42,62 @@ $(document).ready(function () {
     // =================================================================
     // Funções Auxiliares
     // =================================================================
-    function showFeedbackMessage(msg, type = 'success', area = '#feedback-message-area-produto') { /* ...código... */ }
-    function toggleEmbalagemFields() { /* ...código... */ }
-    function loadProdutosPrimarios() { /* ...código... */ }
-    function calcularUnidades() { /* ...código... */ }
+    /**
+    * Calcula e atualiza o campo 'Classe' com base em outros campos do formulário.
+    */
+    function atualizarClasseProduto() {
+        const tipo = $('#prod_tipo').val();
+        const subtipo = $('#prod_subtipo').val().toUpperCase(); // Normaliza para maiúsculas
+        const conservacao = $('#prod_conservacao').val();
+        const congelamento = $('#prod_congelamento').val();
 
-    // O restante do seu código JS continua aqui, exatamente como na versão anterior...
-    // Vou colocar o código completo abaixo para garantir.
+        let partes = [];
+
+        // 1. Tipo do Produto
+        if (tipo) partes.push(tipo);
+
+        // 2. Adiciona "CINZA" se for Camarão
+        if (tipo === 'CAMARAO') partes.push('CINZA');
+
+        // 3. Condicional para Subtipo
+        let subtipoFormatado = '';
+        switch (subtipo) {
+            case 'PUD':
+                subtipoFormatado = 'DESCASCADO';
+                break;
+            case 'P&D':
+            case 'PPV':
+                subtipoFormatado = 'DESCASCADO EVISCERADO';
+                break;
+            case 'P&D C/ CAUDA':
+            case 'PPV C/ CAUDA':
+                subtipoFormatado = 'DESCASCADO EVISCERADO COM CAUDA';
+                break;
+            case 'PUD C/ CAUDA':
+                subtipoFormatado = 'DESCASCADO COM CAUDA';
+                break;
+            default:
+                subtipoFormatado = subtipo; // Usa o valor original se não houver regra
+        }
+        if (subtipoFormatado) partes.push(subtipoFormatado);
+
+        // 4. Condicional para Conservação
+        let conservacaoFormatada = '';
+        if (conservacao === 'COZIDO') {
+            conservacaoFormatada = 'COZIDO';
+        } else if (conservacao === 'PARC. COZIDO') {
+            conservacaoFormatada = 'PARCIALMENTE COZIDO';
+        }
+        if (conservacaoFormatada) partes.push(conservacaoFormatada);
+
+        // 5. Condicional para Congelamento
+        if (congelamento === 'IQF' || congelamento === 'BLOCO') {
+            partes.push('CONGELADO');
+        }
+
+        // Junta todas as partes com um espaço e atualiza o campo
+        $('#prod_classe').val(partes.join(' ').toUpperCase());
+    }
 
     function showFeedbackMessage(msg, type = 'success', area = '#feedback-message-area-produto') {
         const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
@@ -154,7 +203,6 @@ $(document).ready(function () {
         }
     });
 
-    // Encontre esta função no seu arquivo...
     $formProduto.on('submit', function (e) {
         e.preventDefault();
         const id = $('#prod_codigo').val();
@@ -189,6 +237,15 @@ $(document).ready(function () {
         });
     });
 
+    // Gatilho para o cálculo automático da Classe do Produto
+   /* $('#form-produto').on('change', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
+        atualizarClasseProduto();
+    });*/
+
+    $('#form-produto').on('change keyup', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
+        atualizarClasseProduto();
+    });
+
     $('#tabela-produtos').on('click', '.btn-editar-produto', function (e) {
         e.preventDefault();
         const idProduto = $(this).data('id');
@@ -205,6 +262,7 @@ $(document).ready(function () {
                     $formProduto[0].reset();
                     const produto = response.data;
                     Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
+                    atualizarClasseProduto();
                     $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
                     if (produto.prod_tipo_embalagem === 'SECUNDARIA') {
                         $('#peso_embalagem_secundaria').val(produto.prod_peso_embalagem);

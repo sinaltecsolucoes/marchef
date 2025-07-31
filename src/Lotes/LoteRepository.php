@@ -174,4 +174,30 @@ class LoteRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
     }
+
+    /**
+     * Busca um único cabeçalho de lote pelo seu ID.
+     * @param int $loteId O ID do lote a ser encontrado.
+     * @return array|false Os dados do lote ou false se não for encontrado.
+     */
+    public function findById(int $loteId)
+    {
+        // Corrigido para usar a tabela 'tbl_lotes'
+        $stmt = $this->pdo->prepare("SELECT * FROM tbl_lotes WHERE lote_id = :lote_id");
+        $stmt->execute([':lote_id' => $loteId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca um único item de lote pelo seu ID.
+     * @param int $loteItemId O ID do item de lote a ser encontrado.
+     * @return array|false Os dados do item ou false se não for encontrado.
+     */
+    public function findItemById(int $loteItemId)
+    {
+        // Corrigido para usar a tabela 'tbl_lote_itens'
+        $stmt = $this->pdo->prepare("SELECT * FROM tbl_lote_itens WHERE item_id = :item_id");
+        $stmt->execute([':item_id' => $loteItemId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }

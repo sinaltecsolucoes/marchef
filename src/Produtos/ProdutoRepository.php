@@ -17,9 +17,6 @@ class ProdutoRepository
     /**
      * Busca dados para o DataTables, com paginação, busca e ordenação.
      */
-    // SUBSTITUA O MÉTODO INTEIRO POR ESTE:
-    // SUBSTITUA O MÉTODO INTEIRO POR ESTE:
-    // SUBSTITUA O MÉTODO INTEIRO PELA VERSÃO FINAL E DEFINITIVA:
     public function findAllForDataTable(array $params): array
     {
         // Parâmetros do DataTables
@@ -114,7 +111,22 @@ class ProdutoRepository
     public function create(array $data): bool
     {
         // A query correta, que OMITE a coluna prod_codigo do INSERT
-        $sql = "INSERT INTO tbl_produtos (prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo, prod_classificacao, prod_especie, prod_origem, prod_conservacao, prod_congelamento, prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas, prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14) VALUES (:prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, :prod_subtipo, :prod_classificacao, :prod_especie, :prod_origem, :prod_conservacao, :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14)";
+        $sql = "INSERT INTO tbl_produtos (
+                    prod_codigo_interno, prod_descricao, prod_situacao, 
+                    prod_tipo, prod_subtipo, prod_classificacao, 
+                    prod_categoria, prod_classe, prod_especie, 
+                    prod_origem, prod_conservacao, prod_congelamento, 
+                    prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, 
+                    prod_total_pecas, prod_validade_meses, prod_primario_id, 
+                    prod_ean13, prod_dun14) 
+                VALUES (
+                    :prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, 
+                    :prod_subtipo, :prod_classificacao, :prod_categoria, 
+                    :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
+                    :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, 
+                    :prod_peso_embalagem, :prod_total_pecas, :prod_validade_meses, 
+                    :prod_primario_id, :prod_ean13, :prod_dun14
+                )";
         $stmt = $this->pdo->prepare($sql);
 
         $params = $this->prepareData($data);
@@ -136,7 +148,9 @@ class ProdutoRepository
             prod_descricao = :prod_descricao, 
             prod_tipo = :prod_tipo, 
             prod_subtipo = :prod_subtipo,
-            prod_classificacao = :prod_classificacao, 
+            prod_classificacao = :prod_classificacao,
+            prod_categoria = :prod_categoria, 
+            prod_classe = :prod_classe, 
             prod_especie = :prod_especie, 
             prod_origem = :prod_origem, 
             prod_conservacao = :prod_conservacao, 
@@ -178,6 +192,8 @@ class ProdutoRepository
             ':prod_tipo' => $data['prod_tipo'],
             ':prod_subtipo' => !empty($data['prod_subtipo']) ? $data['prod_subtipo'] : null,
             ':prod_classificacao' => !empty($data['prod_classificacao']) ? $data['prod_classificacao'] : null,
+            ':prod_categoria' => $data['prod_categoria'] ?: null,
+            ':prod_classe' => $data['prod_classe'] ?: null,
             ':prod_especie' => !empty($data['prod_especie']) ? $data['prod_especie'] : null,
             ':prod_origem' => $data['prod_origem'],
             ':prod_conservacao' => $data['prod_conservacao'],
@@ -196,7 +212,17 @@ class ProdutoRepository
 
     public function findPrimarios(): ?array
     {
-        $stmt = $this->pdo->query("SELECT prod_codigo, prod_descricao, prod_peso_embalagem, prod_tipo, prod_subtipo, prod_classificacao, prod_especie, prod_origem, prod_conservacao, prod_congelamento, prod_fator_producao, prod_total_pecas, prod_codigo_interno FROM tbl_produtos WHERE prod_tipo_embalagem = 'PRIMARIA' AND prod_situacao = 'A' ORDER BY prod_descricao");
+        $stmt = $this->pdo->query("SELECT 
+                                        prod_codigo, prod_descricao, prod_peso_embalagem, 
+                                        prod_tipo, prod_subtipo, prod_classificacao, 
+                                        prod_categoria, prod_classe, prod_especie, 
+                                        prod_origem, prod_conservacao, prod_congelamento, 
+                                        prod_fator_producao, prod_total_pecas, 
+                                        prod_codigo_interno 
+                                    FROM tbl_produtos 
+                                    WHERE prod_tipo_embalagem = 'PRIMARIA' 
+                                    AND prod_situacao = 'A' 
+                                    ORDER BY prod_descricao");
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $result ?: null;
     }
@@ -221,5 +247,4 @@ class ProdutoRepository
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
 }

@@ -26,6 +26,7 @@ use App\Entidades\EntidadeRepository;
 use App\Usuarios\UsuarioRepository;
 use App\Lotes\LoteRepository;
 use App\Permissions\PermissionRepository;
+use App\Labels\LabelService;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -49,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $pdo = Database::getConnection();
     $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório para Produto
-    $entidadeRepo = new EntidadeRepository($pdo);// Cria a instância do repositório para Entidade
-    $usuarioRepo = new UsuarioRepository($pdo);// Cria a instância do repositório para Usuário
+    $entidadeRepo = new EntidadeRepository($pdo); // Cria a instância do repositório para Entidade
+    $usuarioRepo = new UsuarioRepository($pdo); // Cria a instância do repositório para Usuário
     $loteRepo = new LoteRepository($pdo);
     $permissionRepo = new PermissionRepository($pdo);
 } catch (PDOException $e) {
@@ -97,6 +98,9 @@ switch ($action) {
         break;
     case 'getFornecedorOptions':
         getFornecedorOptions($entidadeRepo);
+        break;
+    case 'getClienteOptions':
+        getClienteOptions($entidadeRepo);
         break;
     case 'listarEnderecos':
         listarEnderecos($entidadeRepo);
@@ -159,6 +163,12 @@ switch ($action) {
     case 'salvarPermissoes':
         salvarPermissoes($permissionRepo);
         break;
+
+    // --- ROTA DE ETIQUETAS ---  
+    case 'imprimirEtiquetaItem':
+        imprimirEtiquetaItem($pdo); // A função precisa da conexão PDO
+        break;
+
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -368,6 +378,11 @@ function getFornecedorOptions(EntidadeRepository $repo)
     echo json_encode(['success' => true, 'data' => $repo->getFornecedorOptions()]);
 }
 
+function getClienteOptions(EntidadeRepository $repo)
+{
+    echo json_encode(['success' => true, 'data' => $repo->getClienteOptions()]);
+}
+
 // --- FUNÇÕES DE CONTROLE PARA USUARIOS ---
 function listarUsuarios(UsuarioRepository $repo)
 {
@@ -539,5 +554,67 @@ function salvarPermissoes(PermissionRepository $repo)
     } catch (Exception $e) {
         error_log("Erro em salvarPermissoes: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor ao salvar as permissões.']);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
+function imprimirEtiquetaItem(PDO $pdo)
+{
+    // Validação básica dos dados de entrada
+    if (!isset($_POST['loteItemId']) || empty($_POST['loteItemId'])) {
+        echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
+        return; // Usamos return em vez de exit
+    }
+
+    $loteItemId = (int)$_POST['loteItemId'];
+    $clienteId = isset($_POST['clienteId']) && !empty($_POST['clienteId']) ? (int)$_POST['clienteId'] : null;
+
+    try {
+        // Agora usamos o 'use' do topo, fica mais limpo
+        $labelService = new LabelService($pdo);
+
+        // Gera o código ZPL usando o serviço
+        $zpl = $labelService->gerarZplParaItem($loteItemId, $clienteId);
+
+        if ($zpl === null) {
+            echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.']);
+            return;
+        }
+
+        // --- Interação com a API da Labelary para converter ZPL em PDF ---
+       // $curl = curl_init('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/');
+        // Esta é a linha corrigida
+        $curl = curl_init('http://api.labelary.com/v1/printers/12dpmm/labels/4x7/0/');
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $zpl);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/pdf']);
+
+        $pdfContent = curl_exec($curl);
+
+        if (curl_getinfo($curl, CURLINFO_HTTP_CODE) != 200) {
+            echo json_encode(['success' => false, 'message' => 'Erro da API Labelary: ' . $pdfContent]);
+            curl_close($curl);
+            return;
+        }
+
+        curl_close($curl);
+
+        // --- Salvar o PDF temporariamente no servidor ---
+        $tempDir = __DIR__ . '/temp_labels/';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
+
+        $filename = 'etiqueta-' . uniqid() . '.pdf';
+        $filePath = $tempDir . $filename;
+
+        file_put_contents($filePath, $pdfContent);
+
+        $publicUrl = 'temp_labels/' . $filename;
+
+        echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
     }
 }
