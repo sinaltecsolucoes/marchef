@@ -125,7 +125,7 @@ $(document).ready(function () {
     }
 
     function loadProdutosPrimarios() {
-        $.ajax({
+        return $.ajax({
             url: 'ajax_router.php?action=listarProdutosPrimarios',
             type: 'GET',
             dataType: 'json',
@@ -160,10 +160,10 @@ $(document).ready(function () {
         "ajax": { "url": "ajax_router.php?action=listarProdutos", "type": "POST", "data": function (d) { d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val(); } },
         "responsive": true,
         "columns": [
-            { "data": "prod_situacao", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
-            { "data": "prod_codigo_interno" }, { "data": "prod_descricao" }, { "data": "prod_tipo" },
-            { "data": "prod_tipo_embalagem" }, { "data": "prod_peso_embalagem" },
-            { "data": "prod_codigo", "orderable": false, "render": (data) => `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>` }
+            { "data": "prod_situacao", "className": "text-center", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
+            { "data": "prod_codigo_interno", "className": "text-center" }, { "data": "prod_descricao" }, { "data": "prod_tipo", "className": "text-center" },
+            { "data": "prod_tipo_embalagem", "className": "text-center" }, { "data": "prod_peso_embalagem", "className": "text-center" },
+            { "data": "prod_codigo", "orderable": false, "className": "text-center", "render": (data) => `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>` }
         ],
         "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
@@ -238,9 +238,9 @@ $(document).ready(function () {
     });
 
     // Gatilho para o cálculo automático da Classe do Produto
-   /* $('#form-produto').on('change', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
-        atualizarClasseProduto();
-    });*/
+    /* $('#form-produto').on('change', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
+         atualizarClasseProduto();
+     });*/
 
     $('#form-produto').on('change keyup', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
         atualizarClasseProduto();
@@ -263,16 +263,24 @@ $(document).ready(function () {
                     const produto = response.data;
                     Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
                     atualizarClasseProduto();
+
+                    // Dispara a mudança de embalagem, o que também chama o loadProdutosPrimarios se for SECUNDARIA
                     $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
+
+                    // Se for secundária, esperamos o carregamento terminar ANTES de definir o valor.
                     if (produto.prod_tipo_embalagem === 'SECUNDARIA') {
                         $('#peso_embalagem_secundaria').val(produto.prod_peso_embalagem);
-                        setTimeout(() => {
+
+                        // A função 'loadProdutosPrimarios' agora retorna uma promessa.
+                        // O código dentro do .done() só executa quando a lista estiver 100% carregada.
+                        loadProdutosPrimarios().done(function () {
                             $('#prod_primario_id').val(produto.prod_primario_id).trigger('change.select2');
                             calcularUnidades();
-                        }, 500);
+                        });
                     } else {
                         $('#prod_peso_embalagem').val(produto.prod_peso_embalagem);
                     }
+
                     $('#modal-adicionar-produto-label').text('Editar Produto');
                     $modalProduto.modal('show');
                 } else { showFeedbackMessage(response.message, 'danger'); }

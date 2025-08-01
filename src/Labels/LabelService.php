@@ -17,7 +17,7 @@ class LabelService
         $this->pdo = $pdo;
     }
 
-    public function gerarZplParaItem(int $loteItemId, ?int $clienteId = null): ?string
+    public function gerarZplParaItem(int $loteItemId): ?string
     {
         $loteRepo = new LoteRepository($this->pdo);
         $produtoRepo = new ProdutoRepository($this->pdo);
@@ -25,12 +25,17 @@ class LabelService
 
         // --- Busca de Dados ---
         $item = $loteRepo->findItemById($loteItemId);
-        if (!$item) return null;
+        if (!$item)
+            return null;
 
         $loteHeader = $loteRepo->findById($item['item_lote_id']);
-        
+        if (!$loteHeader)
+            return null;
+
+        $clienteId = $loteHeader['lote_cliente_id'];
         $produto = $produtoRepo->find($item['item_produto_id']);
 
+        // --- Bloco de busca de cliente e endereço ---
         $cliente = null;
         $endereco = null;
         if ($clienteId) {
@@ -54,11 +59,11 @@ class LabelService
             'TPECAS_PRODUTOS' => $produto['prod_total_pecas'] ?? '',
             'PESO_EMBALAGEM_PRIMARIA' => ($produto['prod_tipo_embalagem'] === 'PRIMARIA') ? $produto['prod_peso_embalagem'] : '',
             'PESO_EMBALAGEM_SECUNDARIA' => ($produto['prod_tipo_embalagem'] === 'SECUNDARIA') ? $produto['prod_peso_embalagem'] : '',
-            
+
             'LOTE_COMPLETO' => $loteHeader['lote_completo_calculado'] ?? '',
             'DATA_FABRICACAO_LOTE' => isset($loteHeader['lote_data_fabricacao']) ? date('d/m/Y', strtotime($loteHeader['lote_data_fabricacao'])) : '',
             'DATA_VALIDADE_ITEM' => isset($item['item_data_validade']) ? date('d/m/Y', strtotime($item['item_data_validade'])) : '',
-            
+
             'RAZAO_SOCIAL_CLIENTE' => $cliente['ent_razao_social'] ?? '',
             'LOGRADOURO_CLIENTE' => isset($endereco['end_logradouro']) ? $endereco['end_logradouro'] . ', ' . $endereco['end_numero'] : '',
             'COMPLEMENTO_ENDERECO_CLIENTE' => $endereco['end_complemento'] ?? '',

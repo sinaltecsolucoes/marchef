@@ -24,7 +24,7 @@ class UsuarioRepository
         $start = $params['start'] ?? 0;
         $length = $params['length'] ?? 10;
         $searchValue = $params['search']['value'] ?? '';
-        
+
         $totalRecords = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios")->fetchColumn();
 
         $whereClause = '';
@@ -40,15 +40,15 @@ class UsuarioRepository
 
         $sqlData = "SELECT * FROM tbl_usuarios $whereClause ORDER BY usu_nome ASC LIMIT :start, :length";
         $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int)$start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int)$length, PDO::PARAM_INT);
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
         if (!empty($searchValue)) {
             $stmt->bindValue(':search', $queryParams[':search']);
         }
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return ["draw" => (int)$draw, "recordsTotal" => (int)$totalRecords, "recordsFiltered" => (int)$totalFiltered, "data" => $data];
+        return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
     }
 
     /**
@@ -118,4 +118,64 @@ class UsuarioRepository
         $stmt->execute([':id' => $id]);
         return $stmt->rowCount() > 0;
     }
+
+    /**
+     * Busca um único usuário pelo seu login.
+     * Necessário para o processo de autenticação.
+     */
+    public function findByLogin(string $login): ?array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM tbl_usuarios WHERE usu_login = :login");
+        $stmt->execute([':login' => $login]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    /**
+     * Valida as credenciais de um usuário.
+     * Retorna os dados do usuário se a senha estiver correta, ou null se falhar.
+     */
+    public function validateCredentials(string $login, string $password): ?array
+    {
+        $user = $this->findByLogin($login);
+        if ($user && password_verify($password, $user['usu_senha'])) {
+            unset($user['usu_senha']); // Nunca retorne a senha
+            return $user;
+        }
+        return null;
+    }
+
+    /**
+     * Salva um novo token de API para um usuário.
+     */
+    public function saveApiToken(int $userId, string $tokenHash, string $expiresAt): bool
+    {
+        $sql = "INSERT INTO tbl_api_tokens (token_usuario_id, token_hash, token_expires_at) VALUES (:user_id, :token_hash, :expires_at)";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            ':user_id' => $userId,
+            ':token_hash' => $tokenHash,
+            ':expires_at' => $expiresAt
+        ]);
+    }
+
+    /**
+     * Encontra um usuário válido e ativo a partir de um token de API.
+     */
+    public function findUserByToken(string $token): ?array
+    {
+        $tokenHash = hash('sha256', $token);
+
+        // Busca um token na tabela que corresponda ao hash e que ainda não tenha expirado
+        $sql = "SELECT u.* FROM tbl_api_tokens t
+            JOIN tbl_usuarios u ON t.token_usuario_id = u.usu_codigo
+            WHERE t.token_hash = :token_hash AND t.token_expires_at > NOW()";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':token_hash' => $tokenHash]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ?: null;
+    }
+
 }

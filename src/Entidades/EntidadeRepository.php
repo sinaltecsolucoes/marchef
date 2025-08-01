@@ -383,7 +383,7 @@ class EntidadeRepository
 
     public function getClienteOptions(): array
     {
-        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social 
+        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno 
                                 FROM tbl_entidades 
                                 WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
                                 AND ent_situacao = 'A' 

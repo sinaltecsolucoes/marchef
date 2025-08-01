@@ -78,16 +78,32 @@ class LoteRepository
             ':numero' => $data['lote_numero'],
             ':data_fab' => $data['lote_data_fabricacao'],
             ':fornecedor' => $data['lote_fornecedor_id'] ?: null,
+            ':cliente' => $data['lote_cliente_id'] ?: null,
             ':ciclo' => $data['lote_ciclo'],
             ':viveiro' => $data['lote_viveiro'],
             ':completo' => $data['lote_completo_calculado'],
         ];
 
         if ($id) {
-            $sql = "UPDATE tbl_lotes SET lote_numero = :numero, lote_data_fabricacao = :data_fab, lote_fornecedor_id = :fornecedor, lote_ciclo = :ciclo, lote_viveiro = :viveiro, lote_completo_calculado = :completo WHERE lote_id = :id";
+            $sql = "UPDATE tbl_lotes 
+                    SET lote_numero = :numero, 
+                        lote_data_fabricacao = :data_fab, 
+                        lote_fornecedor_id = :fornecedor,
+                        lote_cliente_id = :cliente,  
+                        lote_ciclo = :ciclo, 
+                        lote_viveiro = :viveiro, 
+                        lote_completo_calculado = :completo 
+                    WHERE lote_id = :id";
             $params[':id'] = $id;
         } else {
-            $sql = "INSERT INTO tbl_lotes (lote_numero, lote_data_fabricacao, lote_fornecedor_id, lote_ciclo, lote_viveiro, lote_completo_calculado, lote_usuario_id) VALUES (:numero, :data_fab, :fornecedor, :ciclo, :viveiro, :completo, :user_id)";
+            $sql = "INSERT INTO tbl_lotes (lote_numero, lote_data_fabricacao, 
+                                           lote_fornecedor_id, lote_cliente_id,
+                                           lote_ciclo, lote_viveiro, lote_completo_calculado, 
+                                           lote_usuario_id) 
+                                        VALUES (:numero, :data_fab, 
+                                                :fornecedor, :cliente, 
+                                                :ciclo, :viveiro, 
+                                                :completo, :user_id)";
             $params[':user_id'] = $userId;
         }
         $stmt = $this->pdo->prepare($sql);

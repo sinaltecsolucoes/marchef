@@ -53,13 +53,13 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
     <table id="tabela-entidades" class="table table-hover my-4" style="width:100%">
         <thead>
             <tr>
-                <th>Situação</th>
-                <th>Tipo</th>
-                <th>Código Interno</th>
-                <th>Razão Social</th>
-                <th>CPF/CNPJ</th>
-                <th>Endereço Principal</th>
-                <th>Ações</th>
+                <th class="text-center">Situação</th>
+                <th class="text-center">Tipo</th>
+                <th class="text-center">Código Interno</th>
+                <th class="text-center">Razão Social</th>
+                <th class="text-center">CPF/CNPJ</th>
+                <th class="text-center">Endereço Principal</th>
+                <th class="text-center">Ações</th>
             </tr>
         </thead>
         <tbody></tbody>

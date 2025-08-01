@@ -37,13 +37,13 @@
     <table id="tabela-produtos" class="table table-hover my-4" style="width:100%">
         <thead>
             <tr>
-                <th>Situação</th>
-                <th>Cód. Interno</th>
-                <th>Descrição</th>
-                <th>Tipo</th>
-                <th>Embalagem</th>
-                <th>Peso</th>
-                <th>Ações</th>
+                <th class="text-center">Situação</th>
+                <th class="text-center">Cód. Interno</th>
+                <th class="text-center">Descrição</th>
+                <th class="text-center">Tipo</th>
+                <th class="text-center">Embalagem</th>
+                <th class="text-center">Peso</th>
+                <th class="text-center">Ações</th>
             </tr>
         </thead>
         <tbody>

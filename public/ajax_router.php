@@ -567,14 +567,13 @@ function imprimirEtiquetaItem(PDO $pdo)
     }
 
     $loteItemId = (int)$_POST['loteItemId'];
-    $clienteId = isset($_POST['clienteId']) && !empty($_POST['clienteId']) ? (int)$_POST['clienteId'] : null;
-
+    
     try {
         // Agora usamos o 'use' do topo, fica mais limpo
         $labelService = new LabelService($pdo);
 
         // Gera o código ZPL usando o serviço
-        $zpl = $labelService->gerarZplParaItem($loteItemId, $clienteId);
+        $zpl = $labelService->gerarZplParaItem($loteItemId);
 
         if ($zpl === null) {
             echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.']);

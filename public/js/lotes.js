@@ -13,7 +13,7 @@ $(document).ready(function () {
     // =================================================================
     // INICIALIZAÇÃO DOS PLUGINS (Executa 1 vez quando a página carrega)
     // =================================================================
-    $('#lote_fornecedor_id, #item_produto_id').select2({
+    $('#lote_fornecedor_id, #lote_cliente_id, #item_produto_id').select2({
         placeholder: 'Selecione uma opção',
         dropdownParent: $modalLote, // Essencial para funcionar no modal
         theme: "bootstrap-5"
@@ -59,46 +59,34 @@ $(document).ready(function () {
     }
 
     /**
-  * Função para carregar os clientes no dropdown do modal de impressão,
-  * seguindo as melhores práticas do projeto.
-  */
-    function carregarClientesParaImpressao() {
-        // Usamos $.get e retornamos a 'promise' do ajax
-        return $.get('ajax_router.php?action=getClienteOptions')
-            .done(function (response) {
-                // Bloco executado em caso de sucesso na comunicação
-                if (response.success) {
-                    // A variável $selectCliente já foi definida no topo do arquivo
-                    $selectCliente.empty().append('<option value="">Selecione um cliente...</option>');
-
-                    response.data.forEach(function (cliente) {
-                        // Usando a mesma sintaxe jQuery para criar o <option>
-                        $selectCliente.append($('<option>', {
+     * Função para carregar os clientes no select
+     */
+    function carregarClientes() {
+        return $.get('ajax_router.php?action=getClienteOptions').done(function (response) {
+            if (response.success) {
+                const $select = $('#lote_cliente_id');
+                $select.empty().append('<option value="">Selecione...</option>');
+                response.data.forEach(function (cliente) {
+                    $select.append(
+                        $('<option>', {
                             value: cliente.ent_codigo,
-                            text: cliente.ent_razao_social // Para clientes, usamos apenas a Razão Social
-                        }));
-                    });
-
-                    // Essencial: Notifica o Select2 que as opções foram alteradas
-                    $selectCliente.trigger('change.select2');
-                } else {
-                    // Trata o erro de negócio (ex: success: false) retornado pelo PHP
-                    console.error('Erro ao carregar clientes:', response.message);
-                }
-            })
-            .fail(function (xhr, status, error) {
-                // Bloco executado em caso de falha na comunicação (erro de rede, erro 500, etc.)
-                console.error('Erro na requisição AJAX para carregar clientes:', status, error);
-            });
+                            text: `${cliente.ent_razao_social} (Cód: ${cliente.ent_codigo_interno})`,
+                            'data-codigo-interno': cliente.ent_codigo_interno
+                        })
+                    );
+                });
+                $select.trigger('change.select2');
+            }
+        });
     }
 
     /**
-     * Função para carregar os produtos no select da Aba 2
-     * @param {*} tipoEmbalagemFiltro 
-     */
+    * Função para carregar os produtos no select da Aba 2
+    * @param {*} tipoEmbalagemFiltro 
+    */
     function carregarProdutos(tipoEmbalagemFiltro = 'Todos') {
         // Usamos $.ajax() para ter mais controle
-        $.ajax({
+        return $.ajax({
             url: 'ajax_router.php?action=getProdutoOptions',
             type: 'GET',
             data: { tipo_embalagem: tipoEmbalagemFiltro },
@@ -140,8 +128,12 @@ $(document).ready(function () {
         const ciclo = $('#lote_ciclo').val() || 'C';
         const viveiro = $('#lote_viveiro').val() || 'V';
 
-        const fornecedorOption = $('#lote_fornecedor_id').find(':selected');
-        const codFornecedor = fornecedorOption.data('codigo-interno') || 'CF';
+        //const fornecedorOption = $('#lote_fornecedor_id').find(':selected');
+        //const codFornecedor = fornecedorOption.data('codigo-interno') || 'CF';
+
+        const clienteOption = $('#lote_cliente_id').find(':selected');
+        const codCliente = clienteOption.data('codigo-interno') || 'CC';
+
 
         let ano = 'YY';
         if (dataFabStr) {
@@ -151,7 +143,9 @@ $(document).ready(function () {
         }
 
         // Junta todas as partes para formar o código final
-        const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codFornecedor}`;
+        //const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codFornecedor}`;
+        const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codCliente}`;
+
 
         // Atualiza o valor do campo no formulário
         $('#lote_completo_calculado').val(loteCompletoCalculado);
@@ -196,11 +190,11 @@ $(document).ready(function () {
     }
 
     /**
-* Exibe uma mensagem de feedback (alerta) para o usuário.
-* @param {string} msg - A mensagem a ser exibida.
-* @param {string} type - 'success' ou 'danger'.
-* @param {string} area - O seletor da div onde a mensagem aparecerá.
-*/
+    * Exibe uma mensagem de feedback (alerta) para o usuário.
+    * @param {string} msg - A mensagem a ser exibida.
+    * @param {string} type - 'success' ou 'danger'.
+    * @param {string} area - O seletor da div onde a mensagem aparecerá.
+    */
     function showFeedbackMessage(msg, type = 'success', area = '#feedback-message-area-lote') {
         const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
         const $feedbackArea = $(area);
@@ -221,71 +215,11 @@ $(document).ready(function () {
     $('#item_produto_id').on('change', calcularPesoTotal);
     $('#item_quantidade').on('keyup change', calcularPesoTotal);
 
-    // Gatilho para o botão IMPRIMIR na linha da tabela de itens
-    // $('#tabela-itens-lote').on('click', '.btn-imprimir-item', function (e) {
-    $('#lista-produtos-deste-lote').on('click', '.btn-imprimir-item', function (e) {
-        e.preventDefault();
-        const itemId = $(this).data('item-id');
-
-        // Guarda o ID do item no input oculto do modal
-        $('#item-id-para-impressao').val(itemId);
-
-        // Limpa seleções anteriores e carrega os clientes
-        $selectCliente.val('').trigger('change');
-        carregarClientesParaImpressao();
-
-        // Abre o modal
-        $modalImpressao.modal('show');
-    });
-
-
     /**
      * Função para renderizar a tabela de itens dentro do modal
      * @param {*} items 
      * @returns 
      */
-    /* function renderizarItensDoLote(items) {
-         const $container = $('#lista-produtos-deste-lote');
-         if (!items || items.length === 0) {
-             $container.html('<p class="text-muted">Nenhum produto incluído ainda.</p>');
-             return;
-         }
-         let tableHtml = `<table class="table table-sm table-striped">
-         <thead>
-             <tr>
-                <th>Produto</th>
-                <th>Quantidade</th>
-                <th>Peso Total (kg)</th>
-                <th>Validade</th>
-                <th>Ações</th>
-            </tr>
-         </thead>
-         <tbody>`;
-         items.forEach(function (item) {
-             const dataValidade = new Date(item.item_data_validade + 'T00:00:00').toLocaleDateString('pt-BR');
-             const validadeISO = item.item_data_validade;
-             const pesoTotalItem = (parseFloat(item.item_quantidade) * parseFloat(item.prod_peso_embalagem)).toFixed(3);
- 
-             tableHtml += `
-        <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
-            <td>${item.prod_descricao}</td>
-            <td>${item.item_quantidade}</td>
-            <td>${pesoTotalItem}</td>
-            <td>${dataValidade}</td>
-            <td>
-                <button class="btn btn-secondary btn-sm btn-editar-item" data-item-id="${item.item_id}">Editar</button>
-                <button class="btn btn-outline-danger btn-sm btn-excluir-item" data-item-id="${item.item_id}">Excluir</button>
-                <button class="btn btn-outline-dark btn-sm btn-imprimir-etiqueta" data-item-id="${item.item_id}" title="Imprimir Etiqueta"><i class="fa-solid fa-barcode"></i></button>
-            </td>
-        </tr>
-    `;
-         });
-         tableHtml += '</tbody></table>';
-         $container.html(tableHtml);
-     }*/
-
-
-
     function renderizarItensDoLote(items) {
         const $container = $('#lista-produtos-deste-lote');
         const isLoteFinalizado = $('#lote_status_hidden').val() === 'FINALIZADO'; // Verificamos o status do lote
@@ -295,14 +229,14 @@ $(document).ready(function () {
             return;
         }
 
-        let tableHtml = `<table class="table table-sm table-striped" id="tabela-itens-lote-modal">
+        let tableHtml = `<table class="table table-sm table-striped table-sm-custom" id="tabela-itens-lote-modal">
     <thead>
         <tr>
-           <th>Produto</th>
-           <th>Quantidade</th>
-           <th>Peso Total (kg)</th>
-           <th>Validade</th>
-           <th>Ações</th>
+           <th style="width: 50%" class="text-center";">Produto</th>
+           <th style="width: 10%" class="text-center";">Quantidade</th>
+           <th style="width: 10%" class="text-center";">Peso Total (kg)</th>
+           <th style="width: 10%" class="text-center";">Validade</th>
+           <th style="width: 20%" class="text-center";">Ações</th>
        </tr>
     </thead>
     <tbody>`;
@@ -316,9 +250,9 @@ $(document).ready(function () {
             tableHtml += `
            <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
                <td>${item.prod_descricao}</td>
-               <td>${item.item_quantidade}</td>
-               <td>${pesoTotalItem}</td>
-               <td>${dataValidade}</td>
+               <td class="text-center">${item.item_quantidade}</td>
+               <td class="text-center">${pesoTotalItem}</td>
+               <td class="text-center">${dataValidade}</td>
                <td>
                     <button class="btn btn-info btn-sm btn-imprimir-item" data-item-id="${item.item_id}" title="Imprimir Etiqueta"> Imprimir</button>
                     <button class="btn btn-warning btn-sm btn-editar-item" data-item-id="${item.item_id}" ${disabled}>Editar</button>
@@ -331,12 +265,6 @@ $(document).ready(function () {
         tableHtml += '</tbody></table>';
         $container.html(tableHtml);
     }
-
-
-
-
-
-
 
     /**
      * Função para recarregar a lista de itens de um lote
@@ -402,16 +330,42 @@ $(document).ready(function () {
         return null;
     }
 
+    /**
+     * Valida os campos obrigatórios do cabeçalho do lote.
+     * @returns {Array} Uma lista de mensagens de erro. Vazia se tudo estiver OK.
+     */
+    function validarCabecalhoLote() {
+        const erros = [];
+        if (!$('#lote_numero').val().trim()) {
+            erros.push("O campo 'Número' é obrigatório.");
+        }
+        if (!$('#lote_data_fabricacao').val()) {
+            erros.push("O campo 'Data de Fabricação' é obrigatório.");
+        }
+        if (!$('#lote_cliente_id').val()) {
+            erros.push("O campo 'Cliente' é obrigatório.");
+        }
+        if (!$('#lote_fornecedor_id').val()) {
+            erros.push("O campo 'Fornecedor' é obrigatório.");
+        }
+        if (!$('#lote_completo_calculado').val()) {
+            erros.push("O campo 'Lote Completo' é obrigatório.");
+        }
+        return erros;
+    }
+
     // --- Inicialização da Tabela Principal de Lotes ---
     tableLotes = $('#tabela-lotes').DataTable({
         "serverSide": true,
         "ajax": { "url": "ajax_router.php?action=listarLotes", "type": "POST", "data": { csrf_token: csrfToken } },
         "responsive": true,
         "columns": [
-            { "data": "lote_completo_calculado" },
-            { "data": "fornecedor_razao_social" },
+            { "data": "lote_completo_calculado", "width": "10%" },
+            { "data": "fornecedor_razao_social", "width": "25%" },
             {
                 "data": "lote_data_fabricacao",
+                "className": "text-center",
+                "width": "15%",
                 "render": function (data, type, row) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
@@ -420,6 +374,8 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_status",
+                "className": "text-center",
+                "width": "10%",
                 "render": function (data, type, row) {
                     let badgeClass = 'bg-secondary';
                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
@@ -430,6 +386,8 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_data_cadastro",
+                "className": "text-center",
+                "width": "10%",
                 "render": function (data, type, row) {
                     if (!data) return '';
                     const date = new Date(data);
@@ -440,6 +398,8 @@ $(document).ready(function () {
                 "data": "lote_id",
                 //"data": "",
                 "orderable": false,
+                "className": "text-center",
+                "width": "10%",
                 "render": function (data, type, row) {
                     // O 'row' nos dá acesso a todos os dados da linha, incluindo o status
                     let finalizarBtn = '';
@@ -454,12 +414,6 @@ $(document).ready(function () {
                          <button class="btn btn-danger btn-sm btn-excluir-lote" data-id="${data}">Excluir</button>
                          ${finalizarBtn}
                      `;
-
-                    // return `
-                    //         <button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}">Editar</button>
-                    //         <button class="btn btn-danger btn-sm btn-excluir-lote ms-1" data-id="${data}" data-nome="${row.lote_completo_calculado}">Excluir</button>
-                    //         ${finalizarBtn}
-                    // `;
                 }
             }
         ],
@@ -535,11 +489,12 @@ $(document).ready(function () {
             }
         });
         carregarFornecedores(); // Carrega fornecedores ao abrir
+        carregarClientes();// Carrega clientes ao abrir
         carregarProdutos(); // Carrega produtos ao abrir
     });
 
-    // Evento de clique para os botões de rádio do filtro
-    $('input[name="filtro_tipo_embalagem"]').on('change', function () {
+    // Evento delegado para os botões de rádio do filtro
+    $('#modal-lote').on('change', 'input[name="filtro_tipo_embalagem"]', function () {
         // Pega o valor do rádio selecionado ('Todos', 'PRIMARIA' ou 'SECUNDARIA')
         const filtroSelecionado = $(this).val();
         // Chama a função para recarregar o dropdown com o filtro
@@ -557,54 +512,60 @@ $(document).ready(function () {
         const loteId = $(this).data('id');
 
         // Primeiro, carrega a lista de fornecedores.
-        // Isso garante que o dropdown estará pronto quando os dados do lote chegarem.
         carregarFornecedores().done(function () {
-            // Quando os fornecedores estiverem carregados, busca os dados do lote específico.
-            $.ajax({
-                url: 'ajax_router.php?action=buscarLote',
-                type: 'POST',
-                data: {
-                    lote_id: loteId,
-                    csrf_token: csrfToken
-                },
-                dataType: 'json'
-            })
-                .done(function (response) {
-                    if (response.success) {
-                        const lote = response.data;
-                        const header = lote.header;
-                        console.log('Dados do lote:', header); // Log para depuração
-
-                        // 1. Preenche os campos do formulário, exceto o fornecedor
-                        $('#lote_id').val(header.lote_id);
-                        $('#lote_numero').val(header.lote_numero);
-                        $('#lote_data_fabricacao').val(header.lote_data_fabricacao);
-                        $('#lote_ciclo').val(header.lote_ciclo);
-                        $('#lote_viveiro').val(header.lote_viveiro);
-                        $('#lote_completo_calculado').val(header.lote_completo_calculado);
-
-                        // 2. Seleciona o fornecedor correto no dropdown (que já foi carregado)
-                        $('#lote_fornecedor_id').val(header.lote_fornecedor_id).trigger('change.select2');
-
-                        // 3. Renderiza a lista de produtos do lote
-                        renderizarItensDoLote(lote.items);
-
-                        // 4. Ajusta o texto do botão para "Edição"
-                        $('#btn-salvar-lote').text('Salvar Alterações');
-
-                        // 4. Prepara e exibe o modal
-                        $('#modal-lote-label').text('Editar Lote: ' + header.lote_completo_calculado);
-                        $('#aba-add-produtos-tab').removeClass('disabled').attr('aria-disabled', 'false');
-                        $('#modal-lote').modal('show');
-
-                    } else {
-                        alert('Erro ao buscar dados do lote: ' + response.message);
-                    }
+            // Quando os fornecedores estiverem carregados, carrega os clientes.
+            carregarClientes().done(function () {
+                // Quando ambos estiverem carregados, busca os dados do lote.
+                $.ajax({
+                    url: 'ajax_router.php?action=buscarLote',
+                    type: 'POST',
+                    data: {
+                        lote_id: loteId,
+                        csrf_token: csrfToken
+                    },
+                    dataType: 'json'
                 })
-                .fail(function () {
-                    alert('Erro de comunicação ao buscar dados do lote.');
+                    .done(function (response) {
+                        if (response.success) {
+                            const lote = response.data;
+                            const header = lote.header;
+                            console.log('Dados do lote:', header); // Log para depuração
 
-                });
+                            // 1. Preenche os campos do formulário, exceto o fornecedor
+                            $('#lote_id').val(header.lote_id);
+                            $('#lote_numero').val(header.lote_numero);
+                            $('#lote_data_fabricacao').val(header.lote_data_fabricacao);
+                            $('#lote_ciclo').val(header.lote_ciclo);
+                            $('#lote_viveiro').val(header.lote_viveiro);
+                            $('#lote_completo_calculado').val(header.lote_completo_calculado);
+
+                            // 2. Seleciona o fornecedor e cliente corretos no dropdown (que já foi carregado)
+                            $('#lote_fornecedor_id').val(header.lote_fornecedor_id).trigger('change.select2');
+                            $('#lote_cliente_id').val(header.lote_cliente_id).trigger('change.select2');
+
+                            // 3. Renderiza a lista de produtos do lote
+                            renderizarItensDoLote(lote.items);
+
+                            // 4. Ajusta o texto do botão para "Edição"
+                            $('#btn-salvar-lote').text('Salvar Alterações');
+
+                            // 5. Garante que a primeira aba sempre será a ativa ao abrir o modal
+                            new bootstrap.Tab($('#aba-info-lote-tab')[0]).show();
+
+                            // 6. Prepara e exibe o modal
+                            $('#modal-lote-label').text('Editar Lote: ' + header.lote_completo_calculado);
+                            $('#aba-add-produtos-tab').removeClass('disabled').attr('aria-disabled', 'false');
+                            $('#modal-lote').modal('show');
+
+                        } else {
+                            alert('Erro ao buscar dados do lote: ' + response.message);
+                        }
+                    })
+                    .fail(function () {
+                        alert('Erro de comunicação ao buscar dados do lote.');
+
+                    });
+            });
         });
     });
 
@@ -690,8 +651,55 @@ $(document).ready(function () {
         }
     });
 
+    $('#lista-produtos-deste-lote').on('click', '.btn-imprimir-item', function (e) {
+        e.preventDefault();
+        const $button = $(this);
+        const itemId = $button.data('item-id');
+
+        // Salva o conteúdo original do botão e mostra um spinner
+        const originalContent = $button.html();
+        $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+
+        $.ajax({
+            url: 'ajax_router.php?action=imprimirEtiquetaItem',
+            type: 'POST',
+            data: {
+                loteItemId: itemId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success && response.pdfUrl) {
+                window.open(response.pdfUrl, '_blank');
+            } else {
+                alert(response.message || 'Ocorreu um erro desconhecido ao gerar a etiqueta.');
+            }
+        }).fail(function () {
+            alert('Erro de comunicação com o servidor. Tente novamente.');
+        }).always(function () {
+            // Restaura o botão ao seu estado original
+            $button.prop('disabled', false).html(originalContent);
+        });
+    });
+
     // Salvar o cabeçalho do lote
     $('#btn-salvar-lote').on('click', function () {
+        // 1. Executa a validação primeiro
+        const erros = validarCabecalhoLote();
+
+        // 2. Verifica se a lista de erros não está vazia
+        if (erros.length > 0) {
+            // Monta a mensagem de erro com os itens da lista
+            const mensagem = 'Por favor, corrija os seguintes erros:<br>' + erros.join('<br>');
+
+            // Exibe a mensagem na área de feedback do modal
+            $('#mensagem-lote-header').html(`<div class="alert alert-danger">${mensagem}</div>`);
+            return; // Impede o envio do formulário via AJAX
+        }
+
+        // 3. Se não houver erros, limpa a mensagem e continua com o AJAX
+        $('#mensagem-lote-header').html('');
+
         const formData = new FormData($('#form-lote-header')[0]);
 
         $.ajax({
@@ -712,10 +720,10 @@ $(document).ready(function () {
                         new bootstrap.Tab($('#aba-add-produtos-tab')[0]).show();
                     }
                 } else {
-                    // Erro de negócio da aplicação (ex: "lote já existe")
                     $('#mensagem-lote-header').html(`<div class="alert alert-danger">${response.message}</div>`);
                 }
             })
+
             .fail(function (xhr, status, error) {
                 $('#mensagem-lote-header').html(`<div class="alert alert-danger">Erro de comunicação ao salvar.</div>`);
 
@@ -773,43 +781,51 @@ $(document).ready(function () {
     $('#lista-produtos-deste-lote').on('click', '.btn-editar-item', function () {
         const itemId = $(this).data('item-id');
 
-        $.ajax({
-            url: 'ajax_router.php?action=getLoteItem',
-            type: 'POST',
-            data: {
-                item_id: itemId,
-                csrf_token: csrfToken
-            },
-            dataType: 'json'
-        })
-            .done(function (response) {
-                if (response.success) {
-                    const item = response.data;
-                    // Preenche o formulário na Aba 2 com os dados recebidos
-                    // 1. Preenche o campo INVISÍVEL com o ID do item
-                    $('#item_id').val(item.item_id);
-                    // 2. Seleciona o produto correto no dropdown
-                    $('#item_produto_id').val(item.item_produto_id).trigger('change');
-                    // 3. Preenche a quantidade
-                    $('#item_quantidade').val(item.item_quantidade);
-                    // 4. Preenche a data de validade
-                    $('#item_data_validade').val(item.item_data_validade);
+        // 1. Reseta o filtro de embalagem para "Todos"
+        $('#filtro-todos').prop('checked', true);
 
-                    // Calcula o peso total ao editar
-                    calcularPesoTotal();
+        // 2. Recarrega a lista COMPLETA de produtos e ESPERA terminar
+        carregarProdutos('Todos').done(function () {
 
-                    // Muda o texto do botão para indicar edição
-                    $('#btn-incluir-produto').text('Salvar Alterações').removeClass('btn-success').addClass('btn-info');
-
-                    // Leva o usuário para a aba de edição
-                    new bootstrap.Tab($('#aba-add-produtos-tab')[0]).show();
-                } else {
-                    alert(response.message || 'Erro ao buscar dados do item.');
-                }
+            // 3. AGORA que a lista está completa, busca os dados do item específico
+            $.ajax({
+                url: 'ajax_router.php?action=getLoteItem',
+                type: 'POST',
+                data: {
+                    item_id: itemId,
+                    csrf_token: csrfToken
+                },
+                dataType: 'json'
             })
-            .fail(function () {
-                alert('Erro de comunicação ao buscar dados do item.');
-            });
+                .done(function (response) {
+                    if (response.success) {
+                        const item = response.data;
+                        // Preenche o formulário na Aba 2 com os dados recebidos
+                        // 1. Preenche o campo INVISÍVEL com o ID do item
+                        $('#item_id').val(item.item_id);
+                        // 2. Seleciona o produto correto no dropdown
+                        $('#item_produto_id').val(item.item_produto_id).trigger('change');
+                        // 3. Preenche a quantidade
+                        $('#item_quantidade').val(item.item_quantidade);
+                        // 4. Preenche a data de validade
+                        $('#item_data_validade').val(item.item_data_validade);
+
+                        // Calcula o peso total ao editar
+                        calcularPesoTotal();
+
+                        // Muda o texto do botão para indicar edição
+                        $('#btn-incluir-produto').text('Salvar Alterações').removeClass('btn-success').addClass('btn-info');
+
+                        // Leva o usuário para a aba de edição
+                        new bootstrap.Tab($('#aba-add-produtos-tab')[0]).show();
+                    } else {
+                        alert(response.message || 'Erro ao buscar dados do item.');
+                    }
+                })
+                .fail(function () {
+                    alert('Erro de comunicação ao buscar dados do item.');
+                });
+        });
     });
 
     // Ação para o botão "Finalizar" na tabela principal
@@ -865,49 +881,6 @@ $(document).ready(function () {
 
         // 3. Volta para a primeira aba (Opcional, mas melhora a experiência)
         new bootstrap.Tab($('#aba-info-lote-tab')[0]).show();
-    });
-
-    // Gatilho para o botão GERAR PDF dentro do modal
-    $btnConfirmarImpressao.on('click', function () {
-        const loteItemId = $('#item-id-para-impressao').val();
-        const clienteId = $selectCliente.val();
-        const $spinner = $(this).find('.spinner-border');
-
-        if (!loteItemId) {
-            alert('Erro: ID do item não encontrado.');
-            return;
-        }
-
-        // Mostra o spinner e desabilita o botão para evitar cliques duplos
-        $spinner.removeClass('d-none');
-        $(this).prop('disabled', true);
-
-        // Requisição AJAX para a nossa nova rota de impressão
-        $.ajax({
-            url: `ajax_router.php?action=imprimirEtiquetaItem`,
-            type: 'POST',
-            data: {
-                loteItemId: loteItemId,
-                clienteId: clienteId,
-                csrf_token: csrfToken // Token CSRF global do lotes.js
-            },
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.success && response.pdfUrl) {
-                // Sucesso! Abre o PDF em uma nova aba
-                window.open(response.pdfUrl, '_blank');
-                $modalImpressao.modal('hide');
-            } else {
-                // Exibe erro dentro do modal
-                showFeedbackMessage(response.message || 'Ocorreu um erro desconhecido.', 'danger', '#feedback-impressao-area');
-            }
-        }).fail(function () {
-            showFeedbackMessage('Erro de comunicação com o servidor. Tente novamente.', 'danger', '#feedback-impressao-area');
-        }).always(function () {
-            // Esconde o spinner e reabilita o botão
-            $spinner.addClass('d-none');
-            $btnConfirmarImpressao.prop('disabled', false);
-        });
     });
 
     $('#modal-lote').on('hidden.bs.modal', function () {

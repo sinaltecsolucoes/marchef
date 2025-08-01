@@ -15,12 +15,12 @@
     <table id="tabela-lotes" class="table table-hover my-4" style="width:100%">
         <thead>
             <tr>
-                <th>Lote Completo</th>
-                <th>Fornecedor</th>
-                <th>Data Fabricação</th>
-                <th>Status</th>
-                <th>Data Cadastro</th>
-                <th>Ações</th>
+                <th class="text-center">Lote Completo</th>
+                <th class="text-center">Fornecedor</th>
+                <th class="text-center">Data Fabricação</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Data Cadastro</th>
+                <th class="text-center">Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -54,23 +54,48 @@
                             <input type="hidden" name="csrf_token"
                                 value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
                             <div id="mensagem-lote-header" class="mb-3"></div>
-                            <div class="row g-3">
-                                <div class="col-md-2"><label for="lote_numero" class="form-label">Número</label><input
-                                        type="text" class="form-control" id="lote_numero" name="lote_numero"></div>
-                                <div class="col-md-3"><label for="lote_data_fabricacao" class="form-label">Data de
-                                        Fabricação</label><input type="date" class="form-control"
-                                        id="lote_data_fabricacao" name="lote_data_fabricacao"></div>
-                                <div class="col-md-7"><label for="lote_fornecedor_id"
-                                        class="form-label">Fornecedor</label><select class="form-select"
-                                        id="lote_fornecedor_id" name="lote_fornecedor_id"></select></div>
-                                <div class="col-md-2"><label for="lote_ciclo" class="form-label">Ciclo</label><input
-                                        type="text" class="form-control" id="lote_ciclo" name="lote_ciclo"></div>
-                                <div class="col-md-2"><label for="lote_viveiro" class="form-label">Viveiro</label><input
-                                        type="text" class="form-control" id="lote_viveiro" name="lote_viveiro"></div>
-                                <div class="col-md-8"><label for="lote_completo_calculado" class="form-label">Lote
-                                        Completo (Automático)</label><input type="text" class="form-control"
-                                        id="lote_completo_calculado" name="lote_completo_calculado"></div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-2">
+                                    <label for="lote_numero" class="form-label">Número <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="lote_numero" name="lote_numero">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="lote_data_fabricacao" class="form-label">Data de Fabricação <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="lote_data_fabricacao"
+                                        name="lote_data_fabricacao">
+                                </div>
+                                <div class="col-md-7">
+                                    <label for="lote_cliente_id" class="form-label">Cliente <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="lote_cliente_id" name="lote_cliente_id"></select>
+                                </div>
                             </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-7">
+                                    <label for="lote_fornecedor_id" class="form-label">Fornecedor <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="lote_fornecedor_id"
+                                        name="lote_fornecedor_id"></select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="lote_viveiro" class="form-label">Viveiro</label>
+                                    <input type="text" class="form-control" id="lote_viveiro" name="lote_viveiro">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="lote_ciclo" class="form-label">Ciclo</label>
+                                    <input type="text" class="form-control" id="lote_ciclo" name="lote_ciclo">
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label for="lote_completo_calculado" class="form-label">Lote Completo
+                                        (Automático) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="lote_completo_calculado"
+                                        name="lote_completo_calculado">
+                                </div>
+                            </div>
+
                         </form>
                         <hr class="my-4">
                         <h6>Produtos Incluídos neste Lote</h6>
@@ -185,38 +210,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não, cancelar</button>
                 <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-lote">Sim, Excluir</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modal-imprimir-etiqueta" tabindex="-1" aria-labelledby="imprimirEtiquetaLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="imprimirEtiquetaLabel">Imprimir Etiqueta de Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Selecione o cliente de destino para gerar a etiqueta com os dados corretos.</p>
-
-                <input type="hidden" id="item-id-para-impressao">
-
-                <div class="form-group">
-                    <label for="select-cliente-etiqueta" class="form-label">Cliente</label>
-                    <select class="form-select" id="select-cliente-etiqueta" style="width: 100%;">
-                        <option value="">Selecione um cliente...</option>
-                    </select>
-                </div>
-
-                <div id="feedback-impressao-area" class="mt-3"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btn-confirmar-impressao">
-                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    Gerar PDF da Etiqueta
-                </button>
             </div>
         </div>
     </div>

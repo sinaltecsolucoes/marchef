@@ -37,8 +37,10 @@ body {
 
 /* Diminui a altura do navbar */
 .navbar {
-    padding-top: 0.2rem;   /* Espaçamento superior */
-    padding-bottom: 0.2rem; /* Espaçamento inferior */
+    padding-top: 0.2rem;
+    /* Espaçamento superior */
+    padding-bottom: 0.2rem;
+    /* Espaçamento inferior */
 }
 
 /* Adiciona espaçamento acima e abaixo dos elementos de controle do DataTables */
@@ -52,11 +54,21 @@ body {
 
 /* Adiciona um espaçamento à direita do campo de pesquisa para alinhá-lo */
 .dataTables_wrapper .dataTables_filter {
-    margin-right: 3px; 
+    margin-right: 3px;
 }
 
 /* Adiciona um espaçamento à direita do contêiner da tabela para alinhá-lo */
 .table-responsive {
-    margin-right: 30px; 
+    margin-right: 30px;
 }
 
+/* Reduz o tamanho da fonte da tabela de itens do lote */
+.table-sm-custom {
+    font-size: 0.85rem;
+    /* Você pode ajustar este valor, ex: 0.8rem para menor ainda */
+}
+
+/* Força os botões de ação a ficarem em uma única linha */
+.table-sm-custom .actions-cell {
+    white-space: nowrap;
+}

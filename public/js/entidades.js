@@ -197,14 +197,17 @@ $(document).ready(function () {
         },
         "responsive": true,
         "columns": [
-            { "data": "ent_situacao", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
-            { "data": "ent_tipo_entidade" },
-            { "data": "ent_codigo_interno" },
-            { "data": "ent_razao_social" },
-            { "data": null, "render": (data, type, row) => row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj },
-            { "data": "end_logradouro", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
             {
-                "data": "ent_codigo", "orderable": false, "render": (data, type, row) =>
+                "data": "ent_situacao", "className": "text-center", "width": "5%",
+                "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
+            },
+            { "data": "ent_tipo_entidade", "className": "text-center", "width": "7%" },
+            { "data": "ent_codigo_interno", "className": "text-center", "width": "5%" },
+            { "data": "ent_razao_social", "width": "20%" },
+            { "data": null, "className": "text-center", "width": "8%", "render": (data, type, row) => row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj },
+            { "data": "end_logradouro", "width": "10%", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
+            {
+                "data": "ent_codigo", "orderable": false, "className": "text-center", "width": "8%", "render": (data, type, row) =>
                     `<a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}">Editar</a>` +
                     `<a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}">Inativar</a>`
             }
@@ -396,7 +399,7 @@ $(document).ready(function () {
                     const cpfCnpjValor = tipoPessoaDoBanco === 'F' ? data.ent_cpf : data.ent_cnpj;
                     $cpfCnpjInput.val(cpfCnpjValor);
                     // 4. "Avisamos" o plugin para aplicar a máscara no valor que acabamos de inserir
-                    $cpfCnpjInput.trigger('input'); 
+                    $cpfCnpjInput.trigger('input');
 
 
                     // --- Endereço Principal ---
