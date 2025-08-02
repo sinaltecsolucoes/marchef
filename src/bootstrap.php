@@ -6,8 +6,7 @@
 // ========================================================================
 
 // 1. Manipulador de Erros (deve ser o primeiro)
-// ATENÇÃO: O caminho agora parte de /src, então usamos '__DIR__' para garantir o caminho correto.
-require_once __DIR__ . "/Core/error_handler.php"; // Mantenha o seu por enquanto
+require_once __DIR__ . "/Core/error_handler.php"; 
 
 // 2. Autoloader de Classes (essencial para carregar nossas classes de /src)
 spl_autoload_register(function ($class) {
