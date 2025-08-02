@@ -3,6 +3,7 @@
 
 const NOME_SITE = 'MARCHEF PESCADOS';
 const URL_SITE = 'http://localhost/marchef/';
+//const URL_SITE = 'http://marchef.infinityfreeapp.com/marchef/public/';
 const ENDERECO_SITE = 'Rua Antônio Inácio, Número 418, Bairro Lagoa Seca - Itarema - CE CEP 62590-000';
 const EMAIL_ADM = 'sinaltecsolucoes@gmail.com.br';
 const TELEFONE_WHATSAPP = '(88) 99243-2756';
@@ -22,5 +23,6 @@ return [
     // 'host' => 'sql310.infinityfree.com',
     // 'dbname' => 'if0_39440979_marchef',
     // 'user' => 'if0_39440979',
-    // 'password' => 'SiteMarchef2025'
+    // 'password' => 'SiteMarchef2025',
+    //'charset' => 'utf8mb4'
 ];
