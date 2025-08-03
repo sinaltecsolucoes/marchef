@@ -567,21 +567,29 @@ function imprimirEtiquetaItem(PDO $pdo)
     }
 
     $loteItemId = (int)$_POST['loteItemId'];
-    
+
     try {
         // Agora usamos o 'use' do topo, fica mais limpo
         $labelService = new LabelService($pdo);
 
         // Gera o código ZPL usando o serviço
-        $zpl = $labelService->gerarZplParaItem($loteItemId);
+        //$zpl = $labelService->gerarZplParaItem($loteItemId);
 
-        if ($zpl === null) {
+        //Recebe o array com 'zpl' e 'filename'
+        $labelData = $labelService->gerarZplParaItem($loteItemId);
+
+        //if ($zpl === null) {
+        if ($labelData === null) {
             echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.']);
             return;
         }
+        
+        // Extrai os dados do array
+        $zpl = $labelData['zpl'];
+        $filename = $labelData['filename'];
 
         // --- Interação com a API da Labelary para converter ZPL em PDF ---
-       // $curl = curl_init('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/');
+        // $curl = curl_init('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/');
         // Esta é a linha corrigida
         $curl = curl_init('http://api.labelary.com/v1/printers/12dpmm/labels/4x7/0/');
         curl_setopt($curl, CURLOPT_POST, true);
@@ -605,7 +613,8 @@ function imprimirEtiquetaItem(PDO $pdo)
             mkdir($tempDir, 0775, true);
         }
 
-        $filename = 'etiqueta-' . uniqid() . '.pdf';
+        //$filename = 'etiqueta-' . uniqid() . '.pdf';
+        
         $filePath = $tempDir . $filename;
 
         file_put_contents($filePath, $pdfContent);
