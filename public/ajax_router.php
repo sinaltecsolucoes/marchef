@@ -27,6 +27,8 @@ use App\Usuarios\UsuarioRepository;
 use App\Lotes\LoteRepository;
 use App\Permissions\PermissionRepository;
 use App\Labels\LabelService;
+use App\Etiquetas\TemplateRepository;
+use App\Etiquetas\RegraRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -54,6 +56,8 @@ try {
     $usuarioRepo = new UsuarioRepository($pdo); // Cria a instância do repositório para Usuário
     $loteRepo = new LoteRepository($pdo);
     $permissionRepo = new PermissionRepository($pdo);
+    $templateRepo = new TemplateRepository($pdo);
+    $regraRepo = new RegraRepository($pdo);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -167,6 +171,37 @@ switch ($action) {
     // --- ROTA DE ETIQUETAS ---  
     case 'imprimirEtiquetaItem':
         imprimirEtiquetaItem($pdo); // A função precisa da conexão PDO
+        break;
+
+    // --- ROTAS DE TEMPLATES DE ETIQUETA ---
+    case 'listarTemplates':
+        listarTemplates($templateRepo);
+        break;
+    case 'getTemplate':
+        getTemplate($templateRepo);
+        break;
+    case 'salvarTemplate':
+        salvarTemplate($templateRepo);
+        break;
+    case 'excluirTemplate':
+        excluirTemplate($templateRepo);
+        break;
+
+    // --- ROTAS DE REGRAS DE ETIQUETA ---
+    case 'listarRegras':
+        listarRegras($regraRepo);
+        break;
+    case 'getRegra':
+        getRegra($regraRepo);
+        break;
+    case 'salvarRegra':
+        salvarRegra($regraRepo);
+        break;
+    case 'excluirRegra':
+        excluirRegra($regraRepo);
+        break;
+    case 'getTemplateOptions': // Rota de apoio para o formulário
+        getTemplateOptions($regraRepo);
         break;
 
 
@@ -560,13 +595,28 @@ function salvarPermissoes(PermissionRepository $repo)
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 function imprimirEtiquetaItem(PDO $pdo)
 {
+    // Validação dos dados de entrada
+    $loteItemId = filter_input(INPUT_POST, 'loteItemId', FILTER_VALIDATE_INT);
+    // O cliente pode não ser selecionado, então permitimos nulo
+    $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
+    if ($clienteId === false) $clienteId = null; // Garante que seja nulo se não for um inteiro válido
+
+    if (!$loteItemId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
+        return;
+    }
+
+
+
+
+
     // Validação básica dos dados de entrada
     if (!isset($_POST['loteItemId']) || empty($_POST['loteItemId'])) {
         echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
         return; // Usamos return em vez de exit
     }
 
-    $loteItemId = (int)$_POST['loteItemId'];
+    // $loteItemId = (int)$_POST['loteItemId'];
 
     try {
         // Agora usamos o 'use' do topo, fica mais limpo
@@ -576,14 +626,18 @@ function imprimirEtiquetaItem(PDO $pdo)
         //$zpl = $labelService->gerarZplParaItem($loteItemId);
 
         //Recebe o array com 'zpl' e 'filename'
-        $labelData = $labelService->gerarZplParaItem($loteItemId);
+        //  $labelData = $labelService->gerarZplParaItem($loteItemId);
+
+        // A chamada da função agora inclui o ID do cliente
+        $labelData = $labelService->gerarZplParaItem($loteItemId, $clienteId);
+
 
         //if ($zpl === null) {
         if ($labelData === null) {
             echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.']);
             return;
         }
-        
+
         // Extrai os dados do array
         $zpl = $labelData['zpl'];
         $filename = $labelData['filename'];
@@ -614,7 +668,7 @@ function imprimirEtiquetaItem(PDO $pdo)
         }
 
         //$filename = 'etiqueta-' . uniqid() . '.pdf';
-        
+
         $filePath = $tempDir . $filename;
 
         file_put_contents($filePath, $pdfContent);
@@ -625,4 +679,112 @@ function imprimirEtiquetaItem(PDO $pdo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
     }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA TEMPLATES DE ETIQUETA ---
+
+function listarTemplates(TemplateRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getTemplate(TemplateRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+    $template = $repo->find($id);
+    if ($template) {
+        echo json_encode(['success' => true, 'data' => $template]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Template não encontrado.']);
+    }
+}
+
+function salvarTemplate(TemplateRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
+    try {
+        if ($id) {
+            $repo->update($id, $_POST);
+            $message = 'Template atualizado com sucesso!';
+        } else {
+            $repo->create($_POST);
+            $message = 'Template cadastrado com sucesso!';
+        }
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o template: ' . $e->getMessage()]);
+    }
+}
+
+function excluirTemplate(TemplateRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+    try {
+        if ($repo->delete($id)) {
+            echo json_encode(['success' => true, 'message' => 'Template excluído com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Template não encontrado.']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir o template. Ele pode estar em uso por alguma regra.']);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA REGRAS DE ETIQUETA ---
+
+function listarRegras(RegraRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getRegra(RegraRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'regra_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+    $regra = $repo->find($id);
+    echo json_encode(['success' => !!$regra, 'data' => $regra]);
+}
+
+function salvarRegra(RegraRepository $repo)
+{
+    try {
+        $repo->save($_POST);
+        echo json_encode(['success' => true, 'message' => 'Regra salva com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar a regra: ' . $e->getMessage()]);
+    }
+}
+
+function excluirRegra(RegraRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'regra_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+    try {
+        if ($repo->delete($id)) {
+            echo json_encode(['success' => true, 'message' => 'Regra excluída com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Regra não encontrada.']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir a regra.']);
+    }
+}
+
+function getTemplateOptions(RegraRepository $repo)
+{
+    echo json_encode(['success' => true, 'data' => $repo->getTemplateOptions()]);
 }

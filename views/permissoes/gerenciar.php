@@ -16,6 +16,8 @@ $paginas_e_acoes_disponiveis = [
     'fornecedores' => 'Gerenciar Fornecedores',
     'produtos' => 'Gerenciar Produtos',
     'lotes' => 'Gerenciar Lotes',
+    'templates' => 'Gerenciar Templates de Etiqueta',
+    'regras' => 'Gerenciar Regras de Etiqueta',
     'editar_outros_usuarios' => 'Ação: Editar Outros Usuários' // Permissão específica para a ação
 ];
 
@@ -47,7 +49,7 @@ try {
     <form id="form-gerenciar-permissoes">
         <!-- Token CSRF para segurança do formulário -->
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
-        
+
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead class="table-light">
@@ -64,18 +66,18 @@ try {
                             <td><?php echo htmlspecialchars($descricao); ?></td>
                             <?php foreach ($perfis_disponiveis as $perfil): ?>
                                 <td class="text-center">
-                                    <?php 
+                                    <?php
                                     $is_admin_column = ($perfil === 'Admin');
                                     // Para o admin, a permissão está sempre marcada. Para outros, verifica no array.
                                     $is_checked = $is_admin_column || (isset($permissoes_atuais[$chave_permissao][$perfil]));
                                     ?>
                                     <div class="form-check form-switch d-inline-block">
-                                        <input class="form-check-input" type="checkbox" role="switch" 
-                                               id="switch-<?php echo htmlspecialchars($chave_permissao); ?>-<?php echo htmlspecialchars($perfil); ?>" 
-                                               name="permissoes[<?php echo htmlspecialchars($perfil); ?>][]" 
-                                               value="<?php echo htmlspecialchars($chave_permissao); ?>"
-                                               <?php echo $is_checked ? 'checked' : ''; ?>
-                                               <?php echo $is_admin_column ? 'disabled' : ''; ?>>
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            id="switch-<?php echo htmlspecialchars($chave_permissao); ?>-<?php echo htmlspecialchars($perfil); ?>"
+                                            name="permissoes[<?php echo htmlspecialchars($perfil); ?>][]"
+                                            value="<?php echo htmlspecialchars($chave_permissao); ?>"
+                                            <?php echo $is_checked ? 'checked' : ''; ?>
+                                            <?php echo $is_admin_column ? 'disabled' : ''; ?>>
                                     </div>
                                 </td>
                             <?php endforeach; ?>

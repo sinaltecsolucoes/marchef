@@ -80,7 +80,7 @@ try {
     $queryPermissoes = $pdo->prepare("SELECT permissao_pagina FROM tbl_permissoes WHERE permissao_perfil = :tipo_usuario");
     $queryPermissoes->execute([':tipo_usuario' => $tipoUsuarioLogado]);
     $paginasPermitidasUsuario = $queryPermissoes->fetchAll(PDO::FETCH_COLUMN, 0);
-    
+
     // CORREÇÃO #1: Garante que a permissão de 'permissoes' seja adicionada para o Admin
     if ($tipoUsuarioLogado === 'Admin' && !in_array('permissoes', $paginasPermitidasUsuario)) {
         $paginasPermitidasUsuario[] = 'permissoes';
@@ -91,8 +91,18 @@ try {
 
     // Lógica de roteamento
     $paginaAtual = $page;
-    $paginasPermitidas = ['home' => 'home/home.php', 'usuarios' => 'usuarios/lista_usuarios.php', 'clientes' => 'entidades/lista_entidades.php', 'fornecedores' => 'entidades/lista_entidades.php', 'produtos' => 'produtos/lista_produtos.php', 'lotes' => 'lotes/lista_lotes.php', 'permissoes' => 'permissoes/gerenciar.php'];
-    
+    $paginasPermitidas = [
+        'home' => 'home/home.php',
+        'usuarios' => 'usuarios/lista_usuarios.php',
+        'clientes' => 'entidades/lista_entidades.php',
+        'fornecedores' => 'entidades/lista_entidades.php',
+        'produtos' => 'produtos/lista_produtos.php',
+        'lotes' => 'lotes/lista_lotes.php',
+        'permissoes' => 'permissoes/gerenciar.php',
+        'templates' => 'etiquetas/lista_templates.php',
+        'regras' => 'etiquetas/lista_regras.php'
+    ];
+
     $pageType = '';
     if ($paginaAtual === 'clientes') {
         $pageType = 'cliente';
@@ -102,7 +112,7 @@ try {
     }
     $homePadraoPorTipo = ['Admin' => 'home/home_admin.php', 'Gerente' => 'home/home_gerente.php', 'Producao' => 'home/home_producao.php'];
     $arquivoView = '';
-   
+
     if ($paginaAtual === 'home' && isset($homePadraoPorTipo[$tipoUsuarioLogado])) {
         $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado];
     } else if (($tipoUsuarioLogado === 'Admin' || in_array($paginaAtual, $paginasPermitidasUsuario)) && isset($paginasPermitidas[$paginaAtual])) {
@@ -116,7 +126,6 @@ try {
 
     // Renderiza o Layout Principal
     require_once __DIR__ . '/../views/layouts/main.php';
-
 } catch (PDOException $e) {
     error_log("Erro no Front Controller: " . $e->getMessage());
     die("Ocorreu um erro crítico na aplicação. Verifique os logs do servidor.");

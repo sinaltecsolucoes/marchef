@@ -1,9 +1,19 @@
-# Define o arquivo padrão a ser servido quando um diretório é solicitado.
-DirectoryIndex index.php
+# /public/.htaccess
 
-# Redireciona todas as requisições que não são para um arquivo ou diretório existente
-# para o nosso Front Controller (index.php).
+# Habilita o motor de reescrita de URLs
 RewriteEngine On
+
+# --- LINHA ESSENCIAL ADICIONADA ---
+# Define o caminho base para as regras de reescrita.
+# Isso é crucial para projetos em subpastas.
+RewriteBase /marchef/public/
+
+# CONDIÇÕES: Aplica a regra abaixo apenas se...
+# ... a requisição NÃO for para um arquivo que existe fisicamente.
 RewriteCond %{REQUEST_FILENAME} !-f
+# ... e a requisição NÃO for para um diretório que existe fisicamente.
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [QSA,L]
+
+# REGRA: Se as condições acima forem verdadeiras,
+# envia a requisição para o index.php, mantendo os parâmetros da URL.
+RewriteRule . index.php [L,QSA]

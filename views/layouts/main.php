@@ -40,24 +40,48 @@
                         <a class="nav-link <?php echo ($paginaAtual == 'home') ? 'active' : ''; ?>"
                             href="<?php echo BASE_URL; ?>/index.php?page=home">Home</a>
                     </li>
+                   
+
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button"
-                            data-bs-toggle="dropdown">Cadastros</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cadastros</a>
                         <ul class="dropdown-menu">
-                            <?php echo render_menu_items($paginasPermitidas, $paginasPermitidasUsuario, BASE_URL); // Passando BASE_URL para a função de menu ?>
+                            <?php
+                            // Cria uma cópia do array de páginas para usar apenas no menu de cadastros
+                            $paginasParaCadastro = $paginasPermitidas;
+
+                            // Remove os itens que pertencem a outros menus (Configurações, etc.)
+                            unset($paginasParaCadastro['home']);
+                            unset($paginasParaCadastro['permissoes']);
+                            unset($paginasParaCadastro['templates']);
+                            unset($paginasParaCadastro['regras']);
+
+                            // Chama a função de renderização do menu apenas com a lista filtrada
+                            echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
+                            ?>
                         </ul>
                     </li>
-                    <?php if ($_SESSION['tipoUsuario'] === 'Admin'): ?>
+
+                    <?php
+                    // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
+                    if (in_array('permissoes', $paginasPermitidasUsuario) || in_array('templates', $paginasPermitidasUsuario)):
+                    ?>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button"
-                                data-bs-toggle="dropdown">Configurações</a>
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Configurações</a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item <?php echo ($paginaAtual == 'permissoes') ? 'active' : ''; ?>"
-                                        href="<?php echo BASE_URL; ?>/index.php?page=permissoes">Gerenciar Permissões</a>
-                                </li>
+                                <?php if (in_array('permissoes', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=permissoes">Gerenciar Permissões</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=templates">Templates de Etiqueta</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('regras', $paginasPermitidasUsuario)):
+                                ?>
+                                    <li><a class="dropdown-item" href="index.php?page=regras">Regras de Etiqueta</a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                     <?php endif; ?>
+
                 </ul>
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item dropdown">
@@ -99,7 +123,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
     <script type="text/javascript" src="<?php echo BASE_URL; ?>/libs/datatables.min.js"></script>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
 
     <script type="text/javascript"
@@ -131,6 +155,12 @@
     <?php endif; ?>
     <?php if ($paginaAtual === 'lotes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/lotes.js"></script>
+    <?php endif; ?>
+    <?php if ($paginaAtual === 'templates'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>
+    <?php endif; ?>
+    <?php if ($paginaAtual === 'regras'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
     <?php endif; ?>
 </body>
 

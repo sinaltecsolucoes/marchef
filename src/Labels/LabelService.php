@@ -6,6 +6,8 @@ namespace App\Labels;
 use App\Lotes\LoteRepository;
 use App\Produtos\ProdutoRepository;
 use App\Entidades\EntidadeRepository;
+use App\Etiquetas\RegraRepository;
+use App\Etiquetas\TemplateRepository;
 use DateTime;
 use Exception;
 use PDO;
@@ -13,14 +15,18 @@ use PDO;
 class LabelService
 {
     private PDO $pdo;
+    private $regraRepo;
+    private $templateRepo;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->regraRepo = new RegraRepository($pdo);
+        $this->templateRepo = new TemplateRepository($pdo);
     }
 
-    //public function gerarZplParaItem(int $loteItemId): ?string
-    public function gerarZplParaItem(int $loteItemId): ?array 
+
+    /*  public function gerarZplParaItem(int $loteItemId): ?array 
     {
         $loteRepo = new LoteRepository($this->pdo);
         $produtoRepo = new ProdutoRepository($this->pdo);
@@ -115,7 +121,110 @@ class LabelService
             'zpl' => $finalZpl,
             'filename' => $suggestedFilename
         ];
+    }*/
+
+    /**
+     * Gera o ZPL para um item de lote, selecionando dinamicamente o template
+     * com base nas regras e no cliente de destino.
+     *
+     * @param int $loteItemId O ID do item do lote.
+     * @param int|null $clienteId O ID do cliente de destino (pode ser nulo).
+     * @return array|null Um array com 'zpl' e 'filename' ou null se falhar.
+     */
+    public function gerarZplParaItem(int $loteItemId, ?int $clienteId): ?array
+    {
+        // Passo A: Buscar os dados necessários para os placeholders
+        $dadosParaEtiqueta = $this->getDadosParaEtiqueta($loteItemId, $clienteId);
+        if (!$dadosParaEtiqueta) {
+            return null; // Não foi possível encontrar os dados do item
+        }
+
+        $produtoId = $dadosParaEtiqueta['prod_codigo'];
+
+        // Passo B: Usar o RegraRepository para descobrir qual template usar
+        $templateId = $this->regraRepo->findTemplateIdByRule($produtoId, $clienteId);
+
+        if ($templateId === null) {
+            // Nenhuma regra correspondente foi encontrada.
+            // Você pode querer ter um template 'default' ou lançar um erro.
+            throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
+        }
+
+        // Passo C: Buscar o conteúdo ZPL do template encontrado
+        $template = $this->templateRepo->find($templateId);
+        if (!$template || empty($template['template_conteudo_zpl'])) {
+            throw new Exception("O template de etiqueta (ID: {$templateId}) definido pela regra não foi encontrado ou está vazio.");
+        }
+
+        $zplTemplate = $template['template_conteudo_zpl'];
+
+        // Passo D: Substituir os placeholders no ZPL
+        $zplFinal = $this->substituirPlaceholders($zplTemplate, $dadosParaEtiqueta);
+
+        // Passo E: Gerar nome de arquivo descritivo
+        $nomeArquivo = sprintf(
+            'etiqueta_%s_%s.pdf',
+            $dadosParaEtiqueta['prod_cod_fabrica'] ?? 'produto',
+            $dadosParaEtiqueta['lote_num_completo'] ?? 'lote'
+        );
+
+        return [
+            'zpl' => $zplFinal,
+            'filename' => $nomeArquivo
+        ];
     }
+
+    /**
+     * Função auxiliar para buscar todos os dados de uma vez.
+     * (Esta função pode já existir ou ser similar no seu código)
+     */
+    private function getDadosParaEtiqueta(int $loteItemId, ?int $clienteId): ?array
+    {
+        $sql = "SELECT 
+                    li.*, 
+                    lh.lote_numero,
+                    CONCAT(lh.lote_numero, '-', li.lote_item_sequencial) as lote_num_completo,
+                    p.*,
+                    c.ent_razao_social as cliente_nome, 
+                    c.ent_cidade as cliente_cidade
+                FROM tbl_lotes_itens li
+                JOIN tbl_lotes_header lh ON li.lote_id = lh.lote_id
+                JOIN tbl_produtos p ON li.lote_item_produto = p.prod_codigo
+                LEFT JOIN tbl_entidades c ON c.ent_codigo = :cliente_id
+                WHERE li.lote_item_id = :lote_item_id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':lote_item_id' => $loteItemId,
+            ':cliente_id' => $clienteId
+        ]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Função auxiliar para substituir os placeholders.
+     * (Esta função pode já existir ou ser similar no seu código)
+     */
+    private function substituirPlaceholders(string $zpl, array $dados): string
+    {
+        // Mapeia os placeholders para os dados
+        $placeholders = [
+            '{produto_nome}' => $dados['prod_descricao'] ?? '',
+            '{produto_cod_interno}' => $dados['prod_codigo'] ?? '',
+            '{produto_cod_fabrica}' => $dados['prod_cod_fabrica'] ?? '',
+            '{lote_numero}' => $dados['lote_numero'] ?? '',
+            '{lote_completo}' => $dados['lote_num_completo'] ?? '',
+            '{cliente_nome}' => $dados['cliente_nome'] ?? '',
+            '{cliente_cidade}' => $dados['cliente_cidade'] ?? '',
+            '{data_fabricacao}' => isset($dados['lote_item_data_fab']) ? date('d/m/Y', strtotime($dados['lote_item_data_fab'])) : '',
+            '{data_validade}' => isset($dados['lote_item_data_val']) ? date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '',
+            '{quantidade}' => $dados['lote_item_qtd'] ?? '',
+        ];
+
+        return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
+    }
+
+
 
     // --- FUNÇÕES AJUDANTES (HELPERS) ---
 

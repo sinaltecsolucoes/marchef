@@ -10,7 +10,7 @@ $(document).ready(function () {
 
         $.ajax({
             type: 'POST',
-            url: 'ajax_router.php?action=salvarPermissoes', // ROTA CORRIGIDA
+            url: 'ajax_router.php?action=salvarPermissoes', 
             data: formPermissoes.serialize(),
             dataType: 'json'
         })

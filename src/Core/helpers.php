@@ -28,7 +28,6 @@ function render_menu_items(array $paginasPermitidas, array $paginasPermitidasUsu
 
         if (in_array($nomeLink, $paginasPermitidasUsuario)) {
             $html .= '<li>';
-            // AQUI ESTÁ A CORREÇÃO: Usando a $baseUrl e "?page="
             $html .= '<a class="dropdown-item" href="' . $baseUrl . '/index.php?page=' . $nomeLink . '">';
             $html .= ucfirst($nomeLink); // ucfirst() capitaliza a primeira letra
             $html .= '</a>';
