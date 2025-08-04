@@ -34,6 +34,9 @@ if ($page === 'login') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $login_ok = $authService->authenticate($_POST['login-usuario'] ?? '', $_POST['senha'] ?? '');
         if ($login_ok) {
+            // Força a gravação de todos os dados da sessão ANTES de redirecionar
+            session_write_close();
+
             header("Location: " . BASE_URL . "/index.php?page=home");
         } else {
             header("Location: " . BASE_URL . "/index.php?page=login");
@@ -52,6 +55,30 @@ if (!isset($_SESSION['codUsuario'])) {
     header("Location: " . BASE_URL . "/index.php?page=login");
     exit();
 }
+
+// ### NOVO BLOCO DE VERIFICAÇÃO DE SESSÃO ÚNICA ###
+try {
+    $pdo = Database::getConnection();
+
+    // Busca o token mais recente do banco de dados
+    $stmt = $pdo->prepare("SELECT usu_session_token FROM tbl_usuarios WHERE usu_codigo = ?");
+    $stmt->execute([$_SESSION['codUsuario']]);
+    $dbToken = $stmt->fetchColumn();
+
+    // Compara o token do banco com o da sessão atual
+    if (!$dbToken || !isset($_SESSION['session_token']) || $dbToken !== $_SESSION['session_token']) {
+        session_unset();
+        session_destroy();
+        // Redireciona com uma mensagem explicando o motivo
+        header("Location: " . BASE_URL . "/index.php?page=login&motivo=nova_sessao");
+        exit();
+    }
+} catch (PDOException $e) {
+    // Tratar erro de banco de dados
+    die("Erro ao verificar a sessão do usuário.");
+}
+// ### FIM DO NOVO BLOCO ###
+
 
 try {
     $pdo = Database::getConnection();
@@ -91,7 +118,7 @@ try {
 
     // Lógica de roteamento
     $paginaAtual = $page;
-    $paginasPermitidas = [
+     $paginasPermitidas = [
         'home' => 'home/home.php',
         'usuarios' => 'usuarios/lista_usuarios.php',
         'clientes' => 'entidades/lista_entidades.php',
@@ -100,7 +127,9 @@ try {
         'lotes' => 'lotes/lista_lotes.php',
         'permissoes' => 'permissoes/gerenciar.php',
         'templates' => 'etiquetas/lista_templates.php',
-        'regras' => 'etiquetas/lista_regras.php'
+        'regras' => 'etiquetas/lista_regras.php',
+        'auditoria' => 'auditoria/visualizar_logs.php',
+        'backup' => 'backup/pagina_backup.php'
     ];
 
     $pageType = '';

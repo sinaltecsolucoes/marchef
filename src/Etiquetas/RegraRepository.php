@@ -3,14 +3,17 @@
 namespace App\Etiquetas;
 
 use PDO;
+use App\Core\AuditLoggerService;
 
 class RegraRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
@@ -39,8 +42,8 @@ class RegraRepository
                     LIMIT :start, :length";
 
         $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int)($params['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int)($params['length'] ?? 10), PDO::PARAM_INT);
+        $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -68,6 +71,12 @@ class RegraRepository
     public function save(array $data): bool
     {
         $id = filter_var($data['regra_id'] ?? null, FILTER_VALIDATE_INT);
+        $dadosAntigos = null;
+
+        // Se for uma atualização, busca os dados antigos primeiro
+        if ($id) {
+            $dadosAntigos = $this->find($id);
+        }
 
         $params = [
             ':produto_id' => !empty($data['regra_produto_id']) ? $data['regra_produto_id'] : null,
@@ -84,7 +93,18 @@ class RegraRepository
         }
 
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($params);
+        $success = $stmt->execute($params);
+
+        if ($success) {
+            if ($id) { // Se tinha um ID, é um log de UPDATE
+                $this->auditLogger->log('UPDATE', $id, 'tbl_etiqueta_regras', $dadosAntigos, $data);
+            } else { // Senão, é um log de CREATE
+                $novoId = (int) $this->pdo->lastInsertId();
+                $this->auditLogger->log('CREATE', $novoId, 'tbl_etiqueta_regras', null, $data);
+            }
+        }
+
+        return $success;
     }
 
     /**
@@ -92,9 +112,19 @@ class RegraRepository
      */
     public function delete(int $id): bool
     {
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos)
+            return false;
+
         $stmt = $this->pdo->prepare("DELETE FROM tbl_etiqueta_regras WHERE regra_id = :id");
         $stmt->execute([':id' => $id]);
-        return $stmt->rowCount() > 0;
+        $success = $stmt->rowCount() > 0;
+
+        if ($success) {
+            $this->auditLogger->log('DELETE', $id, 'tbl_etiqueta_regras', $dadosAntigos, null);
+        }
+
+        return $success;
     }
 
     /**
@@ -145,6 +175,6 @@ class RegraRepository
 
         $result = $stmt->fetchColumn();
 
-        return $result ? (int)$result : null;
+        return $result ? (int) $result : null;
     }
 }

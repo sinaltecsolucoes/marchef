@@ -29,7 +29,12 @@ class AuthService
                 return false;
             }
 
-            $query = $this->pdo->prepare("SELECT usu_codigo, usu_nome, usu_login, usu_senha, usu_situacao, usu_tipo FROM tbl_usuarios WHERE usu_nome = :nome_usuario OR usu_login = :login_usuario");
+            $query = $this->pdo->prepare("SELECT usu_codigo, usu_nome, usu_login, 
+                                                    usu_senha, usu_situacao, usu_tipo 
+                                                FROM tbl_usuarios 
+                                                WHERE usu_nome = :nome_usuario 
+                                                    OR usu_login = :login_usuario"
+            );
             $query->bindParam(":nome_usuario", $username);
             $query->bindParam(":login_usuario", $username);
             $query->execute();
@@ -43,13 +48,25 @@ class AuthService
                 $_SESSION['nomeUsuario'] = $userData['usu_nome'];
                 $_SESSION['sitUsuario'] = $userData['usu_situacao'];
                 $_SESSION['tipoUsuario'] = $userData['usu_tipo'];
-                
+
                 // Limpa qualquer mensagem de erro antiga
-                unset($_SESSION['erro_login']);
+                // unset($_SESSION['erro_login']);
+
+                // --- NOVA LÓGICA DO TOKEN ---
+                // 1. Gerar um token único e seguro
+                $token = bin2hex(random_bytes(32));
+
+                // 2. Salvar o novo token no banco de dados para este usuário
+                $updateStmt = $this->pdo->prepare("UPDATE tbl_usuarios SET usu_session_token = ? WHERE usu_codigo = ?");
+                $updateStmt->execute([$token, $userData['usu_codigo']]);
+
+                // 3. Salvar o mesmo token na sessão do navegador
+                $_SESSION['session_token'] = $token;
+                // --- FIM DA NOVA LÓGICA ---
 
                 return true; // Sucesso!
             }
-            
+
             // Se chegou aqui, ou o usuário não existe ou a senha está errada.
             $_SESSION['erro_login'] = "Login ou senha inválidos.";
             return false;

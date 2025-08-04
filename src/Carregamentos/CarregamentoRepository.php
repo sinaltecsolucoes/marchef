@@ -3,14 +3,19 @@
 namespace App\Carregamentos;
 
 use PDO;
+use Exception; // Adicionado para o 'catch'
+use App\Core\AuditLoggerService; // Adicionado para a auditoria
+
 
 class CarregamentoRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
@@ -52,7 +57,14 @@ class CarregamentoRepository
             ':user_id' => $userId
         ]);
 
-        return (int) $this->pdo->lastInsertId();
+        $novoId = (int) $this->pdo->lastInsertId();
+
+        // AUDITORIA: Registar a criação do cabeçalho do carregamento
+        if ($novoId > 0) {
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamentos', null, $data);
+        }
+
+        return $novoId;
     }
 
     /**
@@ -84,9 +96,18 @@ class CarregamentoRepository
                 ]);
             }
 
+            // AUDITORIA: Registar a criação da fila. O log é feito dentro da transação.
+            if ($filaId > 0) {
+                $dadosNovosFila = [
+                    'fila_carregamento_id' => $carregamentoId,
+                    'fila_entidade_id_cliente' => $clienteId,
+                    'quantidade_leituras' => count($leituras)
+                ];
+                $this->auditLogger->log('CREATE', $filaId, 'tbl_carregamento_filas', null, $dadosNovosFila);
+            }
+
             // 4. Se tudo deu certo, confirma todas as operações no banco de dados
             $this->pdo->commit();
-
             return $filaId;
 
         } catch (\Exception $e) {
@@ -102,13 +123,23 @@ class CarregamentoRepository
      */
     public function updateFilaPhotoPath(int $filaId, string $filePath): bool
     {
+        // PASSO 1: Buscar dados antigos ANTES de atualizar
+        $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamento_filas WHERE fila_id = :id");
+        $stmtAntigo->execute([':id' => $filaId]);
+        $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
+
         $sql = "UPDATE tbl_carregamento_filas SET fila_foto_path = :path WHERE fila_id = :id";
         $stmt = $this->pdo->prepare($sql);
+        $success = $stmt->execute([':path' => $filePath, ':id' => $filaId]);
 
-        return $stmt->execute([
-            ':path' => $filePath,
-            ':id' => $filaId
-        ]);
+        // PASSO 2: Se a atualização foi bem-sucedida, registar o log
+        if ($success && $dadosAntigos) {
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['fila_foto_path'] = $filePath; // Atualiza o campo modificado
+            $this->auditLogger->log('UPDATE', $filaId, 'tbl_carregamento_filas', $dadosAntigos, $dadosNovos);
+        }
+
+        return $success;
     }
 
     /**
@@ -117,15 +148,23 @@ class CarregamentoRepository
      */
     public function finalize(int $carregamentoId): bool
     {
-        $sql = "UPDATE tbl_carregamentos 
-            SET car_status = 'FINALIZADO', car_data_finalizacao = NOW() 
-            WHERE car_id = :id AND car_status = 'EM ANDAMENTO'";
+        // PASSO 1: Buscar dados antigos ANTES de atualizar
+        $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
+        $stmtAntigo->execute([':id' => $carregamentoId]);
+        $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
 
+        $sql = "UPDATE tbl_carregamentos SET car_status = 'FINALIZADO', car_data_finalizacao = NOW() WHERE car_id = :id AND car_status = 'EM ANDAMENTO'";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $carregamentoId]);
+        $success = $stmt->rowCount() > 0;
 
-        // rowCount() retorna o número de linhas afetadas.
-        // Se for > 0, significa que a atualização ocorreu com sucesso.
-        return $stmt->rowCount() > 0;
+        // PASSO 2: Se a atualização foi bem-sucedida, registar o log
+        if ($success && $dadosAntigos) {
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['car_status'] = 'FINALIZADO'; // Representa a principal alteração
+            $this->auditLogger->log('UPDATE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos);
+        }
+
+        return $success;
     }
 }

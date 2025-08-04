@@ -4,14 +4,17 @@ namespace App\Entidades;
 
 use PDO;
 use PDOException;
+use App\Core\AuditLoggerService;
 
 class EntidadeRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
@@ -139,9 +142,13 @@ class EntidadeRepository
             // 3. Pega o ID da entidade recém-criada
             $entidadeId = $this->pdo->lastInsertId();
 
+            // AUDITORIA: Registar a criação da entidade principal
+            if ($entidadeId > 0) {
+                $this->auditLogger->log('CREATE', $entidadeId, 'tbl_entidades', null, $data);
+            }
+
             // 4. Se um endereço foi fornecido, insere na 'tbl_enderecos' como 'Principal'
             if (!empty($data['end_cep'])) {
-                // (O código para inserir endereço principal que já fizemos antes continua aqui)
                 $sqlEndereco = "INSERT INTO tbl_enderecos (
                                     end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, 
                                     end_numero, end_complemento, end_bairro, end_cidade, end_uf, 
@@ -191,6 +198,12 @@ class EntidadeRepository
     {
         $this->pdo->beginTransaction();
         try {
+            // PASSO 1 DE AUDITORIA: Buscar dados antigos da entidade principal ANTES de alterar
+            $dadosAntigos = $this->find($id);
+            if (!$dadosAntigos) {
+                $this->pdo->rollBack();
+                return false;
+            }
             // 1. Prepara e atualiza os dados na 'tbl_entidades'
             $tipoPessoa = $data['ent_tipo_pessoa'] ?? 'F';
             $cpf = ($tipoPessoa === 'F') ? preg_replace('/\D/', '', $data['ent_cpf_cnpj']) : null;
@@ -217,6 +230,9 @@ class EntidadeRepository
                 ':tipo_entidade' => $data['ent_tipo_entidade'],
                 ':situacao' => $situacao
             ]);
+
+            // PASSO 2 DE AUDITORIA: Registar a alteração da entidade principal
+            $this->auditLogger->log('UPDATE', $id, 'tbl_entidades', $dadosAntigos, $data);
 
             // 2. Atualiza ou Insere (UPSERT) o endereço principal
             if (!empty($data['end_cep'])) {
@@ -294,8 +310,21 @@ class EntidadeRepository
      */
     public function inactivate(int $id): bool
     {
+        // PASSO 1: Buscar dados antigos ANTES de inativar
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos)
+            return false;
+
         $stmt = $this->pdo->prepare("UPDATE tbl_entidades SET ent_situacao = 'I' WHERE ent_codigo = :id");
-        $stmt->execute([':id' => $id]);
+        $success = $stmt->execute([':id' => $id]);
+
+        // PASSO 2: Se a inativação foi bem-sucedida, registar o log
+        if ($success && $stmt->rowCount() > 0) {
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['ent_situacao'] = 'I';
+            $this->auditLogger->log('INACTIVATE', $id, 'tbl_entidades', $dadosAntigos, $dadosNovos);
+        }
+
         return $stmt->rowCount() > 0;
     }
 
@@ -326,6 +355,12 @@ class EntidadeRepository
     public function saveEndereco(array $data, int $userId): bool
     {
         $id = filter_var($data['end_codigo'] ?? null, FILTER_VALIDATE_INT);
+        $dadosAntigos = null;
+
+        if ($id) { // Se é uma atualização, busca os dados antigos
+            $dadosAntigos = $this->findEndereco($id);
+        }
+
         if ($id) { // Atualiza
             $sql = "UPDATE tbl_enderecos SET end_tipo_endereco = :tipo, end_cep = :cep, end_logradouro = :log, end_numero = :num, end_complemento = :comp, end_bairro = :bairro, end_cidade = :cidade, end_uf = :uf WHERE end_codigo = :id";
         } else { // Cria
@@ -333,6 +368,8 @@ class EntidadeRepository
         }
 
         $stmt = $this->pdo->prepare($sql);
+        $params = [ /* ... params ... */];
+        // ... (código de params original) ...
         $params = [
             ':tipo' => $data['end_tipo_endereco'],
             ':cep' => $data['end_cep'],
@@ -349,8 +386,18 @@ class EntidadeRepository
             $params[':ent_id'] = $data['end_entidade_id'];
             $params[':user_id'] = $userId;
         }
+        $success = $stmt->execute($params);
 
-        return $stmt->execute($params);
+        if ($success) {
+            if ($id) { // Log de UPDATE
+                $this->auditLogger->log('UPDATE', $id, 'tbl_enderecos', $dadosAntigos, $data);
+            } else { // Log de CREATE
+                $novoId = (int) $this->pdo->lastInsertId();
+                $this->auditLogger->log('CREATE', $novoId, 'tbl_enderecos', null, $data);
+            }
+        }
+
+        return $success;
     }
 
     /**
@@ -358,10 +405,22 @@ class EntidadeRepository
      */
     public function deleteEndereco(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :id");
-        return $stmt->execute([':id' => $id]);
-    }
+        // PASSO 1: Buscar dados antigos ANTES de apagar
+        $dadosAntigos = $this->findEndereco($id);
+        if (!$dadosAntigos)
+            return false;
 
+        $stmt = $this->pdo->prepare("DELETE FROM tbl_enderecos WHERE end_codigo = :id");
+        $success = $stmt->execute([':id' => $id]);
+
+        // PASSO 2: Se a exclusão foi bem-sucedida, registar o log
+        if ($success && $stmt->rowCount() > 0) {
+            $this->auditLogger->log('DELETE', $id, 'tbl_enderecos', $dadosAntigos, null);
+            return true;
+        }
+
+        return false;
+    }
     public function getFornecedorOptions(): array
     {
         $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno FROM tbl_entidades WHERE (ent_tipo_entidade = 'Fornecedor' OR ent_tipo_entidade = 'Cliente e Fornecedor') AND ent_situacao = 'A' ORDER BY ent_razao_social ASC");

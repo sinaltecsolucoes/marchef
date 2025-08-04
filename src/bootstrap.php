@@ -1,12 +1,14 @@
 <?php
 // /src/bootstrap.php
+// Define o fuso horário padrão para toda a aplicação como o Horário de Brasília
+date_default_timezone_set('America/Sao_Paulo'); //Mesmo fuso horario de Brasilia
 
 // ========================================================================
 // CONFIGURAÇÕES GLOBAIS E INICIALIZAÇÃO
 // ========================================================================
 
 // 1. Manipulador de Erros (deve ser o primeiro)
-require_once __DIR__ . "/Core/error_handler.php"; 
+require_once __DIR__ . "/Core/error_handler.php";
 
 // 2. Autoloader de Classes (essencial para carregar nossas classes de /src)
 spl_autoload_register(function ($class) {

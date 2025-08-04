@@ -4,19 +4,21 @@ namespace App\Usuarios;
 
 use PDO;
 use PDOException;
+use App\Core\AuditLoggerService;
 
 class UsuarioRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
      * Busca dados para o DataTables com paginação, busca e ordenação.
-     * Melhora a performance em relação ao 'listar_usuarios.php' original.
      */
     public function findAllForDataTable(array $params): array
     {
@@ -53,7 +55,6 @@ class UsuarioRepository
 
     /**
      * Busca um único usuário pelo ID.
-     * Lógica de 'get_user_data.php'.
      */
     public function find(int $id): ?array
     {
@@ -65,7 +66,6 @@ class UsuarioRepository
 
     /**
      * Cria um novo usuário.
-     * Lógica de 'cadastrar_usuarios.php'.
      */
     public function create(array $data): bool
     {
@@ -80,14 +80,40 @@ class UsuarioRepository
             ':tipo' => $data['usu_tipo'],
             ':situacao' => $situacao
         ]);
+
+        if ($success) {
+            $novoId = (int) $this->pdo->lastInsertId();
+
+            // Prepara os dados novos para o log, removendo a senha por segurança.
+            $dadosNovos = $data;
+            unset($dadosNovos['usu_senha']);
+
+            $this->auditLogger->log(
+                'CREATE',           // Ação
+                $novoId,            // ID do novo registo
+                'tbl_usuarios',     // Tabela afetada
+                null,               // Dados antigos (não existem na criação)
+                $dadosNovos         // Dados novos
+            );
+        }
+
+        return $success;
     }
 
     /**
      * Atualiza um usuário existente.
-     * Lógica de 'editar-perfil.php'.
      */
     public function update(int $id, array $data): bool
     {
+        // ====================================================================
+        // PASSO 1: Buscar o estado do registo ANTES de qualquer alteração.
+        // ====================================================================
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos) {
+            // Se o usuário não existe, não há nada a atualizar ou auditar.
+            return false;
+        }
+
         $sql_parts = ["usu_nome = :nome", "usu_login = :login", "usu_tipo = :tipo", "usu_situacao = :situacao"];
         $params = [
             ':nome' => $data['usu_nome'],
@@ -105,18 +131,63 @@ class UsuarioRepository
 
         $sql = "UPDATE tbl_usuarios SET " . implode(", ", $sql_parts) . " WHERE usu_codigo = :id";
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($params);
+
+        // ====================================================================
+        // PASSO 2: Executar a atualização e guardar o resultado (sucesso/falha).
+        // ====================================================================
+        $success = $stmt->execute($params);
+
+        // ====================================================================
+        // PASSO 3: Se a atualização foi bem-sucedida, registar no log de auditoria.
+        // ====================================================================
+        if ($success) {
+            // Prepara os dados novos. Por segurança, nunca guardamos a senha em texto claro no log.
+            $dadosNovos = $data;
+            unset($dadosNovos['usu_senha']);
+
+            $this->auditLogger->log(
+                'UPDATE',               // Ação
+                $id,                    // ID do registo afetado
+                'tbl_usuarios',         // Tabela afetada
+                $dadosAntigos,          // Como os dados eram ANTES
+                $dadosNovos             // Como os dados ficaram DEPOIS
+            );
+        }
+
+        // ====================================================================
+        // PASSO 4: Retornar o resultado da operação de UPDATE.
+        // ====================================================================
+        return $success;
+
+        // return $stmt->execute($params);
     }
 
     /**
      * Exclui um usuário.
-     * Lógica de 'excluir_usuario.php'.
      */
     public function delete(int $id): bool
     {
+        // PASSO 1: Buscar os dados antigos ANTES de apagar
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos) {
+            // Se o usuário não existe, não há nada a apagar.
+            return false;
+        }
         $stmt = $this->pdo->prepare("DELETE FROM tbl_usuarios WHERE usu_codigo = :id");
-        $stmt->execute([':id' => $id]);
-        return $stmt->rowCount() > 0;
+        $success = $stmt->execute([':id' => $id]);
+
+        // PASSO 2: Se a exclusão foi bem-sucedida, registar o log
+        if ($success && $stmt->rowCount() > 0) {
+            $this->auditLogger->log(
+                'DELETE',           // Ação
+                $id,                // ID do registo apagado
+                'tbl_usuarios',     // Tabela afetada
+                $dadosAntigos,      // Como os dados eram ANTES
+                null                // Dados novos (não existem na exclusão)
+            );
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -176,6 +247,26 @@ class UsuarioRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $result ?: null;
+    }
+
+    /**
+     * Conta o número total de usuários no sistema.
+     * @return int
+     */
+    public function countAll(): int
+    {
+        $stmt = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios");
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Busca todos os usuários para preencher um campo <select> ou similar.
+     * @return array
+     */
+    public function findAllForOptions(): array
+    {
+        $stmt = $this->pdo->query("SELECT usu_codigo, usu_nome FROM tbl_usuarios ORDER BY usu_nome ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 }

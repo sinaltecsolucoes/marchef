@@ -4,14 +4,17 @@ namespace App\Permissions;
 
 use PDO;
 use PDOException;
+use App\Core\AuditLoggerService;
 
 class PermissionRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
@@ -23,20 +26,28 @@ class PermissionRepository
     {
         $this->pdo->beginTransaction();
         try {
-            // 1. Limpa todas as permissões existentes, exceto as do perfil 'Admin'.
-            // Isso garante que não possamos remover permissões de Admin por engano.
+            // PASSO 1 DE AUDITORIA: Capturar o estado atual de todas as permissões (exceto Admin)
+            $stmtAntigo = $this->pdo->prepare(
+                "SELECT permissao_perfil, GROUP_CONCAT(permissao_pagina ORDER BY permissao_pagina) as paginas 
+                 FROM tbl_permissoes 
+                 WHERE permissao_perfil != 'Admin' 
+                 GROUP BY permissao_perfil"
+            );
+            $stmtAntigo->execute();
+            // O fetchAll cria um array associativo como ['Perfil' => 'pagina1,pagina2,...']
+            $dadosAntigos = $stmtAntigo->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            // 1. Limpa todas as permissões existentes (lógica original)
             $this->pdo->prepare("DELETE FROM tbl_permissoes WHERE permissao_perfil != 'Admin'")->execute();
 
-            // 2. Prepara a query de inserção.
+            // 2. Prepara a query de inserção (lógica original)
             $stmt = $this->pdo->prepare("INSERT INTO tbl_permissoes (permissao_perfil, permissao_pagina) VALUES (:perfil, :pagina)");
 
-            // 3. Itera sobre os perfis e suas páginas permitidas para inserir no banco.
+            // 3. Itera e insere as novas permissões (lógica original)
             foreach ($permissions as $perfil => $paginas) {
-                // Medida de segurança: nunca processar permissões para o Admin a partir do formulário.
                 if ($perfil === 'Admin') {
                     continue;
                 }
-
                 if (is_array($paginas)) {
                     foreach ($paginas as $pagina) {
                         $stmt->execute([':perfil' => $perfil, ':pagina' => $pagina]);
@@ -44,11 +55,19 @@ class PermissionRepository
                 }
             }
 
+            // PASSO 2 DE AUDITORIA: Registar a alteração completa antes de confirmar
+            $this->auditLogger->log(
+                'PERMISSIONS_UPDATED',
+                null, // Não há um ID de registo único, a ação é sobre o conjunto
+                'tbl_permissoes',
+                $dadosAntigos,
+                $permissions // Os dados novos são o array que recebemos do formulário
+            );
+
             $this->pdo->commit();
             return true;
         } catch (PDOException $e) {
             $this->pdo->rollBack();
-            // Lança a exceção para que o controlador no ajax_router possa capturá-la.
             throw $e;
         }
     }

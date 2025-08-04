@@ -72,3 +72,7 @@ body {
 .table-sm-custom .actions-cell {
     white-space: nowrap;
 }
+
+.card-custom {
+    margin-right: 2.5rem; /* Ajuste o valor conforme necessário */
+}

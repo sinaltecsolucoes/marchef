@@ -1,19 +1,31 @@
-# /public/.htaccess
-
 # Habilita o motor de reescrita de URLs
 RewriteEngine On
 
-# --- LINHA ESSENCIAL ADICIONADA ---
-# Define o caminho base para as regras de reescrita.
-# Isso é crucial para projetos em subpastas.
+# Define o caminho base para projetos em subpastas
 RewriteBase /marchef/public/
 
+# ----------------------------------------------------------------------
+# REGRA 1: Redirecionar acesso direto a scripts .php
+# ----------------------------------------------------------------------
 # CONDIÇÕES: Aplica a regra abaixo apenas se...
-# ... a requisição NÃO for para um arquivo que existe fisicamente.
+# 1. A requisição original do navegador foi para um arquivo .php
+RewriteCond %{THE_REQUEST} \.php
+# 2. E a requisição NÃO é para o index.php
+RewriteCond %{REQUEST_URI} !/index\.php$ [NC]
+# 3. E a requisição NÃO é para o ajax_router.php
+RewriteCond %{REQUEST_URI} !/ajax_router\.php$ [NC]
+
+# AÇÃO: Se as 3 condições forem verdadeiras, redireciona para a raiz do site.
+RewriteRule .* /marchef/public/ [R=301,L]
+
+# ----------------------------------------------------------------------
+# REGRA 2: Roteamento de URLs para o Controlador Frontal
+# ----------------------------------------------------------------------
+# CONDIÇÕES: Aplica a regra abaixo apenas se...
+# ... a requisição NÃO for para um arquivo que existe (css, js, img, etc).
 RewriteCond %{REQUEST_FILENAME} !-f
-# ... e a requisição NÃO for para um diretório que existe fisicamente.
+# ... e a requisição NÃO for para um diretório que existe.
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# REGRA: Se as condições acima forem verdadeiras,
-# envia a requisição para o index.php, mantendo os parâmetros da URL.
+# AÇÃO: Se as condições forem verdadeiras, envia a requisição para o index.php.
 RewriteRule . index.php [L,QSA]

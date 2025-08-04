@@ -1,11 +1,21 @@
 <?php
 // /views/auth/login_view.php
 if (session_status() == PHP_SESSION_NONE) { session_start(); }
+
+// Lógica para mensagem de erro padrão
 $mensagem_erro_login = '';
 if (isset($_SESSION['erro_login'])) {
     $mensagem_erro_login = htmlspecialchars($_SESSION['erro_login']);
     unset($_SESSION['erro_login']);
 }
+
+// --- NOVA LÓGICA PARA MENSAGEM DE SESSÃO ---
+$mensagem_info_sessao = '';
+if (isset($_GET['motivo']) && $_GET['motivo'] === 'nova_sessao') {
+    $mensagem_info_sessao = "A sua conta foi conectada em um novo local. Para usar o sistema nesta janela, por favor, faça o login novamente.";
+}
+// --- FIM DA NOVA LÓGICA ---
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -27,11 +37,19 @@ if (isset($_SESSION['erro_login'])) {
                     <div id="login-box" class="col-md-12">
                         <form id="login-form" class="form" action="<?php echo BASE_URL; ?>/index.php?page=login" method="post">
                             <h3 class="text-center text-info"><img src="<?php echo BASE_URL; ?>/img/logo_marchef.png" width="180px"></h3>
+                            
                             <?php if (!empty($mensagem_erro_login)) : ?>
                                 <div class="alert alert-danger text-center" role="alert">
                                     <?php echo $mensagem_erro_login; ?>
                                 </div>
                             <?php endif; ?>
+
+                            <?php if (!empty($mensagem_erro_login)) : ?>
+                                <div class="alert alert-danger text-center" role="alert">
+                                    <?php echo $mensagem_erro_login; ?>
+                                </div>
+                            <?php endif; ?>
+
                             <div class="form-group mb-3">
                                 <label for="login-usuario" class="">Login:</label><br>
                                 <input type="text" name="login-usuario" id="login-usuario" class="form-control" required>

@@ -4,14 +4,17 @@ namespace App\Produtos;
 
 use PDO;
 use PDOException;
+use App\Core\AuditLoggerService;
 
 class ProdutoRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     /**
@@ -110,31 +113,29 @@ class ProdutoRepository
 
     public function create(array $data): bool
     {
-        // A query correta, que OMITE a coluna prod_codigo do INSERT
         $sql = "INSERT INTO tbl_produtos (
-                    prod_codigo_interno, prod_descricao, prod_situacao, 
-                    prod_tipo, prod_subtipo, prod_classificacao, 
-                    prod_categoria, prod_classe, prod_especie, 
-                    prod_origem, prod_conservacao, prod_congelamento, 
-                    prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, 
-                    prod_total_pecas, prod_validade_meses, prod_primario_id, 
-                    prod_ean13, prod_dun14) 
+                    prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo, prod_classificacao, 
+                    prod_categoria, prod_classe, prod_especie, prod_origem, prod_conservacao, prod_congelamento, 
+                    prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas, 
+                    prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14) 
                 VALUES (
-                    :prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, 
-                    :prod_subtipo, :prod_classificacao, :prod_categoria, 
-                    :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
-                    :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, 
-                    :prod_peso_embalagem, :prod_total_pecas, :prod_validade_meses, 
-                    :prod_primario_id, :prod_ean13, :prod_dun14
+                    :prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, :prod_subtipo, :prod_classificacao, 
+                    :prod_categoria, :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
+                    :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, 
+                    :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14
                 )";
         $stmt = $this->pdo->prepare($sql);
-
         $params = $this->prepareData($data);
+        unset($params[':prod_codigo']); // Remove o parâmetro não usado no INSERT
 
-        // Remove o parâmetro :prod_codigo que não é usado no INSERT
-        unset($params[':prod_codigo']);
+        $success = $stmt->execute($params);
 
-        return $stmt->execute($params);
+        if ($success) {
+            $novoId = (int) $this->pdo->lastInsertId();
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_produtos', null, $data);
+        }
+
+        return $success;
     }
 
     /**
@@ -142,30 +143,30 @@ class ProdutoRepository
      */
     public function update(int $id, array $data): bool
     {
-        $data['prod_codigo'] = $id; // Adiciona o ID para o binding
-        $sql = "UPDATE tbl_produtos 
-        SET prod_codigo_interno = :prod_codigo_interno, 
-            prod_descricao = :prod_descricao, 
-            prod_tipo = :prod_tipo, 
-            prod_subtipo = :prod_subtipo,
-            prod_classificacao = :prod_classificacao,
-            prod_categoria = :prod_categoria, 
-            prod_classe = :prod_classe, 
-            prod_especie = :prod_especie, 
-            prod_origem = :prod_origem, 
-            prod_conservacao = :prod_conservacao, 
-            prod_congelamento = :prod_congelamento, 
-            prod_fator_producao = :prod_fator_producao, 
-            prod_tipo_embalagem = :prod_tipo_embalagem, 
-            prod_peso_embalagem = :prod_peso_embalagem, 
-            prod_total_pecas = :prod_total_pecas, 
-            prod_validade_meses = :prod_validade_meses, 
-            prod_primario_id = :prod_primario_id, 
-            prod_ean13 = :prod_ean13, 
-            prod_dun14 = :prod_dun14 
-        WHERE prod_codigo = :prod_codigo";
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos)
+            return false;
+
+        $data['prod_codigo'] = $id;
+        $sql = "UPDATE tbl_produtos SET 
+                    prod_codigo_interno = :prod_codigo_interno, prod_descricao = :prod_descricao, prod_tipo = :prod_tipo, 
+                    prod_subtipo = :prod_subtipo, prod_classificacao = :prod_classificacao, prod_categoria = :prod_categoria, 
+                    prod_classe = :prod_classe, prod_especie = :prod_especie, prod_origem = :prod_origem, 
+                    prod_conservacao = :prod_conservacao, prod_congelamento = :prod_congelamento, 
+                    prod_fator_producao = :prod_fator_producao, prod_tipo_embalagem = :prod_tipo_embalagem, 
+                    prod_peso_embalagem = :prod_peso_embalagem, prod_total_pecas = :prod_total_pecas, 
+                    prod_validade_meses = :prod_validade_meses, prod_primario_id = :prod_primario_id, 
+                    prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14 
+                WHERE prod_codigo = :prod_codigo";
+
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($this->prepareData($data));
+        $success = $stmt->execute($this->prepareData($data));
+
+        if ($success) {
+            $this->auditLogger->log('UPDATE', $id, 'tbl_produtos', $dadosAntigos, $data);
+        }
+
+        return $success;
     }
 
     /**
@@ -173,9 +174,19 @@ class ProdutoRepository
      */
     public function delete(int $id): bool
     {
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos)
+            return false;
+
         $stmt = $this->pdo->prepare("DELETE FROM tbl_produtos WHERE prod_codigo = :id");
         $stmt->execute([':id' => $id]);
-        return $stmt->rowCount() > 0;
+        $success = $stmt->rowCount() > 0;
+
+        if ($success) {
+            $this->auditLogger->log('DELETE', $id, 'tbl_produtos', $dadosAntigos, null);
+        }
+
+        return $success;
     }
 
     // Método auxiliar privado para preparar os dados para INSERT/UPDATE

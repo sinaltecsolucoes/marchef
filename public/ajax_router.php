@@ -29,6 +29,8 @@ use App\Permissions\PermissionRepository;
 use App\Labels\LabelService;
 use App\Etiquetas\TemplateRepository;
 use App\Etiquetas\RegraRepository;
+use App\Core\AuditLogRepository;
+use App\Core\BackupService;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -58,6 +60,7 @@ try {
     $permissionRepo = new PermissionRepository($pdo);
     $templateRepo = new TemplateRepository($pdo);
     $regraRepo = new RegraRepository($pdo);
+    $auditLogRepo = new AuditLogRepository($pdo);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -204,6 +207,21 @@ switch ($action) {
         getTemplateOptions($regraRepo);
         break;
 
+    // --- ROTAS DE AUDITORIA ---
+    case 'listarLogs':
+        listarLogs($auditLogRepo);
+        break;
+    case 'getLogDetalhes':
+        getLogDetalhes($auditLogRepo);
+        break;
+    case 'getUsuariosOptions': // Rota de apoio para o filtro de auditoria
+        getUsuariosOptions($usuarioRepo);
+        break;
+
+    // --- ROTA DE BACKUP ---
+    case 'criarBackup':
+        criarBackup(); // Não precisa de passar o repositório
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -435,6 +453,16 @@ function getUsuario(UsuarioRepository $repo)
 function salvarUsuario(UsuarioRepository $repo)
 {
     $id = filter_input(INPUT_POST, 'usu_codigo', FILTER_VALIDATE_INT);
+
+    // Lógica para limitar a criação de novos usuários
+    if (!$id) { // Só executa esta verificação se for um NOVO usuário (sem ID)
+        $totalUsuarios = $repo->countAll();
+        if ($totalUsuarios >= 4) {
+            echo json_encode(['success' => false, 'message' => 'Limite máximo de 4 usuários atingido. Não é possível adicionar mais usuários.']);
+            return; // Interrompe a execução
+        }
+    }
+
     try {
         if ($id) { // Editando
             $repo->update($id, $_POST);
@@ -599,7 +627,8 @@ function imprimirEtiquetaItem(PDO $pdo)
     $loteItemId = filter_input(INPUT_POST, 'loteItemId', FILTER_VALIDATE_INT);
     // O cliente pode não ser selecionado, então permitimos nulo
     $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
-    if ($clienteId === false) $clienteId = null; // Garante que seja nulo se não for um inteiro válido
+    if ($clienteId === false)
+        $clienteId = null; // Garante que seja nulo se não for um inteiro válido
 
     if (!$loteItemId) {
         echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
@@ -787,4 +816,86 @@ function excluirRegra(RegraRepository $repo)
 function getTemplateOptions(RegraRepository $repo)
 {
     echo json_encode(['success' => true, 'data' => $repo->getTemplateOptions()]);
+}
+
+// --- FUNÇÕES DE CONTROLE PARA AUDITORIA ---
+
+function listarLogs(AuditLogRepository $repo)
+{
+    try {
+        // Tenta executar a busca normalmente
+        $output = $repo->findAllForDataTable($_POST);
+        echo json_encode($output);
+    } catch (Exception $e) {
+        // Em caso de qualquer erro (ex: erro de SQL no repositório),
+        // regista o erro no log do servidor para podermos depurar
+        error_log("Erro na API listarLogs: " . $e->getMessage());
+
+        // E envia uma resposta vazia e bem formatada para o DataTables
+        // para evitar o erro de JavaScript que você viu.
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => []
+        ]);
+    }
+}
+
+function getLogDetalhes(AuditLogRepository $repo)
+{
+    $logId = filter_input(INPUT_POST, 'log_id', FILTER_VALIDATE_INT);
+    if (!$logId) {
+        echo json_encode(['success' => false, 'message' => 'ID do log inválido.']);
+        return;
+    }
+    $detalhes = $repo->getLogDetailsById($logId);
+    if ($detalhes) {
+        echo json_encode(['success' => true, 'data' => $detalhes]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Detalhes do log não encontrados.']);
+    }
+}
+
+function getUsuariosOptions(UsuarioRepository $repo)
+{
+    // Usamos a nova função que criámos no UsuarioRepository
+    $usuarios = $repo->findAllForOptions();
+    echo json_encode(['success' => true, 'data' => $usuarios]);
+}
+
+// --- FUNÇÃO DE CONTROLE PARA BACKUP ---
+/*function criarBackup()
+{
+    try {
+        // Instanciamos o serviço diretamente aqui
+        $backupService = new \App\Core\BackupService();
+        $filename = $backupService->gerarBackup();
+
+        // Se tudo correu bem, enviamos uma resposta de sucesso com o nome do ficheiro
+        echo json_encode(['success' => true, 'filename' => $filename]);
+
+    } catch (\Exception $e) {
+        // Se o BackupService lançar um erro, capturamos aqui
+        error_log("Erro ao criar backup: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}*/
+
+function criarBackup()
+{
+    try {
+        // 1. Carrega a configuração da base de dados.
+         $dbConfig = require __DIR__ . '/../config/database.php';
+
+        // 2. Passa a configuração para o serviço ao criá-lo (Injeção de Dependência).
+        $backupService = new \App\Core\BackupService($dbConfig);
+        $filename = $backupService->gerarBackup();
+        
+        echo json_encode(['success' => true, 'filename' => $filename]);
+
+    } catch (\Exception $e) {
+        error_log("Erro ao criar backup: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }

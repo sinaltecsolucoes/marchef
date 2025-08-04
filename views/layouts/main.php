@@ -40,10 +40,11 @@
                         <a class="nav-link <?php echo ($paginaAtual == 'home') ? 'active' : ''; ?>"
                             href="<?php echo BASE_URL; ?>/index.php?page=home">Home</a>
                     </li>
-                   
+
 
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cadastros</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                            data-bs-toggle="dropdown">Cadastros</a>
                         <ul class="dropdown-menu">
                             <?php
                             // Cria uma cópia do array de páginas para usar apenas no menu de cadastros
@@ -54,6 +55,8 @@
                             unset($paginasParaCadastro['permissoes']);
                             unset($paginasParaCadastro['templates']);
                             unset($paginasParaCadastro['regras']);
+                            unset($paginasParaCadastro['auditoria']);
+                            unset($paginasParaCadastro['backup']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
@@ -63,20 +66,45 @@
 
                     <?php
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
-                    if (in_array('permissoes', $paginasPermitidasUsuario) || in_array('templates', $paginasPermitidasUsuario)):
-                    ?>
+                    $paginasConfig = ['permissoes', 'templates', 'regras'];
+                    if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
+                        ?>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Configurações</a>
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Configurações</a>
                             <ul class="dropdown-menu">
                                 <?php if (in_array('permissoes', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=permissoes">Gerenciar Permissões</a></li>
                                 <?php endif; ?>
+                                <?php if (in_array('templates', $paginasPermitidasUsuario) || in_array('regras', $paginasPermitidasUsuario)): ?>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                <?php endif; ?>
                                 <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=templates">Templates de Etiqueta</a></li>
                                 <?php endif; ?>
-                                <?php if (in_array('regras', $paginasPermitidasUsuario)):
-                                ?>
+                                <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=regras">Regras de Etiqueta</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php
+                    // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
+                    $paginasUtils = ['auditoria', 'backup'];
+                    if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Utilitários</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('auditoria', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=auditoria">Logs de Auditoria</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('backup', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=backup">Backup do Sistema</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -161,6 +189,12 @@
     <?php endif; ?>
     <?php if ($paginaAtual === 'regras'): ?>
         <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
+    <?php endif; ?>
+    <?php if ($paginaAtual === 'auditoria'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/auditoria.js"></script>
+    <?php endif; ?>
+    <?php if ($paginaAtual === 'backup'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
     <?php endif; ?>
 </body>
 

@@ -4,14 +4,18 @@ namespace App\Lotes;
 
 use PDO;
 use PDOException;
+use Exception;
+use App\Core\AuditLoggerService;
 
 class LoteRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLoggerService = new AuditLoggerService($pdo);
     }
 
     public function findAllForDataTable(array $params): array
@@ -74,6 +78,11 @@ class LoteRepository
     public function saveHeader(array $data, int $userId): int
     {
         $id = filter_var($data['lote_id'] ?? null, FILTER_VALIDATE_INT);
+        $dadosAntigos = null;
+        if ($id) {
+            $dadosAntigos = $this->findById($id);
+        }
+
         $params = [
             ':numero' => $data['lote_numero'],
             ':data_fab' => $data['lote_data_fabricacao'],
@@ -109,11 +118,25 @@ class LoteRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $id ?: $this->pdo->lastInsertId();
+
+        // AUDITORIA
+        if ($id) { // Log de UPDATE
+            $this->auditLogger->log('UPDATE', $id, 'tbl_lotes', $dadosAntigos, $data);
+        } else { // Log de CREATE
+            $this->auditLogger->log('CREATE', $resultId, 'tbl_lotes', null, $data);
+        }
+
+        return $resultId;
     }
 
     public function saveItem(array $data): bool
     {
         $id = filter_var($data['item_id'] ?? null, FILTER_VALIDATE_INT);
+        $dadosAntigos = null;
+        if ($id) {
+            $dadosAntigos = $this->findItemById($id);
+        }
+
         $params = [
             ':lote_id' => $data['lote_id'],
             ':produto_id' => $data['item_produto_id'],
@@ -129,20 +152,51 @@ class LoteRepository
         }
 
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute($params);
+        $success = $stmt->execute($params);
+     
+        // AUDITORIA
+        if ($success) {
+            if ($id) {
+                $this->auditLogger->log('UPDATE', $id, 'tbl_lote_itens', $dadosAntigos, $data);
+            } else {
+                $novoId = (int) $this->pdo->lastInsertId();
+                $this->auditLogger->log('CREATE', $novoId, 'tbl_lote_itens', null, $data);
+            }
+        }
+
+        return $success;
     }
 
-    public function deleteItem(int $itemId): bool
+     public function deleteItem(int $itemId): bool
     {
-        return $this->pdo->prepare("DELETE FROM tbl_lote_itens WHERE item_id = :id")->execute([':id' => $itemId]);
+        $dadosAntigos = $this->findItemById($itemId);
+        if (!$dadosAntigos) return false;
+
+        $stmt = $this->pdo->prepare("DELETE FROM tbl_lote_itens WHERE item_id = :id");
+        $success = $stmt->execute([':id' => $itemId]);
+        
+        if ($success && $stmt->rowCount() > 0) {
+            $this->auditLogger->log('DELETE', $itemId, 'tbl_lote_itens', $dadosAntigos, null);
+            return true;
+        }
+
+        return false;
     }
 
-    public function delete(int $id): bool
+     public function delete(int $id): bool
     {
+        // AUDITORIA: Capturar dados antes de apagar
+        $dadosAntigosHeader = $this->findById($id);
+        if (!$dadosAntigosHeader) return false;
+        
         $this->pdo->beginTransaction();
         try {
             $this->pdo->prepare("DELETE FROM tbl_lote_itens WHERE item_lote_id = :id")->execute([':id' => $id]);
             $this->pdo->prepare("DELETE FROM tbl_lotes WHERE lote_id = :id")->execute([':id' => $id]);
+
+            // AUDITORIA: Registar a exclusão antes de confirmar a transação
+            $this->auditLogger->log('DELETE', $id, 'tbl_lotes', $dadosAntigosHeader, null);
+
             $this->pdo->commit();
             return true;
         } catch (PDOException $e) {
@@ -150,22 +204,25 @@ class LoteRepository
             throw $e;
         }
     }
-
-    public function finalize(int $id): bool
+   public function finalize(int $id): bool
     {
+        // AUDITORIA: Capturar dados antes de finalizar
+        $dadosAntigos = $this->findById($id);
+        
         $this->pdo->beginTransaction();
         try {
+            // ... (código de verificação e inserção em estoque existente) ...
             $stmt_check = $this->pdo->prepare("SELECT lote_status FROM tbl_lotes WHERE lote_id = :id FOR UPDATE");
             $stmt_check->execute([':id' => $id]);
             if ($stmt_check->fetchColumn() !== 'EM ANDAMENTO') {
-                throw new \Exception('Este lote não pode ser finalizado.');
+                throw new Exception('Este lote não pode ser finalizado.');
             }
 
             $stmt_itens = $this->pdo->prepare("SELECT item_id, item_produto_id, item_quantidade FROM tbl_lote_itens WHERE item_lote_id = :id");
             $stmt_itens->execute([':id' => $id]);
             $itens_do_lote = $stmt_itens->fetchAll(PDO::FETCH_ASSOC);
             if (empty($itens_do_lote)) {
-                throw new \Exception('Não é possível finalizar um lote sem produtos.');
+                throw new Exception('Não é possível finalizar um lote sem produtos.');
             }
 
             $stmt_estoque = $this->pdo->prepare("INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento) VALUES (:produto_id, :lote_item_id, :quantidade, 'ENTRADA')");
@@ -175,9 +232,16 @@ class LoteRepository
 
             $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = 'FINALIZADO' WHERE lote_id = :id")->execute([':id' => $id]);
 
+            // AUDITORIA: Registar a finalização como um UPDATE antes de confirmar a transação
+            if ($dadosAntigos) {
+                $dadosNovos = $dadosAntigos;
+                $dadosNovos['lote_status'] = 'FINALIZADO';
+                $this->auditLogger->log('FINALIZE_LOTE', $id, 'tbl_lotes', $dadosAntigos, $dadosNovos);
+            }
+
             $this->pdo->commit();
             return true;
-        } catch (PDOException | \Exception $e) {
+        } catch (PDOException | Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }
