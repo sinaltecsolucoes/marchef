@@ -30,7 +30,7 @@ return [
     'port' => '3306',
     'dbname' => 'marchef',
     'user' => 'root',
-    'pass' => '',
+    'password' => '',
     'charset' => 'utf8mb4'
 
     //online

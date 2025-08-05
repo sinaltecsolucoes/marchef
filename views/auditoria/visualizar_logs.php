@@ -4,35 +4,35 @@
 
 <h4 class="fw-bold mb-3">Logs de Auditoria do Sistema</h4>
 
-<div class="card shadow mb-4">
+<div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Filtrar Registos</h6>
     </div>
     <div class="card-body">
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-12 col-md-3 mb-3 mb-md-0">
                 <label for="filtro_data_inicio">Data Início:</label>
                 <input type="date" id="filtro_data_inicio" class="form-control">
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3 mb-3 mb-md-0">
                 <label for="filtro_data_fim">Data Fim:</label>
                 <input type="date" id="filtro_data_fim" class="form-control">
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-3 mb-3 mb-md-0">
                 <label for="filtro_usuario_id">Utilizador:</label>
                 <select id="filtro_usuario_id" class="form-select">
                     <option value="">Todos os Utilizadores</option>
-                    </select>
+                </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button id="btn_filtrar" class="btn btn-primary me-2">Filtrar</button>
-                <button id="btn_limpar" class="btn btn-secondary">Limpar</button>
+            <div class="col-12 col-md-3 d-grid d-md-flex align-items-end gap-2 mt-3 mt-md-0">
+                <button id="btn_filtrar" class="btn btn-primary w-100 w-md-auto">Filtrar</button>
+                <button id="btn_limpar" class="btn btn-secondary w-100 w-md-auto">Limpar</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card shadow mb-4">
+<div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Histórico de Ações</h6>
     </div>
@@ -50,7 +50,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
