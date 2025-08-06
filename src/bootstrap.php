@@ -27,7 +27,16 @@ spl_autoload_register(function ($class) {
 
 // 3. Definição de Constantes Globais
 // ATENÇÃO: Ajuste a URL se seu projeto não estiver na raiz do localhost.
-define('BASE_URL', 'http://localhost/marchef/public');
+//define('BASE_URL', 'http://localhost/marchef/public');
+
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$host = $_SERVER['HTTP_HOST'];
+$scriptPath = dirname($_SERVER['SCRIPT_NAME']);
+$baseURL = rtrim($protocol . $host . $scriptPath, '/');
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', $baseURL);
+}
 
 // 4. Início da Sessão
 if (session_status() == PHP_SESSION_NONE) {

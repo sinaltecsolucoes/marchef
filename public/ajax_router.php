@@ -162,6 +162,12 @@ switch ($action) {
     case 'finalizarLote':
         finalizarLote($loteRepo);
         break;
+    case 'finalizarLoteParcialmente':
+        finalizarLoteParcialmente($loteRepo);
+        break;
+    case 'cancelarLote':
+        cancelarLote($loteRepo);
+        break;
     case 'getLoteItem':
         getLoteItem($loteRepo);
         break;
@@ -585,6 +591,26 @@ function finalizarLote(LoteRepository $repo)
     }
 }
 
+function finalizarLoteParcialmente(LoteRepository $repo)
+{
+    // Validação básica dos dados recebidos do JavaScript
+    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $itens = $_POST['itens'] ?? [];
+
+    if (!$loteId || empty($itens) || !is_array($itens)) {
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos para finalização.']);
+        return;
+    }
+
+    try {
+        $repo->finalizeParcialmente($loteId, $itens);
+        echo json_encode(['success' => true, 'message' => 'Itens finalizados e adicionados ao estoque com sucesso!']);
+    } catch (Exception $e) {
+        // Captura qualquer erro vindo do repositório e envia como uma resposta amigável
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 function getLoteItem(LoteRepository $repo)
 {
     $id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
@@ -598,6 +624,22 @@ function getLoteItem(LoteRepository $repo)
         echo json_encode(['success' => true, 'data' => $item]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Item não encontrado.']);
+    }
+}
+
+function cancelarLote(LoteRepository $repo)
+{
+    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$loteId) {
+        echo json_encode(['success' => false, 'message' => 'ID do lote inválido.']);
+        return;
+    }
+
+    try {
+        $repo->cancelar($loteId);
+        echo json_encode(['success' => true, 'message' => 'Lote cancelado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 
@@ -634,9 +676,6 @@ function imprimirEtiquetaItem(PDO $pdo)
         echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
         return;
     }
-
-
-
 
 
     // Validação básica dos dados de entrada
@@ -864,34 +903,16 @@ function getUsuariosOptions(UsuarioRepository $repo)
     echo json_encode(['success' => true, 'data' => $usuarios]);
 }
 
-// --- FUNÇÃO DE CONTROLE PARA BACKUP ---
-/*function criarBackup()
-{
-    try {
-        // Instanciamos o serviço diretamente aqui
-        $backupService = new \App\Core\BackupService();
-        $filename = $backupService->gerarBackup();
-
-        // Se tudo correu bem, enviamos uma resposta de sucesso com o nome do ficheiro
-        echo json_encode(['success' => true, 'filename' => $filename]);
-
-    } catch (\Exception $e) {
-        // Se o BackupService lançar um erro, capturamos aqui
-        error_log("Erro ao criar backup: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
 function criarBackup()
 {
     try {
         // 1. Carrega a configuração da base de dados.
-         $dbConfig = require __DIR__ . '/../config/database.php';
+        $dbConfig = require __DIR__ . '/../config/database.php';
 
         // 2. Passa a configuração para o serviço ao criá-lo (Injeção de Dependência).
         $backupService = new \App\Core\BackupService($dbConfig);
         $filename = $backupService->gerarBackup();
-        
+
         echo json_encode(['success' => true, 'filename' => $filename]);
 
     } catch (\Exception $e) {

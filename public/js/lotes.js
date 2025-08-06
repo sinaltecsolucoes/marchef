@@ -216,57 +216,6 @@ $(document).ready(function () {
     $('#item_quantidade').on('keyup change', calcularPesoTotal);
 
     /**
-     * Função para renderizar a tabela de itens dentro do modal
-     * @param {*} items 
-     * @returns 
-     */
-    function renderizarItensDoLote(items) {
-        const $container = $('#lista-produtos-deste-lote');
-        const isLoteFinalizado = $('#lote_status_hidden').val() === 'FINALIZADO'; // Verificamos o status do lote
-
-        if (!items || items.length === 0) {
-            $container.html('<p class="text-muted">Nenhum produto incluído ainda.</p>');
-            return;
-        }
-
-        let tableHtml = `<table class="table table-sm table-striped table-sm-custom" id="tabela-itens-lote-modal">
-    <thead>
-        <tr>
-           <th style="width: 50%" class="text-center";">Produto</th>
-           <th style="width: 10%" class="text-center";">Quantidade</th>
-           <th style="width: 10%" class="text-center";">Peso Total (kg)</th>
-           <th style="width: 10%" class="text-center";">Validade</th>
-           <th style="width: 20%" class="text-center";">Ações</th>
-       </tr>
-    </thead>
-    <tbody>`;
-
-        items.forEach(function (item) {
-            const dataValidade = new Date(item.item_data_validade + 'T00:00:00').toLocaleDateString('pt-BR');
-            const validadeISO = item.item_data_validade;
-            const pesoTotalItem = (parseFloat(item.item_quantidade) * parseFloat(item.prod_peso_embalagem)).toFixed(3);
-            const disabled = isLoteFinalizado ? 'disabled' : ''; // Desabilita botões se o lote estiver finalizado
-
-            tableHtml += `
-           <tr data-produto-id="${item.item_produto_id}" data-validade-iso="${validadeISO}">
-               <td>${item.prod_descricao}</td>
-               <td class="text-center">${item.item_quantidade}</td>
-               <td class="text-center">${pesoTotalItem}</td>
-               <td class="text-center">${dataValidade}</td>
-               <td>
-                    <button class="btn btn-info btn-sm btn-imprimir-item" data-item-id="${item.item_id}" title="Imprimir Etiqueta"> Imprimir</button>
-                    <button class="btn btn-warning btn-sm btn-editar-item" data-item-id="${item.item_id}" ${disabled}>Editar</button>
-                    <button class="btn btn-danger btn-sm btn-excluir-item" data-item-id="${item.item_id}" ${disabled}>Excluir</button>
-               </td>
-           </tr>
-       `;
-        });
-
-        tableHtml += '</tbody></table>';
-        $container.html(tableHtml);
-    }
-
-    /**
      * Função para recarregar a lista de itens de um lote
      * @param {*} loteId 
      * @returns 
@@ -287,7 +236,8 @@ $(document).ready(function () {
                 // Bloco .done() -> Executa se a comunicação for bem-sucedida
                 if (response.success) {
                     // Se a aplicação retornou sucesso, chama a função para redesenhar a tabela
-                    renderizarItensDoLote(response.data.items);
+                    //renderizarItensDoLote(response.data.items);
+                    renderizarTabelasDeItens(response.data.items);
                 } else {
                     // Se a aplicação retornou um erro de negócio (ex: lote não encontrado)
                     console.error('Erro ao recarregar itens do lote:', response.message);
@@ -376,9 +326,17 @@ $(document).ready(function () {
                 "data": "lote_status",
                 "className": "text-center",
                 "width": "10%",
+                /* "render": function (data, type, row) {
+                     let badgeClass = 'bg-secondary';
+                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
+                     if (data === 'FINALIZADO') badgeClass = 'bg-success';
+                     if (data === 'CANCELADO') badgeClass = 'bg-danger';
+                     return `<span class="badge ${badgeClass}">${data}</span>`;
+                 }*/
                 "render": function (data, type, row) {
                     let badgeClass = 'bg-secondary';
                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
+                    if (data === 'PARCIALMENTE FINALIZADO') badgeClass = 'bg-info';
                     if (data === 'FINALIZADO') badgeClass = 'bg-success';
                     if (data === 'CANCELADO') badgeClass = 'bg-danger';
                     return `<span class="badge ${badgeClass}">${data}</span>`;
@@ -400,20 +358,65 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center",
                 "width": "10%",
-                "render": function (data, type, row) {
-                    // O 'row' nos dá acesso a todos os dados da linha, incluindo o status
-                    let finalizarBtn = '';
-                    if (row.lote_status === 'EM ANDAMENTO') {
-                        // finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
-                        finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote ms-1" data-id="${data}" data-nome="${row.lote_completo_calculado}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
+                /*  "render": function (data, type, row) {
+                      // O 'row' nos dá acesso a todos os dados da linha, incluindo o status
+                      let finalizarBtn = '';
+                      if (row.lote_status === 'EM ANDAMENTO' || row.lote_status === 'PARCIALMENTE FINALIZADO')  {
+                          // finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
+                          finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote ms-1" data-id="${data}" data-nome="${row.lote_completo_calculado}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
+  
+                      }
+  
+                      return `
+                           <button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}">Editar</button>
+                           <button class="btn btn-danger btn-sm btn-excluir-lote" data-id="${data}">Excluir</button>
+                           ${finalizarBtn}
+                       `;
+                  }*/
 
+                "render": function (data, type, row) {
+                    let acoesHtml = '';
+                    const status = row.lote_status;
+
+
+                    // O botão "Editar" só aparece se o lote estiver ativo (não finalizado e não cancelado)
+                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                        acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}" title="Editar Lote">Editar</button> `;
                     }
 
-                    return `
-                         <button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}">Editar</button>
-                         <button class="btn btn-danger btn-sm btn-excluir-lote" data-id="${data}">Excluir</button>
-                         ${finalizarBtn}
-                     `;
+                    // O botão "Finalizar" também só aparece para lotes ativos
+                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button> `;
+                    }
+
+                    // O menu "Mais Ações" (com Cancelar e Excluir)
+                    acoesHtml += `
+                        <div class="btn-group d-inline-block">
+                            <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Mais
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">`;
+
+                    // A opção "Cancelar" só aparece para lotes ativos
+                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                        acoesHtml += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${data}" data-nome="${row.lote_completo_calculado}">Cancelar Lote</a></li>`;
+                    }
+
+                    // A opção "Excluir" pode aparecer para todos, mas com um separador se houver outra opção
+                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                        acoesHtml += `<li><hr class="dropdown-divider"></li>`;
+                    }
+                    acoesHtml += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${data}" data-nome="${row.lote_completo_calculado}">Excluir Permanentemente</a></li>`;
+
+                    acoesHtml += `
+            </ul>
+        </div>
+    `;
+
+
+
+                    return acoesHtml;
+
                 }
             }
         ],
@@ -511,6 +514,9 @@ $(document).ready(function () {
     $('#tabela-lotes tbody').on('click', '.btn-editar-lote', function () {
         const loteId = $(this).data('id');
 
+        /* $('#tabela-itens-em-producao').on('click', '.btn-editar-item', function () {
+             const itemId = $(this).data('id');*/
+
         // Primeiro, carrega a lista de fornecedores.
         carregarFornecedores().done(function () {
             // Quando os fornecedores estiverem carregados, carrega os clientes.
@@ -544,7 +550,8 @@ $(document).ready(function () {
                             $('#lote_cliente_id').val(header.lote_cliente_id).trigger('change.select2');
 
                             // 3. Renderiza a lista de produtos do lote
-                            renderizarItensDoLote(lote.items);
+                            //renderizarItensDoLote(lote.items);
+                            renderizarTabelasDeItens(lote.items);
 
                             // 4. Ajusta o texto do botão para "Edição"
                             $('#btn-salvar-lote').text('Salvar Alterações');
@@ -567,12 +574,15 @@ $(document).ready(function () {
                     });
             });
         });
+
     });
 
 
     // Ação para o botão "Excluir" na tabela PRINCIPAL de lotes
     $('#tabela-lotes tbody').on('click', '.btn-excluir-lote', function () {
         const loteId = $(this).data('id');
+        /*  $('#tabela-itens-em-producao').on('click', '.btn-excluir-item', function () {
+              const itemId = $(this).data('id');*/
         const loteNome = $(this).data('nome'); // Pega o texto da primeira coluna da linha
 
         // Preenche o modal de confirmação
@@ -581,6 +591,41 @@ $(document).ready(function () {
 
         // Abre o modal
         $('#modal-confirmar-exclusao-lote').modal('show');
+    });
+
+
+    // Ação para o item de menu "Cancelar Lote"
+    $('#tabela-lotes tbody').on('click', '.btn-cancelar-lote', function (e) {
+        e.preventDefault();
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+
+        $('#id-lote-cancelar').val(loteId);
+        $('#nome-lote-cancelar').text(loteNome);
+        $('#modal-confirmar-cancelar-lote').modal('show');
+    });
+
+    // Ação do botão de confirmação final, DENTRO do modal de cancelamento
+    $('#btn-confirmar-cancelar').on('click', function () {
+        const loteId = $('#id-lote-cancelar').val();
+
+        $.ajax({
+            url: 'ajax_router.php?action=cancelarLote',
+            type: 'POST',
+            data: { lote_id: loteId, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                $('#feedback-message-area-lote').html(`<div class="alert alert-success">${response.message}</div>`);
+                tableLotes.ajax.reload(null, false);
+            } else {
+                $('#feedback-message-area-lote').html(`<div class="alert alert-danger">${response.message}</div>`);
+            }
+        }).fail(function () {
+            alert('Erro de comunicação ao tentar cancelar o lote.');
+        }).always(function () {
+            $('#modal-confirmar-cancelar-lote').modal('hide');
+        });
     });
 
     // Ação do botão de confirmação final, DENTRO do modal de exclusão
@@ -615,40 +660,91 @@ $(document).ready(function () {
     });
 
     // Ação para o botão "Excluir" de um item DENTRO do modal
-    $('#lista-produtos-deste-lote').on('click', '.btn-excluir-item', function () {
-        const itemId = $(this).data('item-id');
-        const $linhaParaRemover = $(this).closest('tr'); // Pega a linha da tabela (<tr>) para removermos depois
+    /* $('#lista-produtos-deste-lote').on('click', '.btn-excluir-item', function () {
+         const itemId = $(this).data('item-id');*/
 
-        // Pede a confirmação do usuário
-        if (confirm('Tem certeza que deseja excluir este item do lote?')) {
-            $.ajax({
-                url: 'ajax_router.php?action=excluirLoteItem',
-                type: 'POST',
-                data: {
-                    item_id: itemId,
-                    csrf_token: csrfToken
-                },
-                dataType: 'json'
+    /* $('#tabela-itens-em-producao').on('click', '.btn-excluir-item', function () {
+         const itemId = $(this).data('id');
+         $('#modal-confirmar-exclusao-item').data('item-id', itemId).modal('show');
+         const $linhaParaRemover = $(this).closest('tr'); // Pega a linha da tabela (<tr>) para removermos depois
+     
+         // Pede a confirmação do usuário
+         if (confirm('Tem certeza que deseja excluir este item do lote?')) {
+             $.ajax({
+                 url: 'ajax_router.php?action=excluirLoteItem',
+                 type: 'POST',
+                 data: {
+                     item_id: itemId,
+                     csrf_token: csrfToken
+                 },
+                 dataType: 'json'
+             })
+                 .done(function (response) {
+                     if (response.success) {
+                         // Remove a linha da tabela da interface com um efeito suave
+                         $linhaParaRemover.fadeOut(400, function () {
+                             $(this).remove();
+                         });
+     
+                         // Recarrega a tabela principal ao fundo para refletir qualquer mudança
+                         tableLotes.ajax.reload(null, false);
+     
+                     } else {
+                         alert('Erro ao excluir item: ' + response.message);
+                     }
+                 })
+                 .fail(function () {
+                     alert('Erro de comunicação ao tentar excluir o item.');
+                 });
+     
+         }
+     });*/
+
+    // --- LÓGICA CORRIGIDA E MELHORADA PARA EXCLUIR ITEM ---
+
+    // 1. Evento para ABRIR o modal de confirmação de exclusão do item
+    $('#tabela-itens-em-producao').on('click', '.btn-excluir-item', function () {
+        const itemId = $(this).data('id');
+        const produtoDescricao = $(this).closest('tr').find('td:first').text();
+
+        // Guarda o ID no modal e preenche o nome do produto para o usuário ver
+        $('#id-item-excluir').val(itemId); // Supondo que você tenha um input hidden no modal
+        $('#nome-produto-excluir').text(produtoDescricao); // Supondo que tenha um <strong> ou <span>
+
+        // Abre o modal de confirmação
+        $('#modal-confirmar-exclusao-item').modal('show'); // NOTA: Verifique se este ID do modal está correto no seu HTML
+    });
+
+    // 2. Evento para o botão de CONFIRMAÇÃO DENTRO do modal de exclusão
+    $('#btn-confirmar-exclusao-item').on('click', function () {
+        const itemId = $('#id-item-excluir').val();
+
+        $.ajax({
+            url: 'ajax_router.php?action=excluirLoteItem',
+            type: 'POST',
+            data: {
+                item_id: itemId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        })
+            .done(function (response) {
+                if (response.success) {
+                    // Recarrega a lista de itens para mostrar a mudança
+                    recarregarItensDoLote($('#lote_id').val());
+                    // Recarrega a tabela principal ao fundo
+                    tableLotes.ajax.reload(null, false);
+                } else {
+                    alert('Erro ao excluir item: ' + response.message);
+                }
             })
-                .done(function (response) {
-                    if (response.success) {
-                        // Remove a linha da tabela da interface com um efeito suave
-                        $linhaParaRemover.fadeOut(400, function () {
-                            $(this).remove();
-                        });
-
-                        // Recarrega a tabela principal ao fundo para refletir qualquer mudança
-                        tableLotes.ajax.reload(null, false);
-
-                    } else {
-                        alert('Erro ao excluir item: ' + response.message);
-                    }
-                })
-                .fail(function () {
-                    alert('Erro de comunicação ao tentar excluir o item.');
-                });
-
-        }
+            .fail(function () {
+                alert('Erro de comunicação ao tentar excluir o item.');
+            })
+            .always(function () {
+                // Fecha o modal de confirmação
+                $('#modal-confirmar-exclusao-item').modal('hide');
+            });
     });
 
     $('#lista-produtos-deste-lote').on('click', '.btn-imprimir-item', function (e) {
@@ -778,8 +874,8 @@ $(document).ready(function () {
     });
 
     // Ação para o botão "Editar" de um item DENTRO do modal
-    $('#lista-produtos-deste-lote').on('click', '.btn-editar-item', function () {
-        const itemId = $(this).data('item-id');
+  $('#tabela-itens-em-producao').on('click', '.btn-editar-item', function () {
+        const itemId = $(this).data('id');
 
         // 1. Reseta o filtro de embalagem para "Todos"
         $('#filtro-todos').prop('checked', true);
@@ -826,6 +922,8 @@ $(document).ready(function () {
                     alert('Erro de comunicação ao buscar dados do item.');
                 });
         });
+
+        console.log("Botão Editar clicado para o item ID:", itemId);
     });
 
     // Ação para o botão "Finalizar" na tabela principal
@@ -886,6 +984,185 @@ $(document).ready(function () {
     $('#modal-lote').on('hidden.bs.modal', function () {
         // Quando o modal principal é fechado, retorna o foco para o corpo do documento.
         $('body').focus();
+    });
+
+    /**
+    * Renderiza os itens de um lote nas tabelas 'Em Produção' e 'Finalizados'.
+    * @param {Array} itens - O array de itens vindo do backend.
+    */
+    function renderizarTabelasDeItens(itens) {
+        const $tbodyProducao = $('#tabela-itens-em-producao').empty();
+        const $tbodyFinalizados = $('#tabela-itens-finalizados').empty();
+
+        if (!itens || itens.length === 0) {
+            $tbodyProducao.html('<tr><td colspan="3" class="text-center">Nenhum item adicionado a este lote.</td></tr>');
+            $tbodyFinalizados.html('<tr><td colspan="3" class="text-center">Nenhum item finalizado.</td></tr>');
+            return;
+        }
+
+        let producaoVazia = true;
+        let finalizadosVazio = true;
+
+        itens.forEach(item => {
+            // Itens que ainda têm quantidade pendente aparecem na primeira tabela
+            const quantidadePendente = parseFloat(item.quantidade_pendente);
+            if (quantidadePendente > 0) {
+                producaoVazia = false;
+               const row = `
+                <tr 
+                    data-item-id="${item.item_id}" 
+                    data-descricao="${item.prod_descricao}" 
+                    data-pendente="${quantidadePendente.toFixed(3)}"
+                >
+                    <td>${item.prod_descricao}</td>
+                    <td class="text-end">${quantidadePendente.toFixed(3)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-warning btn-sm btn-editar-item" data-id="${item.item_id}"><i class="fas fa-pencil-alt"></i> Editar</button>
+                        <button class="btn btn-danger btn-sm btn-excluir-item" data-id="${item.item_id}"><i class="fas fa-trash-alt"></i> Excluir</button>
+                    </td>
+                </tr>
+            `;
+                $tbodyProducao.append(row);
+            }
+
+            // Itens que já tiveram alguma quantidade finalizada aparecem na segunda tabela
+            const quantidadeFinalizada = parseFloat(item.item_quantidade_finalizada);
+            if (quantidadeFinalizada > 0) {
+                finalizadosVazio = false;
+                const row = `
+                <tr data-item-id="${item.item_id}">
+                    <td>${item.prod_descricao}</td>
+                    <td class="text-end">${quantidadeFinalizada.toFixed(3)}</td>
+                </tr>
+            `;
+                $tbodyFinalizados.append(row);
+            }
+        });
+
+        // Mensagens para quando as tabelas estiverem vazias
+        if (producaoVazia) {
+            $tbodyProducao.html('<tr><td colspan="3" class="text-center">Todos os itens foram finalizados.</td></tr>');
+        }
+        if (finalizadosVazio) {
+            $tbodyFinalizados.html('<tr><td colspan="3" class="text-center">Nenhum item finalizado ainda.</td></tr>');
+        }
+    }
+
+    // --- LÓGICA PARA O NOVO MODAL DE FINALIZAÇÃO PARCIAL ---
+
+    // 1. ABRIR E POPULAR O MODAL DE FINALIZAÇÃO
+    // Este código é executado quando se clica no botão "Finalizar Lote..."
+    $('#modal-lote').on('click', '#btn-finalizar-lote', function () {
+        const $tbodyProducao = $('#tabela-itens-em-producao');
+        const $tbodyFinalizacao = $('#itens-para-finalizar-tbody').empty();
+
+        const itensParaFinalizar = [];
+        // Itera sobre cada linha da tabela "Itens em Produção" para obter os dados
+        $tbodyProducao.find('tr').each(function () {
+            const $row = $(this);
+            const itemId = $row.data('item-id');
+            if (itemId) { // Garante que não estamos a pegar numa linha de "nenhum item"
+                itensParaFinalizar.push({
+                    id: itemId,
+                    descricao: $row.data('descricao'),
+                    pendente: $row.data('pendente')
+                });
+            }
+        });
+
+        if (itensParaFinalizar.length === 0) {
+            alert('Não há itens pendentes para finalizar.');
+            return;
+        }
+
+        // Constrói a tabela dentro do novo modal
+        itensParaFinalizar.forEach(item => {
+            const rowHtml = `
+                <tr>
+                    <td>${item.descricao}</td>
+                    <td class="text-end">${item.pendente}</td>
+                    <td>
+                        <input 
+                            type="number" 
+                            class="form-control form-control-sm text-end" 
+                            data-item-id="${item.id}"
+                            name="quantidades[${item.id}]"
+                            min="0"
+                            max="${item.pendente}"
+                            step="0.001"
+                            placeholder="0.000"
+                        >
+                    </td>
+                </tr>
+            `;
+            $tbodyFinalizacao.append(rowHtml);
+        });
+
+        // Abre o modal de finalização
+        $('#modal-finalizacao-parcial').modal('show');
+    });
+
+    // 2. CONFIRMAR E ENVIAR OS DADOS DA FINALIZAÇÃO PARCIAL
+    // Este código é executado quando se clica no botão final de confirmação
+    $('#btn-confirmar-finalizacao-parcial').on('click', function () {
+        const $button = $(this);
+        const $statusDiv = $('#mensagem-finalizacao-parcial');
+        const loteId = $('#lote_id').val(); // Pega o ID do lote que está aberto
+
+        const itensAFinalizar = [];
+        // Itera sobre cada input para obter as quantidades digitadas
+        $('#itens-para-finalizar-tbody input').each(function () {
+            const $input = $(this);
+            const quantidade = parseFloat($input.val());
+
+            // Só adiciona à lista se uma quantidade válida (> 0) foi inserida
+            if (quantidade > 0) {
+                itensAFinalizar.push({
+                    item_id: $input.data('item-id'),
+                    quantidade: quantidade
+                });
+            }
+        });
+
+        if (itensAFinalizar.length === 0) {
+            $statusDiv.html('<div class="alert alert-warning">Nenhuma quantidade foi inserida para finalização.</div>');
+            return;
+        }
+
+        // Feedback visual
+        $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> A processar...');
+        $statusDiv.html('');
+
+        // Chamada AJAX para o backend
+        $.ajax({
+            url: 'ajax_router.php?action=finalizarLoteParcialmente', // A NOSSA NOVA ROTA
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                lote_id: loteId,
+                itens: itensAFinalizar,
+                csrf_token: $('meta[name="csrf-token"]').attr('content')
+            }
+        }).done(function (response) {
+            if (response.success) {
+                // Sucesso! Fecha o modal e recarrega os dados do lote principal
+                $('#modal-finalizacao-parcial').modal('hide');
+
+                // Simula um clique no botão de editar da tabela principal para recarregar o modal do lote
+                // com os dados atualizados (uma forma simples de recarregar)
+                $(`#tabela-lotes .btn-editar-lote[data-id='${loteId}']`).click();
+
+                // Mostra uma mensagem de sucesso na área principal (fora do modal)
+                $('#feedback-message-area-lote').html(`<div class="alert alert-success">${response.message}</div>`);
+
+            } else {
+                $statusDiv.html(`<div class="alert alert-danger">${response.message}</div>`);
+            }
+        }).fail(function () {
+            $statusDiv.html('<div class="alert alert-danger">Erro de comunicação com o servidor.</div>');
+        }).always(function () {
+            $button.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Confirmar Finalização e Gerar Estoque');
+        });
     });
 });
 

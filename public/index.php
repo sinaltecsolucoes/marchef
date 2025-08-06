@@ -117,8 +117,9 @@ try {
     $podeEditarOutrosUsuarios = ($tipoUsuarioLogado === 'Admin' || in_array('editar_outros_usuarios', $paginasPermitidasUsuario));
 
     // Lógica de roteamento
+    // Lógica de roteamento (VERSÃO SIMPLIFICADA E CORRETA)
     $paginaAtual = $page;
-     $paginasPermitidas = [
+    $paginasPermitidas = [
         'home' => 'home/home.php',
         'usuarios' => 'usuarios/lista_usuarios.php',
         'clientes' => 'entidades/lista_entidades.php',
@@ -133,20 +134,26 @@ try {
     ];
 
     $pageType = '';
-    if ($paginaAtual === 'clientes') {
+    if ($paginaAtual === 'clientes')
         $pageType = 'cliente';
-    }
-    if ($paginaAtual === 'fornecedores') {
+    if ($paginaAtual === 'fornecedores')
         $pageType = 'fornecedor';
-    }
-    $homePadraoPorTipo = ['Admin' => 'home/home_admin.php', 'Gerente' => 'home/home_gerente.php', 'Producao' => 'home/home_producao.php'];
+
+    $homePadraoPorTipo = [
+        'Admin' => 'home/home_admin.php',
+        'Gerente' => 'home/home_gerente.php',
+        'Producao' => 'home/home_producao.php'
+    ];
     $arquivoView = '';
 
-    if ($paginaAtual === 'home' && isset($homePadraoPorTipo[$tipoUsuarioLogado])) {
-        $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado];
-    } else if (($tipoUsuarioLogado === 'Admin' || in_array($paginaAtual, $paginasPermitidasUsuario)) && isset($paginasPermitidas[$paginaAtual])) {
+    // A verificação agora é a mesma para TODOS os perfis, incluindo Admin
+    if ($paginaAtual === 'home') {
+        $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado] ?? 'home/home.php';
+    } elseif (in_array($paginaAtual, $paginasPermitidasUsuario) && isset($paginasPermitidas[$paginaAtual])) {
+        // Se a página está na lista de permissões do usuário E existe no nosso mapa, permite o acesso
         $arquivoView = $paginasPermitidas[$paginaAtual];
     } else {
+        // Se não tem permissão, volta para a home
         $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado] ?? 'home/home.php';
         $paginaAtual = 'home';
     }

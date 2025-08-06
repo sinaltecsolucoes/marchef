@@ -15,7 +15,7 @@ class LoteRepository
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-        $this->auditLoggerService = new AuditLoggerService($pdo);
+        $this->auditLogger = new AuditLoggerService($pdo);
     }
 
     public function findAllForDataTable(array $params): array
@@ -62,7 +62,9 @@ class LoteRepository
         if (!$lote)
             return null;
 
-        $items = $this->pdo->prepare("SELECT li.*, p.prod_descricao, p.prod_peso_embalagem FROM tbl_lote_itens li JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo WHERE li.item_lote_id = :id");
+        /* $items = $this->pdo->prepare("SELECT li.*, p.prod_descricao, p.prod_peso_embalagem FROM tbl_lote_itens li JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo WHERE li.item_lote_id = :id");
+         $items->execute([':id' => $id]);*/
+        $items = $this->pdo->prepare("SELECT li.*, p.prod_descricao, p.prod_peso_embalagem, (li.item_quantidade - li.item_quantidade_finalizada) as quantidade_pendente FROM tbl_lote_itens li JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo WHERE li.item_lote_id = :id ORDER BY li.item_status ASC, li.item_id ASC");
         $items->execute([':id' => $id]);
 
         return ['header' => $lote, 'items' => $items->fetchAll(PDO::FETCH_ASSOC)];
@@ -153,7 +155,7 @@ class LoteRepository
 
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute($params);
-     
+
         // AUDITORIA
         if ($success) {
             if ($id) {
@@ -162,33 +164,41 @@ class LoteRepository
                 $novoId = (int) $this->pdo->lastInsertId();
                 $this->auditLogger->log('CREATE', $novoId, 'tbl_lote_itens', null, $data);
             }
+            // ATUALIZA O STATUS GERAL DO LOTE
+            $this->atualizarStatusGeralDoLote((int) $data['lote_id']);
         }
 
         return $success;
     }
 
-     public function deleteItem(int $itemId): bool
+    public function deleteItem(int $itemId): bool
     {
         $dadosAntigos = $this->findItemById($itemId);
-        if (!$dadosAntigos) return false;
+        if (!$dadosAntigos)
+            return false;
 
         $stmt = $this->pdo->prepare("DELETE FROM tbl_lote_itens WHERE item_id = :id");
         $success = $stmt->execute([':id' => $itemId]);
-        
+
         if ($success && $stmt->rowCount() > 0) {
             $this->auditLogger->log('DELETE', $itemId, 'tbl_lote_itens', $dadosAntigos, null);
+
+            // ATUALIZA O STATUS GERAL DO LOTE
+            $this->atualizarStatusGeralDoLote((int) $dadosAntigos['item_lote_id']);
+
             return true;
         }
 
         return false;
     }
 
-     public function delete(int $id): bool
+    public function delete(int $id): bool
     {
         // AUDITORIA: Capturar dados antes de apagar
         $dadosAntigosHeader = $this->findById($id);
-        if (!$dadosAntigosHeader) return false;
-        
+        if (!$dadosAntigosHeader)
+            return false;
+
         $this->pdo->beginTransaction();
         try {
             $this->pdo->prepare("DELETE FROM tbl_lote_itens WHERE item_lote_id = :id")->execute([':id' => $id]);
@@ -204,11 +214,11 @@ class LoteRepository
             throw $e;
         }
     }
-   public function finalize(int $id): bool
+    public function finalize(int $id): bool
     {
         // AUDITORIA: Capturar dados antes de finalizar
         $dadosAntigos = $this->findById($id);
-        
+
         $this->pdo->beginTransaction();
         try {
             // ... (código de verificação e inserção em estoque existente) ...
@@ -280,4 +290,196 @@ class LoteRepository
         $stmt->execute([':item_id' => $loteItemId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Finaliza uma quantidade específica de itens de um lote,
+     * atualizando as quantidades, gerando estoque e atualizando o status do lote.
+     * @param int $loteId O ID do lote a ser finalizado.
+     * @param array $itensAFinalizar Array de itens, ex: [['item_id' => 1, 'quantidade' => 10.5], ...]
+     * @return bool
+     * @throws Exception
+     */
+    public function finalizeParcialmente(int $loteId, array $itensAFinalizar): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($itensAFinalizar as $itemData) {
+                $itemId = $itemData['item_id'];
+                $quantidadeAFinalizar = (float) $itemData['quantidade'];
+
+                if ($quantidadeAFinalizar <= 0)
+                    continue;
+
+                // 1. Busca e bloqueia o item
+                $stmtItem = $this->pdo->prepare("SELECT * FROM tbl_lote_itens WHERE item_id = :id AND item_lote_id = :lote_id FOR UPDATE");
+                $stmtItem->execute([':id' => $itemId, ':lote_id' => $loteId]);
+                $itemAtual = $stmtItem->fetch(PDO::FETCH_ASSOC);
+
+                if (!$itemAtual)
+                    throw new Exception("Item com ID {$itemId} não encontrado ou não pertence ao lote.");
+
+                // 2. Valida a quantidade
+                $quantidadePendente = (float) $itemAtual['item_quantidade'] - (float) $itemAtual['item_quantidade_finalizada'];
+                if ($quantidadeAFinalizar > $quantidadePendente + 0.001) {
+                    throw new Exception("A quantidade a finalizar ({$quantidadeAFinalizar}kg) é maior que a pendente ({$quantidadePendente}kg) para o item ID {$itemId}.");
+                }
+
+                // 3. Adiciona ao estoque
+                $stmtEstoque = $this->pdo->prepare("INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento) VALUES (:produto_id, :lote_item_id, :quantidade, 'ENTRADA')");
+                $stmtEstoque->execute([':produto_id' => $itemAtual['item_produto_id'], ':lote_item_id' => $itemId, ':quantidade' => $quantidadeAFinalizar]);
+
+                // 4. Atualiza o item do lote
+                $novaQtdFinalizada = (float) $itemAtual['item_quantidade_finalizada'] + $quantidadeAFinalizar;
+                $novoStatusItem = ((float) $itemAtual['item_quantidade'] <= $novaQtdFinalizada) ? 'FINALIZADO' : 'EM PRODUCAO';
+                $stmtUpdateItem = $this->pdo->prepare("UPDATE tbl_lote_itens SET item_quantidade_finalizada = :qtd_finalizada, item_status = :status WHERE item_id = :id");
+                $stmtUpdateItem->execute([':qtd_finalizada' => $novaQtdFinalizada, ':status' => $novoStatusItem, ':id' => $itemId]);
+            }
+
+            // 5. Após processar todos os itens, verifica o estado geral do lote
+            /*  $stmtVerificaPendente = $this->pdo->prepare(
+                  "SELECT SUM(item_quantidade - item_quantidade_finalizada) as total_pendente 
+                   FROM tbl_lote_itens WHERE item_lote_id = :lote_id"
+              );
+              $stmtVerificaPendente->execute([':lote_id' => $loteId]);
+              $totalPendente = (float) $stmtVerificaPendente->fetchColumn();
+
+              $novoStatusLote = '';
+              if ($totalPendente <= 0.001) { // Se não há mais nada pendente
+                  $novoStatusLote = 'FINALIZADO';
+              } else { // Se ainda há itens pendentes
+                  $novoStatusLote = 'PARCIALMENTE FINALIZADO';
+              }
+
+              // 6. Atualiza o status do cabeçalho do lote
+              $stmtUpdateLote = $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = :status WHERE lote_id = :id");
+              $stmtUpdateLote->execute([':status' => $novoStatusLote, ':id' => $loteId]);*/
+
+            $novoStatusLote = $this->atualizarStatusGeralDoLote($loteId);
+
+            // AUDITORIA
+            $this->auditLogger->log(
+                'FINALIZE_PARTIAL',
+                $loteId,
+                'tbl_lotes',
+                null,
+                [
+                    'itens_finalizados' => $itensAFinalizar,
+                    '
+                                                  novo_status_lote' => $novoStatusLote
+                ]
+            );
+
+            $this->pdo->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Reavalia e atualiza o status geral de um lote com base no estado dos seus itens.
+     * Esta função segue as regras de negócio definidas.
+     *
+     * @param int $loteId O ID do lote a ser verificado e atualizado.
+     */
+    private function atualizarStatusGeralDoLote(int $loteId): string
+    {
+        // Busca a soma das quantidades totais e finalizadas para todos os itens do lote
+        $stmt = $this->pdo->prepare(
+            "SELECT 
+                SUM(item_quantidade) as total_geral, 
+                SUM(item_quantidade_finalizada) as total_finalizado 
+             FROM tbl_lote_itens 
+             WHERE item_lote_id = :lote_id"
+        );
+        $stmt->execute([':lote_id' => $loteId]);
+        $somas = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $totalGeral = (float) ($somas['total_geral'] ?? 0);
+        $totalFinalizado = (float) ($somas['total_finalizado'] ?? 0);
+
+        $novoStatus = 'EM ANDAMENTO'; // Status padrão
+
+        if ($totalFinalizado > 0) {
+            // Se algo já foi finalizado, verifica se AINDA há algo pendente
+            if ($totalFinalizado >= $totalGeral - 0.001) { // Usamos tolerância para floats
+                $novoStatus = 'FINALIZADO';
+            } else {
+                $novoStatus = 'PARCIALMENTE FINALIZADO';
+            }
+        } elseif ($totalGeral == 0) {
+            // Se não há itens, o status é 'EM ANDAMENTO'
+            $novoStatus = 'EM ANDAMENTO';
+        }
+
+        // Atualiza o status do cabeçalho do lote no banco de dados
+        $stmtUpdate = $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = :status WHERE lote_id = :id");
+        $stmtUpdate->execute([':status' => $novoStatus, ':id' => $loteId]);
+
+        return $novoStatus;
+    }
+
+    /**
+     * Cancela um lote.
+     * Se houver itens já no estoque, cria um movimento de saída para reverter.
+     * Apenas lotes 'EM ANDAMENTO' ou 'PARCIALMENTE FINALIZADO' podem ser cancelados.
+     *
+     * @param int $loteId
+     * @return bool
+     * @throws Exception
+     */
+    public function cancelar(int $loteId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // PASSO 1: Buscar o lote e verificar o seu status
+            $dadosAntigos = $this->findById($loteId);
+            if (!$dadosAntigos) {
+                throw new Exception("Lote não encontrado.");
+            }
+            if (!in_array($dadosAntigos['lote_status'], ['EM ANDAMENTO', 'PARCIALMENTE FINALIZADO'])) {
+                throw new Exception("Apenas lotes 'Em Andamento' ou 'Parcialmente Finalizados' podem ser cancelados.");
+            }
+
+            // PASSO 2: Reverter o estoque (se houver itens finalizados)
+            if ($dadosAntigos['lote_status'] === 'PARCIALMENTE FINALIZADO') {
+                // Encontra todos os itens que geraram entrada no estoque para este lote
+                $stmtItensEstoque = $this->pdo->prepare("SELECT estoque_produto_id, estoque_lote_item_id, estoque_quantidade FROM tbl_estoque WHERE estoque_lote_item_id IN (SELECT item_id FROM tbl_lote_itens WHERE item_lote_id = :lote_id) AND estoque_tipo_movimento = 'ENTRADA'");
+                $stmtItensEstoque->execute([':lote_id' => $loteId]);
+                $itensParaReverter = $stmtItensEstoque->fetchAll(PDO::FETCH_ASSOC);
+
+                $stmtReversao = $this->pdo->prepare("INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) VALUES (:produto_id, :lote_item_id, :quantidade, 'SAIDA', :obs)");
+
+                foreach ($itensParaReverter as $item) {
+                    // Cria um movimento de SAÍDA para cada ENTRADA, zerando o saldo
+                    $stmtReversao->execute([
+                        ':produto_id' => $item['estoque_produto_id'],
+                        ':lote_item_id' => $item['estoque_lote_item_id'],
+                        ':quantidade' => $item['estoque_quantidade'],
+                        ':obs' => 'SAIDA POR CANCELAMENTO DE LOTE'
+                    ]);
+                }
+            }
+
+            // PASSO 3: Atualizar o status do lote para 'CANCELADO'
+            $stmtUpdate = $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = 'CANCELADO' WHERE lote_id = :id");
+            $stmtUpdate->execute([':id' => $loteId]);
+
+            // PASSO 4: AUDITORIA
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['lote_status'] = 'CANCELADO';
+            $this->auditLogger->log('CANCEL_LOTE', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos);
+
+            $this->pdo->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+
 }

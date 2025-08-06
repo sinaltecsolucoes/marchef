@@ -57,23 +57,27 @@
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-2">
-                                    <label for="lote_numero" class="form-label">Número <span class="text-danger">*</span></label>
+                                    <label for="lote_numero" class="form-label">Número <span
+                                            class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="lote_numero" name="lote_numero">
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="lote_data_fabricacao" class="form-label">Data de Fabricação <span class="text-danger">*</span></label>
+                                    <label for="lote_data_fabricacao" class="form-label">Data de Fabricação <span
+                                            class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="lote_data_fabricacao"
                                         name="lote_data_fabricacao">
                                 </div>
                                 <div class="col-md-7">
-                                    <label for="lote_cliente_id" class="form-label">Cliente <span class="text-danger">*</span></label>
+                                    <label for="lote_cliente_id" class="form-label">Cliente <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="lote_cliente_id" name="lote_cliente_id"></select>
                                 </div>
                             </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-7">
-                                    <label for="lote_fornecedor_id" class="form-label">Fornecedor <span class="text-danger">*</span></label>
+                                    <label for="lote_fornecedor_id" class="form-label">Fornecedor <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="lote_fornecedor_id"
                                         name="lote_fornecedor_id"></select>
                                 </div>
@@ -98,8 +102,37 @@
 
                         </form>
                         <hr class="my-4">
-                        <h6>Produtos Incluídos neste Lote</h6>
-                        <div id="lista-produtos-deste-lote" class="table-responsive"></div>
+
+                        <h5><i class="fas fa-cogs me-2"></i> Itens em Produção</h5>
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th class="text-end" style="width: 20%;">Qtd. Pendente (Caixas)</th>
+                                        <th class="text-center" style="width: 25%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-itens-em-producao">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h5 class="mt-4"><i class="fas fa-check-circle me-2"></i> Itens Já Finalizados</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th class="text-end">Qtd. Finalizada (Caixas)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-itens-finalizados">
+                                </tbody>
+                            </table>
+                        </div>
+
+
                     </div>
 
                     <div class="tab-pane fade" id="aba-add-produtos" role="tabpanel">
@@ -161,9 +194,16 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" id="btn-salvar-lote" class="btn btn-primary">Salvar Cabeçalho</button>
+            <div class="modal-footer d-flex justify-content-between">
+                <div>
+                    <button type="button" id="btn-finalizar-lote" class="btn btn-success">
+                        <i class="fas fa-check-circle me-2"></i> Finalizar Lote...
+                    </button>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" id="btn-salvar-lote" class="btn btn-primary">Salvar Cabeçalho</button>
+                </div>
             </div>
         </div>
     </div>
@@ -210,6 +250,70 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não, cancelar</button>
                 <button type="button" class="btn btn-danger" id="btn-confirmar-exclusao-lote">Sim, Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-finalizacao-parcial" tabindex="-1" aria-labelledby="modalFinalizacaoLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalFinalizacaoLabel">Finalizar Itens do Lote</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Para cada item abaixo, insira a quantidade que deseja finalizar e adicionar ao estoque. A quantidade
+                    restante continuará "Em Produção".</p>
+                <div id="mensagem-finalizacao-parcial" class="mb-3"></div>
+                <form id="form-finalizacao-parcial">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="tabela-itens-para-finalizar">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-end">Qtd. Pendente (Caixas)</th>
+                                    <th style="width: 200px;">Qtd. a Finalizar (Caixas)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itens-para-finalizar-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao-parcial">
+                    <i class="fas fa-check-circle me-2"></i> Confirmar Finalização e Gerar Estoque
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-confirmar-cancelar-lote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Confirmar Cancelamento de Lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem a certeza que deseja cancelar o lote <strong id="nome-lote-cancelar"></strong>?</p>
+                <p class="fw-bold">Esta ação irá:</p>
+                <ul>
+                    <li>Alterar o status do lote para "CANCELADO".</li>
+                    <li>Reverter qualquer entrada de estoque que este lote tenha gerado.</li>
+                    <li>O lote não poderá mais ser editado ou finalizado.</li>
+                </ul>
+                <input type="hidden" id="id-lote-cancelar">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
+                <button type="button" class="btn btn-warning" id="btn-confirmar-cancelar">Sim, Cancelar Lote</button>
             </div>
         </div>
     </div>
