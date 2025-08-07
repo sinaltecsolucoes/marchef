@@ -117,7 +117,6 @@ try {
     $podeEditarOutrosUsuarios = ($tipoUsuarioLogado === 'Admin' || in_array('editar_outros_usuarios', $paginasPermitidasUsuario));
 
     // Lógica de roteamento
-    // Lógica de roteamento (VERSÃO SIMPLIFICADA E CORRETA)
     $paginaAtual = $page;
     $paginasPermitidas = [
         'home' => 'home/home.php',
@@ -130,7 +129,9 @@ try {
         'templates' => 'etiquetas/lista_templates.php',
         'regras' => 'etiquetas/lista_regras.php',
         'auditoria' => 'auditoria/visualizar_logs.php',
-        'backup' => 'backup/pagina_backup.php'
+        'backup' => 'backup/pagina_backup.php',
+        'carregamentos' => 'carregamentos/lista_carregamentos.php',
+        'carregamento_detalhes' => 'carregamentos/detalhes_carregamento.php'
     ];
 
     $pageType = '';

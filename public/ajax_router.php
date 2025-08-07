@@ -31,6 +31,7 @@ use App\Etiquetas\TemplateRepository;
 use App\Etiquetas\RegraRepository;
 use App\Core\AuditLogRepository;
 use App\Core\BackupService;
+use App\Carregamentos\CarregamentoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -61,6 +62,7 @@ try {
     $templateRepo = new TemplateRepository($pdo);
     $regraRepo = new RegraRepository($pdo);
     $auditLogRepo = new AuditLogRepository($pdo);
+    $carregamentoRepo = new CarregamentoRepository($pdo);
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -227,6 +229,17 @@ switch ($action) {
     // --- ROTA DE BACKUP ---
     case 'criarBackup':
         criarBackup(); // Não precisa de passar o repositório
+        break;
+
+    // --- ROTA DE CARREGAMENTOS ---
+    case 'listarCarregamentos':
+        listarCarregamentos($carregamentoRepo);
+        break;
+    case 'getProximoNumeroCarregamento':
+        getProximoNumeroCarregamento($carregamentoRepo);
+        break;
+    case 'salvarCarregamentoHeader':
+        salvarCarregamentoHeader($carregamentoRepo, $_SESSION['codUsuario']);
         break;
 
     default:
@@ -918,5 +931,46 @@ function criarBackup()
     } catch (\Exception $e) {
         error_log("Erro ao criar backup: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA CARREGAMENTOS ---
+
+function listarCarregamentos(CarregamentoRepository $repo)
+{
+    try {
+        $output = $repo->findAllForDataTable($_POST);
+        echo json_encode($output);
+    } catch (Exception $e) {
+        error_log("Erro na API listarCarregamentos: " . $e->getMessage());
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => []
+        ]);
+    }
+}
+
+function getProximoNumeroCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $proximoNumero = $repo->getNextNumeroCarregamento();
+        echo json_encode(['success' => true, 'proximo_numero' => $proximoNumero]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
+{
+    // A lógica de salvar (criar ou editar) já está a ser preparada no repositório.
+    // Por agora, vamos focar na criação.
+    try {
+        $newId = $repo->createHeader($_POST, $userId);
+        echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamento_id' => $newId]);
+    } catch (Exception $e) {
+        error_log("Erro em salvarCarregamentoHeader: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o carregamento.']);
     }
 }

@@ -196,6 +196,9 @@
     <?php if ($paginaAtual === 'backup'): ?>
         <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
     <?php endif; ?>
+    <?php if ($paginaAtual === 'carregamentos'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
+    <?php endif; ?>
 </body>
 
 </html>
