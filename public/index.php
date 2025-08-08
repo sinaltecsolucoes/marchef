@@ -147,14 +147,44 @@ try {
     ];
     $arquivoView = '';
 
-    // A verificação agora é a mesma para TODOS os perfis, incluindo Admin
-    if ($paginaAtual === 'home') {
-        $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado] ?? 'home/home.php';
-    } elseif (in_array($paginaAtual, $paginasPermitidasUsuario) && isset($paginasPermitidas[$paginaAtual])) {
-        // Se a página está na lista de permissões do usuário E existe no nosso mapa, permite o acesso
-        $arquivoView = $paginasPermitidas[$paginaAtual];
+    // Verifica se o utilizador tem permissão para a página solicitada
+    $temPermissao = ($tipoUsuarioLogado === 'Admin' || in_array($paginaAtual, $paginasPermitidasUsuario));
+
+    if ($temPermissao && isset($paginasPermitidas[$paginaAtual])) {
+        // Se tem permissão e a página existe, processa
+        switch ($paginaAtual) {
+            case 'carregamento_detalhes':
+                // Lógica especial para esta página: buscar dados antes de carregar a view
+                $carregamentoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+                if (!$carregamentoId) {
+                    // Se não houver ID, redireciona para a lista
+                    header("Location: index.php?page=carregamentos");
+                    exit;
+                }
+
+                $carregamentoRepo = new \App\Carregamentos\CarregamentoRepository($pdo);
+                $carregamentoData = $carregamentoRepo->findCarregamentoComItens($carregamentoId);
+
+                if (!$carregamentoData) {
+                    // Se não encontrar o carregamento, mostra um erro ou redireciona
+                    die("Erro: Carregamento não encontrado.");
+                }
+
+                // Define a view a ser incluída
+                $arquivoView = $paginasPermitidas[$paginaAtual];
+                break;
+
+            default:
+                // Lógica padrão para todas as outras páginas
+                if ($paginaAtual === 'home') {
+                    $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado] ?? 'home/home.php';
+                } else {
+                    $arquivoView = $paginasPermitidas[$paginaAtual];
+                }
+                break;
+        }
     } else {
-        // Se não tem permissão, volta para a home
+        // Se não tem permissão ou a página não existe, volta para a home
         $arquivoView = $homePadraoPorTipo[$tipoUsuarioLogado] ?? 'home/home.php';
         $paginaAtual = 'home';
     }

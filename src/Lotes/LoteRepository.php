@@ -481,5 +481,103 @@ class LoteRepository
         }
     }
 
+    /**
+     * Busca itens de lote com estoque pendente para uso em selects (como no Select2).
+     * (Versão Corrigida)
+     * @param string $searchTerm O termo de busca para filtrar produtos.
+     * @return array
+     */
+    /*  public function findItensEmEstoqueParaSelect(string $searchTerm = ''): array
+      {
+          $sql = "SELECT 
+                      li.item_id as id,
+                      CONCAT(p.prod_descricao, ' (Lote: ', lh.lote_completo_calculado, ' | Pendente: ', FORMAT((li.item_quantidade - li.item_quantidade_finalizada), 3, 'de_DE'), ' kg)') as text
+                  FROM tbl_lote_itens li
+                  JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+                  JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
+                  WHERE 
+                      (li.item_quantidade - li.item_quantidade_finalizada) > 0.001
+                      AND p.prod_descricao LIKE :term
+                  ORDER BY p.prod_descricao ASC, lh.lote_data_fabricacao ASC
+                  LIMIT 20";
 
+          $stmt = $this->pdo->prepare($sql);
+          $stmt->execute([':term' => '%' . $searchTerm . '%']);
+          return $stmt->fetchAll(PDO::FETCH_ASSOC);
+      }*/
+
+    /**
+     * Busca itens de lote para uso em selects.
+     * (Versão Corrigida - com texto 'Pendente' condicional)
+     * @param string $searchTerm O termo de busca para filtrar produtos.
+     * @return array
+     */
+    /* public function findItensEmEstoqueParaSelect(string $searchTerm = ''): array
+     {
+         $sql = "SELECT 
+                     li.item_id as id,
+
+                     CONCAT(
+                         p.prod_descricao, 
+                         ' (Lote: ', 
+                         lh.lote_completo_calculado, 
+                         IF(
+                             lh.lote_status != 'FINALIZADO',
+                             CONCAT(' | Pendente: ', FORMAT((li.item_quantidade - li.item_quantidade_finalizada), 3, 'de_DE'), ' kg'),
+                             ''
+                         ),
+                         ')'
+                     ) as text
+                 FROM tbl_lote_itens li
+                 JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+                 JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
+                 WHERE 
+                     (li.item_quantidade - li.item_quantidade_finalizada) > 0.001
+                     AND p.prod_descricao LIKE :term
+                 ORDER BY lh.lote_status ASC, p.prod_descricao ASC, lh.lote_data_fabricacao ASC
+                 LIMIT 20";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute([':term' => '%' . $searchTerm . '%']);
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     }*/
+
+
+    /**
+     * Busca itens em estoque para o Select2, pesquisando por descrição ou código interno.
+     * (Versão Definitiva - Corrigido o erro HY093)
+     *
+     * @param string $term O termo de busca do Select2.
+     * @return array
+     */
+    public function findItensEmEstoqueParaSelect(string $term): array
+    {
+        // Consulta corrigida para usar placeholders distintos para cada LIKE,
+        // evitando o erro "Invalid parameter number" (HY093).
+        $sql = "SELECT 
+                    li.item_id as id,
+                    CONCAT(p.prod_descricao, ' (Cód: ', p.prod_codigo_interno, ')') as text
+                FROM tbl_lote_itens li
+                JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
+                JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+                WHERE 
+                    (li.item_quantidade - li.item_quantidade_finalizada) > 0 
+                    AND lh.lote_status IN ('PARCIALMENTE FINALIZADO', 'FINALIZADO')
+                    AND (
+                        p.prod_descricao LIKE :term1 -- Usando placeholder :term1
+                        OR p.prod_codigo_interno LIKE :term2 -- Usando placeholder :term2
+                    )
+                LIMIT 20";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        // Passando valores para ambos os placeholders
+        $searchTerm = '%' . $term . '%';
+        $stmt->execute([
+            ':term1' => $searchTerm,
+            ':term2' => $searchTerm
+        ]);
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 }

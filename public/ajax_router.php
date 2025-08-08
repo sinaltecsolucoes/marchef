@@ -137,7 +137,9 @@ switch ($action) {
     case 'excluirUsuario':
         excluirUsuario($usuarioRepo, $_SESSION['codUsuario']);
         break;
-
+    case 'getUsuariosOptions': // Rota de apoio para o filtro de auditoria
+        getUsuariosOptions($usuarioRepo);
+        break;
 
     // --- ROTAS DE LOTES ---
     case 'listarLotes':
@@ -172,6 +174,9 @@ switch ($action) {
         break;
     case 'getLoteItem':
         getLoteItem($loteRepo);
+        break;
+    case 'getItensDeEstoqueOptions':
+        getItensDeEstoqueOptions($loteRepo); // Usa o LoteRepository
         break;
 
     // --- ROTA DE PERMISSÕES ---
@@ -222,9 +227,6 @@ switch ($action) {
     case 'getLogDetalhes':
         getLogDetalhes($auditLogRepo);
         break;
-    case 'getUsuariosOptions': // Rota de apoio para o filtro de auditoria
-        getUsuariosOptions($usuarioRepo);
-        break;
 
     // --- ROTA DE BACKUP ---
     case 'criarBackup':
@@ -240,6 +242,30 @@ switch ($action) {
         break;
     case 'salvarCarregamentoHeader':
         salvarCarregamentoHeader($carregamentoRepo, $_SESSION['codUsuario']);
+        break;
+    case 'adicionarItemCarregamento':
+        adicionarItemCarregamento($carregamentoRepo);
+        break;
+    case 'removerItemCarregamento':
+        removerItemCarregamento($carregamentoRepo);
+        break;
+    case 'getCarregamentoDetalhes': // Para recarregar os dados
+        getCarregamentoDetalhes($carregamentoRepo);
+        break;
+    case 'adicionarFila':
+        adicionarFila($carregamentoRepo);
+        break;
+    case 'adicionarItemAFila':
+        adicionarItemAFila($carregamentoRepo);
+        break;
+    case 'getDadosConferencia':
+        getDadosConferencia($carregamentoRepo);
+        break;
+    case 'confirmarBaixaEstoque':
+        confirmarBaixaEstoque($carregamentoRepo);
+        break;
+    case 'salvarFilaComposta':
+        salvarFilaComposta($carregamentoRepo);
         break;
 
     default:
@@ -518,6 +544,13 @@ function excluirUsuario(UsuarioRepository $repo, int $loggedInUserId)
     }
 }
 
+function getUsuariosOptions(UsuarioRepository $repo)
+{
+    // Usamos a nova função que criámos no UsuarioRepository
+    $usuarios = $repo->findAllForOptions();
+    echo json_encode(['success' => true, 'data' => $usuarios]);
+}
+
 // --- FUNÇÕES DE CONTROLE PARA LOTES ---
 function listarLotes(LoteRepository $repo)
 {
@@ -654,6 +687,14 @@ function cancelarLote(LoteRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function getItensDeEstoqueOptions(LoteRepository $repo)
+{
+    $term = $_GET['term'] ?? '';
+    $itens = $repo->findItensEmEstoqueParaSelect($term);
+    // O Select2 espera um array com a chave 'results'
+    echo json_encode(['results' => $itens]);
 }
 
 function salvarPermissoes(PermissionRepository $repo)
@@ -909,12 +950,7 @@ function getLogDetalhes(AuditLogRepository $repo)
     }
 }
 
-function getUsuariosOptions(UsuarioRepository $repo)
-{
-    // Usamos a nova função que criámos no UsuarioRepository
-    $usuarios = $repo->findAllForOptions();
-    echo json_encode(['success' => true, 'data' => $usuarios]);
-}
+// --- FUNÇÃO DE CONTROLE PARA BACKUP ---
 
 function criarBackup()
 {
@@ -972,5 +1008,129 @@ function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
     } catch (Exception $e) {
         error_log("Erro em salvarCarregamentoHeader: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro ao salvar o carregamento.']);
+    }
+}
+
+function adicionarItemCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
+        if (!$carregamentoId || !$loteItemId || !$quantidade)
+            throw new Exception("Dados inválidos.");
+
+        $repo->adicionarItem($carregamentoId, $loteItemId, $quantidade);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function removerItemCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $carItemId = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
+        if (!$carItemId)
+            throw new Exception("ID do item inválido.");
+
+        $repo->removerItem($carItemId);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getDadosConferencia(CarregamentoRepository $repo)
+{
+    $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+    if (!$carregamentoId) {
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
+        return;
+    }
+    try {
+        $itens = $repo->getItensParaConferencia($carregamentoId);
+        echo json_encode(['success' => true, 'data' => $itens]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function confirmarBaixaEstoque(CarregamentoRepository $repo)
+{
+    $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+    $forcarBaixa = isset($_POST['forcar_baixa']) && $_POST['forcar_baixa'] === 'true';
+
+    if (!$carregamentoId) {
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
+        return;
+    }
+
+    try {
+        $repo->confirmarBaixaDeEstoque($carregamentoId, $forcarBaixa);
+        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado e baixa de estoque realizada com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getCarregamentoDetalhes(CarregamentoRepository $repo)
+{
+    $carregamentoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+    if (!$carregamentoId) {
+        echo json_encode(['success' => false, 'message' => 'ID de carregamento inválido.']);
+        return;
+    }
+    $data = $repo->findCarregamentoComFilasEItens($carregamentoId);
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
+function adicionarFila(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+        if (!$carregamentoId || !$clienteId)
+            throw new Exception("Dados inválidos.");
+
+        $filaId = $repo->adicionarFila($carregamentoId, $clienteId);
+        echo json_encode(['success' => true, 'message' => 'Cliente adicionado à fila com sucesso.', 'fila_id' => $filaId]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function adicionarItemAFila(CarregamentoRepository $repo)
+{
+    try {
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
+        if (!$filaId || !$loteItemId || !$quantidade)
+            throw new Exception("Dados inválidos.");
+
+        $repo->adicionarItemAFila($filaId, $loteItemId, $quantidade);
+        echo json_encode(['success' => true, 'message' => 'Item adicionado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function salvarFilaComposta(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $filaDataJson = $_POST['fila_data'] ?? '[]';
+        $filaData = json_decode($filaDataJson, true);
+
+        if (!$carregamentoId || empty($filaData)) {
+            throw new Exception("Dados inválidos para salvar a fila.");
+        }
+
+        $repo->salvarFilaComposta($carregamentoId, $filaData);
+        echo json_encode(['success' => true]);
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }

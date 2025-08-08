@@ -199,6 +199,10 @@
     <?php if ($paginaAtual === 'carregamentos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
     <?php endif; ?>
+    <?php if ($paginaAtual === 'carregamento_detalhes'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
+    <?php endif; ?>
+
 </body>
 
 </html>
