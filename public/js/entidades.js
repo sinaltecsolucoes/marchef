@@ -61,7 +61,7 @@ $(document).ready(function () {
         const cnpj = $cpfCnpjInput.val().replace(/\D/g, ''); // Remove a formatação
         console.log('[DEBUG] buscarDadosCNPJ chamado. CNPJ:', cnpj);
         if (cnpj.length !== 14) {
-            alert('Por favor, digite um CNPJ válido com 14 dígitos.');
+            notificacaoErro('CNPJ Inválido', 'Por favor, digite um CNPJ válido com 14 dígitos.');
             return;
         }
 
@@ -303,18 +303,16 @@ $(document).ready(function () {
             processData: false,
             contentType: false,
             dataType: 'json',
-            success: function (response) {
-                console.log('[DEBUG] Resposta do salvarEntidade:', response);
-                if (response.success) {
-                    $modalEntidade.modal('hide');
-                    tableEntidades.ajax.reload(null, false);
-                } else {
-                    $('#mensagem-entidade').removeClass().addClass('alert alert-danger').text(response.message);
-                }
-            },
-            error: function (xhr, status, error) {
-                console.log('[DEBUG] Erro ao salvar entidade:', status, error);
+        }).done(function (response) {
+            if (response.success) {
+                $modalEntidade.modal('hide');
+                tableEntidades.ajax.reload(null, false);
+                notificacaoSucesso('Sucesso!', response.message);
+            } else {
+                notificacaoErro('Erro ao Salvar', response.message);
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar a entidade.');
         });
     });
 
@@ -323,7 +321,7 @@ $(document).ready(function () {
         const idEndereco = $('#end-codigo').val();
         const entidadeId = $('#end-entidade-id').val() || $('#ent-codigo').val();
         if (!entidadeId) {
-            $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text('Salve a entidade antes de adicionar endereços.');
+            notificacaoErro('Atenção', 'Salve a entidade principal antes de adicionar endereços.');
             return;
         }
         const formData = new FormData(this);
@@ -331,28 +329,24 @@ $(document).ready(function () {
         console.log('[DEBUG] Submetendo endereço. ID:', idEndereco, 'entidadeId:', entidadeId, 'Dados:', formData);
 
         $.ajax({
-            url: `ajax_router.php?action=${idEndereco ? 'salvarEndereco' : 'salvarEndereco'}`,
+            url: 'ajax_router.php?action=salvarEndereco',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
             dataType: 'json',
-            success: function (response) {
-                console.log('[DEBUG] Resposta do salvarEndereco:', response);
-                if (response.success) {
-                    $formEndereco[0].reset();
-                    $('#end-codigo').val('');
-                    $btnSalvarEndereco.text('Salvar Endereço Adicional');
-                    tableEnderecos.ajax.reload();
-                    showFeedbackMessage(response.message, 'success', '#mensagem-endereco');
-                } else {
-                    $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text(response.message);
-                }
-            },
-            error: function (xhr, status, error) {
-                console.log('[DEBUG] Erro ao salvar endereço:', status, error);
-                $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text('Erro de comunicação ao salvar endereço.');
+        }).done(function (response) {
+            if (response.success) {
+                $formEndereco[0].reset();
+                $('#end-codigo').val('');
+                $btnSalvarEndereco.text('Salvar Endereço Adicional');
+                tableEnderecos.ajax.reload();
+                notificacaoSucesso('Sucesso!', response.message); // << REATORADO
+            } else {
+                notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o endereço.'); // << REATORADO
         });
     });
 
@@ -364,7 +358,8 @@ $(document).ready(function () {
             type: 'POST',
             data: { ent_codigo: entidadeId, csrf_token: csrfToken },
             dataType: 'json',
-            success: function (response) {
+        })
+            .done(function (response) {
                 if (response.success) {
                     const data = response.data;
                     const entidadeId = data.ent_codigo;
@@ -372,11 +367,6 @@ $(document).ready(function () {
                     // Limpa o formulário de estados anteriores
                     //  $formEntidade[0].reset();
                     $('#mensagem-entidade').empty().removeClass();
-
-                    // ====================================================================
-                    // INÍCIO DO PREENCHIMENTO SEGURO E EXPLÍCITO DO FORMULÁRIO
-                    // Removido o loop genérico Object.keys(data).forEach(...)
-                    // ====================================================================
 
                     // --- Dados Principais ---
                     $('#ent-codigo').val(data.ent_codigo);
@@ -421,14 +411,11 @@ $(document).ready(function () {
                     $modalEntidade.modal('show');
 
                 } else {
-                    showFeedbackMessage(response.message, 'danger');
+                    notificacaoErro('Erro ao Carregar', response.message); // << REATORADO
                 }
-            },
-            error: function (xhr, status, error) {
-                console.log('[DEBUG] Erro na requisição getEntidade:', status, error);
-                showFeedbackMessage('Erro de comunicação ao carregar entidade.', 'danger');
-            }
-        });
+            }).fail(function () {
+                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da entidade.'); // << REATORADO
+            });
     });
 
     $('#tabela-entidades').on('click', '.btn-inativar-entidade', function () {
@@ -441,6 +428,7 @@ $(document).ready(function () {
         $('#modal-confirmar-inativacao').modal('show');
     });
 
+    // Ação para o botão Inativar Entidade
     $('#btn-confirmar-inativacao').on('click', function () {
         const id = $('#id-inativar').val();
         console.log('[DEBUG] Confirmado Inativar. ID:', id);
@@ -449,21 +437,17 @@ $(document).ready(function () {
             type: 'POST',
             data: { ent_codigo: id, csrf_token: csrfToken },
             dataType: 'json',
-            success: function (response) {
-                console.log('[DEBUG] Resposta do inativarEntidade:', response);
-                if (response.success) {
-                    tableEntidades.ajax.reload();
-                    showFeedbackMessage(response.message, 'success');
-                } else {
-                    showFeedbackMessage(response.message, 'danger');
-                }
-                $('#modal-confirmar-inativacao').modal('hide');
-            },
-            error: function (xhr, status, error) {
-                console.log('[DEBUG] Erro ao inativar entidade:', status, error);
-                showFeedbackMessage('Erro de comunicação ao inativar.', 'danger');
-                $('#modal-confirmar-inativacao').modal('hide');
+        }).done(function (response) {
+            $('#modal-confirmar-inativacao').modal('hide');
+            if (response.success) {
+                tableEntidades.ajax.reload();
+                notificacaoSucesso('Sucesso!', response.message);
+            } else {
+                notificacaoErro('Erro ao Inativar', response.message);
             }
+        }).fail(function () {
+            $('#modal-confirmar-inativacao').modal('hide');
+            notificacaoErro('Erro de Comunicação', 'Não foi possível inativar a entidade.');
         });
     });
 
@@ -505,27 +489,27 @@ $(document).ready(function () {
     $('#tabela-enderecos-adicionais').on('click', '.btn-excluir-endereco', function (e) {
         e.preventDefault();
         const idEndereco = $(this).data('id');
-        console.log('[DEBUG] Botão Excluir Endereço clicado. ID:', idEndereco);
-        if (confirm('Tem certeza que deseja excluir este endereço?')) {
-            $.ajax({
-                url: `ajax_router.php?action=excluirEndereco`,
-                type: 'POST',
-                data: { end_codigo: idEndereco, csrf_token: csrfToken },
-                dataType: 'json',
-                success: function (response) {
-                    console.log('[DEBUG] Resposta do excluirEndereco:', response);
+        confirmacaoAcao(
+            'Excluir Endereço?',
+            'Tem a certeza de que deseja excluir este endereço?'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirEndereco',
+                    type: 'POST',
+                    data: { end_codigo: idEndereco, csrf_token: csrfToken },
+                    dataType: 'json',
+                }).done(function (response) {
                     if (response.success) {
                         tableEnderecos.ajax.reload();
-                        showFeedbackMessage(response.message, 'success', '#mensagem-endereco');
+                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
                     } else {
-                        $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text(response.message);
+                        notificacaoErro('Erro ao Excluir', response.message); // << REATORADO
                     }
-                },
-                error: function (xhr, status, error) {
-                    console.log('[DEBUG] Erro ao excluir endereço:', status, error);
-                    $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text('Erro de comunicação ao excluir endereço.');
-                }
-            });
-        }
+                }).fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o endereço.'); // << REATORADO
+                });
+            }
+        });
     });
 });

@@ -460,27 +460,49 @@ class CarregamentoRepository
      * @param int $clienteId
      * @return int O ID da nova fila criada.
      */
-    public function adicionarFila(int $carregamentoId, int $clienteId): int
+    /* public function adicionarFila(int $carregamentoId, int $clienteId): int
+     {
+         // Calcula o próximo número sequencial para este carregamento
+         $proximoNumeroFila = $this->getProximoNumeroFila($carregamentoId);
+
+         $stmt = $this->pdo->prepare(
+             "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente, fila_numero_sequencial) VALUES (?, ?, ?)"
+         );
+         $stmt->execute([$carregamentoId, $clienteId, $proximoNumeroFila]);
+         $novoId = (int) $this->pdo->lastInsertId();
+
+         // (Opcional, mas recomendado) Adicionar o novo campo ao log de auditoria
+         $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamento_filas', null, [
+             'fila_carregamento_id' => $carregamentoId,
+             'fila_entidade_id_cliente' => $clienteId,
+             'fila_numero_sequencial' => $proximoNumeroFila
+         ]);
+
+         return $novoId;
+     }*/
+
+    /**
+     * Adiciona uma nova fila a um carregamento (sem cliente associado).
+     * @param int $carregamentoId
+     * @return int O ID da nova fila criada.
+     */
+    public function adicionarFila(int $carregamentoId): int
     {
-        // Calcula o próximo número sequencial para este carregamento
         $proximoNumeroFila = $this->getProximoNumeroFila($carregamentoId);
 
         $stmt = $this->pdo->prepare(
-            "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente, fila_numero_sequencial) VALUES (?, ?, ?)"
+            "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_numero_sequencial) VALUES (?, ?)"
         );
-        $stmt->execute([$carregamentoId, $clienteId, $proximoNumeroFila]);
+        $stmt->execute([$carregamentoId, $proximoNumeroFila]);
         $novoId = (int) $this->pdo->lastInsertId();
 
-        // (Opcional, mas recomendado) Adicionar o novo campo ao log de auditoria
         $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamento_filas', null, [
             'fila_carregamento_id' => $carregamentoId,
-            'fila_entidade_id_cliente' => $clienteId,
             'fila_numero_sequencial' => $proximoNumeroFila
         ]);
 
         return $novoId;
     }
-
     /**
      * Adiciona um item de produto a uma fila, carregamento e cliente específicos.
      * @param int $filaId
@@ -524,6 +546,72 @@ class CarregamentoRepository
      * Busca um carregamento com todas as suas filas e os itens agrupados por fila.
      * (Versão Final e Corrigida)
      */
+    /*   public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
+       {
+           // 1. Busca o cabeçalho (sem alteração)
+           $stmtHeader = $this->pdo->prepare("SELECT c.*, e.ent_razao_social FROM tbl_carregamentos c LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo WHERE c.car_id = :id");
+           $stmtHeader->execute([':id' => $carregamentoId]);
+           $header = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+
+           if (!$header) {
+               return null;
+           }
+
+           // 2. Busca todas as filas e os seus clientes
+           $stmtFilas = $this->pdo->prepare(
+               "SELECT 
+           f.fila_id, 
+           f.fila_numero_sequencial, -- <<< ADICIONAR ESTA COLUNA
+           e.ent_razao_social as cliente_razao_social 
+        FROM tbl_carregamento_filas f 
+        JOIN tbl_entidades e ON f.fila_entidade_id_cliente = e.ent_codigo 
+        WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
+           );
+           $stmtFilas->execute([':id' => $carregamentoId]);
+           $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
+
+           // ===================================================================
+           // == INÍCIO DA CORREÇÃO NA CONSULTA SQL ==
+           // ===================================================================
+           // 3. Busca todos os itens do carregamento de uma só vez, selecionando explicitamente todas as colunas
+           $stmtItens = $this->pdo->prepare(
+               "SELECT 
+                   ci.car_item_id,
+                   ci.car_item_carregamento_id,
+                   ci.car_item_fila_numero, -- <<<< GARANTINDO QUE ESTA COLUNA SEJA SELECIONADA
+                   ci.car_item_cliente_id,
+                   ci.car_item_lote_item_id,
+                   ci.car_item_quantidade,
+                   p.prod_descricao, 
+                   p.prod_codigo_interno,
+                   lh.lote_completo_calculado 
+                FROM tbl_carregamento_itens ci 
+                JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
+                JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
+                JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id 
+                WHERE ci.car_item_carregamento_id = :id"
+           );
+           // ===================================================================
+           // == FIM DA CORREÇÃO NA CONSULTA SQL ==
+           // ===================================================================
+           $stmtItens->execute([':id' => $carregamentoId]);
+           $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+           // 4. Agrupa os itens dentro das suas respetivas filas
+           foreach ($filas as $key => $fila) {
+               $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
+                   // Esta linha agora funcionará, pois a chave 'car_item_fila_numero' existirá
+                   return $item['car_item_fila_numero'] == $fila['fila_id'];
+               }));
+           }
+
+           return ['header' => $header, 'filas' => $filas];
+       }*/
+
+    /**
+     * Busca um carregamento com todas as suas filas e os itens agrupados.
+     * O nome do cliente agora vem dos itens, não da fila.
+     */
     public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
     {
         // 1. Busca o cabeçalho (sem alteração)
@@ -535,58 +623,84 @@ class CarregamentoRepository
             return null;
         }
 
-        // 2. Busca todas as filas e os seus clientes
+        // 2. Busca todas as filas (sem cliente)
         $stmtFilas = $this->pdo->prepare(
-            "SELECT 
-        f.fila_id, 
-        f.fila_numero_sequencial, -- <<< ADICIONAR ESTA COLUNA
-        e.ent_razao_social as cliente_razao_social 
-     FROM tbl_carregamento_filas f 
-     JOIN tbl_entidades e ON f.fila_entidade_id_cliente = e.ent_codigo 
-     WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
+            "SELECT f.fila_id, f.fila_numero_sequencial 
+             FROM tbl_carregamento_filas f 
+             WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
         );
         $stmtFilas->execute([':id' => $carregamentoId]);
         $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
 
-        // ===================================================================
-        // == INÍCIO DA CORREÇÃO NA CONSULTA SQL ==
-        // ===================================================================
-        // 3. Busca todos os itens do carregamento de uma só vez, selecionando explicitamente todas as colunas
+        // 3. Busca todos os itens e junta com os dados do cliente
         $stmtItens = $this->pdo->prepare(
             "SELECT 
-                ci.car_item_id,
-                ci.car_item_carregamento_id,
-                ci.car_item_fila_numero, -- <<<< GARANTINDO QUE ESTA COLUNA SEJA SELECIONADA
-                ci.car_item_cliente_id,
-                ci.car_item_lote_item_id,
-                ci.car_item_quantidade,
+                ci.*, 
+                e.ent_razao_social as cliente_razao_social, -- Traz o nome do cliente aqui
                 p.prod_descricao, 
                 p.prod_codigo_interno,
                 lh.lote_completo_calculado 
              FROM tbl_carregamento_itens ci 
+             JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
              JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
              JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
              JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id 
              WHERE ci.car_item_carregamento_id = :id"
         );
-        // ===================================================================
-        // == FIM DA CORREÇÃO NA CONSULTA SQL ==
-        // ===================================================================
         $stmtItens->execute([':id' => $carregamentoId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
         // 4. Agrupa os itens dentro das suas respetivas filas
         foreach ($filas as $key => $fila) {
             $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
-                // Esta linha agora funcionará, pois a chave 'car_item_fila_numero' existirá
                 return $item['car_item_fila_numero'] == $fila['fila_id'];
             }));
         }
 
         return ['header' => $header, 'filas' => $filas];
     }
+
     /**
      * Salva uma "fila composta" do modal.
+     * @param int $carregamentoId
+     * @param array $filaData
+     * @throws Exception
+     */
+    /*  public function salvarFilaComposta(int $carregamentoId, array $filaData): void
+      {
+          $this->pdo->beginTransaction();
+          try {
+              foreach ($filaData as $dadosCliente) {
+                  $clienteId = $dadosCliente['clienteId'];
+                  $produtos = $dadosCliente['produtos'];
+
+                  if (empty($produtos)) {
+                      continue;
+                  }
+
+                  $filaId = $this->adicionarFila($carregamentoId, $clienteId);
+
+                  foreach ($produtos as $produto) {
+                      // Passando todos os parâmetros necessários, incluindo o $clienteId
+                      $this->adicionarItemAFila(
+                          $filaId,
+                          $produto['loteItemId'],
+                          $produto['quantidade'],
+                          $carregamentoId,
+                          $clienteId // << MUDANÇA FINAL AQUI
+                      );
+                  }
+              }
+
+              $this->pdo->commit();
+          } catch (Exception $e) {
+              $this->pdo->rollBack();
+              throw new Exception("Erro ao salvar os dados da fila: " . $e->getMessage());
+          }
+      }*/
+
+    /**
+     * Salva uma fila composta do modal, que contém múltiplos clientes e produtos.
      * @param int $carregamentoId
      * @param array $filaData
      * @throws Exception
@@ -595,6 +709,10 @@ class CarregamentoRepository
     {
         $this->pdo->beginTransaction();
         try {
+            // Cria UMA ÚNICA fila para todos os clientes e produtos do modal
+            $filaId = $this->adicionarFila($carregamentoId);
+
+            // Itera sobre cada cliente enviado do modal
             foreach ($filaData as $dadosCliente) {
                 $clienteId = $dadosCliente['clienteId'];
                 $produtos = $dadosCliente['produtos'];
@@ -603,21 +721,20 @@ class CarregamentoRepository
                     continue;
                 }
 
-                $filaId = $this->adicionarFila($carregamentoId, $clienteId);
-
+                // Adiciona cada produto associando-o à fila única e ao seu respectivo cliente
                 foreach ($produtos as $produto) {
-                    // Passando todos os parâmetros necessários, incluindo o $clienteId
                     $this->adicionarItemAFila(
                         $filaId,
                         $produto['loteItemId'],
                         $produto['quantidade'],
                         $carregamentoId,
-                        $clienteId // << MUDANÇA FINAL AQUI
+                        $clienteId
                     );
                 }
             }
 
             $this->pdo->commit();
+
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw new Exception("Erro ao salvar os dados da fila: " . $e->getMessage());
@@ -661,6 +778,6 @@ class CarregamentoRepository
         $stmt = $this->pdo->prepare("SELECT MAX(fila_numero_sequencial) FROM tbl_carregamento_filas WHERE fila_carregamento_id = :car_id");
         $stmt->execute([':car_id' => $carregamentoId]);
         $ultimoNumero = $stmt->fetchColumn() ?: 0;
-        return (int)$ultimoNumero + 1;
+        return (int) $ultimoNumero + 1;
     }
 }

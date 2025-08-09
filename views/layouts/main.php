@@ -167,10 +167,14 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
 
     <script src="<?php echo BASE_URL; ?>/js/exibe-senha.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/enviar-dados-perfil.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/usuarios.js"></script>
+    <script src="<?php echo BASE_URL; ?>/js/app_notifications.js"></script>
+    
 
     <?php if ($paginaAtual === 'permissoes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
@@ -202,6 +206,7 @@
     <?php if ($paginaAtual === 'carregamento_detalhes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
     <?php endif; ?>
+
 
 </body>
 

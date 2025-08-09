@@ -5,7 +5,7 @@ $(document).ready(function () {
     // Função para carregar a lista de utilizadores no filtro <select>
     function carregarUsuariosFiltro() {
         $.ajax({
-            url: 'ajax_router.php?action=getUsuariosOptions', // Rota que buscaremos no backend
+            url: 'ajax_router.php?action=getUsuariosOptions',
             type: 'GET',
             dataType: 'json'
         }).done(function (response) {
@@ -82,9 +82,10 @@ $(document).ready(function () {
         $.ajax({
             url: 'ajax_router.php?action=getLogDetalhes',
             type: 'POST',
-            data: { 
-                log_id: logId, 
-                csrf_token: $('meta[name="csrf-token"]').attr('content') },
+            data: {
+                log_id: logId,
+                csrf_token: $('meta[name="csrf-token"]').attr('content')
+            },
             dataType: 'json'
         }).done(function (response) {
             if (response.success) {
@@ -101,8 +102,11 @@ $(document).ready(function () {
                 // Abre o modal
                 $('#modalDetalhesLog').modal('show');
             } else {
-                alert('Erro ao buscar detalhes do log.');
+                notificacaoErro('Erro!', 'Não foi possível buscar os detalhes do log.');
             }
+        }).fail(function () {
+            // Adicionado tratamento de erro para falha de comunicação
+            notificacaoErro('Erro de Comunicação', 'Não foi possível conectar ao servidor.');
         });
     });
 });

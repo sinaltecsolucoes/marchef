@@ -128,12 +128,8 @@ $(document).ready(function () {
         const ciclo = $('#lote_ciclo').val() || 'C';
         const viveiro = $('#lote_viveiro').val() || 'V';
 
-        //const fornecedorOption = $('#lote_fornecedor_id').find(':selected');
-        //const codFornecedor = fornecedorOption.data('codigo-interno') || 'CF';
-
-        const clienteOption = $('#lote_cliente_id').find(':selected');
+       const clienteOption = $('#lote_cliente_id').find(':selected');
         const codCliente = clienteOption.data('codigo-interno') || 'CC';
-
 
         let ano = 'YY';
         if (dataFabStr) {
@@ -143,7 +139,6 @@ $(document).ready(function () {
         }
 
         // Junta todas as partes para formar o código final
-        //const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codFornecedor}`;
         const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codCliente}`;
 
 
@@ -236,7 +231,6 @@ $(document).ready(function () {
                 // Bloco .done() -> Executa se a comunicação for bem-sucedida
                 if (response.success) {
                     // Se a aplicação retornou sucesso, chama a função para redesenhar a tabela
-                    //renderizarItensDoLote(response.data.items);
                     renderizarTabelasDeItens(response.data.items);
                 } else {
                     // Se a aplicação retornou um erro de negócio (ex: lote não encontrado)
@@ -326,13 +320,7 @@ $(document).ready(function () {
                 "data": "lote_status",
                 "className": "text-center",
                 "width": "10%",
-                /* "render": function (data, type, row) {
-                     let badgeClass = 'bg-secondary';
-                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
-                     if (data === 'FINALIZADO') badgeClass = 'bg-success';
-                     if (data === 'CANCELADO') badgeClass = 'bg-danger';
-                     return `<span class="badge ${badgeClass}">${data}</span>`;
-                 }*/
+                
                 "render": function (data, type, row) {
                     let badgeClass = 'bg-secondary';
                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
@@ -358,22 +346,7 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center",
                 "width": "10%",
-                /*  "render": function (data, type, row) {
-                      // O 'row' nos dá acesso a todos os dados da linha, incluindo o status
-                      let finalizarBtn = '';
-                      if (row.lote_status === 'EM ANDAMENTO' || row.lote_status === 'PARCIALMENTE FINALIZADO')  {
-                          // finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
-                          finalizarBtn = `<button class="btn btn-success btn-sm btn-finalizar-lote ms-1" data-id="${data}" data-nome="${row.lote_completo_calculado}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
-  
-                      }
-  
-                      return `
-                           <button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}">Editar</button>
-                           <button class="btn btn-danger btn-sm btn-excluir-lote" data-id="${data}">Excluir</button>
-                           ${finalizarBtn}
-                       `;
-                  }*/
-
+            
                 "render": function (data, type, row) {
                     let acoesHtml = '';
                     const status = row.lote_status;
@@ -412,9 +385,6 @@ $(document).ready(function () {
             </ul>
         </div>
     `;
-
-
-
                     return acoesHtml;
 
                 }

@@ -127,6 +127,10 @@ $(document).ready(function () {
     $('#form-carregamento').on('submit', function (e) {
         e.preventDefault();
         const formData = new FormData(this);
+        const $botaoSalvar = $(this).find('button[type="submit"]');
+
+        // Desabilitar o botão para evitar cliques duplos
+        $botaoSalvar.prop('disabled', true);
 
         $.ajax({
             url: 'ajax_router.php?action=salvarCarregamentoHeader',
@@ -138,17 +142,25 @@ $(document).ready(function () {
         }).done(function (response) {
             if (response.success) {
                 $modalCarregamento.modal('hide');
-                tabelaCarregamentos.ajax.reload(null, false); // Recarrega a tabela principal
-                // Futuramente, aqui podemos redirecionar para a tela de detalhes do carregamento
-                // para adicionar os itens.
+                tabelaCarregamentos.ajax.reload(null, false);
+
+                notificacaoSucesso('Sucesso!', 'Carregamento criado com sucesso.');
+
+                // Sugestão para o futuro:
+                // if (confirm('Carregamento criado. Deseja adicionar os itens agora?')) {
+                //     window.location.href = `index.php?page=carregamento_detalhes&id=${response.carregamento_id}`;
+                // }
+
             } else {
-                $('#mensagem-carregamento-modal').html(`<div class="alert alert-danger">${response.message}</div>`);
+                notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
-            $('#mensagem-carregamento-modal').html(`<div class="alert alert-danger">Erro de comunicação com o servidor.</div>`);
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o carregamento.');
+        }).always(function () {
+            // Reabilitar o botão
+            $botaoSalvar.prop('disabled', false);
         });
     });
-
     // --- FUNÇÕES AUXILIARES ---
 
     /**
@@ -167,12 +179,12 @@ $(document).ready(function () {
                     $select.append(new Option(cliente.ent_razao_social, cliente.ent_codigo));
                 });
             } else {
-                console.error('Erro na resposta do servidor:', response.message);
-                alert('Erro ao carregar clientes. Tente novamente.');
+                // SUBSTITUÍDO: alert() por notificacaoErro()
+                notificacaoErro('Erro ao Carregar Clientes', response.message);
             }
-        }).fail(function (jqXHR, textStatus, errorThrown) {
-            console.error('Erro na requisição:', textStatus, errorThrown);
-            alert('Falha na comunicação com o servidor.');
+        }).fail(function () {
+            // SUBSTITUÍDO: alert() por notificacaoErro()
+            notificacaoErro('Falha de Comunicação', 'Não foi possível carregar a lista de clientes.');
         });
     }
 

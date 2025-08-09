@@ -1,8 +1,8 @@
-// /public/js/detalhes_carregamento.js (Versão Final Consolidada)
+// /public/js/detalhes_carregamento.js
 $(document).ready(function () {
 
     if (!carregamentoData || !carregamentoData.header) {
-        $('#dados-carregamento-header').html('<div class="alert alert-danger">Não foi possível carregar os dados deste carregamento.</div>');
+        notificacaoErro('Erro Crítico', 'Não foi possível carregar os dados deste carregamento.');
         return;
     }
 
@@ -12,7 +12,7 @@ $(document).ready(function () {
     const $modalGerenciarFila = $('#modal-gerenciar-fila');
     const $selectClienteParaFila = $('#select-cliente-para-fila');
     const $containerClientesNoModal = $('#clientes-e-produtos-container-modal');
-    const $tabelaComposicaoBody = $('#tbody-composicao-carregamento'); // << DECLARAÇÃO AQUI NO TOPO
+    const $tabelaComposicaoBody = $('#tbody-composicao-carregamento');
 
     // --- FUNÇÕES ---
 
@@ -69,7 +69,6 @@ $(document).ready(function () {
             type: 'GET',
             dataType: 'json'
         }).done(function (response) {
-            // Esta função agora tem acesso a $tabelaComposicaoBody
             if (response.success && response.data) {
                 const filas = response.data.filas;
                 $tabelaComposicaoBody.empty();
@@ -82,23 +81,48 @@ $(document).ready(function () {
                 filas.forEach(fila => {
                     const totalItensNaFila = fila.itens ? fila.itens.length : 0;
                     if (totalItensNaFila > 0) {
-                        fila.itens.forEach((item, index) => {
-                            //const $linha = $('<tr>');
-                            const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
-                            if (index === 0) {
-                                $linha.append(`<td rowspan="${totalItensNaFila}">${String(fila.fila_numero_sequencial).padStart(2, '0')}</td>`);
-                                $linha.append(`<td rowspan="${totalItensNaFila}">${fila.cliente_razao_social}</td>`);
-                            }
+                        // Agrupa os itens por cliente dentro da fila
+                        const clientesDaFila = fila.itens.reduce((acc, item) => {
+                            (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
+                            return acc;
+                        }, {});
 
-                            $linha.append(`<td>${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
-                            $linha.append(`<td class="text-end">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
-                            //$linha.append(`<td class="text-center"><button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></td>`);
-                            $linha.append(`<td class="text-center">
-                                           <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal">
-                                           <i class="fas fa-trash"></i></button>
-                                        </td>`);
-                            $tabelaComposicaoBody.append($linha);
-                        });
+                        let isFirstRowOfQueue = true;
+                        for (const nomeCliente in clientesDaFila) {
+                            const itensDoCliente = clientesDaFila[nomeCliente];
+                            const totalItensDoCliente = itensDoCliente.length;
+
+                            itensDoCliente.forEach((item, index) => {
+                                const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
+
+                                // Colunas Fila e Ações são criadas apenas uma vez para todo o grupo da fila
+                                if (isFirstRowOfQueue && index === 0) {
+                                    const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+                                    $linha.append(`<td rowspan="${totalItensNaFila}">${numSequencial}</td>`);
+
+                                    // Botão de Ações completo
+                                    $linha.append(`
+                                    <td class="text-center align-middle" rowspan="${totalItensNaFila}">
+                                        <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                            <i class="fas fa-trash"></i> Remover
+                                        </button>
+                                    </td>
+                                `);
+                                }
+
+                                // Coluna Cliente é criada apenas uma vez para cada grupo de cliente dentro da fila
+                                if (index === 0) {
+                                    $linha.append(`<td rowspan="${totalItensDoCliente}">${nomeCliente}</td>`);
+                                }
+
+                                // Colunas Produto e Quantidade são criadas para cada item
+                                $linha.append(`<td>${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
+                                $linha.append(`<td class="text-end">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
+
+                                $tabelaComposicaoBody.append($linha);
+                            });
+                            isFirstRowOfQueue = false;
+                        }
                     }
                 });
             } else {
@@ -109,17 +133,60 @@ $(document).ready(function () {
         });
     }
 
+    function executarRemocaoFila(filaId) {
+        $.ajax({
+            url: 'ajax_router.php?action=removerFilaCompleta',
+            type: 'POST',
+            data: {
+                fila_id: filaId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                // Usa a nossa nova função de sucesso
+                notificacaoSucesso('Removida!', response.message);
+                recarregarETabelaPrincipal();
+            } else {
+                // Usa a nossa nova função de erro
+                notificacaoErro('Erro!', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível comunicar com o servidor.');
+        });
+    }
 
     // --- EVENT HANDLERS ---
-
     $modalGerenciarFila.on('show.bs.modal', function () {
+        console.log("Modal de fila aberto. Limpando estado anterior...");
+
+        // 1. Limpa o dropdown de cliente (código existente)
         $selectClienteParaFila.val(null).trigger('change');
+
+        // 2. Limpa a área de cards de clientes (código existente)
         $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
+
+        // 3. Calcula o próximo número de fila sequencial
+        let proximoNumeroFila = 1;
+        const filasNaTabela = [];
+        $tabelaComposicaoBody.find('tr[data-fila-id]').each(function () {
+            const filaId = $(this).data('fila-id');
+            if (!filasNaTabela.includes(filaId)) {
+                filasNaTabela.push(filaId);
+            }
+        });
+        proximoNumeroFila = filasNaTabela.length + 1;
+
+        // 4. Atualiza o título do modal
+        $('#numero-fila-modal').text(String(proximoNumeroFila).padStart(2, '0'));
     });
 
     $('#btn-adicionar-cliente-a-fila').on('click', function () {
         const clienteSelecionado = $selectClienteParaFila.select2('data')[0];
-        if (!clienteSelecionado || !clienteSelecionado.id) { alert('Por favor, selecione um cliente da lista.'); return; }
+        if (!clienteSelecionado || !clienteSelecionado.id) {
+            notificacaoErro('Atenção', 'Por favor, selecione um cliente da lista.');
+            return;
+        }
         if ($containerClientesNoModal.find('.card-cliente-na-fila').length === 0) { $containerClientesNoModal.empty(); }
         const clienteId = clienteSelecionado.id;
         const clienteNome = clienteSelecionado.text;
@@ -142,7 +209,10 @@ $(document).ready(function () {
         const $quantidadeInput = $form.find('input[type="number"]');
         const produtoSelecionado = $produtoSelect.select2('data')[0];
         const quantidade = $quantidadeInput.val();
-        if (!produtoSelecionado || !produtoSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) { alert('Por favor, selecione um produto e insira uma quantidade válida.'); return; }
+        if (!produtoSelecionado || !produtoSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) {
+            notificacaoErro('Atenção', 'Por favor, selecione um produto e insira uma quantidade válida.');
+            return;
+        }
         const $linhaSendoEditada = $form.data('editing-row');
         if ($linhaSendoEditada) {
             $linhaSendoEditada.attr('data-lote-item-id', produtoSelecionado.id);
@@ -195,7 +265,10 @@ $(document).ready(function () {
             });
             if (produtos.length > 0) { filaData.push({ clienteId: clienteId, produtos: produtos }); }
         });
-        if (filaData.length === 0) { alert('Nenhum produto foi adicionado aos clientes. Adicione produtos antes de concluir a fila.'); return; }
+        if (filaData.length === 0) {
+            notificacaoErro('Fila Vazia', 'Nenhum produto foi adicionado. Adicione produtos antes de concluir.');
+            return;
+        }
         $botaoSalvar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Salvando...');
         $.ajax({
             url: 'ajax_router.php?action=salvarFilaComposta',
@@ -205,51 +278,77 @@ $(document).ready(function () {
         }).done(function (response) {
             if (response.success) {
                 $modalGerenciarFila.modal('hide');
+                notificacaoSucesso('Sucesso!', 'Fila salva com sucesso!');
                 recarregarETabelaPrincipal();
-            } else { alert('Erro: ' + response.message); }
+            } else {
+                notificacaoErro('Erro ao Salvar', response.message);
+            }
         }).fail(function () {
-            alert('Erro de comunicação com o servidor. Tente novamente.');
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar a fila.');
         }).always(function () {
             $botaoSalvar.prop('disabled', false).html('<i class="fas fa-check me-2"></i> Concluir e Adicionar Fila ao Carregamento');
         });
     });
 
     /**
- * Evento para o botão REMOVER na tabela principal de composição.
- */
+    * Evento para o botão REMOVER na tabela principal de composição.
+    */
     $tabelaComposicaoBody.on('click', '.btn-remover-fila-principal', function () {
         const $botao = $(this);
-        const $linha = $botao.closest('tr');
-        const filaId = $linha.data('fila-id'); // Precisaremos adicionar este data attribute
+        const filaId = $botao.closest('tr').data('fila-id');
+        const filaSequencial = $botao.data('fila-sequencial');
 
         if (!filaId) {
-            alert('Erro: Não foi possível identificar a fila a ser removida.');
+            notificacaoErro('Erro Interno', 'Não foi possível identificar a fila a ser removida.');
             return;
         }
 
-        // Pede confirmação ao usuário
-        if (confirm(`Tem a certeza de que deseja remover a Fila Nº ${filaId} e todos os seus produtos?`)) {
-            $.ajax({
-                url: 'ajax_router.php?action=removerFilaCompleta',
-                type: 'POST',
-                data: {
-                    fila_id: filaId,
-                    csrf_token: csrfToken
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                if (response.success) {
-                    alert(response.message);
-                    recarregarETabelaPrincipal(); // Recarrega a tabela para mostrar o resultado
-                } else {
-                    alert('Erro: ' + response.message);
-                }
-            }).fail(function () {
-                alert('Erro de comunicação com o servidor.');
-            });
-        }
+        // Usa a nossa nova função de confirmação
+        confirmacaoAcao(
+            `Remover Fila Nº ${filaSequencial}?`,
+            "Todos os produtos desta fila serão removidos. Esta ação não pode ser desfeita!"
+        ).then((result) => {
+            if (result.isConfirmed) {
+                executarRemocaoFila(filaId);
+            }
+        });
     });
 
+    $('#btn-confirmar-exclusao-acao').on('click', function () {
+        const $botaoConfirmar = $(this);
+        const filaId = $botaoConfirmar.data('fila-id-para-excluir');
+
+        if (!filaId) {
+            alert('Erro: ID da fila não encontrado.');
+            return;
+        }
+
+        // Desabilita o botão para evitar cliques duplos
+        $botaoConfirmar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Excluindo...');
+
+        $.ajax({
+            url: 'ajax_router.php?action=removerFilaCompleta',
+            type: 'POST',
+            data: {
+                fila_id: filaId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                $('#modal-confirmacao-exclusao').modal('hide');
+                alert(response.message); // Ou usar um Toastr no futuro
+                recarregarETabelaPrincipal();
+            } else {
+                alert('Erro: ' + response.message);
+            }
+        }).fail(function () {
+            alert('Erro de comunicação com o servidor.');
+        }).always(function () {
+            // Reabilita o botão
+            $botaoConfirmar.prop('disabled', false).text('Confirmar Exclusão');
+        });
+    });
 
     // --- INICIALIZAÇÃO DA PÁGINA ---
     preencherCabecalho();
