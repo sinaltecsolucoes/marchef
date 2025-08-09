@@ -267,6 +267,9 @@ switch ($action) {
     case 'salvarFilaComposta':
         salvarFilaComposta($carregamentoRepo);
         break;
+    case 'removerFilaCompleta':
+        removerFilaCompleta($carregamentoRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -963,7 +966,6 @@ function criarBackup()
         $filename = $backupService->gerarBackup();
 
         echo json_encode(['success' => true, 'filename' => $filename]);
-
     } catch (\Exception $e) {
         error_log("Erro ao criar backup: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1106,10 +1108,13 @@ function adicionarItemAFila(CarregamentoRepository $repo)
         $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
         $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
         $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
-        if (!$filaId || !$loteItemId || !$quantidade)
-            throw new Exception("Dados inválidos.");
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
 
-        $repo->adicionarItemAFila($filaId, $loteItemId, $quantidade);
+        if (!$filaId || !$loteItemId || !$quantidade || !$carregamentoId || !$clienteId) {
+            throw new Exception("Dados inválidos fornecidos.");
+        }
+        $repo->adicionarItemAFila($filaId, $loteItemId, $quantidade, $carregamentoId, $clienteId);
         echo json_encode(['success' => true, 'message' => 'Item adicionado com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1129,7 +1134,21 @@ function salvarFilaComposta(CarregamentoRepository $repo)
 
         $repo->salvarFilaComposta($carregamentoId, $filaData);
         echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
 
+function removerFilaCompleta(CarregamentoRepository $repo)
+{
+    try {
+        // Valida o ID recebido via POST
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        if (!$filaId) {
+            throw new Exception("ID de fila inválido.");
+        }
+        $repo->removerFilaCompleta($filaId);
+        echo json_encode(['success' => true, 'message' => 'Fila removida com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

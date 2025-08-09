@@ -45,10 +45,10 @@
                 <thead class="table-light">
                     <tr>
                         <th>Fila</th>
+                        <th class="text-center" style="width: 120px;">Ações</th>
                         <th>Cliente</th>
                         <th>Produto</th>
                         <th class="text-end">Quantidade</th>
-                        <th class="text-center" style="width: 120px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-composicao-carregamento">
