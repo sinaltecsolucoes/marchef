@@ -56,7 +56,8 @@ $(document).ready(function () {
             }
         ],
         "order": [[0, 'desc']], // Ordenar pela data/hora (mais recente primeiro)
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     // Evento de clique para o botão FILTRAR

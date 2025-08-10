@@ -61,7 +61,8 @@ $(document).ready(function () {
             }
         ],
         "order": [[2, 'desc']], // Ordenar pela data (mais recente primeiro)
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     // --- EVENT HANDLERS (AÇÕES DO UTILIZADOR) ---

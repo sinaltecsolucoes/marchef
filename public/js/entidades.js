@@ -2,10 +2,8 @@ $(document).ready(function () {
     // Detecta se estamos na página de cliente ou fornecedor
     const pageType = $('body').data('page-type');
     if (!pageType) {
-        console.log('[DEBUG] pageType não definido. Script interrompido.');
         return;
     }
-    console.log('[DEBUG] pageType:', pageType);
 
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $modalEntidade = $('#modal-adicionar-entidade');
@@ -59,7 +57,6 @@ $(document).ready(function () {
      */
     function buscarDadosCNPJ() {
         const cnpj = $cpfCnpjInput.val().replace(/\D/g, ''); // Remove a formatação
-        console.log('[DEBUG] buscarDadosCNPJ chamado. CNPJ:', cnpj);
         if (cnpj.length !== 14) {
             notificacaoErro('CNPJ Inválido', 'Por favor, digite um CNPJ válido com 14 dígitos.');
             return;
@@ -88,11 +85,10 @@ $(document).ready(function () {
                 $('#bairro-endereco').val(data.bairro);
                 $('#cidade-endereco').val(data.municipio);
                 $('#uf-endereco').val(data.uf);
-                console.log('[DEBUG] Dados do CNPJ preenchidos:', data);
+
             })
             .catch(error => {
                 feedback.text(error.message).addClass('text-danger');
-                console.log('[DEBUG] Erro ao buscar CNPJ:', error.message);
             })
             .finally(() => {
                 $btnBuscarCnpj.prop('disabled', false);
@@ -113,7 +109,6 @@ $(document).ready(function () {
                 "type": "POST",
                 "data": { ent_codigo: entidadeId, csrf_token: csrfToken },
                 "error": function (xhr, error, thrown) {
-                    console.log('[DEBUG] Erro na requisição listarEnderecos:', xhr.responseText, error, thrown);
                     showFeedbackMessage('Erro ao carregar endereços: ' + (xhr.responseJSON?.message || 'Erro desconhecido'), 'danger', '#mensagem-endereco');
                 }
             },
@@ -124,9 +119,9 @@ $(document).ready(function () {
                 { "data": "end_codigo", "orderable": false, "render": data => `<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}">Excluir</a>` }
             ],
             paging: false, searching: false, info: false,
-            language: { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+            // language: { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+            language: { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         });
-        console.log('[DEBUG] Tabela de endereços carregada para entidadeId:', entidadeId);
     }
 
     function buscarCep(cep, feedbackElement, fields) {
@@ -177,6 +172,28 @@ $(document).ready(function () {
         setPrincipalAddressFieldsReadonly(false);
     }
 
+    /**
+     * Aplica a máscara de CPF a uma string de números, usando o plugin jQuery Mask.
+     * @param {string} cpf O CPF sem formatação.
+     * @returns {string} O CPF formatado.
+     */
+    function formatarCPF(cpf) {
+        if (!cpf) return '';
+        // Cria um elemento temporário em memória para aplicar a máscara e obter o valor formatado.
+        return $('<span>').text(cpf).mask('000.000.000-00').text();
+    }
+
+    /**
+     * Aplica a máscara de CNPJ a uma string de números, usando o plugin jQuery Mask.
+     * @param {string} cnpj O CNPJ sem formatação.
+     * @returns {string} O CNPJ formatado.
+     */
+    function formatarCNPJ(cnpj) {
+        if (!cnpj) return '';
+        // Cria um elemento temporário em memória para aplicar a máscara e obter o valor formatado.
+        return $('<span>').text(cnpj).mask('00.000.000/0000-00').text();
+    }
+
     // =================================================================
     // INICIALIZAÇÃO DA TABELA DATATABLES
     // =================================================================
@@ -192,7 +209,6 @@ $(document).ready(function () {
                 d.tipo_entidade = pageType; // Envia 'cliente' ou 'fornecedor'
                 d.filtro_tipo_entidade = $('#filtro-tipo-entidade').val(); // Envia o valor do novo filtro
                 d.csrf_token = csrfToken;
-                console.log('[DEBUG] Dados enviados para listarEntidades:', d);
             }
         },
         "responsive": true,
@@ -204,7 +220,18 @@ $(document).ready(function () {
             { "data": "ent_tipo_entidade", "className": "text-center", "width": "7%" },
             { "data": "ent_codigo_interno", "className": "text-center", "width": "5%" },
             { "data": "ent_razao_social", "width": "20%" },
-            { "data": null, "className": "text-center", "width": "8%", "render": (data, type, row) => row.ent_tipo_pessoa === 'F' ? row.ent_cpf : row.ent_cnpj },
+            {
+                "data": null,
+                "className": "text-center",
+                "width": "8%",
+                "render": function (data, type, row) {
+                    if (row.ent_tipo_pessoa === 'F') {
+                        return formatarCPF(row.ent_cpf);
+                    } else {
+                        return formatarCNPJ(row.ent_cnpj);
+                    }
+                }
+            },
             { "data": "end_logradouro", "width": "10%", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
             {
                 "data": "ent_codigo", "orderable": false, "className": "text-center", "width": "8%", "render": (data, type, row) =>
@@ -212,7 +239,8 @@ $(document).ready(function () {
                     `<a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}">Inativar</a>`
             }
         ],
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     // =================================================================
@@ -226,9 +254,6 @@ $(document).ready(function () {
         // Em vez de confiar em 'this', buscamos no DOM pelo radio que está ":checked".
         const valorSelecionado = $('input[name="ent_tipo_pessoa"]:checked').val();
 
-        // Linha de debug para confirmar (opcional, pode remover depois)
-        console.log('Valor selecionado (método robusto):', valorSelecionado);
-
         // Agora usamos esse valor garantido para atualizar a interface.
         updatePessoaFields(valorSelecionado, true);
 
@@ -239,7 +264,6 @@ $(document).ready(function () {
 
     // Recarrega a tabela quando os filtros mudam
     $('input[name="filtro_situacao"], #filtro-tipo-entidade').on('change', () => {
-        console.log('[DEBUG] Filtros alterados. Recarregando tabela.');
         tableEntidades.ajax.reload();
     });
 
@@ -264,7 +288,6 @@ $(document).ready(function () {
     $modalEntidade.on('show.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
             const singular = pageType === 'cliente' ? 'Cliente' : 'Fornecedor';
-            console.log('[DEBUG] Modal aberto para Adicionar:', singular);
             $formEntidade[0].reset();
             $('#ent-codigo').val('');
             $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
@@ -283,7 +306,6 @@ $(document).ready(function () {
     // Garante que a máscara seja aplicada após o modal ser exibido
     $modalEntidade.on('shown.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
-            console.log('[DEBUG] Modal Adicionar exibido. Aplicando máscara inicial.');
             updatePessoaFields(true); // Aplica a máscara de CPF por padrão
         }
     });
@@ -294,8 +316,7 @@ $(document).ready(function () {
         const id = $('#ent-codigo').val();
         const url = `ajax_router.php?action=salvarEntidade`;
         const formData = new FormData(this);
-        console.log('[DEBUG] Formulário submetido. ID:', id, 'Dados:', formData);
-
+        
         $.ajax({
             url: url,
             type: 'POST',
@@ -326,8 +347,7 @@ $(document).ready(function () {
         }
         const formData = new FormData(this);
         formData.append('end_entidade_id', entidadeId);
-        console.log('[DEBUG] Submetendo endereço. ID:', idEndereco, 'entidadeId:', entidadeId, 'Dados:', formData);
-
+        
         $.ajax({
             url: 'ajax_router.php?action=salvarEndereco',
             type: 'POST',
@@ -352,7 +372,6 @@ $(document).ready(function () {
 
     $('#tabela-entidades').on('click', '.btn-editar-entidade', function () {
         const entidadeId = $(this).data('id');
-        console.log('[DEBUG] Botão Editar clicado. entidadeId:', entidadeId);
         $.ajax({
             url: `ajax_router.php?action=getEntidade`,
             type: 'POST',
@@ -421,68 +440,61 @@ $(document).ready(function () {
     $('#tabela-entidades').on('click', '.btn-inativar-entidade', function () {
         const id = $(this).data('id');
         const nome = $(this).data('nome');
-        console.log('[DEBUG] Botão Inativar clicado. ID:', id, 'Nome:', nome);
+        const tituloConfirmacao = pageType === 'cliente' ? 'Inativar Cliente?' : 'Inativar Fornecedor?';
 
-        $('#nome-inativar').text(nome);
-        $('#id-inativar').val(id);
-        $('#modal-confirmar-inativacao').modal('show');
-    });
 
-    // Ação para o botão Inativar Entidade
-    $('#btn-confirmar-inativacao').on('click', function () {
-        const id = $('#id-inativar').val();
-        console.log('[DEBUG] Confirmado Inativar. ID:', id);
-        $.ajax({
-            url: `ajax_router.php?action=inativarEntidade`,
-            type: 'POST',
-            data: { ent_codigo: id, csrf_token: csrfToken },
-            dataType: 'json',
-        }).done(function (response) {
-            $('#modal-confirmar-inativacao').modal('hide');
-            if (response.success) {
-                tableEntidades.ajax.reload();
-                notificacaoSucesso('Sucesso!', response.message);
-            } else {
-                notificacaoErro('Erro ao Inativar', response.message);
+        confirmacaoAcao(
+            tituloConfirmacao, // << USA O TÍTULO DINÂMICO AQUI
+            `Tem a certeza de que deseja inativar "${nome}"?`
+        ).then((result) => {
+            if (result.isConfirmed) {
+                // Se o usuário confirmar, executa a chamada AJAX
+                $.ajax({
+                    url: `ajax_router.php?action=inativarEntidade`,
+                    type: 'POST',
+                    data: { ent_codigo: id, csrf_token: csrfToken },
+                    dataType: 'json',
+                }).done(function (response) {
+                    if (response.success) {
+                        tableEntidades.ajax.reload();
+                        notificacaoSucesso('Inativado!', response.message);
+                    } else {
+                        notificacaoErro('Erro ao Inativar', response.message);
+                    }
+                }).fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível inativar a entidade.');
+                });
             }
-        }).fail(function () {
-            $('#modal-confirmar-inativacao').modal('hide');
-            notificacaoErro('Erro de Comunicação', 'Não foi possível inativar a entidade.');
         });
     });
 
     $('#tabela-enderecos-adicionais').on('click', '.btn-editar-endereco', function (e) {
         e.preventDefault();
         const idEndereco = $(this).data('id');
-        console.log('[DEBUG] Botão Editar Endereço clicado. ID:', idEndereco);
         $.ajax({
             url: `ajax_router.php?action=getEndereco`,
             type: 'POST',
             data: { end_codigo: idEndereco, csrf_token: csrfToken },
             dataType: 'json',
-            success: function (response) {
-                console.log('[DEBUG] Resposta do getEndereco:', response);
-                if (response.success) {
-                    const data = response.data;
-                    $('#end-codigo').val(data.end_codigo);
-                    $('#tipo-endereco').val(data.end_tipo_endereco);
-                    $('#cep-endereco-adicional').val(data.end_cep);
-                    $('#logradouro-endereco-adicional').val(data.end_logradouro);
-                    $('#numero-endereco-adicional').val(data.end_numero);
-                    $('#complemento-endereco-adicional').val(data.end_complemento);
-                    $('#bairro-endereco-adicional').val(data.end_bairro);
-                    $('#cidade-endereco-adicional').val(data.end_cidade);
-                    $('#uf-endereco-adicional').val(data.end_uf);
-                    $btnSalvarEndereco.text('Atualizar Endereço');
-                    $('#enderecos-tab').tab('show');
-                } else {
-                    $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text(response.message);
-                }
-            },
-            error: function (xhr, status, error) {
-                console.log('[DEBUG] Erro ao carregar endereço:', status, error);
-                $('#mensagem-endereco').removeClass().addClass('alert alert-danger').text('Erro de comunicação ao carregar endereço.');
+        }).done(function (response) {
+            if (response.success) {
+                const data = response.data;
+                $('#end-codigo').val(data.end_codigo);
+                $('#tipo-endereco').val(data.end_tipo_endereco);
+                $('#cep-endereco-adicional').val(data.end_cep);
+                $('#logradouro-endereco-adicional').val(data.end_logradouro);
+                $('#numero-endereco-adicional').val(data.end_numero);
+                $('#complemento-endereco-adicional').val(data.end_complemento);
+                $('#bairro-endereco-adicional').val(data.end_bairro);
+                $('#cidade-endereco-adicional').val(data.end_cidade);
+                $('#uf-endereco-adicional').val(data.end_uf);
+                $btnSalvarEndereco.text('Atualizar Endereço');
+                $('#enderecos-tab').tab('show');
+            } else {
+                notificacaoErro('Erro ao Carregar', response.message);
             }
+        }).fail(function (xhr, status, error) {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar o endereço.');
         });
     });
 

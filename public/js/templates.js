@@ -1,5 +1,5 @@
 // /public/js/templates.js
-$(document).ready(function() {
+$(document).ready(function () {
 
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $modal = $('#modal-template');
@@ -16,9 +16,9 @@ $(document).ready(function() {
         "columns": [
             { "data": "template_nome" },
             { "data": "template_descricao" },
-            { 
+            {
                 "data": "template_data_criacao",
-                "render": function(data) {
+                "render": function (data) {
                     return new Date(data).toLocaleString('pt-BR');
                 }
             },
@@ -26,7 +26,7 @@ $(document).ready(function() {
                 "data": "template_id",
                 "orderable": false,
                 "className": "text-center",
-                "render": function(data) {
+                "render": function (data) {
                     return `
                         <button class="btn btn-warning btn-sm btn-editar-template" data-id="${data}">Editar</button>
                         <button class="btn btn-danger btn-sm btn-excluir-template" data-id="${data}">Excluir</button>
@@ -34,12 +34,13 @@ $(document).ready(function() {
                 }
             }
         ],
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[2, 'desc']]
     });
 
     // Abrir modal para ADICIONAR
-    $('#btn-adicionar-template').on('click', function() {
+    $('#btn-adicionar-template').on('click', function () {
         $form[0].reset();
         $('#template_id').val('');
         $('#modal-template-label').text('Adicionar Novo Template');
@@ -48,53 +49,65 @@ $(document).ready(function() {
     });
 
     // Abrir modal para EDITAR
-    $('#tabela-templates').on('click', '.btn-editar-template', function() {
+    $('#tabela-templates').on('click', '.btn-editar-template', function () {
         const id = $(this).data('id');
         $.ajax({
             url: 'ajax_router.php?action=getTemplate',
             type: 'POST',
             data: { template_id: id, csrf_token: csrfToken },
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             if (response.success) {
                 const data = response.data;
                 $('#template_id').val(data.template_id);
                 $('#template_nome').val(data.template_nome);
                 $('#template_descricao').val(data.template_descricao);
                 $('#template_conteudo_zpl').val(data.template_conteudo_zpl);
-                
+
                 $('#modal-template-label').text('Editar Template');
-                $('#mensagem-template-modal').html('');
                 $modal.modal('show');
             } else {
-                alert(response.message);
+                notificacaoErro('Erro ao Carregar', response.message);
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template.');
         });
     });
 
     // EXCLUIR template
-    $('#tabela-templates').on('click', '.btn-excluir-template', function() {
+    $('#tabela-templates').on('click', '.btn-excluir-template', function () {
         const id = $(this).data('id');
-        if (confirm('Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.')) {
-            $.ajax({
-                url: 'ajax_router.php?action=excluirTemplate',
-                type: 'POST',
-                data: { template_id: id, csrf_token: csrfToken },
-                dataType: 'json'
-            }).done(function(response) {
-                if (response.success) {
+        confirmacaoAcao(
+            'Excluir Template?',
+            'Tem a certeza que deseja excluir este template? Esta ação não pode ser desfeita.'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirTemplate',
+                    type: 'POST',
+                    data: { template_id: id, csrf_token: csrfToken },
+                    dataType: 'json'
+                }).done(function (response) {
                     table.ajax.reload(null, false);
-                }
-                alert(response.message);
-            });
-        }
+                    if (response.success) {
+                        notificacaoSucesso('Excluído!', response.message);
+                    } else {
+                        notificacaoErro('Erro!', response.message);
+                    }
+                }).fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o template.');
+                });
+            }
+        });
     });
 
     // SALVAR (Criar ou Editar)
-    $form.on('submit', function(e) {
+    $form.on('submit', function (e) {
         e.preventDefault();
         const formData = new FormData(this);
-        
+        const $button = $(this).find('button[type="submit"]');
+        $button.prop('disabled', true);
+
         $.ajax({
             url: 'ajax_router.php?action=salvarTemplate',
             type: 'POST',
@@ -102,18 +115,18 @@ $(document).ready(function() {
             processData: false,
             contentType: false,
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             if (response.success) {
                 $modal.modal('hide');
                 table.ajax.reload(null, false);
-                // Exibe a mensagem de sucesso na área principal
-                $('#feedback-message-area').html(`<div class="alert alert-success">${response.message}</div>`);
+                notificacaoSucesso('Sucesso!', response.message);
             } else {
-                // Exibe a mensagem de erro dentro do modal
-                $('#mensagem-template-modal').html(`<div class="alert alert-danger">${response.message}</div>`);
+                notificacaoErro('Erro ao Salvar', response.message);
             }
-        }).fail(function() {
-            $('#mensagem-template-modal').html(`<div class="alert alert-danger">Erro de comunicação com o servidor.</div>`);
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o template.');
+        }).always(function () {
+            $button.prop('disabled', false);
         });
     });
 });

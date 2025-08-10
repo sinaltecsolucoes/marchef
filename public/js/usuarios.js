@@ -23,7 +23,8 @@ $(document).ready(function () {
                     `<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="${data}" data-nome="${row.usu_nome}">Excluir</a>`
             }
         ],
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     // Abrir modal para Adicionar
@@ -51,8 +52,13 @@ $(document).ready(function () {
                 $('#usu-senha').prop('required', false);
                 $('#modal-usuario-label').text('Editar Usuário');
                 $modalUsuario.modal('show');
+            } else {
+                notificacaoErro('Erro ao Carregar', response.message || 'Não foi possível carregar os dados do usuário.');
             }
-        }, 'json');
+        }, 'json')
+            .fail(function () {
+                notificacaoErro('Erro de Comunicação', 'Falha ao buscar dados do usuário.');
+            });
     });
 
     // Salvar (Criar ou Editar)
@@ -63,15 +69,16 @@ $(document).ready(function () {
             type: 'POST',
             data: new FormData(this),
             processData: false, contentType: false, dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $modalUsuario.modal('hide');
-
-                    tableUsuarios.ajax.reload();
-                } else {
-                    $('#mensagem-usuario').addClass('alert alert-danger').text(response.message);
-                }
+        }).done(function (response) {
+            if (response.success) {
+                $modalUsuario.modal('hide');
+                tableUsuarios.ajax.reload();
+                notificacaoSucesso('Sucesso!', 'Usuário salvo com sucesso.');
+            } else {
+                notificacaoErro('Erro ao Salvar', response.message);
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar os dados.');
         });
     });
 
@@ -79,13 +86,22 @@ $(document).ready(function () {
     $('#tabela-usuarios').on('click', '.btn-excluir-usuario', function () {
         const id = $(this).data('id');
         const nome = $(this).data('nome');
-        if (confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) {
-            $.post('ajax_router.php?action=excluirUsuario', { usu_codigo: id, csrf_token: csrfToken }, function (response) {
-                if (response.success) {
+        confirmacaoAcao(
+            'Excluir Usuário?',
+            `Tem a certeza de que deseja excluir o usuário "${nome}"?`
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.post('ajax_router.php?action=excluirUsuario', { usu_codigo: id, csrf_token: csrfToken }, function (response) {
                     tableUsuarios.ajax.reload();
-                }
-                alert(response.message);
-            }, 'json');
-        }
+                    if (response.success) {
+                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
+                    } else {
+                        notificacaoErro('Erro!', response.message); // << REATORADO
+                    }
+                }, 'json').fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o usuário.');
+                });
+            }
+        });
     });
 });

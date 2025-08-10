@@ -52,7 +52,6 @@ $(document).ready(function () {
         });
     }
 
-
     // Inicialização da DataTable
     const table = $('#tabela-regras').DataTable({
         "serverSide": true,
@@ -78,7 +77,8 @@ $(document).ready(function () {
                 }
             }
         ],
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[3, 'asc']]
     });
 
@@ -122,8 +122,10 @@ $(document).ready(function () {
                     $('#mensagem-regra-modal').html('');
                     $modal.modal('show');
                 } else {
-                    alert(response.message);
+                    notificacaoErro('Erro ao Carregar', response.message);
                 }
+            }).fail(function () {
+                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da regra.');
             });
         });
     });
@@ -131,25 +133,36 @@ $(document).ready(function () {
     // EXCLUIR regra
     $('#tabela-regras').on('click', '.btn-excluir-regra', function () {
         const id = $(this).data('id');
-        if (confirm('Tem certeza que deseja excluir esta regra?')) {
-            $.ajax({
-                url: 'ajax_router.php?action=excluirRegra',
-                type: 'POST',
-                data: { regra_id: id, csrf_token: csrfToken },
-                dataType: 'json'
-            }).done(function (response) {
-                if (response.success) {
+        confirmacaoAcao(
+            'Excluir Regra?',
+            'Tem a certeza de que deseja excluir esta regra?'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirRegra',
+                    type: 'POST',
+                    data: { regra_id: id, csrf_token: csrfToken },
+                    dataType: 'json'
+                }).done(function (response) {
                     table.ajax.reload(null, false);
-                }
-                alert(response.message);
-            });
-        }
+                    if (response.success) {
+                        notificacaoSucesso('Excluída!', response.message); // << REATORADO
+                    } else {
+                        notificacaoErro('Erro!', response.message); // << REATORADO
+                    }
+                }).fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir a regra.');
+                });
+            }
+        });
     });
 
     // SALVAR (Criar ou Editar)
     $form.on('submit', function (e) {
         e.preventDefault();
         const formData = new FormData(this);
+        const $button = $(this).find('button[type="submit"]');
+        $button.prop('disabled', true);
 
         $.ajax({
             url: 'ajax_router.php?action=salvarRegra',
@@ -162,12 +175,14 @@ $(document).ready(function () {
             if (response.success) {
                 $modal.modal('hide');
                 table.ajax.reload(null, false);
-                $('#feedback-message-area').html(`<div class="alert alert-success">${response.message}</div>`);
+                notificacaoSucesso('Sucesso!', response.message);
             } else {
-                $('#mensagem-regra-modal').html(`<div class="alert alert-danger">${response.message}</div>`);
+                notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
-            $('#mensagem-regra-modal').html(`<div class="alert alert-danger">Erro de comunicação com o servidor.</div>`);
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar a regra.');
+        }).always(function () {
+            $button.prop('disabled', false);
         });
     });
 });

@@ -15,12 +15,6 @@
     <link rel="stylesheet" type="text/css" href="<?php echo BASE_URL; ?>/libs/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css" />
-
-    <script>
-        // Variáveis PHP passadas pelo Controlador para o JavaScript
-        const PODE_EDITAR_OUTROS_USUARIOS = <?php echo $podeEditarOutrosUsuarios ? 'true' : 'false'; ?>;
-        const LOGGED_IN_USER_ID = <?php echo json_encode($_SESSION['codUsuario'] ?? null); ?>;
-    </script>
 </head>
 
 <body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>"
@@ -68,7 +62,7 @@
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
                     $paginasConfig = ['permissoes', 'templates', 'regras'];
                     if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Configurações</a>
@@ -95,7 +89,7 @@
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
                     $paginasUtils = ['auditoria', 'backup'];
                     if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Utilitários</a>
@@ -147,65 +141,61 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
-
     <script type="text/javascript" src="<?php echo BASE_URL; ?>/libs/datatables.min.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
-
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
-
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
-
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-
+    <script>
+        const BASE_URL = '<?php echo BASE_URL; ?>';
+        const PODE_EDITAR_OUTROS_USUARIOS = <?php echo $podeEditarOutrosUsuarios ? 'true' : 'false'; ?>;
+        const LOGGED_IN_USER_ID = <?php echo json_encode($_SESSION['codUsuario'] ?? null); ?>;
+    </script>
     <script src="<?php echo BASE_URL; ?>/js/exibe-senha.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/enviar-dados-perfil.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/usuarios.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/app_notifications.js"></script>
-    
+    <script src="<?php echo BASE_URL; ?>/js/app_config.js"></script>
+</body>
 
-    <?php if ($paginaAtual === 'permissoes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'produtos'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
-    <?php endif; ?>
-    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'lotes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/lotes.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'templates'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'regras'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'auditoria'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/auditoria.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'backup'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'carregamentos'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'carregamento_detalhes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
-    <?php endif; ?>
+<?php if ($paginaAtual === 'permissoes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'produtos'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
+<?php endif; ?>
+<?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'lotes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/lotes.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'templates'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'regras'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'auditoria'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/auditoria.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'backup'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'carregamentos'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'carregamento_detalhes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
+<?php endif; ?>
 
 
 </body>

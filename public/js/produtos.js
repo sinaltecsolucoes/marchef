@@ -165,7 +165,8 @@ $(document).ready(function () {
             { "data": "prod_tipo_embalagem", "className": "text-center" }, { "data": "prod_peso_embalagem", "className": "text-center" },
             { "data": "prod_codigo", "orderable": false, "className": "text-center", "render": (data) => `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>` }
         ],
-        "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     $('input[name="filtro_situacao"]').on('change', () => tableProdutos.ajax.reload());
@@ -225,23 +226,20 @@ $(document).ready(function () {
 
         $.ajax({
             url: url, type: 'POST', data: formData, processData: false, contentType: false, dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $modalProduto.modal('hide');
-                    tableProdutos.ajax.reload(null, false);
-                    showFeedbackMessage(response.message, 'success');
-                } else {
-                    $('#mensagem-produto').removeClass().addClass('alert alert-danger').text(response.message);
-                }
+        }).done(function (response) {
+            if (response.success) {
+                $modalProduto.modal('hide');
+                tableProdutos.ajax.reload(null, false);
+                notificacaoSucesso('Sucesso!', response.message); // << REATORADO
+            } else {
+                notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); // << REATORADO
         });
     });
 
     // Gatilho para o cálculo automático da Classe do Produto
-    /* $('#form-produto').on('change', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
-         atualizarClasseProduto();
-     });*/
-
     $('#form-produto').on('change keyup', '#prod_tipo, #prod_subtipo, #prod_conservacao, #prod_congelamento', function () {
         atualizarClasseProduto();
     });
@@ -257,49 +255,65 @@ $(document).ready(function () {
                 csrf_token: csrfToken
             },
             dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $formProduto[0].reset();
-                    const produto = response.data;
-                    Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
-                    atualizarClasseProduto();
+        }).done(function (response) {
+            if (response.success) {
+                $formProduto[0].reset();
+                const produto = response.data;
+                Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
+                atualizarClasseProduto();
 
-                    // Dispara a mudança de embalagem, o que também chama o loadProdutosPrimarios se for SECUNDARIA
-                    $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
+                // Dispara a mudança de embalagem, o que também chama o loadProdutosPrimarios se for SECUNDARIA
+                $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
 
-                    // Se for secundária, esperamos o carregamento terminar ANTES de definir o valor.
-                    if (produto.prod_tipo_embalagem === 'SECUNDARIA') {
-                        $('#peso_embalagem_secundaria').val(produto.prod_peso_embalagem);
+                // Se for secundária, esperamos o carregamento terminar ANTES de definir o valor.
+                if (produto.prod_tipo_embalagem === 'SECUNDARIA') {
+                    $('#peso_embalagem_secundaria').val(produto.prod_peso_embalagem);
 
-                        // A função 'loadProdutosPrimarios' agora retorna uma promessa.
-                        // O código dentro do .done() só executa quando a lista estiver 100% carregada.
-                        loadProdutosPrimarios().done(function () {
-                            $('#prod_primario_id').val(produto.prod_primario_id).trigger('change.select2');
-                            calcularUnidades();
-                        });
-                    } else {
-                        $('#prod_peso_embalagem').val(produto.prod_peso_embalagem);
-                    }
+                    // A função 'loadProdutosPrimarios' agora retorna uma promessa.
+                    // O código dentro do .done() só executa quando a lista estiver 100% carregada.
+                    loadProdutosPrimarios().done(function () {
+                        $('#prod_primario_id').val(produto.prod_primario_id).trigger('change.select2');
+                        calcularUnidades();
+                    });
+                } else {
+                    $('#prod_peso_embalagem').val(produto.prod_peso_embalagem);
+                }
 
-                    $('#modal-adicionar-produto-label').text('Editar Produto');
-                    $modalProduto.modal('show');
-                } else { showFeedbackMessage(response.message, 'danger'); }
+                $('#modal-adicionar-produto-label').text('Editar Produto');
+                $modalProduto.modal('show');
+            } else {
+                notificacaoErro('Erro!', response.message); // << REATORADO
             }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto.'); // << REATORADO
         });
     });
 
     $('#tabela-produtos').on('click', '.btn-excluir-produto', function (e) {
         e.preventDefault();
         const idProduto = $(this).data('id');
-        if (confirm('Tem certeza de que deseja excluir este produto?')) {
-            $.ajax({
-                url: 'ajax_router.php?action=excluirProduto',
-                type: 'POST', data: { prod_codigo: idProduto }, dataType: 'json',
-                success: function (response) {
-                    if (response.success) { tableProdutos.ajax.reload(); }
-                    alert(response.message);
-                }
-            });
-        }
+        confirmacaoAcao(
+            'Excluir Produto?',
+            'Tem a certeza de que deseja excluir este produto?'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                // Se o usuário confirmar, executa a exclusão
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirProduto',
+                    type: 'POST',
+                    data: { prod_codigo: idProduto }, // CSRF é adicionado pelo prefilter
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        tableProdutos.ajax.reload();
+                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
+                    } else {
+                        notificacaoErro('Erro ao Excluir', response.message); // << REATORADO
+                    }
+                }).fail(function () {
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.'); // << REATORADO
+                });
+            }
+        });
     });
 });
