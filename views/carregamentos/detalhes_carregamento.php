@@ -220,3 +220,27 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-reabrir-carregamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Reabrir Carregamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="carregamento-id-reabrir">
+                <p>Você está prestes a reabrir o Carregamento Nº <strong id="carregamento-numero-reabrir">...</strong>.</p>
+                <p>O status voltará para "EM ANDAMENTO", permitindo novas edições.</p>
+                <div class="mb-3">
+                    <label for="motivo-reabertura" class="form-label"><strong>Motivo da Reabertura (Obrigatório):</strong></label>
+                    <textarea class="form-control" id="motivo-reabertura" rows="4" placeholder="Ex: Cliente solicitou a adição de mais um produto."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btn-confirmar-reabertura">Confirmar e Reabrir</button>
+            </div>
+        </div>
+    </div>
+</div>

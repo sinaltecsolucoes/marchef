@@ -729,32 +729,7 @@ $(document).ready(function () {
         $form.find('.select-lote-estoque').val(null).trigger('change').prop('disabled', true);
         $form.find('input[type="number"]').val('');
     });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
     $modalGerenciarFila.on('click', '.btn-editar-produto-da-lista', function () {
         const $linhaParaEditar = $(this).closest('tr');
         const $cardCliente = $linhaParaEditar.closest('.card-cliente-na-fila');
