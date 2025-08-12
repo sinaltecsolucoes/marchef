@@ -48,7 +48,10 @@
                         <th class="text-center" style="width: 120px;">Ações</th>
                         <th>Cliente</th>
                         <th>Produto</th>
+                        <th>Lote Origem</th>
+                        <th>Cliente Origem</th>
                         <th class="text-end">Quantidade</th>
+
                     </tr>
                 </thead>
                 <tbody id="tbody-composicao-carregamento">
@@ -62,8 +65,16 @@
 </div>
 
 <div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Finalizar Carregamento</h6>
+    </div>
+    <div class="card-body">
+        <p>Após adicionar todas as filas e itens, clique no botão abaixo para rever e confirmar a saída do estoque.</p>
+        <button id="btn-abrir-conferencia" class="btn btn-success btn-lg">
+            <i class="fas fa-check-double me-2"></i> Conferir e Finalizar Carregamento
+        </button>
+    </div>
 </div>
-
 
 <div class="modal fade" id="modal-gerenciar-fila" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl">
@@ -113,7 +124,6 @@
                 }
             </style>
 
-
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" id="btn-salvar-e-fechar-fila">
@@ -133,11 +143,14 @@
         <div class="card-body">
             <form class="form-adicionar-produto-ao-cliente">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-6"><label class="form-label">Produto</label><select
+                    <div class="col-md-5"><label class="form-label">Produto</label><select
                             class="form-select select-produto-estoque" style="width: 100%;"></select></div>
-                    <div class="col-md-3"><label class="form-label">Quantidade</label><input type="number"
-                            class="form-control" min="1" step="1"></div>
-                    <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">Adicionar Produto</button>
+                    <div class="col-md-4"><label class="form-label">Lote (Estoque)</label><select
+                            class="form-select select-lote-estoque" style="width: 100%;" disabled></select></div>
+                    <div class="col-md-2"><label class="form-label">Quantidade</label><input type="number"
+                            class="form-control" min="1" step="0.001"></div>
+                    <div class="col-md-1"><button type="submit" class="btn btn-primary w-100"
+                            title="Adicionar Produto">+</button>
                     </div>
                 </div>
             </form>
@@ -147,7 +160,7 @@
                 <table class="table table-sm table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>PRODUTO</th>
+                            <th>PRODUTO | LOTE</th>
                             <th class="text-end">QUANT.</th>
                             <th class="text-center">AÇÕES</th>
                         </tr>
@@ -159,3 +172,51 @@
         </div>
     </div>
 </template>
+</template>
+
+<div class="modal fade" id="modal-conferencia-final" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Conferir e Confirmar Saída de Estoque</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Por favor, confira os itens e quantidades abaixo antes de confirmar a baixa no estoque. Esta ação é
+                    irreversível.</p>
+
+                <div id="aviso-discrepancia-estoque" class="mb-3"></div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="tabela-resumo-conferencia">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Lote</th>
+                                <th class="text-end">Qtd. no Carregamento (Unidades)</th>
+                                <th class="text-end">Qtd. em Estoque (Unidades)</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-resumo-conferencia">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-check form-switch my-3 d-none" id="container-forcar-baixa">
+                    <input class="form-check-input" type="checkbox" id="forcar-baixa-estoque">
+                    <label class="form-check-label fw-bold text-danger" for="forcar-baixa-estoque">
+                        Confirmar e forçar a baixa, mesmo com estoque insuficiente (irá gerar estoque negativo).
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-baixa-estoque">
+                    <i class="fas fa-truck-loading me-2"></i> Confirmar e Dar Baixa no Estoque
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

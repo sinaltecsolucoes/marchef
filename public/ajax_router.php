@@ -178,6 +178,12 @@ switch ($action) {
     case 'getItensDeEstoqueOptions':
         getItensDeEstoqueOptions($loteRepo); // Usa o LoteRepository
         break;
+    case 'getLotesPorProduto':
+        getLotesPorProduto($loteRepo);
+        break;
+    case 'listarEstoque':
+        listarEstoque($loteRepo);
+        break;
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -243,6 +249,18 @@ switch ($action) {
     case 'salvarCarregamentoHeader':
         salvarCarregamentoHeader($carregamentoRepo, $_SESSION['codUsuario']);
         break;
+    case 'cancelarCarregamento':
+        cancelarCarregamento($carregamentoRepo);
+        break;
+    case 'excluirCarregamento':
+        excluirCarregamento($carregamentoRepo);
+        break;
+    case 'reativarCarregamento':
+        reativarCarregamento($carregamentoRepo);
+        break;
+    case 'reabrirCarregamento':
+        reabrirCarregamento($carregamentoRepo);
+        break;
     case 'adicionarItemCarregamento':
         adicionarItemCarregamento($carregamentoRepo);
         break;
@@ -269,6 +287,12 @@ switch ($action) {
         break;
     case 'removerFilaCompleta':
         removerFilaCompleta($carregamentoRepo);
+        break;
+    case 'getFilaDetalhes':
+        getFilaDetalhes($carregamentoRepo);
+        break;
+    case 'atualizarFilaComposta':
+        atualizarFilaComposta($carregamentoRepo);
         break;
 
     default:
@@ -642,6 +666,14 @@ function finalizarLote(LoteRepository $repo)
 
 function finalizarLoteParcialmente(LoteRepository $repo)
 {
+    
+    // =======================================================
+    // == DEPURACAO PASSO 2: VERIFICAR DADOS RECEBIDOS NO PHP ==
+    // =======================================================
+    error_log("--- DEBUG Roteador ---: Ação 'finalizarLoteParcialmente' recebida.");
+    error_log("Dados recebidos via POST: " . print_r($_POST, true));
+    // =======================================================
+
     // Validação básica dos dados recebidos do JavaScript
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
     $itens = $_POST['itens'] ?? [];
@@ -699,6 +731,35 @@ function getItensDeEstoqueOptions(LoteRepository $repo)
     // O Select2 espera um array com a chave 'results'
     echo json_encode(['results' => $itens]);
 }
+
+function getLotesPorProduto(LoteRepository $repo)
+{
+    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+    if (!$produtoId) {
+        echo json_encode(['results' => []]);
+        return;
+    }
+    $lotes = $repo->findLotesDisponiveisPorProduto($produtoId);
+    echo json_encode(['results' => $lotes]);
+}
+
+function listarEstoque(LoteRepository $repo)
+{
+    try {
+        $output = $repo->getVisaoGeralEstoque($_POST);
+        echo json_encode($output);
+    } catch (Exception $e) {
+        // Em caso de erro, retorna uma resposta formatada para o DataTables
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => [],
+            "error" => $e->getMessage()
+        ]);
+    }
+}
+
 
 function salvarPermissoes(PermissionRepository $repo)
 {
@@ -1149,6 +1210,97 @@ function removerFilaCompleta(CarregamentoRepository $repo)
         }
         $repo->removerFilaCompleta($filaId);
         echo json_encode(['success' => true, 'message' => 'Fila removida com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getFilaDetalhes(CarregamentoRepository $repo)
+{
+    try {
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        if (!$filaId) {
+            throw new Exception("ID de fila inválido.");
+        }
+        $data = $repo->findFilaComClientesEItens($filaId);
+        echo json_encode(['success' => !!$data, 'data' => $data]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function atualizarFilaComposta(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        $filaDataJson = $_POST['fila_data'] ?? '[]';
+        $filaData = json_decode($filaDataJson, true);
+
+        if (!$carregamentoId || !$filaId || !is_array($filaData)) {
+            throw new Exception("Dados inválidos para atualizar a fila.");
+        }
+
+        $repo->atualizarFilaComposta($filaId, $carregamentoId, $filaData);
+        echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function cancelarCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$carregamentoId) {
+            throw new Exception("ID de carregamento inválido.");
+        }
+        $repo->cancelar($carregamentoId);
+        echo json_encode(['success' => true, 'message' => 'Carregamento cancelado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$carregamentoId) {
+            throw new Exception("ID de carregamento inválido.");
+        }
+        $repo->excluir($carregamentoId);
+        echo json_encode(['success' => true, 'message' => 'Carregamento excluído permanentemente!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function reativarCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$carregamentoId) {
+            throw new Exception("ID de carregamento inválido.");
+        }
+        $repo->reativar($carregamentoId);
+        echo json_encode(['success' => true, 'message' => 'Carregamento reativado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function reabrirCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $motivo = trim($_POST['motivo'] ?? '');
+        if (!$id || empty($motivo)) {
+            throw new Exception("Dados inválidos para reabertura.");
+        }
+        $repo->reabrir($id, $motivo);
+        echo json_encode(['success' => true, 'message' => 'Carregamento reaberto com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

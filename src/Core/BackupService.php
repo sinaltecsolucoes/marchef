@@ -1,145 +1,107 @@
 <?php
-// /src/Core/BackupService.php
-
+// /src/Core/BackupService.php (Versão Corrigida para Hostinger)
 namespace App\Core;
 
+use PDO;
 use Exception;
 
 class BackupService
 {
-    private array $dbConfig;
-    private string $backupDir;
+    private PDO $pdo;
+    private array $config;
 
-    /*  public function __construct()
-      {
-          // Carrega as configurações do banco de dados
-          $this->dbConfig = require_once __DIR__ . '/../../config/database.php';
-
-          // Define o diretório onde os backups serão salvos temporariamente
-          $this->backupDir = __DIR__ . '/../../public/backups/';
-
-          // Cria o diretório se ele não existir
-          if (!is_dir($this->backupDir)) {
-              mkdir($this->backupDir, 0775, true);
-          }
-      }*/
-
-    public function __construct(array $dbConfig)
+    public function __construct()
     {
-        // O serviço recebe a configuração
-        $this->dbConfig = $dbConfig;
-
-        // Define o diretório onde os backups serão salvos temporariamente
-        $this->backupDir = __DIR__ . '/../../public/backups/';
-
-        // Cria o diretório se ele não existir
-        if (!is_dir($this->backupDir)) {
-            mkdir($this->backupDir, 0775, true);
-        }
+        // Obtém a conexão e as configurações através da nossa classe Database
+        $this->pdo = Database::getConnection();
+        $this->config = require __DIR__ . '/../../config/database.php';
     }
 
     /**
-     * Gera um backup do banco de dados usando mysqldump.
-     * @return string O nome do ficheiro de backup gerado.
-     * @throws Exception Se o backup falhar.
-     */
-    /* public function gerarBackup(): string
-     {
-         $dbHost = $this->dbConfig['host'];
-         $dbUser = $this->dbConfig['user'];
-         $dbPass = $this->dbConfig['pass'];
-         $dbName = $this->dbConfig['dbname'];
-
-         // Define o nome do ficheiro de backup com a data e hora
-         $filename = 'backup_' . $dbName . '_' . date('Y-m-d_H-i-s') . '.sql';
-         $filePath = $this->backupDir . $filename;
-
-         // Monta o comando mysqldump
-         // NOTA: Para Windows, o caminho para o mysqldump pode precisar ser explícito
-         // Ex: $mysqldumpPath = '"C:\\xampp\\mysql\\bin\\mysqldump.exe"';
-         //$mysqldumpPath = 'mysqldump'; 
-         $mysqldumpPath = '"C:\\xampp\\mysql\\bin\\mysqldump.exe"';
-
-         $command = sprintf(
-             '%s --host=%s --user=%s --password=%s %s > %s',
-             $mysqldumpPath,
-             escapeshellarg($dbHost),
-             escapeshellarg($dbUser),
-             escapeshellarg($dbPass),
-             escapeshellarg($dbName),
-             escapeshellarg($filePath)
-         );
-
-         // Executa o comando no servidor
-         exec($command, $output, $return_var);
-
-         // Verifica se o comando foi executado com sucesso
-         if ($return_var !== 0) {
-             throw new Exception('Falha ao gerar o backup. Verifique as configurações e permissões do servidor.');
-         }
-
-         // Verifica se o ficheiro foi realmente criado
-         if (!file_exists($filePath)) {
-             throw new Exception('O ficheiro de backup não foi criado.');
-         }
-
-         // Retorna o nome do ficheiro para o controlador
-         return $filename;
-     }*/
-
-
-    /**
-     * Gera um backup do banco de dados usando mysqldump.
-     * @return string O nome do ficheiro de backup gerado.
-     * @throws Exception Se o backup falhar.
+     * Gera um backup completo da base de dados usando apenas PHP.
+     * Compatível com ambientes de alojamento restritivos.
+     *
+     * @return string O nome do arquivo de backup gerado.
+     * @throws Exception
      */
     public function gerarBackup(): string
     {
-        $dbHost = $this->dbConfig['host'];
-        $dbUser = $this->dbConfig['user'];
-        $dbPass = $this->dbConfig['password'];
-        $dbName = $this->dbConfig['dbname'];
+        try {
+            // Define o nome e o caminho do arquivo de backup
+            $backupDir = __DIR__ . '/../../public/backups/';
+            if (!is_dir($backupDir)) {
+                if (!mkdir($backupDir, 0775, true)) {
+                    throw new Exception("Não foi possível criar o diretório de backups.");
+                }
+            }
+            $filename = "backup-" . $this->config['dbname'] . "-" . date('Y-m-d_H-i-s') . ".sql";
+            $filePath = $backupDir . $filename;
 
-        $filename = 'bkp_' . $dbName . '_' . date('Ymd_H_i_s') . '.sql';
-        $filePath = $this->backupDir . $filename;
-        $mysqldumpPath = '"C:\\xampp\\mysql\\bin\\mysqldump.exe"';
+            $handle = fopen($filePath, 'w');
+            if ($handle === false) {
+                throw new Exception("Não foi possível abrir o arquivo para escrita: " . $filePath);
+            }
 
-        // Monta o comando mysqldump de forma mais robusta
+            // Cabeçalho do arquivo SQL
+            fwrite($handle, "-- Backup da Base de Dados: {$this->config['dbname']}\n");
+            fwrite($handle, "-- Gerado em: " . date('Y-m-d H:i:s') . "\n");
+            fwrite($handle, "-- Host: {$this->config['host']}\n\n");
+            fwrite($handle, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
 
-        // 1. Inicia o comando base com as partes que sempre existem
-        $command = sprintf(
-            '%s --host=%s --user=%s',
-            $mysqldumpPath,
-            escapeshellarg($dbHost),
-            escapeshellarg($dbUser)
-        );
+            // Obtém todas as tabelas
+            $tablesStmt = $this->pdo->query('SHOW TABLES');
+            $tables = $tablesStmt->fetchAll(PDO::FETCH_COLUMN);
 
-        // 2. Adiciona a senha APENAS se ela não estiver em branco
-        if (!empty($dbPass)) {
-            $command .= sprintf(' --password=%s', escapeshellarg($dbPass));
+            foreach ($tables as $table) {
+                // 1. Estrutura da Tabela (CREATE TABLE)
+                fwrite($handle, "-- ----------------------------\n");
+                fwrite($handle, "-- Estrutura da tabela: {$table}\n");
+                fwrite($handle, "-- ----------------------------\n");
+                fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
+                
+                $createTableStmt = $this->pdo->query("SHOW CREATE TABLE `{$table}`");
+                $createTable = $createTableStmt->fetch(PDO::FETCH_ASSOC);
+                fwrite($handle, $createTable['Create Table'] . ";\n\n");
+
+                // 2. Dados da Tabela (INSERT INTO)
+                $dataStmt = $this->pdo->query("SELECT * FROM `{$table}`");
+                $numFields = $dataStmt->columnCount();
+
+                if ($dataStmt->rowCount() > 0) {
+                    fwrite($handle, "-- ----------------------------\n");
+                    fwrite($handle, "-- Dados da tabela: {$table}\n");
+                    fwrite($handle, "-- ----------------------------\n");
+
+                    while ($row = $dataStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $sql = "INSERT INTO `{$table}` VALUES(";
+                        $values = [];
+                        foreach ($row as $value) {
+                            if ($value === null) {
+                                $values[] = 'NULL';
+                            } else {
+                                // Escapa os valores para evitar erros de sintaxe SQL
+                                $values[] = $this->pdo->quote($value);
+                            }
+                        }
+                        $sql .= implode(', ', $values) . ");\n";
+                        fwrite($handle, $sql);
+                    }
+                    fwrite($handle, "\n");
+                }
+            }
+
+            fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
+            fclose($handle);
+
+            return $filename;
+
+        } catch (Exception $e) {
+            // Garante que o arquivo seja fechado em caso de erro
+            if (isset($handle) && is_resource($handle)) {
+                fclose($handle);
+            }
+            // Lança a exceção para ser capturada pelo ajax_router
+            throw new Exception("Erro ao gerar o backup: " . $e->getMessage());
         }
-
-        // 3. Adiciona o nome da base de dados e o ficheiro de saída no final
-        $command .= sprintf(
-            ' %s > %s',
-            escapeshellarg($dbName),
-            escapeshellarg($filePath)
-        );
-       
-        // Executa o comando no servidor
-        exec($command, $output, $return_var);
-
-        // Verifica se o comando foi executado com sucesso
-        if ($return_var !== 0) {
-            // Adiciona mais detalhes ao erro para depuração futura
-            $errorDetails = implode("\n", $output);
-            throw new Exception("Falha ao executar o mysqldump. Código de retorno: {$return_var}. Detalhes: {$errorDetails}");
-        }
-
-        if (!file_exists($filePath)) {
-            throw new Exception('O ficheiro de backup não foi criado, verifique as permissões da pasta.');
-        }
-
-        return $filename;
     }
 }

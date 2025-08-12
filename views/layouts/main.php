@@ -51,6 +51,7 @@
                             unset($paginasParaCadastro['regras']);
                             unset($paginasParaCadastro['auditoria']);
                             unset($paginasParaCadastro['backup']);
+                            unset($paginasParaCadastro['estoque']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
@@ -59,10 +60,26 @@
                     </li>
 
                     <?php
+                    // Verifica se o usuário tem permissão para ver a página de estoque
+                    $paginasConsulta = ['estoque'];
+                    if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Consultas</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
                     $paginasConfig = ['permissoes', 'templates', 'regras'];
                     if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
-                    ?>
+                        ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Configurações</a>
@@ -89,7 +106,7 @@
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
                     $paginasUtils = ['auditoria', 'backup'];
                     if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
-                    ?>
+                        ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Utilitários</a>
@@ -196,7 +213,9 @@
 <?php if ($paginaAtual === 'carregamento_detalhes'): ?>
     <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
 <?php endif; ?>
-
+<?php if ($paginaAtual === 'estoque'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
+<?php endif; ?>
 
 </body>
 

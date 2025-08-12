@@ -25,7 +25,7 @@ $(document).ready(function () {
             mensagem = 'A funcionalidade que você tentou aceder não foi encontrada no servidor.';
         } else if (jqXHR.status === 500) {
             titulo = 'Erro Interno no Servidor';
-            mensagem = 'Ocorreu um problema inesperado no servidor. A equipa técnica já foi notificada.';
+            mensagem = 'Ocorreu um problema inesperado no servidor. Contacte a equipe técnica';
         }
 
         notificacaoErro(titulo, mensagem);

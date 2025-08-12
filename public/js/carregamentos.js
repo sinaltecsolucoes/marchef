@@ -43,20 +43,102 @@ $(document).ready(function () {
                     return `<span class="badge ${badgeClass}">${data || 'INDEFINIDO'}</span>`;
                 }
             },
+            /* {
+                 "data": "car_id",
+                 "orderable": false,
+                 "className": "text-center",
+                 "render": function (data, type, row) {
+                     const status = row.car_status;
+                     if (status === 'AGUARDANDO CONFERENCIA') {
+                         return `<button class="btn btn-primary btn-sm btn-conferir-carregamento" data-id="${data}">Conferir</button>`;
+                     }
+                     if (status === 'EM ANDAMENTO') {
+                         return `<button class="btn btn-info btn-sm btn-continuar-carregamento" data-id="${data}">Continuar</button>`;
+                     }
+                     // Para status FINALIZADO e CANCELADO, podemos ter um botão de "Ver Detalhes"
+                     return `<button class="btn btn-secondary btn-sm btn-ver-detalhes" data-id="${data}">Ver Detalhes</button>`;
+                 }
+             }*/
+
             {
                 "data": "car_id",
                 "orderable": false,
                 "className": "text-center",
+                /*"render": function (data, type, row) {
+                    const status = row.car_status;
+                    const carregamentoNumero = row.car_numero; // Para usar nas mensagens
+
+                    if (status === 'EM ANDAMENTO' || status === 'AGUARDANDO CONFERENCIA') {
+                        let acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-info btn-sm btn-continuar-carregamento me-1">Continuar</a>`;
+
+                        acoesHtml += `
+                            <div class="btn-group d-inline-block">
+                                <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Mais
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item btn-cancelar-carregamento" href="#" data-id="${data}" data-numero="${carregamentoNumero}">Cancelar Carregamento</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${data}" data-numero="${carregamentoNumero}">Excluir Permanentemente</a></li>
+                                </ul>
+                            </div>
+                        `;
+                        return acoesHtml;
+                    }
+
+                    // Para status FINALIZADO e CANCELADO, apenas o botão de ver detalhes
+                    return `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-secondary btn-sm btn-ver-detalhes">Ver Detalhes</a>`;
+                }*/
+
                 "render": function (data, type, row) {
                     const status = row.car_status;
-                    if (status === 'AGUARDANDO CONFERENCIA') {
-                        return `<button class="btn btn-primary btn-sm btn-conferir-carregamento" data-id="${data}">Conferir</button>`;
+                    const carregamentoId = row.car_id;
+                    const carregamentoNumero = row.car_numero;
+                    let acoesHtml = '';
+
+                    // Ações para carregamentos ATIVOS
+                    if (status === 'EM ANDAMENTO' || status === 'AGUARDANDO CONFERENCIA') {
+                        acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-info btn-sm btn-continuar-carregamento me-1">Continuar</a>`;
+                        acoesHtml += `
+                                    <div class="btn-group d-inline-block">
+                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item btn-cancelar-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Cancelar</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Excluir</a></li>
+                                        </ul>
+                                    </div>`;
+                        return acoesHtml;
                     }
-                    if (status === 'EM ANDAMENTO') {
-                        return `<button class="btn btn-info btn-sm btn-continuar-carregamento" data-id="${data}">Continuar</button>`;
+
+                    /* if (status === 'CANCELADO') {
+                         acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes me-1">Ver Detalhes</a>`;
+                         acoesHtml += `
+                                     <div class="btn-group d-inline-block">
+                                         <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
+                                         <ul class="dropdown-menu dropdown-menu-end">
+                                             <li><a class="dropdown-item btn-reativar-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Reativar</a></li>
+                                             <li><hr class="dropdown-divider"></li>
+                                             <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Excluir</a></li>
+                                         </ul>
+                                     </div>`;
+                         return acoesHtml;
+                     }*/
+
+                    if (status === 'FINALIZADO') {
+                        let acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes me-1">Ver Detalhes</a>`;
+                        acoesHtml += `
+                                <div class="btn-group d-inline-block">
+                                    <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item btn-reabrir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Reabrir Carregamento</a></li>
+                                    </ul>
+                                </div>`;
+                        return acoesHtml;
                     }
-                    // Para status FINALIZADO e CANCELADO, podemos ter um botão de "Ver Detalhes"
-                    return `<button class="btn btn-secondary btn-sm btn-ver-detalhes" data-id="${data}">Ver Detalhes</button>`;
+
+                    // Ação padrão para FINALIZADO (ou qualquer outro status)
+                    return `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes">Ver Detalhes</a>`;
                 }
             }
         ],
@@ -162,6 +244,136 @@ $(document).ready(function () {
             $botaoSalvar.prop('disabled', false);
         });
     });
+
+    /**
+         * Evento para o botão CANCELAR um carregamento na tabela principal.
+         */
+    $('#tabela-carregamentos').on('click', '.btn-cancelar-carregamento', function (e) {
+        e.preventDefault();
+        const carregamentoId = $(this).data('id');
+        const carregamentoNumero = $(this).data('numero');
+
+        confirmacaoAcao(
+            `Cancelar Carregamento Nº ${carregamentoNumero}?`,
+            'O status do carregamento será alterado para "CANCELADO", mas o registo será mantido para fins de histórico. Deseja continuar?'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=cancelarCarregamento',
+                    type: 'POST',
+                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        tabelaCarregamentos.ajax.reload(null, false);
+                        notificacaoSucesso('Cancelado!', response.message);
+                    } else {
+                        notificacaoErro('Erro!', response.message);
+                    }
+                });
+                // O .fail() já é tratado pelo nosso app_config.js global
+            }
+        });
+    });
+
+    /**
+     * Evento para o botão EXCLUIR um carregamento na tabela principal.
+     */
+    $('#tabela-carregamentos').on('click', '.btn-excluir-carregamento', function (e) {
+        e.preventDefault();
+        const carregamentoId = $(this).data('id');
+        const carregamentoNumero = $(this).data('numero');
+
+        confirmacaoAcao(
+            `Excluir Carregamento Nº ${carregamentoNumero}?`,
+            'Esta ação é IRREVERSÍVEL e irá apagar permanentemente o carregamento, todas as suas filas e todos os seus produtos. Tem a certeza absoluta?'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirCarregamento',
+                    type: 'POST',
+                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        tabelaCarregamentos.ajax.reload(null, false);
+                        notificacaoSucesso('Excluído!', response.message);
+                    } else {
+                        notificacaoErro('Erro!', response.message);
+                    }
+                });
+            }
+        });
+    });
+
+    /**
+    * Evento para o botão REATIVAR um carregamento na tabela principal.
+    */
+    $('#tabela-carregamentos').on('click', '.btn-reativar-carregamento', function (e) {
+        e.preventDefault();
+        const carregamentoId = $(this).data('id');
+        const carregamentoNumero = $(this).data('numero');
+
+        confirmacaoAcao(
+            `Reativar Carregamento Nº ${carregamentoNumero}?`,
+            'O status do carregamento voltará para "EM ANDAMENTO".'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=reativarCarregamento',
+                    type: 'POST',
+                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        tabelaCarregamentos.ajax.reload(null, false);
+                        notificacaoSucesso('Reativado!', response.message);
+                    } else {
+                        notificacaoErro('Erro!', response.message);
+                    }
+                });
+            }
+        });
+    });
+
+    // Evento para ABRIR o modal de reabertura
+    $('#tabela-carregamentos').on('click', '.btn-reabrir-carregamento', function () {
+        const id = $(this).data('id');
+        const numero = $(this).data('numero');
+
+        $('#carregamento-id-reabrir').val(id);
+        $('#carregamento-numero-reabrir').text(numero);
+        $('#motivo-reabertura').val(''); // Limpa o campo de motivo
+
+        $('#modal-reabrir-carregamento').modal('show');
+    });
+
+    // Evento para CONFIRMAR a reabertura
+    $('#btn-confirmar-reabertura').on('click', function () {
+        const id = $('#carregamento-id-reabrir').val();
+        const motivo = $('#motivo-reabertura').val().trim();
+
+        if (motivo === '') {
+            notificacaoErro('Campo Obrigatório', 'Por favor, preencha o motivo da reabertura.');
+            return;
+        }
+
+        $.ajax({
+            url: 'ajax_router.php?action=reabrirCarregamento',
+            type: 'POST',
+            data: { carregamento_id: id, motivo: motivo, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                $('#modal-reabrir-carregamento').modal('hide');
+                tabelaCarregamentos.ajax.reload(null, false);
+                notificacaoSucesso('Reaberto!', response.message);
+            } else {
+                notificacaoErro('Erro!', response.message);
+            }
+        });
+    });
+
     // --- FUNÇÕES AUXILIARES ---
 
     /**

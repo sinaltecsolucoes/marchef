@@ -122,7 +122,6 @@ class CarregamentoRepository
 
     /**
      * Adiciona um item a um carregamento ou atualiza a sua quantidade.
-     * (Versão Simplificada - sem verificação de estoque)
      *
      * @param int $carregamentoId O ID do carregamento.
      * @param int $loteItemId O ID do item do lote (tbl_lote_itens).
@@ -375,12 +374,12 @@ class CarregamentoRepository
 
     /**
      * Busca os itens de um carregamento e compara com o estoque pendente atual.
-     * (Versão Corrigida - com todas as colunas necessárias)
      * @param int $carregamentoId
      * @return array
      */
     public function getItensParaConferencia(int $carregamentoId): array
     {
+        // Esta consulta agora junta os itens do carregamento com o saldo real calculado da tbl_estoque.
         $sql = "SELECT
                     ci.car_item_id,
                     ci.car_item_lote_item_id,
@@ -388,7 +387,12 @@ class CarregamentoRepository
                     p.prod_descricao,
                     lh.lote_completo_calculado,
                     ci.car_item_quantidade,
-                    (li.item_quantidade - li.item_quantidade_finalizada) as estoque_pendente
+                    -- Subconsulta para calcular o saldo de estoque real para cada item
+                    (
+                        SELECT SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END)
+                        FROM tbl_estoque es
+                        WHERE es.estoque_lote_item_id = ci.car_item_lote_item_id
+                    ) as estoque_pendente
                 FROM tbl_carregamento_itens ci
                 JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
                 JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
@@ -442,9 +446,6 @@ class CarregamentoRepository
             $stmtUpdateCar = $this->pdo->prepare("UPDATE tbl_carregamentos SET car_status = 'FINALIZADO', car_data_finalizacao = NOW() WHERE car_id = :id");
             $stmtUpdateCar->execute([':id' => $carregamentoId]);
 
-            // 4. Reavalia e atualiza o status dos lotes envolvidos
-            // (Esta parte pode ser reativada se você tiver o LoteRepository disponível aqui)
-
             $this->auditLogger->log('FINALIZE_CARREGAMENTO', $carregamentoId, 'tbl_carregamentos', null, ['itens' => $itensParaBaixa]);
 
             $this->pdo->commit();
@@ -453,33 +454,6 @@ class CarregamentoRepository
             throw $e;
         }
     }
-
-    /**
-     * Adiciona uma nova fila (associada a um cliente) a um carregamento.
-     * @param int $carregamentoId
-     * @param int $clienteId
-     * @return int O ID da nova fila criada.
-     */
-    /* public function adicionarFila(int $carregamentoId, int $clienteId): int
-     {
-         // Calcula o próximo número sequencial para este carregamento
-         $proximoNumeroFila = $this->getProximoNumeroFila($carregamentoId);
-
-         $stmt = $this->pdo->prepare(
-             "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente, fila_numero_sequencial) VALUES (?, ?, ?)"
-         );
-         $stmt->execute([$carregamentoId, $clienteId, $proximoNumeroFila]);
-         $novoId = (int) $this->pdo->lastInsertId();
-
-         // (Opcional, mas recomendado) Adicionar o novo campo ao log de auditoria
-         $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamento_filas', null, [
-             'fila_carregamento_id' => $carregamentoId,
-             'fila_entidade_id_cliente' => $clienteId,
-             'fila_numero_sequencial' => $proximoNumeroFila
-         ]);
-
-         return $novoId;
-     }*/
 
     /**
      * Adiciona uma nova fila a um carregamento (sem cliente associado).
@@ -543,74 +517,7 @@ class CarregamentoRepository
     }
 
     /**
-     * Busca um carregamento com todas as suas filas e os itens agrupados por fila.
-     * (Versão Final e Corrigida)
-     */
-    /*   public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
-       {
-           // 1. Busca o cabeçalho (sem alteração)
-           $stmtHeader = $this->pdo->prepare("SELECT c.*, e.ent_razao_social FROM tbl_carregamentos c LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo WHERE c.car_id = :id");
-           $stmtHeader->execute([':id' => $carregamentoId]);
-           $header = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-
-           if (!$header) {
-               return null;
-           }
-
-           // 2. Busca todas as filas e os seus clientes
-           $stmtFilas = $this->pdo->prepare(
-               "SELECT 
-           f.fila_id, 
-           f.fila_numero_sequencial, -- <<< ADICIONAR ESTA COLUNA
-           e.ent_razao_social as cliente_razao_social 
-        FROM tbl_carregamento_filas f 
-        JOIN tbl_entidades e ON f.fila_entidade_id_cliente = e.ent_codigo 
-        WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
-           );
-           $stmtFilas->execute([':id' => $carregamentoId]);
-           $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
-
-           // ===================================================================
-           // == INÍCIO DA CORREÇÃO NA CONSULTA SQL ==
-           // ===================================================================
-           // 3. Busca todos os itens do carregamento de uma só vez, selecionando explicitamente todas as colunas
-           $stmtItens = $this->pdo->prepare(
-               "SELECT 
-                   ci.car_item_id,
-                   ci.car_item_carregamento_id,
-                   ci.car_item_fila_numero, -- <<<< GARANTINDO QUE ESTA COLUNA SEJA SELECIONADA
-                   ci.car_item_cliente_id,
-                   ci.car_item_lote_item_id,
-                   ci.car_item_quantidade,
-                   p.prod_descricao, 
-                   p.prod_codigo_interno,
-                   lh.lote_completo_calculado 
-                FROM tbl_carregamento_itens ci 
-                JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
-                JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
-                JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id 
-                WHERE ci.car_item_carregamento_id = :id"
-           );
-           // ===================================================================
-           // == FIM DA CORREÇÃO NA CONSULTA SQL ==
-           // ===================================================================
-           $stmtItens->execute([':id' => $carregamentoId]);
-           $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-
-           // 4. Agrupa os itens dentro das suas respetivas filas
-           foreach ($filas as $key => $fila) {
-               $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
-                   // Esta linha agora funcionará, pois a chave 'car_item_fila_numero' existirá
-                   return $item['car_item_fila_numero'] == $fila['fila_id'];
-               }));
-           }
-
-           return ['header' => $header, 'filas' => $filas];
-       }*/
-
-    /**
      * Busca um carregamento com todas as suas filas e os itens agrupados.
-     * O nome do cliente agora vem dos itens, não da fila.
      */
     public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
     {
@@ -635,17 +542,20 @@ class CarregamentoRepository
         // 3. Busca todos os itens e junta com os dados do cliente
         $stmtItens = $this->pdo->prepare(
             "SELECT 
-                ci.*, 
-                e.ent_razao_social as cliente_razao_social, -- Traz o nome do cliente aqui
-                p.prod_descricao, 
-                p.prod_codigo_interno,
-                lh.lote_completo_calculado 
-             FROM tbl_carregamento_itens ci 
-             JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
-             JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
-             JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
-             JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id 
-             WHERE ci.car_item_carregamento_id = :id"
+            ci.car_item_fila_numero,
+            ci.car_item_quantidade,
+            e_destino.ent_razao_social as cliente_razao_social,
+            p.prod_descricao, 
+            p.prod_codigo_interno,
+            lh.lote_completo_calculado,
+            COALESCE(e_origem.ent_nome_fantasia, e_origem.ent_razao_social) as cliente_lote_nome 
+         FROM tbl_carregamento_itens ci 
+         JOIN tbl_entidades e_destino ON ci.car_item_cliente_id = e_destino.ent_codigo
+         JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
+         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
+         JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
+         LEFT JOIN tbl_entidades e_origem ON lh.lote_cliente_id = e_origem.ent_codigo
+         WHERE ci.car_item_carregamento_id = :id"
         );
         $stmtItens->execute([':id' => $carregamentoId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
@@ -659,45 +569,6 @@ class CarregamentoRepository
 
         return ['header' => $header, 'filas' => $filas];
     }
-
-    /**
-     * Salva uma "fila composta" do modal.
-     * @param int $carregamentoId
-     * @param array $filaData
-     * @throws Exception
-     */
-    /*  public function salvarFilaComposta(int $carregamentoId, array $filaData): void
-      {
-          $this->pdo->beginTransaction();
-          try {
-              foreach ($filaData as $dadosCliente) {
-                  $clienteId = $dadosCliente['clienteId'];
-                  $produtos = $dadosCliente['produtos'];
-
-                  if (empty($produtos)) {
-                      continue;
-                  }
-
-                  $filaId = $this->adicionarFila($carregamentoId, $clienteId);
-
-                  foreach ($produtos as $produto) {
-                      // Passando todos os parâmetros necessários, incluindo o $clienteId
-                      $this->adicionarItemAFila(
-                          $filaId,
-                          $produto['loteItemId'],
-                          $produto['quantidade'],
-                          $carregamentoId,
-                          $clienteId // << MUDANÇA FINAL AQUI
-                      );
-                  }
-              }
-
-              $this->pdo->commit();
-          } catch (Exception $e) {
-              $this->pdo->rollBack();
-              throw new Exception("Erro ao salvar os dados da fila: " . $e->getMessage());
-          }
-      }*/
 
     /**
      * Salva uma fila composta do modal, que contém múltiplos clientes e produtos.
@@ -779,5 +650,337 @@ class CarregamentoRepository
         $stmt->execute([':car_id' => $carregamentoId]);
         $ultimoNumero = $stmt->fetchColumn() ?: 0;
         return (int) $ultimoNumero + 1;
+    }
+
+    /**
+     * Busca os detalhes de uma única fila, incluindo seus itens agrupados por cliente.
+     *
+     * @param int $filaId
+     * @return array|null
+     */
+    public function findFilaComClientesEItens(int $filaId): ?array
+    {
+        // 1. Busca os dados da fila
+        $stmtFila = $this->pdo->prepare(
+            "SELECT f.fila_id, f.fila_numero_sequencial 
+                    FROM tbl_carregamento_filas f 
+                    WHERE f.fila_id = :id"
+        );
+        $stmtFila->execute([':id' => $filaId]);
+        $fila = $stmtFila->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fila) {
+            return null; // Retorna nulo se a fila não for encontrada
+        }
+
+        // 2. Busca todos os itens daquela fila, já com os nomes de cliente e produto
+        $stmtItens = $this->pdo->prepare(
+            "SELECT 
+            ci.car_item_lote_item_id as loteItemId,
+            ci.car_item_quantidade as quantidade,
+            ci.car_item_cliente_id as clienteId,
+            e.ent_razao_social as clienteNome,
+            CONCAT(p.prod_descricao, ' (Cód: ', p.prod_codigo_interno, ')') as produtoTexto
+         FROM tbl_carregamento_itens ci
+         JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+         JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
+         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+         WHERE ci.car_item_fila_numero = :fila_id"
+        );
+        $stmtItens->execute([':fila_id' => $filaId]);
+        $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Agrupa os itens por cliente
+        $clientes = [];
+        foreach ($todosOsItens as $item) {
+            $clienteId = $item['clienteId'];
+            if (!isset($clientes[$clienteId])) {
+                $clientes[$clienteId] = [
+                    'clienteId' => $clienteId,
+                    'clienteNome' => $item['clienteNome'],
+                    'produtos' => []
+                ];
+            }
+            $clientes[$clienteId]['produtos'][] = [
+                'loteItemId' => $item['loteItemId'],
+                'quantidade' => $item['quantidade'],
+                'produtoTexto' => $item['produtoTexto']
+            ];
+        }
+
+        $fila['clientes'] = array_values($clientes); // Converte o array associativo para um array simples
+        return $fila;
+    }
+
+    /**
+     * Atualiza uma fila composta, apagando seus itens antigos e inserindo os novos.
+     * Usa uma transação para garantir a consistência dos dados.
+     *
+     * @param int $filaId O ID da fila a ser atualizada.
+     * @param int $carregamentoId O ID do carregamento pai.
+     * @param array $filaData Os novos dados de clientes e produtos.
+     * @throws Exception
+     */
+    public function atualizarFilaComposta(int $filaId, int $carregamentoId, array $filaData): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Apaga todos os itens antigos associados a esta fila.
+            $stmtDelete = $this->pdo->prepare("DELETE FROM tbl_carregamento_itens WHERE car_item_fila_numero = :fila_id");
+            $stmtDelete->execute([':fila_id' => $filaId]);
+
+            // Log de auditoria para a limpeza dos itens antigos (opcional, mas bom)
+            $this->auditLogger->log('UPDATE', $filaId, 'tbl_carregamento_filas', null, ['observacao' => 'Limpeza de itens para atualização.']);
+
+            // 2. Itera sobre os novos dados e os insere, como se fosse uma nova fila.
+            foreach ($filaData as $dadosCliente) {
+                $clienteId = $dadosCliente['clienteId'];
+                $produtos = $dadosCliente['produtos'];
+
+                if (empty($produtos))
+                    continue;
+
+                foreach ($produtos as $produto) {
+                    // Reutiliza o método que já temos para adicionar itens.
+                    $this->adicionarItemAFila(
+                        $filaId,
+                        $produto['loteItemId'],
+                        $produto['quantidade'],
+                        $carregamentoId,
+                        $clienteId
+                    );
+                }
+            }
+
+            $this->pdo->commit();
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw new Exception("Erro ao atualizar os dados da fila: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Altera o status de um carregamento para 'CANCELADO'.
+     * Se o carregamento já estiver 'FINALIZADO', reverte os movimentos de estoque.
+     *
+     * @param int $carregamentoId
+     * @return bool
+     * @throws Exception
+     */
+    public function cancelar(int $carregamentoId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
+            $stmtAntigo->execute([':id' => $carregamentoId]);
+            $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
+
+            if (!$dadosAntigos) {
+                throw new Exception("Carregamento não encontrado.");
+            }
+
+            // Se o carregamento já foi finalizado, precisamos reverter o estoque.
+            if ($dadosAntigos['car_status'] === 'FINALIZADO') {
+                // A lógica de estorno é idêntica à do método reabrir
+                $stmtItens = $this->pdo->prepare(
+                    "SELECT car_item_lote_item_id, car_item_quantidade, item_produto_id 
+                     FROM tbl_carregamento_itens 
+                     JOIN tbl_lote_itens ON item_id = car_item_lote_item_id
+                     WHERE car_item_carregamento_id = :id"
+                );
+                $stmtItens->execute([':id' => $carregamentoId]);
+                $itensParaEstornar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($itensParaEstornar as $item) {
+                    // Devolve a quantidade para o lote de origem
+                    $stmtUpdateItem = $this->pdo->prepare(
+                        "UPDATE tbl_lote_itens SET item_quantidade_finalizada = item_quantidade_finalizada - :qtd WHERE item_id = :id"
+                    );
+                    $stmtUpdateItem->execute([':qtd' => $item['car_item_quantidade'], ':id' => $item['car_item_lote_item_id']]);
+
+                    // Cria o movimento de ENTRADA (estorno) no estoque
+                    $stmtEstoque = $this->pdo->prepare(
+                        "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                         VALUES (:prod_id, :lote_item_id, :qtd, 'ENTRADA POR CANCELAMENTO', :obs)"
+                    );
+                    $stmtEstoque->execute([
+                        ':prod_id' => $item['item_produto_id'],
+                        ':lote_item_id' => $item['car_item_lote_item_id'],
+                        ':qtd' => $item['car_item_quantidade'],
+                        ':obs' => "Cancelamento do Carregamento Nº {$dadosAntigos['car_numero']}"
+                    ]);
+                }
+            }
+
+            // Finalmente, atualiza o status do carregamento para 'CANCELADO'
+            $stmt = $this->pdo->prepare("UPDATE tbl_carregamentos SET car_status = 'CANCELADO' WHERE car_id = :id");
+            $success = $stmt->execute([':id' => $carregamentoId]);
+
+            if ($success) {
+                $dadosNovos = $dadosAntigos;
+                $dadosNovos['car_status'] = 'CANCELADO';
+                $this->auditLogger->log('CANCEL', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos);
+            }
+
+            $this->pdo->commit();
+            return $success;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+    /**
+     * Exclui permanentemente um carregamento e todos os seus dados associados (filas e itens).
+     * Usa uma transação para garantir a integridade.
+     *
+     * @param int $carregamentoId
+     * @return bool
+     * @throws Exception
+     */
+    public function excluir(int $carregamentoId): bool
+    {
+        $dadosAntigos = $this->pdo->query("SELECT * FROM tbl_carregamentos WHERE car_id = {$carregamentoId}")->fetch(PDO::FETCH_ASSOC);
+
+        if (!$dadosAntigos) {
+            throw new Exception("Carregamento não encontrado.");
+        }
+
+        // Regra de negócio: Não permitir exclusão de carregamentos já finalizados.
+        if ($dadosAntigos['car_status'] === 'FINALIZADO') {
+            throw new Exception("Não é possível excluir um carregamento finalizado. Cancele-o primeiro se necessário.");
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Excluir os itens do carregamento
+            $stmtItens = $this->pdo->prepare("DELETE FROM tbl_carregamento_itens WHERE car_item_carregamento_id = :id");
+            $stmtItens->execute([':id' => $carregamentoId]);
+
+            // 2. Excluir as filas do carregamento
+            $stmtFilas = $this->pdo->prepare("DELETE FROM tbl_carregamento_filas WHERE fila_carregamento_id = :id");
+            $stmtFilas->execute([':id' => $carregamentoId]);
+
+            // 3. Excluir o cabeçalho do carregamento
+            $stmtHeader = $this->pdo->prepare("DELETE FROM tbl_carregamentos WHERE car_id = :id");
+            $stmtHeader->execute([':id' => $carregamentoId]);
+
+            $this->auditLogger->log('DELETE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, null);
+
+            $this->pdo->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw new Exception("Erro ao excluir o carregamento: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Altera o status de um carregamento de 'CANCELADO' de volta para 'EM ANDAMENTO'.
+     * @param int $carregamentoId
+     * @return bool
+     * @throws Exception
+     */
+    public function reativar(int $carregamentoId): bool
+    {
+        $dadosAntigos = $this->pdo->query("SELECT * FROM tbl_carregamentos WHERE car_id = {$carregamentoId}")->fetch(PDO::FETCH_ASSOC);
+        if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'CANCELADO') {
+            throw new Exception("Apenas carregamentos cancelados podem ser reativados.");
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE tbl_carregamentos SET car_status = 'EM ANDAMENTO' WHERE car_id = :id");
+        $success = $stmt->execute([':id' => $carregamentoId]);
+
+        if ($success) {
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['car_status'] = 'EM ANDAMENTO';
+            $this->auditLogger->log('REACTIVATE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos);
+        }
+        return $success;
+    }
+
+    // /src/Carregamentos/CarregamentoRepository.php
+
+    /**
+     * Reabre um carregamento finalizado, revertendo todos os movimentos de estoque.
+     * (Versão Final e Segura com estorno de estoque)
+     *
+     * @param int $carregamentoId
+     * @param string $motivo
+     * @return bool
+     * @throws Exception
+     */
+    public function reabrir(int $carregamentoId, string $motivo): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Validações Iniciais
+            $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
+            $stmtAntigo->execute([':id' => $carregamentoId]);
+            $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
+
+            if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'FINALIZADO') {
+                throw new Exception("Apenas carregamentos finalizados podem ser reabertos.");
+            }
+
+            // 2. Busca todos os itens que foram baixados por este carregamento
+            $stmtItens = $this->pdo->prepare(
+                "SELECT car_item_lote_item_id, car_item_quantidade, item_produto_id 
+                 FROM tbl_carregamento_itens 
+                 JOIN tbl_lote_itens ON item_id = car_item_lote_item_id
+                 WHERE car_item_carregamento_id = :id"
+            );
+            $stmtItens->execute([':id' => $carregamentoId]);
+            $itensParaEstornar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($itensParaEstornar)) {
+                throw new Exception("Carregamento não contém itens para estornar.");
+            }
+
+            // 3. Itera sobre cada item para reverter o estoque
+            foreach ($itensParaEstornar as $item) {
+                // 3a. Devolve a quantidade para o lote de origem
+                $stmtUpdateItem = $this->pdo->prepare(
+                    "UPDATE tbl_lote_itens SET item_quantidade_finalizada = item_quantidade_finalizada - :qtd 
+                     WHERE item_id = :id"
+                );
+                $stmtUpdateItem->execute([
+                    ':qtd' => $item['car_item_quantidade'],
+                    ':id' => $item['car_item_lote_item_id']
+                ]);
+
+                // 3b. Cria o movimento de ENTRADA (estorno) no estoque
+                $stmtEstoque = $this->pdo->prepare(
+                    "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                     VALUES (:prod_id, :lote_item_id, :qtd, 'ENTRADA POR ESTORNO', :obs)"
+                );
+                $stmtEstoque->execute([
+                    ':prod_id' => $item['item_produto_id'],
+                    ':lote_item_id' => $item['car_item_lote_item_id'],
+                    ':qtd' => $item['car_item_quantidade'],
+                    ':obs' => "Estorno do Carregamento Nº {$dadosAntigos['car_numero']} (Reabertura)"
+                ]);
+            }
+
+            // 4. Altera o status do carregamento de volta para 'EM ANDAMENTO'
+            $stmtUpdateCarregamento = $this->pdo->prepare("UPDATE tbl_carregamentos SET car_status = 'EM ANDAMENTO' WHERE car_id = :id");
+            $stmtUpdateCarregamento->execute([':id' => $carregamentoId]);
+
+            // 5. Regista a auditoria
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['car_status'] = 'EM ANDAMENTO';
+            $this->auditLogger->log('REOPEN', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, $motivo);
+
+            // Se tudo correu bem, confirma todas as operações
+            $this->pdo->commit();
+            return true;
+
+        } catch (Exception $e) {
+            // Se algo deu errado, desfaz tudo
+            $this->pdo->rollBack();
+            throw $e;
+        }
     }
 }

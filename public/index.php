@@ -131,7 +131,8 @@ try {
         'auditoria' => 'auditoria/visualizar_logs.php',
         'backup' => 'backup/pagina_backup.php',
         'carregamentos' => 'carregamentos/lista_carregamentos.php',
-        'carregamento_detalhes' => 'carregamentos/detalhes_carregamento.php'
+        'carregamento_detalhes' => 'carregamentos/detalhes_carregamento.php',
+        'estoque' => 'estoque/lista_estoque.php'
     ];
 
     $pageType = '';

@@ -878,6 +878,15 @@ $(document).ready(function () {
             return;
         }
 
+        // =======================================================
+        // == DEPURACAO PASSO 1: VERIFICAR DADOS NO FRONTEND ==
+        // =======================================================
+        console.log("--- DEBUG FRONTEND ---");
+        console.log("A enviar para o backend:");
+        console.log("Lote ID:", loteId);
+        console.log("Itens a Finalizar:", JSON.stringify(itensAFinalizar, null, 2));
+        // =======================================================
+
         // Feedback visual
         $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> A processar...');
         $statusDiv.html('');
@@ -899,6 +908,7 @@ $(document).ready(function () {
 
                 // Simula um clique no botão de editar da tabela principal para recarregar o modal do lote
                 // com os dados atualizados (uma forma simples de recarregar)
+                tabelaLotes.ajax.reload(null, false);
                 $(`#tabela-lotes .btn-editar-lote[data-id='${loteId}']`).click();
 
                 notificacaoSucesso('Sucesso!', response.message);
