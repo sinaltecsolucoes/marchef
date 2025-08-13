@@ -61,42 +61,96 @@ $(document).ready(function () {
                 "render": function (data, type, row) {
                     let acoesHtml = '';
                     const status = row.lote_status;
+                    const loteId = row.lote_id;
+                    const loteNome = row.lote_completo_calculado;
 
 
                     // O botão "Editar" só aparece se o lote estiver ativo (não finalizado e não cancelado)
-                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                        acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}" title="Editar Lote">Editar</button> `;
-                    }
+                    /*   if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                           acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote" data-id="${data}" title="Editar Lote">Editar</button> `;
+                       }
+   
+                       // O botão "Finalizar" também só aparece para lotes ativos
+                       if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                           acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button> `;
+                       }*/
 
-                    // O botão "Finalizar" também só aparece para lotes ativos
+                    // Ações para lotes ATIVOS (EM ANDAMENTO ou PARCIALMENTE FINALIZADO)
                     if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote" data-id="${data}" title="Finalizar e Gerar Estoque">Finalizar</button> `;
+                        acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
+                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote me-1" data-id="${loteId}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
+                        acoesHtml += `
+                                    <div class="btn-group d-inline-block">
+                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Mais
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
+                                        </ul>
+                                    </div>`;
+                        return acoesHtml;
                     }
 
                     // O menu "Mais Ações" (com Cancelar e Excluir)
-                    acoesHtml += `
-                        <div class="btn-group d-inline-block">
-                            <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                Mais
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">`;
-
-                    // A opção "Cancelar" só aparece para lotes ativos
-                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                        acoesHtml += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${data}" data-nome="${row.lote_completo_calculado}">Cancelar Lote</a></li>`;
+                    /*   acoesHtml += `
+                           <div class="btn-group d-inline-block">
+                               <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                   Mais
+                               </button>
+                               <ul class="dropdown-menu dropdown-menu-end">`;*/
+                    if (status === 'FINALIZADO') {
+                        acoesHtml += `
+                                <div class="btn-group d-inline-block"> 
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item btn-reabrir-lote" href="#" ...>Reabrir Lote</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger btn-excluir-lote" ...>Excluir</a></li>
+                                    </ul>
+                                </div>`;
                     }
 
-                    // A opção "Excluir" pode aparecer para todos, mas com um separador se houver outra opção
-                    if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                        acoesHtml += `<li><hr class="dropdown-divider"></li>`;
+                    // =======================================================
+                    // == INÍCIO DA LÓGICA CORRIGIDA PARA LOTES FINALIZADOS ==
+                    // =======================================================
+                    // Ações para lotes FINALIZADOS
+                    if (status === 'FINALIZADO') {
+                        acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+                        acoesHtml += `
+                                    <div class="btn-group d-inline-block">
+                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Mais
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
+                                        </ul>
+                                    </div>`;
+                        return acoesHtml;
                     }
-                    acoesHtml += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${data}" data-nome="${row.lote_completo_calculado}">Excluir Permanentemente</a></li>`;
+                    // =======================================================
+                    // == FIM DA LÓGICA CORRIGIDA ==
+                    // =======================================================
 
-                    acoesHtml += `
-                    </ul>
-                    </div>
-                    `;
-                    return acoesHtml;
+                    // Ações para lotes CANCELADOS (apenas Visualizar e Excluir)
+                    if (status === 'CANCELADO') {
+                        acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+                        acoesHtml += `
+                                    <div class="btn-group d-inline-block">
+                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Mais
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
+                                        </ul>
+                                    </div>`;
+                        return acoesHtml;
+                    }
+
+                    // Fallback para qualquer outro status (não deve acontecer)
+                    return '';
                 }
             }
         ],
@@ -401,6 +455,14 @@ $(document).ready(function () {
                 new bootstrap.Tab($('#aba-info-lote-tab')[0]).show();
                 $('#modal-lote-label').text('Editar Lote: ' + header.lote_completo_calculado);
                 $('#aba-add-produtos-tab').removeClass('disabled').attr('aria-disabled', 'false');
+
+                const status = response.data.header.lote_status;
+                if (status === 'FINALIZADO' || status === 'CANCELADO') {
+                    configurarModalModoLeitura(true); // Ativa o modo de leitura
+                } else {
+                    configurarModalModoLeitura(false); // Garante o modo de edição
+                }
+
                 $modalLote.modal('show');
             } else {
                 notificacaoErro('Erro!', response.message || 'Não foi possível buscar os dados do lote.');
@@ -418,6 +480,27 @@ $(document).ready(function () {
         } atualizarLoteCompleto();
     });
 
+    /**
+     * Configura o modal de lote para modo de edição ou apenas visualização.
+     * @param {boolean} isReadOnly - True para modo de visualização, false para edição.
+     */
+    function configurarModalModoLeitura(isReadOnly) {
+        const $formHeader = $('#form-lote-header');
+
+        // Aplica 'readonly' apenas aos inputs de texto, data, etc.
+        $formHeader.find('input').prop('readonly', isReadOnly);
+
+        // Aplica 'disabled' aos dropdowns (selects)
+        $formHeader.find('select').prop('disabled', isReadOnly);
+        // Esconde/mostra a aba de adicionar produtos
+        $('#aba-add-produtos-tab').toggle(!isReadOnly);
+
+        // Esconde ou mostra os botões de salvar, finalizar, etc.
+        $('#btn-salvar-lote, #btn-finalizar-lote').toggle(!isReadOnly);
+
+        // Esconde a coluna de ações da tabela de itens em produção
+        $('#tabela-itens-em-producao').find('th:last-child, td:last-child').toggle(!isReadOnly);
+    }
 
 
     // =================================================================
@@ -545,6 +628,17 @@ $(document).ready(function () {
                 }).fail(() => notificacaoErro('Erro de Comunicação', 'Não foi possível finalizar o lote.'));
             }
         });
+    });
+
+    $('#tabela-lotes').on('click', '.btn-reabrir-lote', function () {
+        const id = $(this).data('id');
+        const nome = $(this).data('nome');
+
+        $('#lote-id-reabrir').val(id);
+        $('#lote-nome-reabrir').text(nome);
+        $('#motivo-reabertura-lote').val('');
+
+        $('#modal-reabrir-lote').modal('show');
     });
 
     // Evento para ABRIR o modal de confirmação de exclusão do item
@@ -878,15 +972,6 @@ $(document).ready(function () {
             return;
         }
 
-        // =======================================================
-        // == DEPURACAO PASSO 1: VERIFICAR DADOS NO FRONTEND ==
-        // =======================================================
-        console.log("--- DEBUG FRONTEND ---");
-        console.log("A enviar para o backend:");
-        console.log("Lote ID:", loteId);
-        console.log("Itens a Finalizar:", JSON.stringify(itensAFinalizar, null, 2));
-        // =======================================================
-
         // Feedback visual
         $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> A processar...');
         $statusDiv.html('');
@@ -919,6 +1004,31 @@ $(document).ready(function () {
             notificacaoErro('Erro de Comunicação', 'Não foi possível processar a finalização.');
         }).always(function () {
             $button.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Confirmar Finalização e Gerar Estoque');
+        });
+    });
+
+    $('#btn-confirmar-reabertura-lote').on('click', function () {
+        const id = $('#lote-id-reabrir').val();
+        const motivo = $('#motivo-reabertura-lote').val().trim();
+
+        if (motivo === '') {
+            notificacaoErro('Campo Obrigatório', 'Por favor, preencha o motivo da reabertura.');
+            return;
+        }
+
+        $.ajax({
+            url: 'ajax_router.php?action=reabrirLote',
+            type: 'POST',
+            data: { lote_id: id, motivo: motivo, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                $('#modal-reabrir-lote').modal('hide');
+                tabelaLotes.ajax.reload(null, false);
+                notificacaoSucesso('Reaberto!', response.message);
+            } else {
+                notificacaoErro('Erro!', response.message);
+            }
         });
     });
 });

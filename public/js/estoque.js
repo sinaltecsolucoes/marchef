@@ -14,20 +14,22 @@ $(document).ready(function () {
             }
         },
         "columns": [
-            { "data": "tipo_produto" },
-            { "data": "subtipo" },
-            { "data": "classificacao" },
-            { "data": "codigo_interno" },
-            { "data": "descricao_produto" },
-            { "data": "lote" },
+            { "data": "tipo_produto", "className": "text-center align-middle font-small" },
+            { "data": "subtipo", "className": "text-center align-middle font-small" },
+            { "data": "classificacao", "className": "text-center align-middle font-small" },
+            { "data": "codigo_interno", "className": "text-center align-middle font-small" },
+            { "data": "descricao_produto", "className": "align-middle font-small" },
+            { "data": "lote", "className": "align-middle font-small" },
             {
                 "data": "cliente_lote_nome",
+                "class": "text-center align-middle font-small",
                 "render": function (data) {
                     return data || '<span class="text-muted">N/A</span>';
                 }
             },
             {
                 "data": "data_fabricacao",
+                "className": "text-center align-middle font-small",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
@@ -36,23 +38,35 @@ $(document).ready(function () {
             },
             {
                 "data": "peso_embalagem",
-                "className": "text-end",
+                "className": "text-center align-middle font-small",
                 "render": function (data) {
                     return parseFloat(data).toFixed(3);
                 }
             },
             {
                 "data": "total_caixas",
-                "className": "text-end fw-bold",
+                "className": "text-center align-middle fw-bold font-small",
                 "render": function (data) {
-                    return parseFloat(data).toFixed(3);
+                    const valor = parseFloat(data);
+                    const numeroFormatado = valor.toFixed(3);
+                    if (valor < 0) {
+                        // Se for negativo, adiciona a classe de cor vermelha
+                        return `<span class="text-danger">${numeroFormatado}</span>`;
+                    }
+                    return numeroFormatado;
                 }
             },
             {
                 "data": "peso_total",
-                "className": "text-end fw-bold",
+                "className": "text-center align-middle fw-bold font-small",
                 "render": function (data) {
-                    return parseFloat(data).toFixed(3);
+                    const valor = parseFloat(data);
+                    const numeroFormatado = valor.toFixed(3);
+                    if (valor < 0) {
+                        // Se for negativo, adiciona a classe de cor vermelha
+                        return `<span class="text-danger">${numeroFormatado}</span>`;
+                    }
+                    return numeroFormatado;
                 }
             }
         ],

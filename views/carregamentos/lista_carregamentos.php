@@ -38,11 +38,11 @@
             <table class="table table-bordered" id="tabela-carregamentos" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>Número</th>
-                        <th>Organizador/Cliente</th>
-                        <th class="text-center">Data</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">Número</th>
+                        <th class="text-center align-middle">Organizador/Cliente</th>
+                        <th class="text-center align-middle">Data</th>
+                        <th class="text-center align-middle">Status</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody>

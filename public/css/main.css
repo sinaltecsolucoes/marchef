@@ -43,6 +43,15 @@ body {
     /* Espaçamento inferior */
 }
 
+.table-font-small {
+    font-size: 0.85rem;
+}
+
+/* Classe específica para células com fonte pequena */
+.font-small {
+    font-size: 0.85rem;
+}
+
 /* Adiciona espaçamento acima e abaixo dos elementos de controle do DataTables */
 .dataTables_wrapper .dataTables_filter,
 .dataTables_wrapper .dataTables_length,
@@ -74,6 +83,12 @@ body {
 }
 
 .card-custom {
-    margin-right: 2.5rem; /* Ajuste o valor conforme necessário */
+    margin-right: 2.5rem;
+    /* Ajuste o valor conforme necessário */
 }
 
+/*
+#tabela-composicao-carregamento th:nth-child(2),
+#tabela-composicao-carregamento td:nth-child(2) {
+    display: table-cell !important;
+}*/

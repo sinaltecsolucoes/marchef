@@ -45,38 +45,6 @@ $(document).ready(function () {
             }
         });
     }
-
-    /* function inicializarSelectProdutoNoCard(selectId) {
-         $('#' + selectId).select2({
-             placeholder: 'Buscar produto no estoque...',
-             theme: "bootstrap-5",
-             dropdownParent: $modalGerenciarFila,
-             language: "pt-BR",
-             ajax: {
-                 url: 'ajax_router.php?action=getItensDeEstoqueOptions',
-                 dataType: 'json',
-                 delay: 250,
-                 data: function (params) { return { term: params.term }; },
-                 processResults: function (data) { return { results: data.results }; }
-             }
-         });
-     }*/
-
-    /* function inicializarSelectProdutoNoCard(selectId) {
-         $('#' + selectId).select2({
-             placeholder: 'Selecione um produto...',
-             theme: "bootstrap-5",
-             dropdownParent: $modalGerenciarFila,
-             language: "pt-BR",
-             ajax: {
-                 url: 'ajax_router.php?action=getProdutoOptions', // Busca produtos únicos
-                 dataType: 'json',
-                 data: function (params) { return { term: params.term, tipo_embalagem: 'Todos' }; },
-                 processResults: function (data) { return { results: data.data }; }
-             }
-         });
-     }*/
-
     function inicializarSelectProdutoNoCard(selectId) {
         const $select = $('#' + selectId);
 
@@ -105,6 +73,74 @@ $(document).ready(function () {
             }
         });
     }
+
+    /* function recarregarETabelaPrincipal() {
+ 
+         $.ajax({
+             url: `ajax_router.php?action=getCarregamentoDetalhes&id=${carregamentoId}`,
+             type: 'GET',
+             dataType: 'json'
+         }).done(function (response) {
+             if (response.success && response.data) {
+                 const filas = response.data.filas;
+                 $tabelaComposicaoBody.empty();
+ 
+                 if (!filas || filas.length === 0) {
+                     $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td></tr>');
+                     return;
+                 }
+ 
+                 filas.forEach(fila => {
+                     const totalItensNaFila = fila.itens ? fila.itens.length : 0;
+                     if (totalItensNaFila > 0) {
+                         const clientesDaFila = fila.itens.reduce((acc, item) => {
+                             (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
+                             return acc;
+                         }, {});
+ 
+                         let isFirstRowOfQueue = true;
+                         for (const nomeCliente in clientesDaFila) {
+                             const itensDoCliente = clientesDaFila[nomeCliente];
+                             const totalItensDoCliente = itensDoCliente.length;
+ 
+                             itensDoCliente.forEach((item, index) => {
+                                 const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
+ 
+                                 if (isFirstRowOfQueue && index === 0) {
+                                     const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+                                     $linha.append(`<td class="text-center align-middle" rowspan="${Math.max(1, totalItensNaFila)}">${numSequencial}</td>`);
+                                     $linha.append(`<td class="text-center align-middle coluna-acoes" rowspan="${Math.max(1, totalItensNaFila)}">
+                                     <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                                         <i class="fas fa-pencil-alt"></i> Editar
+                                     </button>
+                                     <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                         <i class="fas fa-trash"></i> Remover
+                                     </button>
+                                 </td>`);
+                                 }
+ 
+                                 if (index === 0) {
+                                     $linha.append(`<td class="align-middle" rowspan="${Math.max(1, totalItensDoCliente)}">${nomeCliente}</td>`);
+                                 }
+ 
+                                 $linha.append(`<td class="align-middle">${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
+                                 $linha.append(`<td class="text-center align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
+                                 $linha.append(`<td class="text-center align-middle" >${item.cliente_lote_nome || 'N/A'}</td>`);
+                                 $linha.append(`<td class="text-end align-middle">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
+ 
+                                 $tabelaComposicaoBody.append($linha);
+                             });
+                             isFirstRowOfQueue = false;
+                         }
+                     }
+                 });
+             } else {
+                 $tabelaComposicaoBody.html(`<tr><td colspan="7" class="text-center text-danger">Erro ao carregar os dados: ${response.message || ''}</td></tr>`);
+             }
+         }).fail(function () {
+             $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
+         });
+     }*/
 
     function recarregarETabelaPrincipal() {
         console.log("Buscando dados atualizados do carregamento...");
@@ -138,29 +174,36 @@ $(document).ready(function () {
                             itensDoCliente.forEach((item, index) => {
                                 const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
 
+                                // Células de Fila e Ações são criadas apenas na primeira linha do grupo da Fila
                                 if (isFirstRowOfQueue && index === 0) {
                                     const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
-                                    $linha.append(`<td rowspan="${totalItensNaFila}">${numSequencial}</td>`);
+
+                                    // Célula 1: Fila
+                                    $linha.append(`<td  class="text-center align-middle" rowspan="${totalItensNaFila}">${numSequencial}</td>`);
+
+                                    // Célula 2: Ações (com a classe 'coluna-acoes')
                                     $linha.append(`
-                                        <td class="text-center align-middle" rowspan="${totalItensNaFila}">
-                                            <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
-                                                <i class="fas fa-pencil-alt"></i> Editar
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
-                                                <i class="fas fa-trash"></i> Remover
-                                            </button>
-                                        </td>
-                                    `);
+                                    <td class="text-center align-middle coluna-acoes" rowspan="${totalItensNaFila}">
+                                        <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                                            <i class="fas fa-pencil-alt"></i> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                            <i class="fas fa-trash"></i> Remover
+                                        </button>
+                                    </td>
+                                `);
                                 }
 
+                                // Célula 3: Cliente (criada uma vez por grupo de cliente)
                                 if (index === 0) {
-                                    $linha.append(`<td rowspan="${totalItensDoCliente}">${nomeCliente}</td>`);
+                                    $linha.append(`<td class="align-middle" rowspan="${totalItensDoCliente}">${nomeCliente}</td>`);
                                 }
 
-                                $linha.append(`<td>${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
-                                $linha.append(`<td>${item.lote_completo_calculado || 'N/A'}</td>`);
-                                $linha.append(`<td>${item.cliente_lote_nome || 'N/A'}</td>`);
-                                $linha.append(`<td class="text-end">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
+                                // Células restantes
+                                $linha.append(`<td class="align-middle">${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
+                                $linha.append(`<td class="text-center align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
+                                $linha.append(`<td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>`);
+                                $linha.append(`<td class="text-end align-middle">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
 
                                 $tabelaComposicaoBody.append($linha);
                             });
@@ -171,6 +214,7 @@ $(document).ready(function () {
             } else {
                 $tabelaComposicaoBody.html(`<tr><td colspan="7" class="text-center text-danger">Erro ao carregar os dados: ${response.message || ''}</td></tr>`);
             }
+            controlarVisibilidadeAcoes();
         }).fail(function () {
             $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
         });
@@ -209,7 +253,8 @@ $(document).ready(function () {
             $('button[data-bs-target="#modal-gerenciar-fila"]').hide();
 
             // Esconde a coluna inteira de Ações da tabela principal
-            $('#tabela-composicao-carregamento').find('th:nth-child(2), td:nth-child(2)').hide();
+            /* $('#tabela-composicao-carregamento').find('th:nth-child(2), td:nth-child(2)').hide();*/
+            $('.coluna-acoes').hide();
 
             // Esconde o card inteiro de Finalização
             $('#btn-abrir-conferencia').closest('.card').hide();
@@ -217,15 +262,14 @@ $(document).ready(function () {
         } else {
             // Garante que os botões estejam visíveis para outros status como EM ANDAMENTO
             $('button[data-bs-target="#modal-gerenciar-fila"]').show();
-            $('#tabela-composicao-carregamento').find('th:nth-child(2), td:nth-child(2)').show();
+            $('.coluna-acoes').show();
+            //$('#tabela-composicao-carregamento').find('th:nth-child(2), td:nth-child(2)').show();
             $('#btn-abrir-conferencia').closest('.card').show();
         }
     }
 
     // --- EVENT HANDLERS ---
     $modalGerenciarFila.on('show.bs.modal', function (event) {
-        console.log("Modal de fila aberto. Limpando estado anterior...");
-
         if ($('.select2-hidden-accessible').length) {
             $('.select2-hidden-accessible').select2('close');
         }
@@ -250,10 +294,7 @@ $(document).ready(function () {
     });
 
     $modalGerenciarFila.on('shown.bs.modal', function (event) {
-        console.log("Modal visível (shown.bs.modal). Modo:", modoModal);
-
         if (modoModal === 'edicao' && filaIdParaEditar) {
-            console.log("Preenchendo modal com dados da fila ID:", filaIdParaEditar);
             $.ajax({
                 url: 'ajax_router.php?action=getFilaDetalhes',
                 type: 'POST',
@@ -302,7 +343,6 @@ $(document).ready(function () {
     });
 
     $modalGerenciarFila.on('hidden.bs.modal', function () {
-        console.log("Modal fechado. Limpando estado...");
         modoModal = 'inclusao';
         filaIdParaEditar = null;
         $selectClienteParaFila.val(null).trigger('change');
@@ -332,345 +372,6 @@ $(document).ready(function () {
         inicializarSelectProdutoNoCard(selectIdUnico);
         $selectClienteParaFila.val(null).trigger('change');
     });
-
-    /*  $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (e) {
-          e.preventDefault();
-          const $form = $(this);
-          const $produtoSelect = $form.find('.select-produto-estoque');
-          const $quantidadeInput = $form.find('input[type="number"]');
-          const produtoSelecionado = $produtoSelect.select2('data')[0];
-          const quantidade = $quantidadeInput.val();
-          if (!produtoSelecionado || !produtoSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) {
-              notificacaoErro('Atenção', 'Por favor, selecione um produto e insira uma quantidade válida.');
-              return;
-          }
-          const $linhaSendoEditada = $form.data('editing-row');
-          if ($linhaSendoEditada) {
-              $linhaSendoEditada.attr('data-lote-item-id', produtoSelecionado.id);
-              $linhaSendoEditada.find('td:nth-child(1)').text(produtoSelecionado.text);
-              $linhaSendoEditada.find('td:nth-child(2)').text(parseFloat(quantidade).toFixed(3));
-              $form.removeData('editing-row');
-              $form.find('button[type="submit"]').html('<i class="fas fa-plus"></i> Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
-          } else {
-              const $listaProdutos = $form.closest('.card-cliente-na-fila').find('.lista-produtos-cliente');
-              const produtoHtml = `<tr data-lote-item-id="${produtoSelecionado.id}"><td>${produtoSelecionado.text}</td><td class="text-end">${parseFloat(quantidade).toFixed(3)}</td><td class="text-center"><button type="button" class="btn btn-outline-secondary btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button> <button type="button" class="btn btn-outline-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button></td></tr>`;
-              $listaProdutos.append(produtoHtml);
-          }
-          $produtoSelect.val(null).trigger('change');
-          $quantidadeInput.val('');
-      });*/
-
-
-    /* $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (e) {
-         e.preventDefault();
-         const $form = $(this);
-         const $produtoSelect = $form.find('.select-produto-estoque');
-         const $loteSelect = $form.find('.select-lote-estoque');
-         const $quantidadeInput = $form.find('input[type="number"]');
- 
-         // Pega os dados dos campos
-         const produtoSelecionado = $produtoSelect.select2('data')[0];
-         const loteSelecionado = $loteSelect.select2('data')[0];
-         const quantidade = $quantidadeInput.val();
- 
-         // Validação
-         if (!loteSelecionado || !loteSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) {
-             notificacaoErro('Atenção', 'Por favor, selecione um produto, um lote e uma quantidade válida.');
-             return;
-         }
- 
-         const loteItemId = loteSelecionado.id;
-         // Monta o texto completo para exibição na tabela
-         const textoCompleto = `${produtoSelecionado.text} | ${loteSelecionado.text}`;
- 
-         // Verifica se estamos em modo de edição
-         const $linhaSendoEditada = $form.data('editing-row');
- 
-         if ($linhaSendoEditada) {
-             $linhaSendoEditada.attr('data-lote-item-id', loteItemId);
-             $linhaSendoEditada.find('td:nth-child(1)').text(textoCompleto); // Atualiza o texto do produto/lote
-             $linhaSendoEditada.find('td:nth-child(2)').text(parseFloat(quantidade).toFixed(3));
- 
-             $form.removeData('editing-row');
-             $form.find('button[type="submit"]').html('<i class="fas fa-plus"></i>').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
- 
-         } else {
-             const $listaProdutos = $form.closest('.card-cliente-na-fila').find('.lista-produtos-cliente');
-             const produtoHtml = `
-             <tr data-lote-item-id="${loteItemId}">
-                 <td>${textoCompleto}</td>
-                 <td class="text-end">${parseFloat(quantidade).toFixed(3)}</td>
-                 <td class="text-center">
-                     <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
-                     <button type="button" class="btn btn-outline-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
-                 </td>
-             </tr>`;
-             $listaProdutos.append(produtoHtml);
-         }
- 
-         // Limpa os campos para a próxima ação
-         $produtoSelect.val(null).trigger('change');
-         $loteSelect.val(null).trigger('change').prop('disabled', true);
-         $quantidadeInput.val('');
-     });*/
-
-
-    // /public/js/detalhes_carregamento.js (Versão com Validação Final Corrigida)
-
-    /* $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (e) {
-         e.preventDefault();
-         const $form = $(this);
-         const $produtoSelect = $form.find('.select-produto-estoque');
-         const $loteSelect = $form.find('.select-lote-estoque');
-         const $quantidadeInput = $form.find('input[type="number"]');
- 
-         // Pega os dados dos campos
-         const produtoSelecionado = $produtoSelect.select2('data')[0];
-         const loteSelecionado = $loteSelect.select2('data')[0];
-         const quantidade = $quantidadeInput.val();
- 
-         // Agora validamos se AMBOS, produto e lote, estão selecionados.
-         if (!produtoSelecionado || !produtoSelecionado.id || !loteSelecionado || !loteSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) {
-             notificacaoErro('Atenção', 'Por favor, selecione um produto, um lote e uma quantidade válida.');
-             return; // Interrompe a execução se algo estiver em falta.
-         }
- 
-         const loteItemId = loteSelecionado.id;
-         const textoCompleto = `${produtoSelecionado.text} | ${loteSelecionado.text}`;
- 
-         const $linhaSendoEditada = $form.data('editing-row');
- 
-         if ($linhaSendoEditada) {
-             $linhaSendoEditada.attr('data-lote-item-id', loteItemId);
-             $linhaSendoEditada.find('td:nth-child(1)').text(textoCompleto);
-             $linhaSendoEditada.find('td:nth-child(2)').text(parseFloat(quantidade).toFixed(3));
- 
-             $form.removeData('editing-row');
-             $form.find('button[type="submit"]').html('<i class="fas fa-plus"></i>').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
- 
-         } else {
-             const $listaProdutos = $form.closest('.card-cliente-na-fila').find('.lista-produtos-cliente');
-             const produtoHtml = `
-             <tr data-lote-item-id="${loteItemId}">
-                 <td>${textoCompleto}</td>
-                 <td class="text-end">${parseFloat(quantidade).toFixed(3)}</td>
-                 <td class="text-center">
-                     <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
-                     <button type="button" class="btn btn-outline-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
-                 </td>
-             </tr>`;
-             $listaProdutos.append(produtoHtml);
-         }
- 
-         // Limpa os campos para a próxima ação
-         $produtoSelect.val(null).trigger('change');
-         $loteSelect.val(null).trigger('change').prop('disabled', true);
-         $quantidadeInput.val('');
-     });*/
-
-
-    /* $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (event) {
-         event.preventDefault();
-         const $form = $(this);
-         const produtoId = $form.find('.select-produto-estoque').val();
-         const loteId = $form.find('.select-lote-estoque').val();
-         const quantidade = parseFloat($form.find('input[type="number"]').val());
-         const $card = $form.closest('.card-cliente-na-fila');
-         const clienteId = $card.data('cliente-id');
- 
-         if (!produtoId || !loteId || isNaN(quantidade) || quantidade <= 0) {
-             notificacaoErro('Dados Inválidos', 'Preencha todos os campos corretamente.');
-             return;
-         }
- 
-         // Corrige para pegar texto com Select2 (melhor que option:selected)
-         const produtoData = $form.find('.select-produto-estoque').select2('data')[0];
-         const loteData = $form.find('.select-lote-estoque').select2('data')[0];
-         const produtoNome = produtoData ? produtoData.text : 'Produto Desconhecido';
-         const loteNome = loteData ? loteData.text : 'Lote Desconhecido';
- 
-         // Gera a linha
-         const $linha = $(`
-         <tr data-lote-item-id="${loteId}">
-             <td>${produtoNome} - ${loteNome}</td>
-             <td class="text-end">${quantidade.toFixed(3)}</td>
-             <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remover-produto-cliente"><i class="fas fa-trash"></i></button></td>
-         </tr>
-     `);
- 
-         // Log para depuração: Verifica se a linha foi gerada
-         console.log('Linha gerada:', $linha[0].outerHTML);
- 
-         // Seleciona o tbody explicitamente
-         const $tabelaBody = $card.find('.lista-produtos-cliente tbody');
- 
-         // Log para depuração: Verifica se o tbody foi encontrado
-         console.log('Tbody encontrado:', $tabelaBody.length > 0 ? 'Sim' : 'Não');
-         if ($tabelaBody.length === 0) {
-             console.error('Erro: Tbody não encontrado na tabela .lista-produtos-cliente');
-             return; // Para a execução se não encontrar
-         }
- 
-         // Adiciona a linha ao tbody
-         $tabelaBody.append($linha);
- 
-         // Log para confirmar adição
-         console.log('Linha adicionada ao tbody. Número de linhas agora:', $tabelaBody.find('tr').length);
- 
-         // Limpa o formulário
-         $form[0].reset();
-         $form.find('.select-lote-estoque').val(null).trigger('change').prop('disabled', true);
-     });*/
-
-    // /public/js/detalhes_carregamento.js (Versão com Depuração)
-
-    /* $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (e) {
-         e.preventDefault();
-         console.log("==========================================");
-         console.log("PASSO 1: Formulário submetido. O botão '+' foi clicado.");
- 
-         const $form = $(this);
-         const $produtoSelect = $form.find('.select-produto-estoque');
-         const $loteSelect = $form.find('.select-lote-estoque');
-         const $quantidadeInput = $form.find('input[type="number"]');
- 
-         const produtoSelecionado = $produtoSelect.select2('data')[0];
-         const loteSelecionado = $loteSelect.select2('data')[0];
-         const quantidade = $quantidadeInput.val();
- 
-         console.log("PASSO 2: Dados recolhidos do formulário.");
-         console.log(" - Produto Selecionado:", produtoSelecionado);
-         console.log(" - Lote Selecionado:", loteSelecionado);
-         console.log(" - Quantidade:", quantidade);
- 
-         console.log("PASSO 3: A executar a validação...");
-         if (!produtoSelecionado || !produtoSelecionado.id || !loteSelecionado || !loteSelecionado.id || !quantidade || parseFloat(quantidade) <= 0) {
-             notificacaoErro('Atenção', 'Por favor, selecione um produto, um lote e uma quantidade válida.');
-             console.log("FALHA: A validação falhou. A função foi interrompida.");
-             console.log("==========================================");
-             return;
-         }
-         console.log("SUCESSO: A validação passou.");
- 
-         const loteItemId = loteSelecionado.id;
-         const textoCompleto = `${produtoSelecionado.text} | ${loteSelecionado.text}`;
-         const $linhaSendoEditada = $form.data('editing-row');
- 
-         if ($linhaSendoEditada) {
-             console.log("PASSO 4: Entrou no modo de EDIÇÃO.");
-             // (Lógica de edição...)
-             $linhaSendoEditada.attr('data-lote-item-id', loteItemId);
-             $linhaSendoEditada.find('td:nth-child(1)').text(textoCompleto);
-             $linhaSendoEditada.find('td:nth-child(2)').text(parseFloat(quantidade).toFixed(3));
-             console.log("SUCESSO: Linha da tabela foi ATUALIZADA.");
- 
-             $form.removeData('editing-row');
-             $form.find('button[type="submit"]').html('<i class="fas fa-plus"></i>').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
- 
-         } else {
-             console.log("PASSO 4: Entrou no modo de ADIÇÃO.");
- 
-            // const $listaProdutos = $form.closest('.card-cliente-na-fila').find('.lista-produtos-cliente');
-            // const $listaProdutos = $form.siblings('.table-responsive').find('.lista-produtos-cliente');
-             const $listaProdutos = $form.closest('.card-body').find('.lista-produtos-cliente');
-             console.log("PASSO 5: A tentar encontrar a tabela do cliente. Objeto encontrado:", $listaProdutos);
- 
-             if ($listaProdutos.length === 0) {
-                 console.error("FALHA CRÍTICA: Não foi possível encontrar o elemento <tbody> com a classe '.lista-produtos-cliente' para adicionar o produto.");
-             }
- 
-             const produtoHtml = `
-             <tr data-lote-item-id="${loteItemId}">
-                 <td>${textoCompleto}</td>
-                 <td class="text-end">${parseFloat(quantidade).toFixed(3)}</td>
-                 <td class="text-center">
-                     <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
-                     <button type="button" class="btn btn-outline-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
-                 </td>
-             </tr>`;
- 
-             $listaProdutos.append(produtoHtml);
-             console.log("SUCESSO: A linha do produto foi adicionada à tabela do cliente.");
-         }
- 
-         console.log("PASSO 6: A limpar os campos do formulário.");
-         $produtoSelect.val(null).trigger('change');
-         $loteSelect.val(null).trigger('change').prop('disabled', true);
-         $quantidadeInput.val('');
-         console.log("==========================================");
-     });*/
-
-    /*    $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (event) {
-        event.preventDefault();
-        const $form = $(this);
-        const produtoId = $form.find('.select-produto-estoque').val();
-        const loteId = $form.find('.select-lote-estoque').val();
-        const quantidade = parseFloat($form.find('input[type="number"]').val());
-        const $card = $form.closest('.card-cliente-na-fila');
-        const clienteId = $card.data('cliente-id');
-    
-        if (!produtoId || !loteId || isNaN(quantidade) || quantidade <= 0) {
-            notificacaoErro('Dados Inválidos', 'Preencha todos os campos corretamente.');
-            return;
-        }
-    
-        // Obtém o texto do Select2
-        const produtoData = $form.find('.select-produto-estoque').select2('data')[0];
-        const loteData = $form.find('.select-lote-estoque').select2('data')[0];
-        const produtoNome = produtoData ? produtoData.text : 'Produto Desconhecido';
-        const loteNome = loteData ? loteData.text : 'Lote Desconhecido';
-    
-        // Gera a linha
-        const $linha = $(`
-            <tr data-lote-item-id="${loteId}">
-                <td>${produtoNome} - ${loteNome}</td>
-                <td class="text-end">${quantidade.toFixed(3)}</td>
-                <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remover-produto-cliente"><i class="fas fa-trash"></i></button></td>
-            </tr>
-        `);
-    
-        // Log para depuração: Verifica a linha gerada
-        console.log('Linha gerada:', $linha[0].outerHTML);
-    
-        // Seleciona o div table-responsive
-        const $tableResponsive = $card.find('.table-responsive');
-        
-        // Verifica se a tabela existe; se não, cria
-        let $tabelaBody = $tableResponsive.find('.lista-produtos-cliente tbody');
-        if ($tabelaBody.length === 0) {
-            console.log('Tbody não encontrado, criando tabela...');
-            $tableResponsive.html(`
-                <table class="table table-bordered lista-produtos-cliente">
-                    <thead>
-                        <tr>
-                            <th>Produto - Lote</th>
-                            <th class="text-end">Quantidade</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            `);
-            $tabelaBody = $tableResponsive.find('.lista-produtos-cliente tbody');
-        }
-    
-        // Log para depuração: Verifica se o tbody foi encontrado ou criado
-        console.log('Tbody encontrado ou criado:', $tabelaBody.length > 0 ? 'Sim' : 'Não');
-        if ($tabelaBody.length === 0) {
-            console.error('Erro: Não foi possível encontrar ou criar o tbody.');
-            return;
-        }
-    
-        // Adiciona a linha ao tbody
-        $tabelaBody.append($linha);
-    
-        // Log para confirmar adição
-        console.log('Linha adicionada ao tbody. Número de linhas agora:', $tabelaBody.find('tr').length);
-    
-        // Limpa o formulário
-        $form[0].reset();
-        $form.find('.select-lote-estoque').val(null).trigger('change').prop('disabled', true);
-    });*/
 
     // /public/js/detalhes_carregamento.js (Versão Final com a sua lógica de depuração)
 
@@ -709,7 +410,8 @@ $(document).ready(function () {
             $linhaSendoEditada.find('td:nth-child(1)').text(textoCompleto);
             $linhaSendoEditada.find('td:nth-child(2)').text(parseFloat(quantidade).toFixed(3));
             $form.removeData('editing-row');
-            $form.find('button[type="submit"]').html('<i class="fas fa-plus"></i>').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
+            $form.find('button[type="submit"]').html('+').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
+            $form.find('.btn-cancelar-edicao').remove();
         } else {
             // Adiciona uma nova linha
             const produtoHtml = `
@@ -729,25 +431,47 @@ $(document).ready(function () {
         $form.find('.select-lote-estoque').val(null).trigger('change').prop('disabled', true);
         $form.find('input[type="number"]').val('');
     });
-    
+
     $modalGerenciarFila.on('click', '.btn-editar-produto-da-lista', function () {
         const $linhaParaEditar = $(this).closest('tr');
         const $cardCliente = $linhaParaEditar.closest('.card-cliente-na-fila');
         const $form = $cardCliente.find('.form-adicionar-produto-ao-cliente');
         const $produtoSelect = $form.find('.select-produto-estoque');
+        const $loteSelect = $form.find('.select-lote-estoque');
         const $quantidadeInput = $form.find('input[type="number"]');
         const loteItemId = $linhaParaEditar.data('lote-item-id');
-        const produtoTexto = $linhaParaEditar.find('td:nth-child(1)').text();
-        const quantidade = parseFloat($linhaParaEditar.find('td:nth-child(2)').text());
-        if ($produtoSelect.find(`option[value="${loteItemId}"]`).length === 0) {
-            const option = new Option(produtoTexto, loteItemId, true, true);
-            $produtoSelect.append(option).trigger('change');
-        }
-        $produtoSelect.val(loteItemId).trigger('change');
-        $quantidadeInput.val(quantidade);
-        $form.data('editing-row', $linhaParaEditar);
-        $form.find('button[type="submit"]').html('<i class="fas fa-check"></i> Atualizar Produto').removeClass('btn-primary').addClass('btn-warning');
-        $quantidadeInput.focus();
+
+        // Faz a chamada AJAX para buscar os dados completos do item
+        $.ajax({
+            url: 'ajax_router.php?action=getDadosDoLoteItem', type: 'POST',
+            data: { lote_item_id: loteItemId, csrf_token: csrfToken }, dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                const item = response.data;
+                const quantidade = parseFloat($linhaParaEditar.find('td:nth-child(2)').text());
+
+                // Cria e seleciona a option do Produto
+                const produtoOption = new Option(`${item.prod_descricao} (Cód: ${item.prod_codigo_interno})`, item.item_produto_id, true, true);
+                $produtoSelect.append(produtoOption).trigger('change');
+
+                // Ativa o dropdown de lote, cria e seleciona a sua option
+                $loteSelect.prop('disabled', false);
+                const loteOption = new Option(item.lote_texto, item.lote_item_id, true, true);
+                $loteSelect.append(loteOption).trigger('change');
+
+                $quantidadeInput.val(quantidade);
+
+                $form.data('editing-row', $linhaParaEditar);
+                $form.find('button[type="submit"]').html('<i class="fas fa-check"></i> Atualizar').removeClass('btn-primary').addClass('btn-warning');
+
+                // Adiciona o botão de Cancelar Edição
+                if ($form.find('.btn-cancelar-edicao').length === 0) {
+                    $form.find('button[type="submit"]').after('<button type="button" class="btn btn-secondary ms-1 btn-cancelar-edicao" title="Cancelar Edição">Cancelar</button>');
+                }
+            } else {
+                notificacaoErro('Erro', 'Não foi possível buscar os dados do item para edição.');
+            }
+        });
     });
 
     $modalGerenciarFila.on('click', '.btn-remover-produto-da-lista', function () {
@@ -787,6 +511,22 @@ $(document).ready(function () {
         }
     });
 
+    $modalGerenciarFila.on('click', '.btn-cancelar-edicao', function () {
+        const $form = $(this).closest('form');
+
+        // Limpa o formulário e o estado de edição
+        $form.find('.select-produto-estoque').val(null).trigger('change');
+        $form.find('.select-lote-estoque').val(null).trigger('change').prop('disabled', true);
+        $form.find('input[type="number"]').val('');
+        $form.removeData('editing-row');
+
+        // Restaura o botão de Adicionar e remove o de Cancelar
+        $form.find('button[type="submit"]').html('+').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
+        $(this).remove(); // Remove o próprio botão de cancelar
+    });
+
+
+
     $('#btn-salvar-e-fechar-fila').on('click', function () {
         const $botaoSalvar = $(this);
         const filaData = [];
@@ -819,9 +559,6 @@ $(document).ready(function () {
         if (modoModal === 'edicao' && filaIdParaEditar) {
             ajaxUrl = 'ajax_router.php?action=atualizarFilaComposta';
             ajaxData.fila_id = filaIdParaEditar;
-            console.log("Modo de Edição: Atualizando Fila ID", filaIdParaEditar);
-        } else {
-            console.log("Modo de Criação: Salvando nova Fila");
         }
 
         $botaoSalvar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Salvando...');
@@ -1000,14 +737,13 @@ $(document).ready(function () {
         const $botao = $(this);
         filaIdParaEditar = $botao.data('fila-id');
         modoModal = 'edicao';
-        console.log("Preparando para editar fila ID:", filaIdParaEditar);
         $modalGerenciarFila.modal('show');
     });
 
 
     // --- INICIALIZAÇÃO DA PÁGINA ---
     preencherCabecalho();
-    controlarVisibilidadeAcoes();
+    //controlarVisibilidadeAcoes();
     inicializarSelectClienteModal();
     recarregarETabelaPrincipal();
 });

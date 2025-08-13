@@ -1,25 +1,49 @@
+<?php
+// /views/usuarios/lista_usuarios.php
+?>
+
 <h4 class="fw-bold mb-3">Gestão de Usuários</h4>
 
-<a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-usuario" id="btn-adicionar-usuario">Adicionar Usuário</a>
-
-<div id="feedback-message-area-usuario" class="mt-3"></div>
-
-<div class="table-responsive">
-    <table id="tabela-usuarios" class="table table-hover my-4" style="width:100%">
-        <thead>
-            <tr>
-                <th>Situação</th>
-                <th>Nome</th>
-                <th>Login</th>
-                <th>Nível</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Novo Usuário</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <button class="btn btn-primary" id="btn-adicionar-usuario">
+                    <i class="fas fa-plus me-2"></i> Adicionar Usuário
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="modal fade" id="modal-usuario" tabindex="-1" role="dialog" aria-labelledby="modal-usuario-label" aria-hidden="true">
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Usuário</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="tabela-usuarios" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th class="text-center align-middle">Situação</th>
+                        <th class="text-center align-middle">Nome</th>
+                        <th class="text-center align-middle">Login</th>
+                        <th class="text-center align-middle">Nível</th>
+                        <th class="text-center align-middle">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="modal-usuario" tabindex="-1" role="dialog" aria-labelledby="modal-usuario-label"
+    aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -43,7 +67,8 @@
                     <div class="form-group mb-3">
                         <label for="usu-senha" class="form-label">Senha</label>
                         <input type="password" class="form-control" id="usu-senha" name="usu_senha">
-                        <small class="form-text text-muted">Deixe em branco para não alterar na edição.</small>
+                        <small class="form-text text-muted">Deixe em branco para não alterar na
+                            edição.</small>
                     </div>
                     <div class="form-group mb-3">
                         <label for="usu-tipo" class="form-label">Nível de Acesso</label>
@@ -56,7 +81,8 @@
                     <div class="form-group mt-3">
                         <label class="form-label" for="usu-situacao">Situação</label>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="usu-situacao" name="usu_situacao" value="A" checked>
+                            <input class="form-check-input" type="checkbox" role="switch" id="usu-situacao"
+                                name="usu_situacao" value="A" checked>
                             <label class="form-check-label" for="usu-situacao">Ativo</label>
                         </div>
                     </div>

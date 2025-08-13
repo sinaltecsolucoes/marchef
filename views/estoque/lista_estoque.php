@@ -13,17 +13,17 @@
             <table class="table table-bordered" id="tabela-estoque" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>Tipo Produto</th>
-                        <th>Subtipo</th>
-                        <th>Classificação</th>
-                        <th>Cód. Interno</th>
-                        <th>Descrição do Produto</th>
-                        <th>Lote</th>
-                        <th>Cliente Origem</th>
-                        <th>Data de Fabricação</th>
-                        <th class="text-end">Peso (Emb.)</th>
-                        <th class="text-end">Total Caixas</th>
-                        <th class="text-end">Peso Total (kg)</th>
+                        <th class="text-center align-middle">Produto</th>
+                        <th class="text-center align-middle">Subtipo</th>
+                        <th class="text-center align-middle">Classificação</th>
+                        <th class="text-center align-middle">Cód. Interno</th>
+                        <th class="text-center align-middle">Descrição do Produto</th>
+                        <th class="text-center align-middle">Lote</th>
+                        <th class="text-center align-middle">Fornecedor</th>
+                        <th class="text-center align-middle">Data de Fabricação</th>
+                        <th class="text-center align-middle">Peso (Emb.)</th>
+                        <th class="text-center align-middle">Total Caixas</th>
+                        <th class="text-center align-middle">Peso Total (kg)</th>
                     </tr>
                 </thead>
                 <tbody>

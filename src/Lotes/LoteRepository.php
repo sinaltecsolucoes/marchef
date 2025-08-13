@@ -37,7 +37,7 @@ class LoteRepository
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
-        $orderColumn = 'l.lote_data_cadastro'; // Simplicado, pode ser melhorado
+        $orderColumn = 'l.lote_data_cadastro';
         $orderDir = $params['order'][0]['dir'] ?? 'desc';
 
         $sqlData = "SELECT l.*, f.ent_razao_social AS fornecedor_razao_social $baseQuery $whereClause ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
@@ -62,9 +62,14 @@ class LoteRepository
         if (!$lote)
             return null;
 
-        /* $items = $this->pdo->prepare("SELECT li.*, p.prod_descricao, p.prod_peso_embalagem FROM tbl_lote_itens li JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo WHERE li.item_lote_id = :id");
-         $items->execute([':id' => $id]);*/
-        $items = $this->pdo->prepare("SELECT li.*, p.prod_descricao, p.prod_peso_embalagem, (li.item_quantidade - li.item_quantidade_finalizada) as quantidade_pendente FROM tbl_lote_itens li JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo WHERE li.item_lote_id = :id ORDER BY li.item_status ASC, li.item_id ASC");
+        $items = $this->pdo->prepare(
+            "SELECT li.*, p.prod_descricao, p.prod_peso_embalagem, 
+                           (li.item_quantidade - li.item_quantidade_finalizada) as quantidade_pendente 
+                    FROM tbl_lote_itens li 
+                    JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
+                    WHERE li.item_lote_id = :id 
+                    ORDER BY li.item_status ASC, li.item_id ASC"
+        );
         $items->execute([':id' => $id]);
 
         return ['header' => $lote, 'items' => $items->fetchAll(PDO::FETCH_ASSOC)];
@@ -214,54 +219,9 @@ class LoteRepository
             throw $e;
         }
     }
-    /*  public function finalize(int $id): bool
-      {
-          // AUDITORIA: Capturar dados antes de finalizar
-          $dadosAntigos = $this->findById($id);
-
-          $this->pdo->beginTransaction();
-          try {
-              // ... (código de verificação e inserção em estoque existente) ...
-              $stmt_check = $this->pdo->prepare("SELECT lote_status FROM tbl_lotes WHERE lote_id = :id FOR UPDATE");
-              $stmt_check->execute([':id' => $id]);
-              if ($stmt_check->fetchColumn() !== 'EM ANDAMENTO') {
-                  throw new Exception('Este lote não pode ser finalizado.');
-              }
-
-              $stmt_itens = $this->pdo->prepare("SELECT item_id, item_produto_id, item_quantidade FROM tbl_lote_itens WHERE item_lote_id = :id");
-              $stmt_itens->execute([':id' => $id]);
-              $itens_do_lote = $stmt_itens->fetchAll(PDO::FETCH_ASSOC);
-              if (empty($itens_do_lote)) {
-                  throw new Exception('Não é possível finalizar um lote sem produtos.');
-              }
-
-              $stmt_estoque = $this->pdo->prepare("INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento) VALUES (:produto_id, :lote_item_id, :quantidade, 'ENTRADA')");
-              foreach ($itens_do_lote as $item) {
-                  $stmt_estoque->execute([':produto_id' => $item['item_produto_id'], ':lote_item_id' => $item['item_id'], ':quantidade' => $item['item_quantidade']]);
-              }
-
-              $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = 'FINALIZADO' WHERE lote_id = :id")->execute([':id' => $id]);
-
-              // AUDITORIA: Registar a finalização como um UPDATE antes de confirmar a transação
-              if ($dadosAntigos) {
-                  $dadosNovos = $dadosAntigos;
-                  $dadosNovos['lote_status'] = 'FINALIZADO';
-                  $this->auditLogger->log('FINALIZE_LOTE', $id, 'tbl_lotes', $dadosAntigos, $dadosNovos);
-              }
-
-              $this->pdo->commit();
-              return true;
-          } catch (PDOException | Exception $e) {
-              $this->pdo->rollBack();
-              throw $e;
-          }
-      }*/
-
-    // /src/Lotes/LoteRepository.php
 
     /**
      * Finaliza TODOS os itens pendentes de um lote e gera o estoque.
-     * (Versão Corrigida com lógica de estoque)
      *
      * @param int $loteId
      * @throws Exception
@@ -363,16 +323,12 @@ class LoteRepository
      */
     public function finalizeParcialmente(int $loteId, array $itens): void
     {
-        error_log("--- DEBUG Repositório ---: Método 'finalizeParcialmente' iniciado.");
         $this->pdo->beginTransaction();
-        error_log("PASSO 3.1: Transação iniciada para o Lote ID {$loteId}.");
 
         try {
             foreach ($itens as $item) {
                 $itemId = $item['item_id'];
                 $quantidadeAFinalizar = (float) $item['quantidade'];
-
-                error_log("Processando Item ID {$itemId} com Quantidade {$quantidadeAFinalizar}...");
 
                 // 1. Validação de segurança: busca o item no banco para garantir que a quantidade é válida
                 $stmtItemAtual = $this->pdo->prepare(
@@ -397,7 +353,6 @@ class LoteRepository
                     ':qtd' => $quantidadeAFinalizar,
                     ':obs' => "Finalização parcial do Lote ID {$loteId}"
                 ]);
-                error_log("PASSO 3.2: INSERT em tbl_estoque executado para o Item ID {$itemId}.");
 
                 // 3. Atualiza a quantidade finalizada no item do lote
                 $stmtUpdateItem = $this->pdo->prepare(
@@ -405,29 +360,19 @@ class LoteRepository
                      WHERE item_id = :id"
                 );
                 $stmtUpdateItem->execute([':qtd' => $quantidadeAFinalizar, ':id' => $itemId]);
-                error_log("PASSO 3.3: UPDATE em tbl_lote_itens executado para o Item ID {$itemId}.");
             }
 
             // 4. Após finalizar os itens, recalcula e atualiza o status geral do lote
             $this->atualizarStatusLote($loteId);
-            error_log("PASSO 3.4: Status do lote atualizado.");
 
             $this->auditLogger->log('FINALIZE_PARTIAL', $loteId, 'tbl_lotes', null, ['itens_finalizados' => $itens]);
-            error_log("PASSO 3.5: Auditoria registada.");
             $this->pdo->commit();
-
-            error_log("PASSO 3.6: Transação confirmada (COMMIT).");
 
         } catch (Exception $e) {
             $this->pdo->rollBack();
-
-            error_log("!!!!!!!!!! ERRO E ROLLBACK !!!!!!!!!!");
-            error_log("A transação foi desfeita. Mensagem de Erro: " . $e->getMessage());
             throw $e;
         }
     }
-
-
 
     /**
      * Reavalia e atualiza o status geral de um lote com base no estado dos seus itens.
@@ -610,6 +555,42 @@ class LoteRepository
         $length = $params['length'] ?? 10;
         $searchValue = $params['search']['value'] ?? '';
 
+        // ===================================================================
+        // == INÍCIO DA LÓGICA DE ORDENAÇÃO ==
+        // ===================================================================
+
+        // 1. Mapeamento das colunas do frontend para as colunas da subconsulta
+        $columnMap = [
+            0 => 'tipo_produto',
+            1 => 'subtipo',
+            2 => 'classificacao',
+            3 => 'codigo_interno',
+            4 => 'descricao_produto',
+            5 => 'lote',
+            6 => 'cliente_lote_nome',
+            7 => 'data_fabricacao',
+            8 => 'peso_embalagem',
+            9 => 'total_caixas',
+            10 => 'peso_total'
+        ];
+
+        // 2. Define uma ordenação padrão
+        $orderColumn = 'descricao_produto'; // Padrão
+        $orderDir = 'asc';
+
+        // 3. Verifica se o DataTables enviou uma instrução de ordenação
+        if (isset($params['order']) && isset($params['order'][0]['column'])) {
+            $orderColumnIndex = $params['order'][0]['column'];
+            $orderDir = strtolower($params['order'][0]['dir']) === 'asc' ? 'ASC' : 'DESC';
+
+            if (isset($columnMap[$orderColumnIndex])) {
+                $orderColumn = $columnMap[$orderColumnIndex];
+            }
+        }
+        // ===================================================================
+        // == FIM DA LÓGICA DE ORDENAÇÃO ==
+        // ===================================================================
+
         // A consulta interna (subquery) calcula o estoque corretamente
         $subQuery = "
         SELECT
@@ -625,18 +606,18 @@ class LoteRepository
         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
         LEFT JOIN tbl_entidades e_origem ON lh.lote_cliente_id = e_origem.ent_codigo
         GROUP BY li.item_id
-        HAVING total_caixas > 0
     ";
 
-        // Contagem de registros totais (sem filtro)
-        $totalRecordsQuery = $this->pdo->query("SELECT COUNT(*) FROM ({$subQuery}) as estoque_total");
-        $totalRecords = $totalRecordsQuery->fetchColumn();
-
-        $whereClause = '';
+        // Começamos a nossa cláusula WHERE com uma condição base que sempre será verdade.
+        // Isso permite-nos adicionar as outras condições de filtro com AND sem nos preocuparmos se são as primeiras.
+        $whereClause = "WHERE 1=1 ";
         $queryParams = [];
+
+        // Filtro para mostrar apenas o que tem saldo diferente de zero
+        $whereClause .= "AND total_caixas != 0 ";
+
         if (!empty($searchValue)) {
-            // A cláusula WHERE agora filtra os resultados da subquery
-            $whereClause = "WHERE (descricao_produto LIKE :search_desc 
+            $whereClause .= "AND (descricao_produto LIKE :search_desc 
                          OR codigo_interno LIKE :search_cod 
                          OR lote LIKE :search_lote
                          OR cliente_lote_nome LIKE :search_cli)";
@@ -650,7 +631,11 @@ class LoteRepository
             ];
         }
 
-        // Contagem de registros filtrados
+        // Contagem total (apenas com o filtro de saldo diferente de zero)
+        $totalRecordsQuery = $this->pdo->query("SELECT COUNT(*) FROM ({$subQuery}) as estoque_total WHERE total_caixas != 0");
+        $totalRecords = $totalRecordsQuery->fetchColumn();
+
+        // Contagem de registros filtrados (com a busca do utilizador)
         $stmtFiltered = $this->pdo->prepare("SELECT COUNT(*) FROM ({$subQuery}) as estoque_filtrado {$whereClause}");
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
@@ -659,7 +644,7 @@ class LoteRepository
         $sqlData = "SELECT *, (total_caixas * peso_embalagem) AS peso_total 
                 FROM ({$subQuery}) as estoque_final
                 {$whereClause}
-                ORDER BY descricao_produto, lote
+                ORDER BY {$orderColumn} {$orderDir}
                 LIMIT :start, :length";
 
         $stmt = $this->pdo->prepare($sqlData);
@@ -723,6 +708,106 @@ class LoteRepository
             // 5. Regista a alteração de status na auditoria
             $dadosNovos = ['lote_status' => $novoStatus];
             $this->auditLogger->log('UPDATE_STATUS', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos);
+        }
+    }
+
+    /**
+     * Busca os detalhes de um único item de lote para popular formulários.
+     * @param int $loteItemId
+     * @return array|false
+     */
+    public function findItemDetalhes(int $loteItemId)
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT 
+            li.item_produto_id,
+            p.prod_descricao,
+            p.prod_codigo_interno,
+            li.item_id as lote_item_id,
+            CONCAT('Lote: ', lh.lote_completo_calculado, ' (Estoque: ', (li.item_quantidade - li.item_quantidade_finalizada), ')') as lote_texto
+         FROM tbl_lote_itens li
+         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+         JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
+         WHERE li.item_id = :id"
+        );
+        $stmt->execute([':id' => $loteItemId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Reabre um lote finalizado, revertendo seus movimentos de estoque.
+     * Ação é bloqueada se algum item do lote já foi usado em um carregamento.
+     *
+     * @param int $loteId
+     * @param string $motivo
+     * @return bool
+     * @throws Exception
+     */
+    public function reabrir(int $loteId, string $motivo): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Validações Iniciais
+            $dadosAntigos = $this->findById($loteId);
+            if (!$dadosAntigos || $dadosAntigos['lote_status'] !== 'FINALIZADO') {
+                throw new Exception("Apenas lotes finalizados podem ser reabertos.");
+            }
+
+            // 2. VERIFICAÇÃO CRÍTICA: Lote já foi usado em algum carregamento?
+            $stmtUso = $this->pdo->prepare(
+                "SELECT COUNT(ci.car_item_id) 
+                 FROM tbl_carregamento_itens ci
+                 JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
+                 WHERE li.item_lote_id = :lote_id"
+            );
+            $stmtUso->execute([':lote_id' => $loteId]);
+            if ($stmtUso->fetchColumn() > 0) {
+                throw new Exception("Este lote não pode ser reaberto, pois seus itens já foram expedidos em um carregamento.");
+            }
+
+            // 3. Busca todos os itens que geraram estoque para este lote
+            $stmtItens = $this->pdo->prepare(
+                "SELECT item_id, item_produto_id, item_quantidade_finalizada 
+                 FROM tbl_lote_itens WHERE item_lote_id = :lote_id AND item_quantidade_finalizada > 0"
+            );
+            $stmtItens->execute([':lote_id' => $loteId]);
+            $itensParaEstornar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+            // 4. Itera sobre cada item para reverter o estoque
+            foreach ($itensParaEstornar as $item) {
+                // 4a. Cria o movimento de SAÍDA (estorno) no estoque
+                $stmtEstoque = $this->pdo->prepare(
+                    "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                     VALUES (:prod_id, :lote_item_id, :qtd, 'SAIDA POR ESTORNO', :obs)"
+                );
+                $stmtEstoque->execute([
+                    ':prod_id' => $item['item_produto_id'],
+                    ':lote_item_id' => $item['item_id'],
+                    ':qtd' => $item['item_quantidade_finalizada'],
+                    ':obs' => "Estorno por Reabertura do Lote ID {$loteId}"
+                ]);
+
+                // 4b. Zera a quantidade finalizada no item do lote
+                $this->pdo->prepare("UPDATE tbl_lote_itens SET item_quantidade_finalizada = 0 WHERE item_id = :id")
+                    ->execute([':id' => $item['item_id']]);
+            }
+
+            // 5. Altera o status do lote de volta para 'EM ANDAMENTO'
+            $novoStatus = 'EM ANDAMENTO';
+            $stmtUpdateLote = $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = :status WHERE lote_id = :id");
+            $stmtUpdateLote->execute([':status' => $novoStatus, ':id' => $loteId]);
+
+            // 6. Regista a auditoria
+            $dadosNovos = $dadosAntigos;
+            $dadosNovos['lote_status'] = $novoStatus;
+            $this->auditLogger->log('REOPEN', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos, $motivo);
+
+            $this->pdo->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
         }
     }
 }

@@ -184,6 +184,12 @@ switch ($action) {
     case 'listarEstoque':
         listarEstoque($loteRepo);
         break;
+    case 'getDadosDoLoteItem':
+        getDadosDoLoteItem($loteRepo);
+        break;
+    case 'reabrirLote':
+        reabrirLote($loteRepo);
+        break;
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -666,14 +672,6 @@ function finalizarLote(LoteRepository $repo)
 
 function finalizarLoteParcialmente(LoteRepository $repo)
 {
-    
-    // =======================================================
-    // == DEPURACAO PASSO 2: VERIFICAR DADOS RECEBIDOS NO PHP ==
-    // =======================================================
-    error_log("--- DEBUG Roteador ---: Ação 'finalizarLoteParcialmente' recebida.");
-    error_log("Dados recebidos via POST: " . print_r($_POST, true));
-    // =======================================================
-
     // Validação básica dos dados recebidos do JavaScript
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
     $itens = $_POST['itens'] ?? [];
@@ -757,6 +755,32 @@ function listarEstoque(LoteRepository $repo)
             "data" => [],
             "error" => $e->getMessage()
         ]);
+    }
+}
+
+function getDadosDoLoteItem(LoteRepository $repo)
+{
+    $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+    if (!$loteItemId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
+        return;
+    }
+    $data = $repo->findItemDetalhes($loteItemId);
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
+function reabrirLote(LoteRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+        $motivo = trim($_POST['motivo'] ?? '');
+        if (!$id || empty($motivo)) {
+            throw new Exception("Dados inválidos para reabertura.");
+        }
+        $repo->reabrir($id, $motivo);
+        echo json_encode(['success' => true, 'message' => 'Lote reaberto com sucesso! O estoque foi revertido.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 

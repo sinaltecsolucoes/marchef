@@ -19,11 +19,15 @@ $(document).ready(function () {
             }
         },
         "columns": [
-            { "data": "car_numero" },
-            { "data": "ent_razao_social" },
+            {
+                "data": "car_numero", "className": "text-center align-middle",
+            },
+            {
+                "data": "ent_razao_social", "className": "align-middle",
+            },
             {
                 "data": "car_data",
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     // Adiciona T00:00:00 para evitar problemas de fuso horário
@@ -43,53 +47,10 @@ $(document).ready(function () {
                     return `<span class="badge ${badgeClass}">${data || 'INDEFINIDO'}</span>`;
                 }
             },
-            /* {
-                 "data": "car_id",
-                 "orderable": false,
-                 "className": "text-center",
-                 "render": function (data, type, row) {
-                     const status = row.car_status;
-                     if (status === 'AGUARDANDO CONFERENCIA') {
-                         return `<button class="btn btn-primary btn-sm btn-conferir-carregamento" data-id="${data}">Conferir</button>`;
-                     }
-                     if (status === 'EM ANDAMENTO') {
-                         return `<button class="btn btn-info btn-sm btn-continuar-carregamento" data-id="${data}">Continuar</button>`;
-                     }
-                     // Para status FINALIZADO e CANCELADO, podemos ter um botão de "Ver Detalhes"
-                     return `<button class="btn btn-secondary btn-sm btn-ver-detalhes" data-id="${data}">Ver Detalhes</button>`;
-                 }
-             }*/
-
             {
                 "data": "car_id",
                 "orderable": false,
                 "className": "text-center",
-                /*"render": function (data, type, row) {
-                    const status = row.car_status;
-                    const carregamentoNumero = row.car_numero; // Para usar nas mensagens
-
-                    if (status === 'EM ANDAMENTO' || status === 'AGUARDANDO CONFERENCIA') {
-                        let acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-info btn-sm btn-continuar-carregamento me-1">Continuar</a>`;
-
-                        acoesHtml += `
-                            <div class="btn-group d-inline-block">
-                                <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Mais
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item btn-cancelar-carregamento" href="#" data-id="${data}" data-numero="${carregamentoNumero}">Cancelar Carregamento</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${data}" data-numero="${carregamentoNumero}">Excluir Permanentemente</a></li>
-                                </ul>
-                            </div>
-                        `;
-                        return acoesHtml;
-                    }
-
-                    // Para status FINALIZADO e CANCELADO, apenas o botão de ver detalhes
-                    return `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-secondary btn-sm btn-ver-detalhes">Ver Detalhes</a>`;
-                }*/
-
                 "render": function (data, type, row) {
                     const status = row.car_status;
                     const carregamentoId = row.car_id;
@@ -111,20 +72,6 @@ $(document).ready(function () {
                         return acoesHtml;
                     }
 
-                    /* if (status === 'CANCELADO') {
-                         acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes me-1">Ver Detalhes</a>`;
-                         acoesHtml += `
-                                     <div class="btn-group d-inline-block">
-                                         <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
-                                         <ul class="dropdown-menu dropdown-menu-end">
-                                             <li><a class="dropdown-item btn-reativar-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Reativar</a></li>
-                                             <li><hr class="dropdown-divider"></li>
-                                             <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Excluir</a></li>
-                                         </ul>
-                                     </div>`;
-                         return acoesHtml;
-                     }*/
-
                     if (status === 'FINALIZADO') {
                         let acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes me-1">Ver Detalhes</a>`;
                         acoesHtml += `
@@ -143,12 +90,10 @@ $(document).ready(function () {
             }
         ],
         "order": [[2, 'desc']], // Ordenar pela data (mais recente primeiro)
-        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
     // --- EVENT HANDLERS (AÇÕES DO UTILIZADOR) ---
-
     // Ação para os botões 'Continuar', 'Conferir' ou 'Ver Detalhes'
     $('#tabela-carregamentos tbody').on('click', '.btn-continuar-carregamento, .btn-conferir-carregamento, .btn-ver-detalhes', function () {
         const carregamentoId = $(this).data('id');
@@ -226,14 +171,7 @@ $(document).ready(function () {
             if (response.success) {
                 $modalCarregamento.modal('hide');
                 tabelaCarregamentos.ajax.reload(null, false);
-
                 notificacaoSucesso('Sucesso!', 'Carregamento criado com sucesso.');
-
-                // Sugestão para o futuro:
-                // if (confirm('Carregamento criado. Deseja adicionar os itens agora?')) {
-                //     window.location.href = `index.php?page=carregamento_detalhes&id=${response.carregamento_id}`;
-                // }
-
             } else {
                 notificacaoErro('Erro ao Salvar', response.message);
             }
@@ -246,8 +184,8 @@ $(document).ready(function () {
     });
 
     /**
-         * Evento para o botão CANCELAR um carregamento na tabela principal.
-         */
+    * Evento para o botão CANCELAR um carregamento na tabela principal.
+    */
     $('#tabela-carregamentos').on('click', '.btn-cancelar-carregamento', function (e) {
         e.preventDefault();
         const carregamentoId = $(this).data('id');
@@ -271,7 +209,6 @@ $(document).ready(function () {
                         notificacaoErro('Erro!', response.message);
                     }
                 });
-                // O .fail() já é tratado pelo nosso app_config.js global
             }
         });
     });
@@ -403,8 +340,7 @@ $(document).ready(function () {
 
     /**
      * Atualiza o campo "Ordem de Expedição" com base no número e data.
-     * Segue a regra: NUMERO.MES.ANO
-     */
+    */
     function atualizarOrdemExpedicao() {
         const numero = $('#car_numero').val();
         const dataStr = $('#car_data').val(); // Formato YYYY-MM-DD

@@ -28,7 +28,6 @@
     </div>
 </div>
 
-
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Composição do Carregamento</h6>
@@ -45,18 +44,17 @@
                 <thead class="table-light">
                     <tr>
                         <th>Fila</th>
-                        <th class="text-center" style="width: 120px;">Ações</th>
-                        <th>Cliente</th>
-                        <th>Produto</th>
-                        <th>Lote Origem</th>
-                        <th>Cliente Origem</th>
-                        <th class="text-end">Quantidade</th>
-
+                        <th class="text-center coluna-acoes" style="width: 120px;">Ações</th>
+                        <th class="text-center">Cliente</th>
+                        <th class="text-center">Produto</th>
+                        <th class="text-center">Lote Origem</th>
+                        <th class="text-center">Fornecedor</th>
+                        <th class="text-center">Quantidade</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-composicao-carregamento">
                     <tr>
-                        <td colspan="5" class="text-center text-muted">Nenhuma fila adicionada.</td>
+                        <td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td>
                     </tr>
                 </tbody>
             </table>
@@ -141,19 +139,27 @@
             <button type="button" class="btn-close btn-remover-cliente-da-fila"></button>
         </div>
         <div class="card-body">
+           
+
             <form class="form-adicionar-produto-ao-cliente">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-5"><label class="form-label">Produto</label><select
+                    <div class="col-md-4"><label class="form-label">Produto</label><select
                             class="form-select select-produto-estoque" style="width: 100%;"></select></div>
                     <div class="col-md-4"><label class="form-label">Lote (Estoque)</label><select
                             class="form-select select-lote-estoque" style="width: 100%;" disabled></select></div>
                     <div class="col-md-2"><label class="form-label">Quantidade</label><input type="number"
                             class="form-control" min="1" step="0.001"></div>
-                    <div class="col-md-1"><button type="submit" class="btn btn-primary w-100"
+                    <div class="col-md-2 d-flex">
+                        <button type="submit" class="btn btn-primary w-100" 
                             title="Adicionar Produto">+</button>
                     </div>
                 </div>
             </form>
+
+
+
+
+
             <hr>
 
             <div class="table-responsive">
@@ -230,11 +236,14 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="carregamento-id-reabrir">
-                <p>Você está prestes a reabrir o Carregamento Nº <strong id="carregamento-numero-reabrir">...</strong>.</p>
+                <p>Você está prestes a reabrir o Carregamento Nº <strong id="carregamento-numero-reabrir">...</strong>.
+                </p>
                 <p>O status voltará para "EM ANDAMENTO", permitindo novas edições.</p>
                 <div class="mb-3">
-                    <label for="motivo-reabertura" class="form-label"><strong>Motivo da Reabertura (Obrigatório):</strong></label>
-                    <textarea class="form-control" id="motivo-reabertura" rows="4" placeholder="Ex: Cliente solicitou a adição de mais um produto."></textarea>
+                    <label for="motivo-reabertura" class="form-label"><strong>Motivo da Reabertura
+                            (Obrigatório):</strong></label>
+                    <textarea class="form-control" id="motivo-reabertura" rows="4"
+                        placeholder="Ex: Cliente solicitou a adição de mais um produto."></textarea>
                 </div>
             </div>
             <div class="modal-footer">

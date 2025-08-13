@@ -74,27 +74,68 @@ class CarregamentoRepository
      * Cria uma nova fila e salva um lote de leituras de QR Code.
      * Usa uma transação para garantir a integridade dos dados.
      */
+    /*    public function createFilaWithLeituras(int $carregamentoId, int $clienteId, array $leituras): int
+        {
+            $this->pdo->beginTransaction();
+            try {
+                // 1. Inserir o registro da fila na tabela 'tbl_carregamento_filas'
+                $sqlFila = "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente) VALUES (:car_id, :cli_id)";
+                $stmtFila = $this->pdo->prepare($sqlFila);
+                $stmtFila->execute([
+                    ':car_id' => $carregamentoId,
+                    ':cli_id' => $clienteId
+                ]);
+                $filaId = (int) $this->pdo->lastInsertId();
+
+                // 2. Preparar a inserção para as leituras
+                $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_qrcode_conteudo) VALUES (:fila_id, :conteudo)";
+                $stmtLeitura = $this->pdo->prepare($sqlLeitura);
+
+                // 3. Inserir cada leitura da lista na tabela 'tbl_carregamento_leituras'
+                foreach ($leituras as $conteudoQr) {
+                    $stmtLeitura->execute([
+                        ':fila_id' => $filaId,
+                        ':conteudo' => $conteudoQr
+                    ]);
+                }
+
+                // AUDITORIA: Registar a criação da fila. O log é feito dentro da transação.
+                if ($filaId > 0) {
+                    $dadosNovosFila = [
+                        'fila_carregamento_id' => $carregamentoId,
+                        'fila_entidade_id_cliente' => $clienteId,
+                        'quantidade_leituras' => count($leituras)
+                    ];
+                    $this->auditLogger->log('CREATE', $filaId, 'tbl_carregamento_filas', null, $dadosNovosFila);
+                }
+
+                // 4. Se tudo deu certo, confirma todas as operações no banco de dados
+                $this->pdo->commit();
+                return $filaId;
+            } catch (\Exception $e) {
+                // 5. Se qualquer passo falhar, desfaz todas as operações
+                $this->pdo->rollBack();
+                // Re-lança a exceção para que a API possa reportar o erro
+                throw $e;
+            }
+        }*/
+
     public function createFilaWithLeituras(int $carregamentoId, int $clienteId, array $leituras): int
     {
         $this->pdo->beginTransaction();
         try {
-            // 1. Inserir o registro da fila na tabela 'tbl_carregamento_filas'
-            $sqlFila = "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente) VALUES (:car_id, :cli_id)";
-            $stmtFila = $this->pdo->prepare($sqlFila);
-            $stmtFila->execute([
-                ':car_id' => $carregamentoId,
-                ':cli_id' => $clienteId
-            ]);
-            $filaId = (int) $this->pdo->lastInsertId();
+            // 1. Cria uma nova fila (sem cliente associado diretamente a ela)
+            $filaId = $this->adicionarFila($carregamentoId);
 
-            // 2. Preparar a inserção para as leituras
-            $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_qrcode_conteudo) VALUES (:fila_id, :conteudo)";
+            // 2. Prepara a inserção para as leituras, agora incluindo o cliente
+            $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_cliente_id, leitura_qrcode_conteudo) VALUES (:fila_id, :cliente_id, :conteudo)";
             $stmtLeitura = $this->pdo->prepare($sqlLeitura);
 
-            // 3. Inserir cada leitura da lista na tabela 'tbl_carregamento_leituras'
+            // 3. Insere cada leitura associando-a à fila e ao cliente
             foreach ($leituras as $conteudoQr) {
                 $stmtLeitura->execute([
                     ':fila_id' => $filaId,
+                    ':cliente_id' => $clienteId,
                     ':conteudo' => $conteudoQr
                 ]);
             }
@@ -115,6 +156,7 @@ class CarregamentoRepository
         } catch (\Exception $e) {
             // 5. Se qualquer passo falhar, desfaz todas as operações
             $this->pdo->rollBack();
+
             // Re-lança a exceção para que a API possa reportar o erro
             throw $e;
         }
@@ -561,6 +603,7 @@ class CarregamentoRepository
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
         // 4. Agrupa os itens dentro das suas respetivas filas
+
         foreach ($filas as $key => $fila) {
             $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
                 return $item['car_item_fila_numero'] == $fila['fila_id'];

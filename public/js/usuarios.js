@@ -13,12 +13,23 @@ $(document).ready(function () {
         },
         "responsive": true,
         "columns": [
-            { "data": "usu_situacao", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
-            { "data": "usu_nome" },
-            { "data": "usu_login" },
-            { "data": "usu_tipo" },
             {
-                "data": "usu_codigo", "orderable": false, "render": (data, type, row) =>
+                "data": "usu_situacao", "className": "text-center align-middle",
+                "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
+            },
+            {
+                "data": "usu_nome", "className": "text-center align-middle",
+            },
+            {
+                "data": "usu_login", "className": "text-center align-middle",
+            },
+            {
+                "data": "usu_tipo", "className": "text-center align-middle",
+            },
+            {
+                "data": "usu_codigo", "orderable": false, 
+                "className": "text-center align-middle",
+                "render": (data, type, row) =>
                     `<a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1" data-id="${data}">Editar</a>` +
                     `<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="${data}" data-nome="${row.usu_nome}">Excluir</a>`
             }
