@@ -18,7 +18,12 @@ $paginas_e_acoes_disponiveis = [
     'lotes' => 'Gerenciar Lotes',
     'templates' => 'Gerenciar Templates de Etiqueta',
     'regras' => 'Gerenciar Regras de Etiqueta',
-    'editar_outros_usuarios' => 'Ação: Editar Outros Usuários' // Permissão específica para a ação
+    'editar_outros_usuarios' => 'Ação: Editar Outros Usuários',
+    'auditoria' => 'Visualizar Logs de Auditoria',
+    'backup' => 'Realizar Backups do Banco de Dados',
+    'carregamentos' => 'Gerenciar Carregamentos',
+    'carregamento_detalhes' => 'Gerenciar Detalhes de Carregamentos',
+    'estoque' => 'Gerenciar Estoque de Produtos'
 ];
 
 // Perfis de usuário que podem ter permissões configuradas

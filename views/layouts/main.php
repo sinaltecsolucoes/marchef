@@ -52,9 +52,25 @@
                             unset($paginasParaCadastro['auditoria']);
                             unset($paginasParaCadastro['backup']);
                             unset($paginasParaCadastro['estoque']);
+                            unset($paginasParaCadastro['carregamento_detalhes']);
 
+                            // =======================================================
+                            // == INÍCIO DA ALTERAÇÃO ==
+                            // =======================================================
+                            // Remove o 'lotes_novo' da geração automática para o podermos adicionar manualmente
+                            unset($paginasParaCadastro['lotes_novo']);
+                     
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
+                            // Adiciona manualmente o link para o novo módulo de lotes
+                            if (in_array('lotes_novo', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/index.php?page=lotes_novo">Gestão de Lotes (Novo)</a></li>
+                            <?php endif; 
+                            // =======================================================
+                            // == FIM DA ALTERAÇÃO ==
+                            // =======================================================
+
+
                             ?>
                         </ul>
                     </li>
@@ -194,6 +210,9 @@
 <?php endif; ?>
 <?php if ($paginaAtual === 'lotes'): ?>
     <script src="<?php echo BASE_URL; ?>/js/lotes.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'lotes_novo'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
 <?php endif; ?>
 <?php if ($paginaAtual === 'templates'): ?>
     <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>

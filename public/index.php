@@ -125,6 +125,7 @@ try {
         'fornecedores' => 'entidades/lista_entidades.php',
         'produtos' => 'produtos/lista_produtos.php',
         'lotes' => 'lotes/lista_lotes.php',
+        'lotes_novo' => 'lotes_novo/lista_lotes_novo.php',
         'permissoes' => 'permissoes/gerenciar.php',
         'templates' => 'etiquetas/lista_templates.php',
         'regras' => 'etiquetas/lista_regras.php',

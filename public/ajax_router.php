@@ -32,6 +32,7 @@ use App\Etiquetas\RegraRepository;
 use App\Core\AuditLogRepository;
 use App\Core\BackupService;
 use App\Carregamentos\CarregamentoRepository;
+use App\Lotes\LoteNovoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -57,12 +58,13 @@ try {
     $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório para Produto
     $entidadeRepo = new EntidadeRepository($pdo); // Cria a instância do repositório para Entidade
     $usuarioRepo = new UsuarioRepository($pdo); // Cria a instância do repositório para Usuário
-    $loteRepo = new LoteRepository($pdo);
-    $permissionRepo = new PermissionRepository($pdo);
-    $templateRepo = new TemplateRepository($pdo);
-    $regraRepo = new RegraRepository($pdo);
-    $auditLogRepo = new AuditLogRepository($pdo);
-    $carregamentoRepo = new CarregamentoRepository($pdo);
+    $loteRepo = new LoteRepository($pdo);// Cria a instância do repositório para Lotes
+    $loteNovoRepo = new LoteNovoRepository($pdo);// Cria a instância do repositório para Lotes Novos (novo modelo de Lotes)
+    $permissionRepo = new PermissionRepository($pdo);// Cria a instância do repositório para Permissoes
+    $templateRepo = new TemplateRepository($pdo);// Cria a instância do repositório para Templates das Etiquetas
+    $regraRepo = new RegraRepository($pdo);// Cria a instância do repositório para Regras das Etiquetas
+    $auditLogRepo = new AuditLogRepository($pdo);// Cria a instância do repositório para Auditoria de Logs
+    $carregamentoRepo = new CarregamentoRepository($pdo);// Cria a instância do repositório para Carregamentos
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -189,6 +191,18 @@ switch ($action) {
         break;
     case 'reabrirLote':
         reabrirLote($loteRepo);
+        break;
+    case 'listarLotesNovos':
+        listarLotesNovos($loteNovoRepo);
+        break;
+    case 'getProximoNumeroLoteNovo':
+        getProximoNumeroLoteNovo($loteNovoRepo);
+        break;
+    case 'salvarLoteNovoHeader':
+        salvarLoteNovoHeader($loteNovoRepo, $_SESSION['codUsuario']);
+        break;
+    case 'buscarLoteNovo':
+        buscarLoteNovo($loteNovoRepo);
         break;
 
     // --- ROTA DE PERMISSÕES ---
@@ -784,6 +798,38 @@ function reabrirLote(LoteRepository $repo)
     }
 }
 
+function listarLotesNovos(LoteNovoRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getProximoNumeroLoteNovo(LoteNovoRepository $repo)
+{
+    echo json_encode(['success' => true, 'proximo_numero' => $repo->getNextNumero()]);
+}
+
+function salvarLoteNovoHeader(LoteNovoRepository $repo, int $userId)
+{
+    try {
+        $loteId = $repo->saveHeader($_POST, $userId);
+        echo json_encode(['success' => true, 'message' => 'Cabeçalho do lote salvo com sucesso!', 'novo_lote_id' => $loteId]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar cabeçalho: ' . $e->getMessage()]);
+    }
+}
+
+function buscarLoteNovo(LoteNovoRepository $repo)
+{
+    // Corrigido para esperar por 'lote_id'
+    $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    // Corrigido para chamar o novo método 'findLoteNovoCompleto'
+    $lote = $repo->findLoteNovoCompleto($id);
+    echo json_encode(['success' => !!$lote, 'data' => $lote]);
+}
 
 function salvarPermissoes(PermissionRepository $repo)
 {
