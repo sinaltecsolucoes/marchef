@@ -92,3 +92,20 @@ body {
 #tabela-composicao-carregamento td:nth-child(2) {
     display: table-cell !important;
 }*/
+
+qtd-a-finalizar {
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    /* Centraliza o NÚMERO dentro do campo de input */
+    text-align: center;
+}
+
+/*
+ * Garante que a célula da tabela que contém o input
+ * esteja com alinhamento vertical centralizado.
+ * A classe 'align-middle' do Bootstrap 5 já faz isso,
+ * mas esta regra serve como um reforço.
+*/
+.td-input-finalizar {
+    vertical-align: middle;
+}

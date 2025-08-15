@@ -207,6 +207,33 @@ switch ($action) {
     case 'adicionarItemProducaoNovo':
         adicionarItemProducaoNovo($loteNovoRepo);
         break;
+    case 'adicionarItemEmbalagemNovo':
+        adicionarItemEmbalagemNovo($loteNovoRepo);
+        break;
+    case 'getSecundariosPorPrimario':
+        getSecundariosPorPrimario($produtoRepo); // Usamos o ProdutoRepository
+        break;
+    case 'getItensEmbalagemNovo':
+        getItensEmbalagemNovo($loteNovoRepo);
+        break;
+    case 'excluirItemEmbalagemNovo':
+        excluirItemEmbalagemNovo($loteNovoRepo);
+        break;
+    case 'excluirItemProducaoNovo':
+        excluirItemProducaoNovo($loteNovoRepo);
+        break;
+    case 'atualizarItemProducaoNovo':
+        atualizarItemProducaoNovo($loteNovoRepo);
+        break;
+    case 'atualizarItemEmbalagemNovo':
+        atualizarItemEmbalagemNovo($loteNovoRepo);
+        break;
+    case 'getItensParaFinalizar':
+        getItensParaFinalizar($loteNovoRepo);
+        break;
+    case 'finalizarLoteParcialmenteNovo':
+        finalizarLoteParcialmenteNovo($loteNovoRepo);
+        break;
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -844,6 +871,102 @@ function adicionarItemProducaoNovo(LoteNovoRepository $repo)
     }
 }
 
+function adicionarItemEmbalagemNovo(LoteNovoRepository $repo)
+{
+    try {
+        // A validação e a lógica principal já estão no método do repositório!
+        $novoItemId = $repo->adicionarItemEmbalagem($_POST);
+        echo json_encode(['success' => true, 'message' => 'Item de embalagem adicionado com sucesso!', 'item_id' => $novoItemId]);
+    } catch (Exception $e) {
+        // Erros de negócio (ex: saldo insuficiente) serão capturados aqui
+        http_response_code(400); // Bad Request é apropriado para erros de validação/lógica
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getItensEmbalagemNovo(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$loteId) {
+        echo json_encode(['success' => false, 'data' => []]);
+        return;
+    }
+    $itens = $repo->findEmbalagemByLoteId($loteId);
+    echo json_encode(['success' => true, 'data' => $itens]);
+}
+
+function excluirItemEmbalagemNovo(LoteNovoRepository $repo)
+{
+    $item_id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+    if (!$item_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->excluirItemEmbalagem($item_id);
+        echo json_encode(['success' => true, 'message' => 'Item excluído e saldo revertido com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirItemProducaoNovo(LoteNovoRepository $repo)
+{
+    $item_id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+    if (!$item_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->excluirItemProducao($item_id);
+        echo json_encode(['success' => true, 'message' => 'Item de produção excluído com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getSecundariosPorPrimario(ProdutoRepository $repo)
+{
+    // Usamos filter_input para segurança
+    $primarioId = filter_input(INPUT_GET, 'primario_id', FILTER_VALIDATE_INT);
+
+    if (!$primarioId) {
+        echo json_encode(['success' => false, 'message' => 'ID do produto primário inválido.']);
+        return;
+    }
+
+    try {
+        $produtos = $repo->findSecundariosByPrimarioId($primarioId);
+        echo json_encode(['success' => true, 'data' => $produtos]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar produtos.']);
+    }
+}
+
+function atualizarItemEmbalagemNovo(LoteNovoRepository $repo)
+{
+    $item_id = filter_input(INPUT_POST, 'item_emb_id', FILTER_VALIDATE_INT);
+    if (!$item_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->atualizarItemEmbalagem($item_id, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Item de embalagem atualizado com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getItensParaFinalizar(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$loteId) {
+        echo json_encode(['success' => false, 'data' => []]);
+        return;
+    }
+    $itens = $repo->getItensParaFinalizar($loteId);
+    echo json_encode(['success' => true, 'data' => $itens]);
+}
+
 function salvarPermissoes(PermissionRepository $repo)
 {
     // Apenas o Admin pode salvar permissões. Verificação dupla de segurança.
@@ -860,6 +983,42 @@ function salvarPermissoes(PermissionRepository $repo)
     } catch (Exception $e) {
         error_log("Erro em salvarPermissoes: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Ocorreu um erro no servidor ao salvar as permissões.']);
+    }
+}
+
+function atualizarItemProducaoNovo(LoteNovoRepository $repo)
+{
+    $item_id = filter_input(INPUT_POST, 'item_prod_id', FILTER_VALIDATE_INT);
+    if (!$item_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->atualizarItemProducao($item_id, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Item atualizado com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    // Recebemos os itens como uma string JSON, então precisamos de fazer o decode
+    $itensJson = $_POST['itens'] ?? '[]';
+    $itens = json_decode($itensJson, true);
+
+    if (!$loteId || !is_array($itens)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos.']);
+        return;
+    }
+
+    try {
+        $repo->finalizarLoteParcialmente($loteId, $itens);
+        echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e stock atualizado!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 

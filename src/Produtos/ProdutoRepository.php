@@ -238,24 +238,74 @@ class ProdutoRepository
         return $result ?: null;
     }
 
+    /* public function getProdutoOptions(string $tipoEmbalagem): array
+     {
+         $sql = "SELECT 
+                     prod_codigo, 
+                     prod_descricao, 
+                     prod_validade_meses, 
+                     prod_peso_embalagem, 
+                     prod_codigo_interno 
+                 FROM tbl_produtos 
+                 WHERE prod_situacao = 'A'";
+         $params = [];
+         if ($tipoEmbalagem !== 'Todos') {
+             $sql .= " AND prod_tipo_embalagem = :tipo";
+             $params[':tipo'] = $tipoEmbalagem;
+         }
+         $sql .= " ORDER BY prod_descricao ASC";
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute($params);
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     }*/
+
     public function getProdutoOptions(string $tipoEmbalagem): array
     {
-        $sql = "SELECT 
-                    prod_codigo, 
-                    prod_descricao, 
-                    prod_validade_meses, 
-                    prod_peso_embalagem, 
-                    prod_codigo_interno 
-                FROM tbl_produtos 
-                WHERE prod_situacao = 'A'";
         $params = [];
+        $sql = "SELECT 
+                p_sec.prod_codigo, 
+                p_sec.prod_descricao, 
+                p_sec.prod_validade_meses, 
+                p_sec.prod_peso_embalagem, 
+                p_sec.prod_codigo_interno,
+                IF(p_prim.prod_peso_embalagem > 0, p_sec.prod_peso_embalagem / p_prim.prod_peso_embalagem, 0) AS prod_unidades_primarias_calculado
+            FROM tbl_produtos AS p_sec
+            LEFT JOIN tbl_produtos AS p_prim ON p_sec.prod_primario_id = p_prim.prod_codigo
+            WHERE p_sec.prod_situacao = 'A'";
+
         if ($tipoEmbalagem !== 'Todos') {
-            $sql .= " AND prod_tipo_embalagem = :tipo";
+            $sql .= " AND p_sec.prod_tipo_embalagem = :tipo";
             $params[':tipo'] = $tipoEmbalagem;
         }
-        $sql .= " ORDER BY prod_descricao ASC";
+
+        $sql .= " ORDER BY p_sec.prod_descricao ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca produtos de embalagem secundária que estão associados a um produto primário específico.
+     *
+     * @param int $primarioId O ID do produto primário.
+     * @return array A lista de produtos secundários encontrados.
+     */
+    public function findSecundariosByPrimarioId(int $primarioId): array
+    {
+        $sql = "SELECT 
+                p_sec.prod_codigo, 
+                p_sec.prod_descricao, 
+                p_sec.prod_codigo_interno,
+                IF(p_prim.prod_peso_embalagem > 0, p_sec.prod_peso_embalagem / p_prim.prod_peso_embalagem, 0) AS prod_unidades_primarias_calculado
+            FROM tbl_produtos AS p_sec
+            LEFT JOIN tbl_produtos AS p_prim ON p_sec.prod_primario_id = p_prim.prod_codigo
+            WHERE p_sec.prod_situacao = 'A'
+              AND p_sec.prod_tipo_embalagem = 'SECUNDARIA'
+              AND p_sec.prod_primario_id = :primario_id
+            ORDER BY p_sec.prod_descricao ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':primario_id' => $primarioId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

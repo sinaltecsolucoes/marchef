@@ -18,8 +18,12 @@ $(document).ready(function () {
             "data": { csrf_token: csrfToken }
         },
         "columns": [
-            { "data": "lote_completo_calculado" },
-            { "data": "fornecedor_razao_social" },
+            {
+                "data": "lote_completo_calculado"
+            },
+            {
+                "data": "fornecedor_razao_social"
+            },
             {
                 "data": "lote_data_fabricacao",
                 "className": "text-center",
@@ -57,74 +61,50 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center",
                 "render": function (data, type, row) {
-                    let acoesHtml = '';
                     const status = row.lote_status;
                     const loteId = row.lote_id;
                     const loteNome = row.lote_completo_calculado;
+                    let acoesHtml = '';
 
-                    // Ações para lotes ATIVOS (EM ANDAMENTO ou PARCIALMENTE FINALIZADO)
+                    // Ações para lotes ATIVOS
                     if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
                         acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
-                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote me-1" data-id="${loteId}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
-                        acoesHtml += `
-                                    <div class="btn-group d-inline-block">
-                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Mais
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
-                                        </ul>
-                                    </div>`;
-                        return acoesHtml;
-                    }
+                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
 
-                    if (status === 'FINALIZADO') {
-                        acoesHtml += `
-                                <div class="btn-group d-inline-block"> 
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item btn-reabrir-lote" href="#" ...>Reabrir Lote</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger btn-excluir-lote" ...>Excluir</a></li>
-                                    </ul>
-                                </div>`;
-                    }
-
-                    // Ações para lotes FINALIZADOS
-                    if (status === 'FINALIZADO') {
+                        // Ações para lotes FINALIZADOS
+                    } else if (status === 'FINALIZADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-                        acoesHtml += `
-                                    <div class="btn-group d-inline-block">
-                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Mais
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
-                                        </ul>
-                                    </div>`;
-                        return acoesHtml;
-                    }
 
-                    // Ações para lotes CANCELADOS (apenas Visualizar e Excluir)
-                    if (status === 'CANCELADO') {
+                        // Ações para lotes CANCELADOS
+                    } else if (status === 'CANCELADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+                    }
+
+                    // Menu "Mais Opções" (aparece para todos, exceto CANCELADO em algumas regras)
+                    let menuItens = '';
+                    if (status === 'FINALIZADO') {
+                        menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+                    }
+                    if (status !== 'FINALIZADO') { // Exemplo: não se pode cancelar um lote já finalizado
+                        menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+                    }
+
+                    // A opção de excluir pode estar disponível para todos os estados, dependendo da sua regra de negócio
+                    menuItens += `<li><hr class="dropdown-divider"></li>`;
+                    menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
+
+                    if (menuItens) {
                         acoesHtml += `
                                     <div class="btn-group d-inline-block">
                                         <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                             Mais
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>
+                                            ${menuItens}
                                         </ul>
                                     </div>`;
-                        return acoesHtml;
                     }
-
-                    // Fallback para qualquer outro status (não deve acontecer)
-                    return '';
+                    return acoesHtml;
                 }
             }
         ],
@@ -304,7 +284,8 @@ $(document).ready(function () {
                 }
                 // Carrega a tabela de itens de produção ao editar um lote
                 recarregarItensProducao(loteId);
-                
+                recarregarItensEmbalagem(loteId);
+
                 $modalLoteNovo.modal('show');
             } else {
                 notificacaoErro('Erro!', response.message);
@@ -344,25 +325,32 @@ $(document).ready(function () {
     }
 
     /**
-     * Configura o modal de lote para modo de edição ou apenas visualização.
-     * @param {boolean} isReadOnly - True para modo de visualização, false para edição.
-     */
+    * Configura o modal de lote para modo de edição ou apenas visualização.
+    * ATUALIZADO PARA O NOVO MÓDULO DE LOTES.
+    * @param {boolean} isReadOnly - True para modo de visualização, false para edição.
+    */
     function configurarModalModoLeitura(isReadOnly) {
-        const $formHeader = $('#form-lote-header');
+        // Seleciona todos os formulários e botões dentro do modal novo
+        const $forms = $modalLoteNovo.find('form');
+        const $botoesDeAcao = $modalLoteNovo.find('#btn-salvar-lote-novo-header, #btn-adicionar-item-producao, #btn-adicionar-item-embalagem, #btn-cancelar-edicao-producao, #btn-cancelar-edicao-embalagem');
+        const $colunaAcoesProducao = $('#tabela-itens-producao-novo').find('.coluna-acoes');
+        const $colunaAcoesEmbalagem = $('#tabela-itens-embalagem-novo').find('.coluna-acoes');
 
-        // Aplica 'readonly' apenas aos inputs de texto, data, etc.
-        $formHeader.find('input').prop('readonly', isReadOnly);
+        // Desabilita/habilita todos os campos de input, select, etc.
+        $forms.find('input, select, textarea').prop('disabled', isReadOnly);
 
-        // Aplica 'disabled' aos dropdowns (selects)
-        $formHeader.find('select').prop('disabled', isReadOnly);
-        // Esconde/mostra a aba de adicionar produtos
-        $('#aba-add-produtos-tab').toggle(!isReadOnly);
+        // Mostra ou esconde os botões de ação (Salvar, Adicionar, etc.)
+        $botoesDeAcao.toggle(!isReadOnly);
 
-        // Esconde ou mostra os botões de salvar, finalizar, etc.
-        $('#btn-salvar-lote, #btn-finalizar-lote').toggle(!isReadOnly);
+        // Mostra ou esconde as colunas de Ações das tabelas de itens
+        $colunaAcoesProducao.toggle(!isReadOnly);
+        $colunaAcoesEmbalagem.toggle(!isReadOnly);
 
-        // Esconde a coluna de ações da tabela de itens em produção
-        $('#tabela-itens-em-producao').find('th:last-child, td:last-child').toggle(!isReadOnly);
+        // Se estiver em modo de leitura, muda o texto do botão de editar principal
+        if (isReadOnly) {
+            $('.btn-editar-lote-novo[data-id="' + loteIdAtual + '"]').text('Visualizar');
+            $('#modal-lote-novo-label').text('Visualizar Lote: ' + $('#lote_completo_calculado_novo').val());
+        }
     }
 
     /**
@@ -387,21 +375,177 @@ $(document).ready(function () {
                     const rowHtml = `
                         <tr>
                             <td>${item.prod_descricao}</td>
-                            <td class="text-end">${parseFloat(item.item_prod_quantidade).toFixed(3)}</td>
-                            <td class="text-end">${parseFloat(item.item_prod_saldo).toFixed(3)}</td>
-                            <td class="text-center">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                            <td class="text-center">
-                                <button class="btn btn-warning btn-sm">Editar</button>
-                                <button class="btn btn-danger btn-sm">Excluir</button>
+                            <td class="text-center align-middle">${parseFloat(item.item_prod_quantidade).toFixed(3)}</td>
+                            <td class="text-center align-middle"">${parseFloat(item.item_prod_saldo).toFixed(3)}</td>
+                            <td class="text-center align-middle"">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                           <td class="text-center coluna-acoes">
+                                <button class="btn btn-warning btn-sm btn-editar-item-producao" 
+                                            data-id="${item.item_prod_id}"
+                                            data-produto-id="${item.item_prod_produto_id}"
+                                            data-quantidade="${item.item_prod_quantidade}"
+                                            data-validade="${item.item_prod_data_validade}"
+                                            title="Editar Item">Editar</button>
+                                <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item">Excluir Item</button>
                             </td>
                         </tr>
                     `;
                     $tbody.append(rowHtml);
                 });
             } else {
+                const colunas = 5;
                 $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
             }
+            configurarModalModoLeitura(isReadOnly)
         });
+    }
+
+    /**
+     * Busca os itens de embalagem de um lote e redesenha a tabela na Aba 3.
+     * @param {number} loteId O ID do lote a ser consultado.
+     */
+    function recarregarItensEmbalagem(loteId) {
+        if (!loteId) return;
+
+        const $tbody = $('#tabela-itens-embalagem-novo');
+        $tbody.html('<tr><td colspan="5" class="text-center">A carregar itens...</td></tr>');
+
+        $.ajax({
+            url: `ajax_router.php?action=getItensEmbalagemNovo&lote_id=${loteId}`,
+            type: 'GET',
+            dataType: 'json'
+        }).done(function (response) {
+            $tbody.empty();
+            if (response.success && response.data.length > 0) {
+                response.data.forEach(item => {
+                    const rowHtml = `
+                    <tr>
+                        <td class="align-middle">${item.produto_secundario_nome}</td>
+                        <td class="text-center align-middle">${parseInt(item.item_emb_qtd_sec)}</td>
+                        <td>${item.produto_primario_nome}</td>
+                        <td class="text-center align-middle">${parseFloat(item.item_emb_qtd_prim_cons).toFixed(3)}</td>
+                        <td class="text-center align-middle coluna-acoes">
+                            <button class="btn btn-warning btn-sm btn-editar-item-embalagem" 
+                                        data-id="${item.item_emb_id}"
+                                        data-primario-item-id="${item.item_emb_prod_prim_id}"
+                                        data-secundario-prod-id="${item.item_emb_prod_sec_id}"
+                                        data-quantidade="${item.item_emb_qtd_sec}"
+                                        data-consumo="${item.item_emb_qtd_prim_cons}"
+                                        title="Editar Item">Editar</button>
+                            <button class="btn btn-danger btn-sm btn-excluir-item-embalagem" data-id="${item.item_emb_id}" title="Excluir Item">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+                    $tbody.append(rowHtml);
+                });
+            } else {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum item de embalagem adicionado a este lote.</td></tr>');
+            }
+            configurarModalModoLeitura(isReadOnly)
+        });
+    }
+
+    /**
+     * Função para carregar os itens de produção do lote atual (com saldo) para o select.
+     * @param {number} loteId O ID do lote atual.
+     */
+    function carregarItensProducaoParaSelecao(loteId) {
+        return $.ajax({
+            url: 'ajax_router.php?action=buscarLoteNovo', // Reutilizamos a busca do lote
+            type: 'POST',
+            data: { lote_id: loteId, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                const $select = $('#item_emb_prod_prim_id_novo');
+                $select.empty().append('<option value="">Selecione...</option>');
+                response.data.producao.forEach(item => {
+                    if (parseFloat(item.item_prod_saldo) > 0) { // Mostra apenas itens com saldo
+                        const texto = `${item.prod_descricao} (Saldo: ${item.item_prod_saldo})`;
+                        // O value aqui deve ser o ID do item de produção, não do produto!
+                        const option = new Option(texto, item.item_prod_id);
+                        $select.append(option);
+                    }
+                });
+                $select.trigger('change.select2');
+            }
+        });
+    }
+
+    function calcularConsumoEmbalagem() {
+        const $selectPrimario = $('#item_emb_prod_prim_id_novo');
+        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
+        const $qtdInput = $('#item_emb_qtd_sec_novo');
+        const $feedback = $('#feedback-consumo-embalagem');
+        const $btnAdicionar = $('#btn-adicionar-item-embalagem');
+
+        const saldoTexto = $selectPrimario.find('option:selected').text(); // Ex: "Produto X (Saldo: 150.000)"
+        const match = saldoTexto.match(/Saldo: ([\d\.]+)/);
+        const saldoDisponivel = match ? parseFloat(match[1]) : 0;
+
+        const unidadesPorEmbalagem = parseFloat($selectSecundario.find('option:selected').data('unidades-primarias')) || 0;
+        const quantidade = parseInt($qtdInput.val()) || 0;
+
+        if (saldoDisponivel === 0 || unidadesPorEmbalagem === 0 || quantidade === 0) {
+            $feedback.text('Preencha os campos para calcular o consumo.').removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', true);
+            return;
+        }
+
+        const consumoCalculado = quantidade * unidadesPorEmbalagem;
+        const saldoRestante = saldoDisponivel - consumoCalculado;
+
+        if (consumoCalculado > saldoDisponivel) {
+            $feedback.html(`Consumo: <strong class="text-danger">${consumoCalculado.toFixed(3)}</strong> (Saldo insuficiente! Restante: ${saldoRestante.toFixed(3)})`)
+                .removeClass('text-muted').addClass('text-danger fw-bold');
+            $btnAdicionar.prop('disabled', true);
+        } else {
+            $feedback.html(`Consumo: <strong>${consumoCalculado.toFixed(3)}</strong> (Saldo restante: ${saldoRestante.toFixed(3)})`)
+                .removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', false);
+        }
+    }
+
+    function calcularConsumoEmbalagem() {
+        const $form = $('#form-lote-novo-embalagem');
+        const $selectPrimario = $('#item_emb_prod_prim_id_novo');
+        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
+        const $qtdInput = $('#item_emb_qtd_sec_novo');
+        const $feedback = $('#feedback-consumo-embalagem');
+        const $btnAdicionar = $('#btn-adicionar-item-embalagem');
+
+        // Verifica se estamos em modo de edição
+        const isEditing = !!$('#item_emb_id_novo').val();
+        const consumoOriginal = parseFloat($form.data('consumo-original')) || 0;
+
+        const saldoTexto = $selectPrimario.find('option:selected').text();
+        const match = saldoTexto.match(/Saldo: ([\d\.]+)/);
+        const saldoAtualDropdown = match ? parseFloat(match[1]) : 0;
+
+
+        // Se estivermos a editar, o saldo disponível para o cálculo é o saldo atual MAIS o que o item já tinha consumido.
+        const saldoParaCalculo = isEditing ? (saldoAtualDropdown + consumoOriginal) : saldoAtualDropdown;
+
+        const unidadesPorEmbalagem = parseFloat($selectSecundario.find('option:selected').data('unidades-primarias')) || 0;
+        const quantidade = parseInt($qtdInput.val()) || 0;
+
+        if (saldoParaCalculo === 0 || unidadesPorEmbalagem === 0 || quantidade === 0) {
+            $feedback.text('Preencha os campos para calcular o consumo.').removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', true);
+            return;
+        }
+
+        const consumoCalculado = quantidade * unidadesPorEmbalagem;
+        const saldoRestante = saldoParaCalculo - consumoCalculado;
+
+        if (consumoCalculado > saldoParaCalculo) {
+            $feedback.html(`Consumo: <strong class="text-danger">${consumoCalculado.toFixed(3)}</strong> (Saldo insuficiente! Saldo disponível para a operação: ${saldoParaCalculo.toFixed(3)})`)
+                .removeClass('text-muted').addClass('text-danger fw-bold');
+            $btnAdicionar.prop('disabled', true);
+        } else {
+            $feedback.html(`Consumo: <strong>${consumoCalculado.toFixed(3)}</strong> (Saldo restante: ${saldoRestante.toFixed(3)})`)
+                .removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', false);
+        }
     }
 
     // --- Event Handlers ---
@@ -441,6 +585,76 @@ $(document).ready(function () {
         $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
 
         $modalLoteNovo.modal('show');
+    });
+
+    // Evento de clique para o botão "Adicionar Item"
+    $('#btn-adicionar-item-producao').on('click', function () {
+        const loteId = loteIdAtual; // A variável global que guarda o ID do lote
+        const itemId = $('#item_prod_id_novo').val(); // Pega o ID do campo hidden
+        const isEditing = !!itemId; // Converte para booleano: true se tiver ID, false se não
+        const action = isEditing ? 'atualizarItemProducaoNovo' : 'adicionarItemProducaoNovo';
+        const formData = new FormData($('#form-lote-novo-producao')[0]);
+
+        if (!isEditing) {
+            // Se estiver criando, adiciona o ID do lote
+            formData.append('item_prod_lote_id', loteId);
+        }
+        formData.append('csrf_token', csrfToken);
+
+        $.ajax({
+            url: `ajax_router.php?action=${action}`,
+            type: 'POST',
+            data: formData,
+            processData: false, contentType: false, dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                notificacaoSucesso('Sucesso!', 'Item de produção adicionado ao lote.');
+
+                // Limpa o formulário para a próxima adição
+                $('#btn-cancelar-edicao-producao').trigger('click'); // Dispara o evento de limpar/cancelar
+
+                // Recarrega a tabela de itens de produção
+                recarregarItensProducao(loteId);
+                carregarItensProducaoParaSelecao(loteId); // Atualiza o dropdown da aba 3
+            } else {
+                notificacaoErro('Erro!', response.message);
+            }
+        });
+    });
+
+    $('#btn-adicionar-item-embalagem').on('click', function () {
+        const loteId = loteIdAtual; // Usamos a variável global
+        const itemId = $('#item_emb_id_novo').val();
+        const isEditing = !!itemId;
+
+        const action = isEditing ? 'atualizarItemEmbalagemNovo' : 'adicionarItemEmbalagemNovo';
+        const formData = new FormData($('#form-lote-novo-embalagem')[0]);
+
+        if (!isEditing) {
+            formData.append('item_emb_lote_id', loteId);
+        }
+
+        formData.append('csrf_token', csrfToken);
+
+        $.ajax({
+            url: `ajax_router.php?action=${action}`,
+            type: 'POST',
+            data: formData,
+            processData: false, contentType: false, dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                notificacaoSucesso('Sucesso!', 'Item de embalagem adicionado.');
+                $('#form-lote-novo-embalagem').removeData('consumo-original');
+                $('#btn-cancelar-edicao-embalagem').trigger('click'); // Dispara o cancelamento para limpar o form
+
+                // ATUALIZAR TUDO:
+                recarregarItensEmbalagem(loteId); // Atualiza a nova tabela de embalagens
+                recarregarItensProducao(loteId);   // Atualiza a tabela da Aba 2, pois o saldo mudou!
+                carregarItensProducaoParaSelecao(loteId); // Recarrega o dropdown com o saldo atualizado
+            } else {
+                notificacaoErro('Erro!', response.message);
+            }
+        });
     });
 
     // Evento para o botão "Salvar Cabeçalho"
@@ -485,32 +699,152 @@ $(document).ready(function () {
         });
     });
 
-    // Evento de clique para o botão "Adicionar Item"
-    $('#btn-adicionar-item-producao').on('click', function () {
-        const loteId = loteIdAtual; // A variável global que guarda o ID do lote
-        const formData = new FormData($('#form-lote-novo-producao')[0]);
-        formData.append('item_prod_lote_id', loteId);
-        formData.append('csrf_token', csrfToken);
+    $('#btn-cancelar-edicao-producao').on('click', function () {
+        $('#form-lote-novo-producao')[0].reset();
+        $('#item_prod_id_novo').val(''); // Limpa o ID do item
+        $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
+        $('#btn-adicionar-item-producao').text('Adicionar Item'); // Restaura o texto do botão
+    });
 
-        // Adicionar validação aqui no futuro
+    $('#btn-confirmar-finalizacao').on('click', function () {
+        const $modal = $('#modal-finalizar-lote');
+        const loteId = $modal.data('lote-id');
+        const itensParaFinalizar = [];
+
+        // Percorre cada linha da tabela para coletar os dados
+        $('#tabela-itens-para-finalizar tr').each(function () {
+            const itemId = $(this).data('item-id');
+            const quantidade = parseFloat($(this).find('.qtd-a-finalizar').val()) || 0;
+
+            if (itemId && quantidade > 0) {
+                itensParaFinalizar.push({
+                    item_id: itemId,
+                    quantidade: quantidade
+                });
+            }
+        });
+
+        if (itensParaFinalizar.length === 0) {
+            notificacaoAlerta('Nenhum item selecionado', 'Por favor, informe a quantidade para pelo menos um item.');
+            return;
+        }
+
+        // Mostra um spinner no botão para feedback
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> A Finalizar...');
 
         $.ajax({
-            url: 'ajax_router.php?action=adicionarItemProducaoNovo',
+            url: 'ajax_router.php?action=finalizarLoteParcialmenteNovo',
             type: 'POST',
-            data: formData,
-            processData: false, contentType: false, dataType: 'json'
+            data: {
+                lote_id: loteId,
+                itens: JSON.stringify(itensParaFinalizar), // Enviamos o array como uma string JSON
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
         }).done(function (response) {
             if (response.success) {
-                notificacaoSucesso('Sucesso!', 'Item de produção adicionado ao lote.');
-                // Limpa o formulário para a próxima adição
-                $('#form-lote-novo-producao')[0].reset();
-                $('#item_prod_produto_id_novo').val(null).trigger('change');
-                // Recarrega a tabela de itens de produção
-                recarregarItensProducao(loteId);
+                bootstrap.Modal.getInstance($modal[0]).hide();
+                notificacaoSucesso('Sucesso!', response.message);
+                tabelaLotesNovo.ajax.reload(); // Recarrega a tabela principal
             } else {
                 notificacaoErro('Erro!', response.message);
             }
+        }).always(function () {
+            // Restaura o botão ao estado original
+            $('#btn-confirmar-finalizacao').prop('disabled', false).text('Confirmar Finalização');
         });
+    });
+
+    // Evento para o novo botão "Cancelar Edição"
+    $modalLoteNovo.on('click', '#btn-cancelar-edicao-embalagem', function () {
+        $('#form-lote-novo-embalagem')[0].reset();
+        $('#item_emb_id_novo').val('');
+        $('#item_emb_prod_prim_id_novo').val(null).trigger('change');
+        $('#btn-adicionar-item-embalagem').text('Adicionar Item');
+        $('#form-lote-novo-embalagem').removeData('consumo-original');
+        $(this).remove(); // Remove o próprio botão de cancelar
+    });
+
+    // Evento para o checkbox "Finalizar Tudo" no cabeçalho
+    $('#modal-finalizar-lote').on('click', '#check-finalizar-todos', function () {
+        const isChecked = $(this).is(':checked');
+        $('#tabela-itens-para-finalizar .qtd-a-finalizar').each(function () {
+            if (isChecked) {
+                $(this).val($(this).attr('max'));
+            } else {
+                $(this).val('');
+            }
+        });
+    });
+
+    // Evento para o botão "Máx" em cada linha
+    $('#modal-finalizar-lote').on('click', '.btn-finalizar-tudo-item', function () {
+        const $input = $(this).closest('tr').find('.qtd-a-finalizar');
+        $input.val($input.attr('max'));
+    });
+
+    $('#modal-finalizar-lote').on('input', '.qtd-a-finalizar', function () {
+        const valor = parseFloat($(this).val()) || 0;
+        const max = parseFloat($(this).attr('max')) || 0;
+        if (valor > max) {
+            $(this).val(max);
+            notificacaoAlerta('Atenção', 'A quantidade a finalizar não pode ser maior que a disponível.');
+        }
+    });
+
+    $('#tabela-lotes-novo').on('click', '.btn-finalizar-lote-novo', function () {
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+        const $modal = $('#modal-finalizar-lote');
+        const $tbody = $('#tabela-itens-para-finalizar');
+
+        // Guarda o ID do lote no modal para uso posterior
+        $modal.data('lote-id', loteId);
+        $('#lote-nome-finalizacao').text(loteNome);
+        $tbody.html('<tr><td colspan="4" class="text-center">A carregar itens disponíveis...</td></tr>');
+
+        // Mostra o modal
+        const modalFinalizar = new bootstrap.Modal($modal[0]);
+        modalFinalizar.show();
+
+        // Busca os itens que podem ser finalizados
+        $.ajax({
+            url: `ajax_router.php?action=getItensParaFinalizar&lote_id=${loteId}`,
+            type: 'GET',
+            dataType: 'json'
+        }).done(function (response) {
+            $tbody.empty();
+            if (response.success && response.data.length > 0) {
+                response.data.forEach(item => {
+                    const rowHtml = `
+                    <tr data-item-id="${item.item_emb_id}">
+                        <td class="align-middle">${item.prod_descricao}</td>
+                        <td class="text-center align-middle">
+                            <span class="fw-bold text-success">${parseFloat(item.quantidade_disponivel).toFixed(3)}</span>
+                        </td>
+                        <td class="td-input-finalizar align-middle">
+                            <input type="number" class="form-control qtd-a-finalizar" 
+                                   min="0" 
+                                   max="${parseFloat(item.quantidade_disponivel).toFixed(3)}" 
+                                   step="1" 
+                                   placeholder="0">
+                        </td>
+                        <td class="text-center align-middle">
+                            <button class="btn btn-outline-primary btn-sm btn-finalizar-tudo-item" title="Preencher com o máximo">Máx</button>
+                        </td>
+                    </tr>
+                `;
+                    $tbody.append(rowHtml);
+                });
+            } else {
+                $tbody.html('<tr><td colspan="4" class="text-center text-muted">Nenhum item com saldo disponível para finalizar neste lote.</td></tr>');
+                $('#btn-confirmar-finalizacao').prop('disabled', true); // Desabilita o botão se não há itens
+            }
+        });
+    });
+
+    $('#form-lote-novo-embalagem').on('change keyup', 'select, input', function () {
+        calcularConsumoEmbalagem();
     });
 
     // Ação para o botão "Editar" na tabela principal de lotes 
@@ -520,6 +854,116 @@ $(document).ready(function () {
         $.when(carregarFornecedores(), carregarClientes()).done(function () {
             buscarDadosLoteParaEdicao(loteIdAtual);
         });
+    });
+
+    $('#tabela-itens-producao-novo').on('click', '.btn-editar-item-producao', function () {
+        const $btn = $(this);
+
+        // 1. Pega os dados dos atributos data-* do botão
+        const itemId = $btn.data('id');
+        const produtoId = $btn.data('produto-id');
+        const quantidade = $btn.data('quantidade');
+        const validade = $btn.data('validade');
+
+        // 2. Preenche o formulário com esses dados
+        $('#item_prod_id_novo').val(itemId); // O campo hidden mais importante!
+        $('#item_prod_produto_id_novo').val(produtoId).trigger('change'); // .trigger('change') atualiza o Select2 e a data de validade
+        $('#item_prod_quantidade_novo').val(parseFloat(quantidade).toFixed(3));
+        $('#item_prod_data_validade_novo').val(validade);
+
+        // 3. Muda o texto do botão de Ação e foca no formulário
+        $('#btn-adicionar-item-producao').text('Atualizar Item');
+
+        // Leva o utilizador para o topo do modal para ver o formulário preenchido
+        $modalLoteNovo.animate({ scrollTop: 0 }, "slow");
+    });
+
+    $('#tabela-itens-embalagem-novo').on('click', '.btn-editar-item-embalagem', function () {
+        const $btn = $(this);
+        const itemId = $btn.data('id');
+        const primarioItemId = $btn.data('primario-item-id');
+        const secundarioProdId = $btn.data('secundario-prod-id');
+        const quantidade = $btn.data('quantidade');
+        const $form = $('#form-lote-novo-embalagem');
+
+
+        // Guarda o consumo original lido diretamente do botão
+        const consumoOriginal = $btn.data('consumo');
+        $('#form-lote-novo-embalagem').data('consumo-original', consumoOriginal);
+
+        // Preenche o campo hidden
+        $('#item_emb_id_novo').val(itemId);
+
+        // Preenche o primeiro dropdown
+        $('#item_emb_prod_prim_id_novo').val(primarioItemId).trigger('change');
+
+        // Preenche o segundo dropdown (precisamos esperar ele ser populado pelo evento 'change' acima)
+        // Usamos um listener de evento único para garantir que o valor seja setado após o AJAX terminar
+        $(document).one('ajaxStop', function () {
+            $('#item_emb_prod_sec_id_novo').val(secundarioProdId).trigger('change.select2');
+        });
+
+        // Preenche a quantidade
+        $('#item_emb_qtd_sec_novo').val(parseInt(quantidade));
+
+        // Muda o texto do botão de ação
+        $('#btn-adicionar-item-embalagem').text('Atualizar Item');
+
+        // Adiciona um botão "Cancelar Edição"
+        if ($('#btn-cancelar-edicao-embalagem').length === 0) {
+            $('#btn-adicionar-item-embalagem').after(' <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-embalagem">Cancelar</button>');
+        }
+    });
+
+    $('#tabela-itens-producao-novo').on('click', '.btn-excluir-item-producao', function () {
+        const itemId = $(this).data('id');
+
+        confirmacaoAcao('Excluir Item?', 'Só será possível excluir se o saldo não tiver sido consumido. Deseja continuar?')
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'ajax_router.php?action=excluirItemProducaoNovo',
+                        type: 'POST',
+                        data: { item_id: itemId, csrf_token: csrfToken },
+                        dataType: 'json'
+                    }).done(function (response) {
+                        if (response.success) {
+                            notificacaoSucesso('Sucesso!', response.message);
+                            // Recarrega a tabela de produção e o dropdown da aba 3
+                            recarregarItensProducao(loteIdAtual);
+                            carregarItensProducaoParaSelecao(loteIdAtual);
+                        } else {
+                            notificacaoErro('Não permitido!', response.message);
+                        }
+                    });
+                }
+            });
+    });
+
+    $('#tabela-itens-embalagem-novo').on('click', '.btn-excluir-item-embalagem', function () {
+        const itemId = $(this).data('id');
+
+        confirmacaoAcao('Excluir Item?', 'Esta ação irá reverter o saldo consumido. Tem a certeza?')
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'ajax_router.php?action=excluirItemEmbalagemNovo',
+                        type: 'POST',
+                        data: { item_id: itemId, csrf_token: csrfToken },
+                        dataType: 'json'
+                    }).done(function (response) {
+                        if (response.success) {
+                            notificacaoSucesso('Sucesso!', response.message);
+                            // Recarrega TUDO para garantir consistência
+                            recarregarItensEmbalagem(loteIdAtual);
+                            recarregarItensProducao(loteIdAtual);
+                            carregarItensProducaoParaSelecao(loteIdAtual);
+                        } else {
+                            notificacaoErro('Erro!', response.message);
+                        }
+                    });
+                }
+            });
     });
 
     // Evento que é acionado QUANDO A ABA DE PRODUÇÃO É MOSTRADA
@@ -532,6 +976,23 @@ $(document).ready(function () {
         });
         // Carrega os produtos primários
         carregarProdutosPrimarios();
+    });
+
+    // Evento que é acionado QUANDO A ABA DE EMBALAGEM É MOSTRADA
+    $('#aba-embalagem-novo-tab').on('shown.bs.tab', function () {
+        // Inicializa os Select2 para os novos dropdowns
+        $('#item_emb_prod_prim_id_novo, #item_emb_prod_sec_id_novo').select2({
+            placeholder: 'Selecione uma opção',
+            dropdownParent: $modalLoteNovo,
+            theme: "bootstrap-5"
+        });
+        // Carrega os dados necessários
+        //carregarProdutosSecundarios();
+        carregarItensProducaoParaSelecao(loteIdAtual);
+        // Define o estado inicial do dropdown de secundários
+        $('#item_emb_prod_sec_id_novo').prop('disabled', true).empty().append('<option value="">Selecione um produto primário primeiro</option>').trigger('change.select2');
+
+        calcularConsumoEmbalagem();
     });
 
     $('#item_prod_produto_id_novo').on('change', function () {
@@ -548,6 +1009,54 @@ $(document).ready(function () {
         }
     });
 
+    // Evento de mudança no dropdown de produto primário (na Aba 3)
+    $('#item_emb_prod_prim_id_novo').on('change', function () {
+        const primarioItemId = $(this).val();
+        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
+
+        // Limpa e desabilita o dropdown de secundários
+        $selectSecundario.prop('disabled', true).empty().append('<option value="">Carregando...</option>').trigger('change.select2');
+
+        if (!primarioItemId) {
+            $selectSecundario.empty().append('<option value="">Selecione um produto primário primeiro</option>').trigger('change.select2');
+            return;
+        }
+
+        $.ajax({
+            url: 'ajax_router.php?action=buscarLoteNovo',
+            type: 'POST',
+            data: { lote_id: loteIdAtual, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (loteData) {
+            const itemSelecionado = loteData.data.producao.find(item => item.item_prod_id == primarioItemId);
+            if (!itemSelecionado) return;
+
+            const primarioProdutoId = itemSelecionado.item_prod_produto_id;
+
+            $.ajax({
+                url: `ajax_router.php?action=getSecundariosPorPrimario&primario_id=${primarioProdutoId}`,
+                type: 'GET',
+                dataType: 'json'
+            }).done(function (response) {
+                if (response.success) {
+                    $selectSecundario.prop('disabled', false).empty().append('<option value="">Selecione...</option>');
+
+                    if (response.data.length === 0) {
+                        $selectSecundario.empty().append('<option value="">Nenhum produto associado</option>').prop('disabled', true);
+                    } else {
+                        response.data.forEach(produto => {
+                            const texto = `${produto.prod_descricao} (Cód: ${produto.prod_codigo_interno || 'N/A'})`;
+                            const option = new Option(texto, produto.prod_codigo);
+                            $(option).data('unidades-primarias', produto.prod_unidades_primarias_calculado);
+                            $selectSecundario.append(option);
+                        });
+                    }
+                    $selectSecundario.trigger('change.select2');
+                }
+            });
+        });
+    });
+
     // Evento do checkbox para liberar a edição da validade
     $('#liberar_edicao_validade_novo').on('change', function () {
         const isChecked = $(this).is(':checked');
@@ -561,5 +1070,4 @@ $(document).ready(function () {
         }
         atualizarLoteCompletoNovo();
     });
-
 });
