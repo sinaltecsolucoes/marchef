@@ -58,13 +58,13 @@ try {
     $produtoRepo = new ProdutoRepository($pdo); // Cria a instância do repositório para Produto
     $entidadeRepo = new EntidadeRepository($pdo); // Cria a instância do repositório para Entidade
     $usuarioRepo = new UsuarioRepository($pdo); // Cria a instância do repositório para Usuário
-    $loteRepo = new LoteRepository($pdo);// Cria a instância do repositório para Lotes
-    $loteNovoRepo = new LoteNovoRepository($pdo);// Cria a instância do repositório para Lotes Novos (novo modelo de Lotes)
-    $permissionRepo = new PermissionRepository($pdo);// Cria a instância do repositório para Permissoes
-    $templateRepo = new TemplateRepository($pdo);// Cria a instância do repositório para Templates das Etiquetas
-    $regraRepo = new RegraRepository($pdo);// Cria a instância do repositório para Regras das Etiquetas
-    $auditLogRepo = new AuditLogRepository($pdo);// Cria a instância do repositório para Auditoria de Logs
-    $carregamentoRepo = new CarregamentoRepository($pdo);// Cria a instância do repositório para Carregamentos
+    $loteRepo = new LoteRepository($pdo); // Cria a instância do repositório para Lotes
+    $loteNovoRepo = new LoteNovoRepository($pdo); // Cria a instância do repositório para Lotes Novos (novo modelo de Lotes)
+    $permissionRepo = new PermissionRepository($pdo); // Cria a instância do repositório para Permissoes
+    $templateRepo = new TemplateRepository($pdo); // Cria a instância do repositório para Templates das Etiquetas
+    $regraRepo = new RegraRepository($pdo); // Cria a instância do repositório para Regras das Etiquetas
+    $auditLogRepo = new AuditLogRepository($pdo); // Cria a instância do repositório para Auditoria de Logs
+    $carregamentoRepo = new CarregamentoRepository($pdo); // Cria a instância do repositório para Carregamentos
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -203,6 +203,9 @@ switch ($action) {
         break;
     case 'buscarLoteNovo':
         buscarLoteNovo($loteNovoRepo);
+        break;
+    case 'adicionarItemProducaoNovo':
+        adicionarItemProducaoNovo($loteNovoRepo);
         break;
 
     // --- ROTA DE PERMISSÕES ---
@@ -831,6 +834,16 @@ function buscarLoteNovo(LoteNovoRepository $repo)
     echo json_encode(['success' => !!$lote, 'data' => $lote]);
 }
 
+function adicionarItemProducaoNovo(LoteNovoRepository $repo)
+{
+    try {
+        $novoItemId = $repo->adicionarItemProducao($_POST);
+        echo json_encode(['success' => true, 'message' => 'Item adicionado!', 'item_id' => $novoItemId]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 function salvarPermissoes(PermissionRepository $repo)
 {
     // Apenas o Admin pode salvar permissões. Verificação dupla de segurança.
@@ -1313,7 +1326,6 @@ function atualizarFilaComposta(CarregamentoRepository $repo)
 
         $repo->atualizarFilaComposta($filaId, $carregamentoId, $filaData);
         echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
-
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

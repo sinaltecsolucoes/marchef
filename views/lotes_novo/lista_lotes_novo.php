@@ -129,10 +129,15 @@
                                             name="item_prod_quantidade" step="0.001" min="0" required>
                                     </div>
                                     <div class="col-md-3">
-                                        <label for="item_prod_data_validade_novo" class="form-label">Data de
-                                            Validade</label>
-                                        <input type="date" class="form-control" id="item_prod_data_validade_novo"
-                                            name="item_prod_data_validade">
+                                        <label for="item_prod_data_validade_novo" class="form-label">Data de Validade</label>
+                                        <div class="input-group">
+                                            <input type="date" class="form-control" id="item_prod_data_validade_novo" name="item_prod_data_validade" readonly>
+                                            <div class="input-group-text">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="liberar_edicao_validade_novo" title="Liberar edição manual da data">
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
