@@ -60,39 +60,44 @@ $(document).ready(function () {
                 "data": "lote_id",
                 "orderable": false,
                 "className": "text-center",
+                // Dentro de "columns": [ ... ]
+                // Substitua a função "render" da última coluna por esta:
                 "render": function (data, type, row) {
                     const status = row.lote_status;
                     const loteId = row.lote_id;
                     const loteNome = row.lote_completo_calculado;
                     let acoesHtml = '';
+                    let menuItens = '';
 
-                    // Ações para lotes ATIVOS
+                    // Define os botões principais com base no status
                     if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
                         acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
-                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar e Gerar Estoque">Finalizar</button>`;
+                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote">Finalizar</button>`;
 
-                        // Ações para lotes FINALIZADOS
+                        // Itens do menu para lotes ativos
+                        menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+
                     } else if (status === 'FINALIZADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
 
-                        // Ações para lotes CANCELADOS
+                        // Itens do menu para lotes finalizados
+                        menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+
                     } else if (status === 'CANCELADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+
+                        // Item do menu para lotes cancelados
+                        menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
                     }
 
-                    // Menu "Mais Opções" (aparece para todos, exceto CANCELADO em algumas regras)
-                    let menuItens = '';
-                    if (status === 'FINALIZADO') {
-                        menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+                    // A opção de excluir permanentemente pode existir para todos os estados
+                    // Adicionamos um separador se já existirem outros itens no menu
+                    if (menuItens !== '') {
+                        menuItens += `<li><hr class="dropdown-divider"></li>`;
                     }
-                    if (status !== 'FINALIZADO') { // Exemplo: não se pode cancelar um lote já finalizado
-                        menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
-                    }
-
-                    // A opção de excluir pode estar disponível para todos os estados, dependendo da sua regra de negócio
-                    menuItens += `<li><hr class="dropdown-divider"></li>`;
                     menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
 
+                    // Constrói o menu dropdown se houver itens nele
                     if (menuItens) {
                         acoesHtml += `
                                     <div class="btn-group d-inline-block">
@@ -644,6 +649,18 @@ $(document).ready(function () {
         }).done(function (response) {
             if (response.success) {
                 notificacaoSucesso('Sucesso!', 'Item de embalagem adicionado.');
+
+                // Limpa o formulário de embalagem para a próxima operação.
+                // O .reset() limpa o campo de quantidade.
+                $('#form-lote-novo-embalagem')[0].reset();
+
+                // Limpa o dropdown de produto primário, o que automaticamente
+                // irá limpar e desabilitar o dropdown de produto secundário por causa do evento 'change' que já criámos.
+                $('#item_emb_prod_prim_id_novo').val(null).trigger('change');
+
+                // Remove o botão de cancelar se ele existir (do modo de edição)
+                $('#btn-cancelar-edicao-embalagem').remove();
+
                 $('#form-lote-novo-embalagem').removeData('consumo-original');
                 $('#btn-cancelar-edicao-embalagem').trigger('click'); // Dispara o cancelamento para limpar o form
 
@@ -853,6 +870,150 @@ $(document).ready(function () {
         // Garante que os dropdowns estejam prontos antes de buscar os dados
         $.when(carregarFornecedores(), carregarClientes()).done(function () {
             buscarDadosLoteParaEdicao(loteIdAtual);
+        });
+    });
+
+    // Evento para o botão "Cancelar Lote" no menu dropdown
+    $('#tabela-lotes-novo').on('click', '.btn-cancelar-lote', function () {
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+
+        confirmacaoAcao('Cancelar Lote?', `Tem a certeza de que deseja cancelar o lote "${loteNome}"? Se este lote já gerou estoque, ele será revertido. Esta ação não pode ser desfeita.`)
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'ajax_router.php?action=cancelarLoteNovo',
+                        type: 'POST',
+                        data: { lote_id: loteId, csrf_token: csrfToken },
+                        dataType: 'json'
+                    }).done(function (response) {
+                        if (response.success) {
+                            notificacaoSucesso('Sucesso!', response.message);
+                            tabelaLotesNovo.ajax.reload();
+                        } else {
+                            notificacaoErro('Erro!', response.message);
+                        }
+                    });
+                }
+            });
+    });
+
+    // Evento para o botão "Reativar Lote" no menu dropdown
+    $('#tabela-lotes-novo').on('click', '.btn-reativar-lote-novo', function () {
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+
+        confirmacaoAcao('Reativar Lote?', `Tem a certeza de que deseja reativar o lote "${loteNome}"? O seu status voltará para 'EM ANDAMENTO'.`)
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'ajax_router.php?action=reativarLoteNovo',
+                        type: 'POST',
+                        data: { lote_id: loteId, csrf_token: csrfToken },
+                        dataType: 'json'
+                    }).done(function (response) {
+                        if (response.success) {
+                            notificacaoSucesso('Sucesso!', response.message);
+                            tabelaLotesNovo.ajax.reload(); // Recarrega a tabela para atualizar status e botões
+                        } else {
+                            notificacaoErro('Erro!', response.message);
+                        }
+                    });
+                }
+            });
+    });
+
+    // Evento para o botão "Reabrir Lote" no menu dropdown
+    $('#tabela-lotes-novo').on('click', '.btn-reabrir-lote', function () {
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+
+        // Usamos o SweetAlert2 diretamente para pedir o motivo
+        Swal.fire({
+            title: 'Reabrir Lote?',
+            text: `Tem a certeza que deseja reabrir o lote "${loteNome}"? TODO o estoque gerado por ele será estornado.`,
+            icon: 'warning',
+            input: 'textarea', // Pede um campo de texto
+            inputLabel: 'Motivo da Reabertura',
+            inputPlaceholder: 'Digite o motivo aqui...',
+            inputAttributes: {
+                'aria-label': 'Digite o motivo aqui'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Sim, Reabrir!',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            inputValidator: (value) => {
+                if (!value || value.trim().length < 5) {
+                    return 'Por favor, insira um motivo com pelo menos 5 caracteres.'
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=reabrirLoteNovo',
+                    type: 'POST',
+                    data: {
+                        lote_id: loteId,
+                        motivo: result.value, // Envia o motivo digitado
+                        csrf_token: csrfToken
+                    },
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        notificacaoSucesso('Sucesso!', response.message);
+                        tabelaLotesNovo.ajax.reload();
+                    } else {
+                        notificacaoErro('Erro!', response.message);
+                    }
+                });
+            }
+        });
+    });
+
+    // Evento para o botão "Excluir Permanentemente" no menu dropdown
+    $('#tabela-lotes-novo').on('click', '.btn-excluir-lote', function () {
+        const loteId = $(this).data('id');
+        const loteNome = $(this).data('nome');
+
+        // Usamos o SweetAlert2 diretamente para criar um alerta mais forte
+        Swal.fire({
+            title: 'Excluir Permanentemente?',
+            html: `Tem a certeza ABSOLUTA de que deseja excluir o lote "<b>${loteNome}</b>"?<br><strong class="text-danger">Esta ação é IRREVERSÍVEL e apagará todos os itens de produção e embalagem associados a ele.</strong>`,
+            icon: 'error',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, Excluir!',
+            confirmButtonColor: '#d33',
+            cancelButtonText: 'Cancelar',
+            cancelButtonColor: '#3085d6',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirLoteNovo',
+                    type: 'POST',
+                    data: { lote_id: loteId, csrf_token: csrfToken },
+                    dataType: 'json',
+                    global: false
+                }).done(function (response) {
+                    if (response.success) {
+                        notificacaoSucesso('Excluído!', response.message);
+                        tabelaLotesNovo.ajax.reload();
+                    } else {
+                        notificacaoErro('Não permitido!', response.message);
+                    }
+                }).fail(function (jqXHR) {
+                    // O .fail() será executado para erros 4xx e 5xx
+                    let errorMessage = 'Ocorreu um erro de comunicação com o servidor.'; // Mensagem padrão
+
+                    // Tenta ler a mensagem específica enviada pelo backend no corpo da resposta
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errorMessage = jqXHR.responseJSON.message;
+                    }
+
+                    notificacaoErro('Não Permitido', errorMessage);
+                });
+            }
         });
     });
 

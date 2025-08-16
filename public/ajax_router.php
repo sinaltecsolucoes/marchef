@@ -184,7 +184,7 @@ switch ($action) {
         getLotesPorProduto($loteRepo);
         break;
     case 'listarEstoque':
-        listarEstoque($loteRepo);
+        listarEstoque($loteNovoRepo);
         break;
     case 'getDadosDoLoteItem':
         getDadosDoLoteItem($loteRepo);
@@ -233,6 +233,18 @@ switch ($action) {
         break;
     case 'finalizarLoteParcialmenteNovo':
         finalizarLoteParcialmenteNovo($loteNovoRepo);
+        break;
+    case 'cancelarLoteNovo':
+        cancelarLoteNovo($loteNovoRepo);
+        break;
+    case 'reativarLoteNovo':
+        reativarLoteNovo($loteNovoRepo);
+        break;
+    case 'reabrirLoteNovo':
+        reabrirLoteNovo($loteNovoRepo);
+        break;
+    case 'excluirLoteNovo':
+        excluirLoteNovo($loteNovoRepo);
         break;
 
     // --- ROTA DE PERMISSÕES ---
@@ -344,6 +356,9 @@ switch ($action) {
     case 'atualizarFilaComposta':
         atualizarFilaComposta($carregamentoRepo);
         break;
+    case 'getItensDeEstoqueParaCarregamento':
+        getItensDeEstoqueParaCarregamento($carregamentoRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -420,6 +435,24 @@ function getProdutoOptions(ProdutoRepository $repo)
 {
     $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
     echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
+}
+function getSecundariosPorPrimario(ProdutoRepository $repo)
+{
+    // Usamos filter_input para segurança
+    $primarioId = filter_input(INPUT_GET, 'primario_id', FILTER_VALIDATE_INT);
+
+    if (!$primarioId) {
+        echo json_encode(['success' => false, 'message' => 'ID do produto primário inválido.']);
+        return;
+    }
+
+    try {
+        $produtos = $repo->findSecundariosByPrimarioId($primarioId);
+        echo json_encode(['success' => true, 'data' => $produtos]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar produtos.']);
+    }
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ENTIDADES ---
@@ -785,7 +818,7 @@ function getLotesPorProduto(LoteRepository $repo)
     echo json_encode(['results' => $lotes]);
 }
 
-function listarEstoque(LoteRepository $repo)
+function listarEstoque(LoteNovoRepository $repo)
 {
     try {
         $output = $repo->getVisaoGeralEstoque($_POST);
@@ -895,6 +928,20 @@ function getItensEmbalagemNovo(LoteNovoRepository $repo)
     echo json_encode(['success' => true, 'data' => $itens]);
 }
 
+function excluirLoteNovo(LoteNovoRepository $repo)
+{
+    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$lote_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->excluirLote($lote_id);
+        echo json_encode(['success' => true, 'message' => 'Lote excluído permanentemente com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400); // Bad Request para erros de regra de negócio
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 function excluirItemEmbalagemNovo(LoteNovoRepository $repo)
 {
     $item_id = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
@@ -923,25 +970,6 @@ function excluirItemProducaoNovo(LoteNovoRepository $repo)
     }
 }
 
-function getSecundariosPorPrimario(ProdutoRepository $repo)
-{
-    // Usamos filter_input para segurança
-    $primarioId = filter_input(INPUT_GET, 'primario_id', FILTER_VALIDATE_INT);
-
-    if (!$primarioId) {
-        echo json_encode(['success' => false, 'message' => 'ID do produto primário inválido.']);
-        return;
-    }
-
-    try {
-        $produtos = $repo->findSecundariosByPrimarioId($primarioId);
-        echo json_encode(['success' => true, 'data' => $produtos]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Erro ao buscar produtos.']);
-    }
-}
-
 function atualizarItemEmbalagemNovo(LoteNovoRepository $repo)
 {
     $item_id = filter_input(INPUT_POST, 'item_emb_id', FILTER_VALIDATE_INT);
@@ -965,6 +993,27 @@ function getItensParaFinalizar(LoteNovoRepository $repo)
     }
     $itens = $repo->getItensParaFinalizar($loteId);
     echo json_encode(['success' => true, 'data' => $itens]);
+}
+
+function reativarLoteNovo(LoteNovoRepository $repo)
+{
+    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$lote_id) {
+        // Tratamento de erro para ID inválido
+        echo json_encode(['success' => false, 'message' => 'ID de lote inválido.']);
+        return;
+    }
+    try {
+        if ($repo->reativarLote($lote_id)) {
+            echo json_encode(['success' => true, 'message' => 'Lote reativado com sucesso!']);
+        } else {
+            // Este caso é improvável por causa das validações no repositório, mas é bom tê-lo
+            echo json_encode(['success' => false, 'message' => 'Não foi possível reativar o lote.']);
+        }
+    } catch (Exception $e) {
+        http_response_code(400); // Bad Request é apropriado para erros de regra de negócio
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }
 
 function salvarPermissoes(PermissionRepository $repo)
@@ -1016,6 +1065,39 @@ function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
     try {
         $repo->finalizarLoteParcialmente($loteId, $itens);
         echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e stock atualizado!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function cancelarLoteNovo(LoteNovoRepository $repo)
+{
+    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$lote_id) { /* tratamento de erro */
+    }
+    try {
+        $repo->cancelarLote($lote_id);
+        echo json_encode(['success' => true, 'message' => 'Lote cancelado com sucesso! O stock foi revertido, se necessário.']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function reabrirLoteNovo(LoteNovoRepository $repo)
+{
+    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $motivo = trim($_POST['motivo'] ?? ''); // Captura o motivo
+
+    if (!$lote_id || empty($motivo)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID do lote e motivo são obrigatórios.']);
+        return;
+    }
+    try {
+        $repo->reabrirLote($lote_id, $motivo);
+        echo json_encode(['success' => true, 'message' => 'Lote reaberto com sucesso! O stock foi estornado.']);
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1545,4 +1627,12 @@ function reabrirCarregamento(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function getItensDeEstoqueParaCarregamento(CarregamentoRepository $repo)
+{
+    $term = $_GET['term'] ?? ''; // Termo de busca vindo do Select2
+    $itens = $repo->getItensDeEstoqueDisponivelParaSelecao($term);
+    // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
+    echo json_encode(['results' => $itens]);
 }

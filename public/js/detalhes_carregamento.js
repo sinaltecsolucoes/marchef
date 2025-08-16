@@ -45,7 +45,8 @@ $(document).ready(function () {
             }
         });
     }
-    function inicializarSelectProdutoNoCard(selectId) {
+
+  /*  function inicializarSelectProdutoNoCard(selectId) {
         const $select = $('#' + selectId);
 
         $.ajax({
@@ -72,75 +73,31 @@ $(document).ready(function () {
                 });
             }
         });
-    }
+    }*/
 
-    /* function recarregarETabelaPrincipal() {
- 
-         $.ajax({
-             url: `ajax_router.php?action=getCarregamentoDetalhes&id=${carregamentoId}`,
-             type: 'GET',
-             dataType: 'json'
-         }).done(function (response) {
-             if (response.success && response.data) {
-                 const filas = response.data.filas;
-                 $tabelaComposicaoBody.empty();
- 
-                 if (!filas || filas.length === 0) {
-                     $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td></tr>');
-                     return;
-                 }
- 
-                 filas.forEach(fila => {
-                     const totalItensNaFila = fila.itens ? fila.itens.length : 0;
-                     if (totalItensNaFila > 0) {
-                         const clientesDaFila = fila.itens.reduce((acc, item) => {
-                             (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
-                             return acc;
-                         }, {});
- 
-                         let isFirstRowOfQueue = true;
-                         for (const nomeCliente in clientesDaFila) {
-                             const itensDoCliente = clientesDaFila[nomeCliente];
-                             const totalItensDoCliente = itensDoCliente.length;
- 
-                             itensDoCliente.forEach((item, index) => {
-                                 const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
- 
-                                 if (isFirstRowOfQueue && index === 0) {
-                                     const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
-                                     $linha.append(`<td class="text-center align-middle" rowspan="${Math.max(1, totalItensNaFila)}">${numSequencial}</td>`);
-                                     $linha.append(`<td class="text-center align-middle coluna-acoes" rowspan="${Math.max(1, totalItensNaFila)}">
-                                     <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
-                                         <i class="fas fa-pencil-alt"></i> Editar
-                                     </button>
-                                     <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
-                                         <i class="fas fa-trash"></i> Remover
-                                     </button>
-                                 </td>`);
-                                 }
- 
-                                 if (index === 0) {
-                                     $linha.append(`<td class="align-middle" rowspan="${Math.max(1, totalItensDoCliente)}">${nomeCliente}</td>`);
-                                 }
- 
-                                 $linha.append(`<td class="align-middle">${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
-                                 $linha.append(`<td class="text-center align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
-                                 $linha.append(`<td class="text-center align-middle" >${item.cliente_lote_nome || 'N/A'}</td>`);
-                                 $linha.append(`<td class="text-end align-middle">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
- 
-                                 $tabelaComposicaoBody.append($linha);
-                             });
-                             isFirstRowOfQueue = false;
-                         }
-                     }
-                 });
-             } else {
-                 $tabelaComposicaoBody.html(`<tr><td colspan="7" class="text-center text-danger">Erro ao carregar os dados: ${response.message || ''}</td></tr>`);
-             }
-         }).fail(function () {
-             $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
-         });
-     }*/
+    function inicializarSelectProdutoNoCard(selectId) {
+        const $select = $('#' + selectId);
+
+        $select.select2({
+            placeholder: 'Digite para buscar um item no stock...',
+            theme: "bootstrap-5",
+            dropdownParent: $modalGerenciarFila,
+            language: "pt-BR",
+            minimumInputLength: 2, // Começa a buscar após 2 caracteres
+            ajax: {
+                url: 'ajax_router.php?action=getItensDeEstoqueParaCarregamento',
+                dataType: 'json',
+                delay: 250, // Atraso para não fazer uma requisição a cada tecla
+                processResults: function (data) {
+                    // O Select2 espera os dados no formato { results: [ ... ] }
+                    return {
+                        results: data.results
+                    };
+                },
+                cache: true
+            }
+        });
+    }
 
     function recarregarETabelaPrincipal() {
         console.log("Buscando dados atualizados do carregamento...");
@@ -373,8 +330,6 @@ $(document).ready(function () {
         $selectClienteParaFila.val(null).trigger('change');
     });
 
-    // /public/js/detalhes_carregamento.js (Versão Final com a sua lógica de depuração)
-
     $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (e) {
         e.preventDefault();
         const $form = $(this);
@@ -524,8 +479,6 @@ $(document).ready(function () {
         $form.find('button[type="submit"]').html('+').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
         $(this).remove(); // Remove o próprio botão de cancelar
     });
-
-
 
     $('#btn-salvar-e-fechar-fila').on('click', function () {
         const $botaoSalvar = $(this);
@@ -743,7 +696,6 @@ $(document).ready(function () {
 
     // --- INICIALIZAÇÃO DA PÁGINA ---
     preencherCabecalho();
-    //controlarVisibilidadeAcoes();
     inicializarSelectClienteModal();
     recarregarETabelaPrincipal();
 });

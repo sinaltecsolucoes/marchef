@@ -70,56 +70,6 @@ class CarregamentoRepository
         return $novoId;
     }
 
-    /**
-     * Cria uma nova fila e salva um lote de leituras de QR Code.
-     * Usa uma transação para garantir a integridade dos dados.
-     */
-    /*    public function createFilaWithLeituras(int $carregamentoId, int $clienteId, array $leituras): int
-        {
-            $this->pdo->beginTransaction();
-            try {
-                // 1. Inserir o registro da fila na tabela 'tbl_carregamento_filas'
-                $sqlFila = "INSERT INTO tbl_carregamento_filas (fila_carregamento_id, fila_entidade_id_cliente) VALUES (:car_id, :cli_id)";
-                $stmtFila = $this->pdo->prepare($sqlFila);
-                $stmtFila->execute([
-                    ':car_id' => $carregamentoId,
-                    ':cli_id' => $clienteId
-                ]);
-                $filaId = (int) $this->pdo->lastInsertId();
-
-                // 2. Preparar a inserção para as leituras
-                $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_qrcode_conteudo) VALUES (:fila_id, :conteudo)";
-                $stmtLeitura = $this->pdo->prepare($sqlLeitura);
-
-                // 3. Inserir cada leitura da lista na tabela 'tbl_carregamento_leituras'
-                foreach ($leituras as $conteudoQr) {
-                    $stmtLeitura->execute([
-                        ':fila_id' => $filaId,
-                        ':conteudo' => $conteudoQr
-                    ]);
-                }
-
-                // AUDITORIA: Registar a criação da fila. O log é feito dentro da transação.
-                if ($filaId > 0) {
-                    $dadosNovosFila = [
-                        'fila_carregamento_id' => $carregamentoId,
-                        'fila_entidade_id_cliente' => $clienteId,
-                        'quantidade_leituras' => count($leituras)
-                    ];
-                    $this->auditLogger->log('CREATE', $filaId, 'tbl_carregamento_filas', null, $dadosNovosFila);
-                }
-
-                // 4. Se tudo deu certo, confirma todas as operações no banco de dados
-                $this->pdo->commit();
-                return $filaId;
-            } catch (\Exception $e) {
-                // 5. Se qualquer passo falhar, desfaz todas as operações
-                $this->pdo->rollBack();
-                // Re-lança a exceção para que a API possa reportar o erro
-                throw $e;
-            }
-        }*/
-
     public function createFilaWithLeituras(int $carregamentoId, int $clienteId, array $leituras): int
     {
         $this->pdo->beginTransaction();
@@ -144,7 +94,7 @@ class CarregamentoRepository
             if ($filaId > 0) {
                 $dadosNovosFila = [
                     'fila_carregamento_id' => $carregamentoId,
-                    'fila_entidade_id_cliente' => $clienteId,
+                    'cliente_associado_nas_leituras' => $clienteId,
                     'quantidade_leituras' => count($leituras)
                 ];
                 $this->auditLogger->log('CREATE', $filaId, 'tbl_carregamento_filas', null, $dadosNovosFila);
@@ -447,6 +397,40 @@ class CarregamentoRepository
     }
 
     /**
+     * Busca itens de estoque com saldo positivo, vindos do NOVO sistema de lotes.
+     */
+    public function getItensDeEstoqueDisponivelParaSelecao(string $searchTerm = ''): array
+    {
+        $sql = "
+        SELECT 
+            lne_novo.item_emb_id as id,
+            CONCAT(
+                p.prod_descricao, 
+                ' (Lote: ', 
+                lnh_novo.lote_completo_calculado, 
+                ') - Saldo: ',
+                CAST((lne_novo.item_emb_qtd_sec - lne_novo.item_emb_qtd_finalizada) AS DECIMAL(10,3))
+            ) as text
+        
+        FROM tbl_lotes_novo_embalagem lne_novo
+        
+        JOIN tbl_produtos p ON lne_novo.item_emb_prod_sec_id = p.prod_codigo
+        JOIN tbl_lotes_novo_header lnh_novo ON lne_novo.item_emb_lote_id = lnh_novo.lote_id
+        
+        WHERE 
+            (p.prod_descricao LIKE :search_term OR lnh_novo.lote_completo_calculado LIKE :search_term)
+            AND (lne_novo.item_emb_qtd_sec - lne_novo.item_emb_qtd_finalizada) > 0
+
+        ORDER BY text ASC
+        LIMIT 50;
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':search_term' => '%' . $searchTerm . '%']);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Executa a baixa final do estoque para um carregamento.
      * Esta é a ação final e irreversível.
      *
@@ -535,7 +519,7 @@ class CarregamentoRepository
                 car_item_carregamento_id, 
                 car_item_fila_numero,
                 car_item_cliente_id, 
-                car_item_lote_item_id, 
+                car_item_lote_novo_item_id, 
                 car_item_quantidade
             ) VALUES (
                 :carregamento_id, 
@@ -545,15 +529,15 @@ class CarregamentoRepository
                 :qtd
             )";
 
+
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             ':carregamento_id' => $carregamentoId,
             ':fila_id' => $filaId,
-            ':cliente_id' => $clienteId, // Passando o novo valor
+            ':cliente_id' => $clienteId,
             ':lote_item_id' => $loteItemId,
             ':qtd' => $quantidade
         ]);
-
         // ... (lógica de log)
         return $success;
     }
@@ -572,16 +556,16 @@ class CarregamentoRepository
             return null;
         }
 
-        // 2. Busca todas as filas (sem cliente)
+        // 2. Busca todas as filas (sem alteração)
         $stmtFilas = $this->pdo->prepare(
             "SELECT f.fila_id, f.fila_numero_sequencial 
-             FROM tbl_carregamento_filas f 
-             WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
+         FROM tbl_carregamento_filas f 
+         WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
         );
         $stmtFilas->execute([':id' => $carregamentoId]);
         $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Busca todos os itens e junta com os dados do cliente
+        // 3. Busca todos os itens com uma query "bilingue"
         $stmtItens = $this->pdo->prepare(
             "SELECT 
             ci.car_item_fila_numero,
@@ -589,21 +573,25 @@ class CarregamentoRepository
             e_destino.ent_razao_social as cliente_razao_social,
             p.prod_descricao, 
             p.prod_codigo_interno,
-            lh.lote_completo_calculado,
-            COALESCE(e_origem.ent_nome_fantasia, e_origem.ent_razao_social) as cliente_lote_nome 
-         FROM tbl_carregamento_itens ci 
+            lnh_novo.lote_completo_calculado,
+            COALESCE(e_novo.ent_nome_fantasia, e_novo.ent_razao_social) as cliente_lote_nome
+         FROM tbl_carregamento_itens ci
+         
          JOIN tbl_entidades e_destino ON ci.car_item_cliente_id = e_destino.ent_codigo
-         JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id 
-         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo 
-         JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
-         LEFT JOIN tbl_entidades e_origem ON lh.lote_cliente_id = e_origem.ent_codigo
+         
+         -- Joins para o NOVO sistema de lotes
+         JOIN tbl_lotes_novo_embalagem lne_novo ON ci.car_item_lote_novo_item_id = lne_novo.item_emb_id
+         JOIN tbl_produtos p ON lne_novo.item_emb_prod_sec_id = p.prod_codigo 
+         JOIN tbl_lotes_novo_header lnh_novo ON lne_novo.item_emb_lote_id = lnh_novo.lote_id
+         LEFT JOIN tbl_entidades e_novo ON lnh_novo.lote_cliente_id = e_novo.ent_codigo
+
          WHERE ci.car_item_carregamento_id = :id"
         );
+
         $stmtItens->execute([':id' => $carregamentoId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
-        // 4. Agrupa os itens dentro das suas respetivas filas
-
+        // 4. Agrupa os itens dentro das suas respetivas filas (sem alteração)
         foreach ($filas as $key => $fila) {
             $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
                 return $item['car_item_fila_numero'] == $fila['fila_id'];
@@ -943,8 +931,6 @@ class CarregamentoRepository
         }
         return $success;
     }
-
-    // /src/Carregamentos/CarregamentoRepository.php
 
     /**
      * Reabre um carregamento finalizado, revertendo todos os movimentos de estoque.
