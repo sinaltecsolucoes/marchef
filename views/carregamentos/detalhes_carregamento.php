@@ -139,7 +139,6 @@
             <button type="button" class="btn-close btn-remover-cliente-da-fila"></button>
         </div>
         <div class="card-body">
-           
 
             <form class="form-adicionar-produto-ao-cliente">
                 <div class="row g-2 align-items-end">
@@ -150,15 +149,10 @@
                     <div class="col-md-2"><label class="form-label">Quantidade</label><input type="number"
                             class="form-control" min="1" step="0.001"></div>
                     <div class="col-md-2 d-flex">
-                        <button type="submit" class="btn btn-primary w-100" 
-                            title="Adicionar Produto">+</button>
+                        <button type="submit" class="btn btn-primary w-100" title="Adicionar Produto">+</button>
                     </div>
                 </div>
             </form>
-
-
-
-
 
             <hr>
 

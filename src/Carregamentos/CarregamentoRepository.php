@@ -52,7 +52,7 @@ class CarregamentoRepository
             ':clienteOrganizadorId' => $data['car_entidade_id_organizador'],
             ':lacre' => $data['car_lacre'] ?? null,
             ':placa' => $data['car_placa_veiculo'] ?? null,
-            ':hora_inicio' => $data['car_hora_inicio'] ?? null, // Futuramente podemos adicionar este campo ao modal
+            ':hora_inicio' => $data['car_hora_inicio'] ?? null,
             ':ordem_expedicao' => $data['car_ordem_expedicao'] ?? null,
             ':user_id' => $userId
         ]);
@@ -78,7 +78,8 @@ class CarregamentoRepository
             $filaId = $this->adicionarFila($carregamentoId);
 
             // 2. Prepara a inserção para as leituras, agora incluindo o cliente
-            $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_cliente_id, leitura_qrcode_conteudo) VALUES (:fila_id, :cliente_id, :conteudo)";
+            $sqlLeitura = "INSERT INTO tbl_carregamento_leituras (leitura_fila_id, leitura_cliente_id, leitura_qrcode_conteudo) 
+                           VALUES (:fila_id, :cliente_id, :conteudo)";
             $stmtLeitura = $this->pdo->prepare($sqlLeitura);
 
             // 3. Insere cada leitura associando-a à fila e ao cliente
@@ -113,6 +114,20 @@ class CarregamentoRepository
     }
 
     /**
+     * Função de apoio para encontrar um item específico dentro de um carregamento.
+     */
+    private function findCarregamentoItem(int $carregamentoId, int $loteItemId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM tbl_carregamento_itens 
+             WHERE car_item_carregamento_id = :car_id AND car_item_lote_novo_item_id = :lote_item_id"
+        );
+        $stmt->execute([':car_id' => $carregamentoId, ':lote_item_id' => $loteItemId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    /**
      * Adiciona um item a um carregamento ou atualiza a sua quantidade.
      *
      * @param int $carregamentoId O ID do carregamento.
@@ -142,11 +157,12 @@ class CarregamentoRepository
             // Se não existe, INSERE um novo registo
             $dadosNovos = [
                 'car_item_carregamento_id' => $carregamentoId,
-                'car_item_lote_item_id' => $loteItemId,
+                'car_item_lote_novo_item_id' => $loteItemId,
                 'car_item_quantidade' => $quantidade
             ];
 
-            $sql = "INSERT INTO tbl_carregamento_itens (car_item_carregamento_id, car_item_lote_item_id, car_item_quantidade) VALUES (:car_id, :lote_item_id, :qtd)";
+            $sql = "INSERT INTO tbl_carregamento_itens (car_item_carregamento_id, car_item_lote_novo_item_id, car_item_quantidade) 
+                    VALUES (:car_id, :lote_item_id, :qtd)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([
                 ':car_id' => $carregamentoId,
@@ -160,17 +176,77 @@ class CarregamentoRepository
     }
 
     /**
-     * Função de apoio para encontrar um item específico dentro de um carregamento.
+     * Busca itens de stock com saldo positivo, vindos do NOVO sistema de lotes.
+     * VERSÃO FINAL COM BUSCA OPCIONAL.
      */
-    private function findCarregamentoItem(int $carregamentoId, int $loteItemId): ?array
+    public function getItensDeEstoqueDisponivelParaSelecao(string $searchTerm = ''): array
     {
-        $stmt = $this->pdo->prepare(
-            "SELECT * FROM tbl_carregamento_itens 
-             WHERE car_item_carregamento_id = :car_id AND car_item_lote_item_id = :lote_item_id"
-        );
-        $stmt->execute([':car_id' => $carregamentoId, ':lote_item_id' => $loteItemId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ?: null;
+        $params = [];
+        $whereSearchClause = ""; // Inicia a cláusula de busca como vazia
+
+        // Adiciona a condição de busca APENAS se um termo de pesquisa for fornecido
+        if (!empty(trim($searchTerm))) {
+            $whereSearchClause = "AND (itens_com_saldo.prod_descricao LIKE :search_term OR itens_com_saldo.lote_completo_calculado LIKE :search_term)";
+            $params[':search_term'] = '%' . $searchTerm . '%';
+        }
+
+        $sql = "
+        SELECT 
+            itens_com_saldo.id,
+            CONCAT(
+                itens_com_saldo.prod_descricao, 
+                ' (Lote: ', 
+                itens_com_saldo.lote_completo_calculado, 
+                ') - Saldo: ',
+                CAST(itens_com_saldo.saldo_atual AS DECIMAL(10,3))
+            ) as text
+        FROM (
+            SELECT 
+                es.estoque_lote_item_id as id,
+                p.prod_descricao,
+                lnh.lote_completo_calculado,
+                SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as saldo_atual
+            FROM tbl_estoque es
+            JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
+            GROUP BY 
+                es.estoque_lote_item_id, 
+                p.prod_descricao, 
+                lnh.lote_completo_calculado
+        ) AS itens_com_saldo
+        WHERE 
+            itens_com_saldo.saldo_atual > 0
+            {$whereSearchClause}
+        ORDER BY text ASC
+        LIMIT 150;
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params); // Executa com ou sem o :search_term, dependendo da condição
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retorna uma lista de produtos distintos disponíveis em estoque com saldo positivo.
+     * Formato: [id => prod_codigo, text => prod_descricao]
+     */
+    public function getProdutosDisponiveisEmEstoque(): array
+    {
+        $sql = "
+        SELECT DISTINCT 
+            p.prod_codigo as id,
+            p.prod_descricao as text
+        FROM tbl_estoque es
+        JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
+        GROUP BY p.prod_codigo, p.prod_descricao
+        HAVING SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) > 0
+        ORDER BY text ASC
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -333,7 +409,7 @@ class CarregamentoRepository
                 p.prod_descricao, 
                 lh.lote_completo_calculado as lote_num_completo
              FROM tbl_carregamento_itens ci
-             JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
+             JOIN tbl_lote_itens li ON ci.car_item_lote_novo_item_id = li.item_id
              JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
              JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
              WHERE ci.car_item_carregamento_id = :id
@@ -365,68 +441,31 @@ class CarregamentoRepository
     }
 
     /**
-     * Busca os itens de um carregamento e compara com o estoque pendente atual.
-     * @param int $carregamentoId
-     * @return array
+     * Busca os itens de um carregamento para a tela de conferência.
+     * VERSÃO ATUALIZADA para o NOVO sistema de lotes.
      */
     public function getItensParaConferencia(int $carregamentoId): array
     {
-        // Esta consulta agora junta os itens do carregamento com o saldo real calculado da tbl_estoque.
         $sql = "SELECT
-                    ci.car_item_id,
-                    ci.car_item_lote_item_id,
-                    li.item_produto_id, 
-                    p.prod_descricao,
-                    lh.lote_completo_calculado,
-                    ci.car_item_quantidade,
-                    -- Subconsulta para calcular o saldo de estoque real para cada item
-                    (
-                        SELECT SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END)
-                        FROM tbl_estoque es
-                        WHERE es.estoque_lote_item_id = ci.car_item_lote_item_id
-                    ) as estoque_pendente
-                FROM tbl_carregamento_itens ci
-                JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
-                JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
-                JOIN tbl_lotes lh ON li.item_lote_id = lh.lote_id
-                WHERE ci.car_item_carregamento_id = :id";
+                ci.car_item_id,
+                ci.car_item_lote_novo_item_id,
+                lne.item_emb_prod_sec_id as item_produto_id, 
+                p.prod_descricao,
+                lnh.lote_completo_calculado,
+                ci.car_item_quantidade,
+                (SELECT SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END)
+                 FROM tbl_estoque es
+                 WHERE es.estoque_lote_item_id = ci.car_item_lote_novo_item_id) as estoque_pendente
+            FROM tbl_carregamento_itens ci
+            
+            JOIN tbl_lotes_novo_embalagem lne ON ci.car_item_lote_novo_item_id = lne.item_emb_id
+            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+
+            WHERE ci.car_item_carregamento_id = :id";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $carregamentoId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Busca itens de estoque com saldo positivo, vindos do NOVO sistema de lotes.
-     */
-    public function getItensDeEstoqueDisponivelParaSelecao(string $searchTerm = ''): array
-    {
-        $sql = "
-        SELECT 
-            lne_novo.item_emb_id as id,
-            CONCAT(
-                p.prod_descricao, 
-                ' (Lote: ', 
-                lnh_novo.lote_completo_calculado, 
-                ') - Saldo: ',
-                CAST((lne_novo.item_emb_qtd_sec - lne_novo.item_emb_qtd_finalizada) AS DECIMAL(10,3))
-            ) as text
-        
-        FROM tbl_lotes_novo_embalagem lne_novo
-        
-        JOIN tbl_produtos p ON lne_novo.item_emb_prod_sec_id = p.prod_codigo
-        JOIN tbl_lotes_novo_header lnh_novo ON lne_novo.item_emb_lote_id = lnh_novo.lote_id
-        
-        WHERE 
-            (p.prod_descricao LIKE :search_term OR lnh_novo.lote_completo_calculado LIKE :search_term)
-            AND (lne_novo.item_emb_qtd_sec - lne_novo.item_emb_qtd_finalizada) > 0
-
-        ORDER BY text ASC
-        LIMIT 50;
-    ";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':search_term' => '%' . $searchTerm . '%']);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -456,15 +495,16 @@ class CarregamentoRepository
                 // 1. Cria o movimento de SAÍDA no estoque (agora mais eficiente)
                 $stmtEstoque = $this->pdo->prepare("INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) VALUES (:prod_id, :lote_item_id, :qtd, 'SAIDA', :obs)");
                 $stmtEstoque->execute([
-                    ':prod_id' => $item['item_produto_id'],
-                    ':lote_item_id' => $item['car_item_lote_item_id'],
+                    ':prod_id' => $item['item_emb_produto_id'],
+                    ':lote_item_id' => $item['car_item_lote_novo_item_id'],
                     ':qtd' => $item['car_item_quantidade'],
                     ':obs' => "Saída para Carregamento Nº {$carregamentoId}"
                 ]);
 
                 // 2. Atualiza a quantidade finalizada no item do lote original
                 $stmtUpdateItem = $this->pdo->prepare("UPDATE tbl_lote_itens SET item_quantidade_finalizada = item_quantidade_finalizada + :qtd WHERE item_id = :id");
-                $stmtUpdateItem->execute([':qtd' => $item['car_item_quantidade'], ':id' => $item['car_item_lote_item_id']]);
+
+                $stmtUpdateItem->execute([':qtd' => $item['car_item_quantidade'], ':id' => $item['car_item_lote_novo_item_id']]);
             }
 
             // 3. Atualiza o status final do carregamento
@@ -547,25 +587,16 @@ class CarregamentoRepository
      */
     public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
     {
-        // 1. Busca o cabeçalho (sem alteração)
         $stmtHeader = $this->pdo->prepare("SELECT c.*, e.ent_razao_social FROM tbl_carregamentos c LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo WHERE c.car_id = :id");
         $stmtHeader->execute([':id' => $carregamentoId]);
         $header = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-
-        if (!$header) {
+        if (!$header)
             return null;
-        }
 
-        // 2. Busca todas as filas (sem alteração)
-        $stmtFilas = $this->pdo->prepare(
-            "SELECT f.fila_id, f.fila_numero_sequencial 
-         FROM tbl_carregamento_filas f 
-         WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id"
-        );
+        $stmtFilas = $this->pdo->prepare("SELECT f.fila_id, f.fila_numero_sequencial FROM tbl_carregamento_filas f WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id");
         $stmtFilas->execute([':id' => $carregamentoId]);
         $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Busca todos os itens com uma query "bilingue"
         $stmtItens = $this->pdo->prepare(
             "SELECT 
             ci.car_item_fila_numero,
@@ -573,17 +604,16 @@ class CarregamentoRepository
             e_destino.ent_razao_social as cliente_razao_social,
             p.prod_descricao, 
             p.prod_codigo_interno,
-            lnh_novo.lote_completo_calculado,
+            lnh.lote_completo_calculado,
             COALESCE(e_novo.ent_nome_fantasia, e_novo.ent_razao_social) as cliente_lote_nome
          FROM tbl_carregamento_itens ci
          
          JOIN tbl_entidades e_destino ON ci.car_item_cliente_id = e_destino.ent_codigo
          
-         -- Joins para o NOVO sistema de lotes
-         JOIN tbl_lotes_novo_embalagem lne_novo ON ci.car_item_lote_novo_item_id = lne_novo.item_emb_id
-         JOIN tbl_produtos p ON lne_novo.item_emb_prod_sec_id = p.prod_codigo 
-         JOIN tbl_lotes_novo_header lnh_novo ON lne_novo.item_emb_lote_id = lnh_novo.lote_id
-         LEFT JOIN tbl_entidades e_novo ON lnh_novo.lote_cliente_id = e_novo.ent_codigo
+         JOIN tbl_lotes_novo_embalagem lne ON ci.car_item_lote_novo_item_id = lne.item_emb_id
+         JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo 
+         JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+         LEFT JOIN tbl_entidades e_novo ON lnh.lote_cliente_id = e_novo.ent_codigo
 
          WHERE ci.car_item_carregamento_id = :id"
         );
@@ -591,7 +621,6 @@ class CarregamentoRepository
         $stmtItens->execute([':id' => $carregamentoId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
-        // 4. Agrupa os itens dentro das suas respetivas filas (sem alteração)
         foreach ($filas as $key => $fila) {
             $filas[$key]['itens'] = array_values(array_filter($todosOsItens, function ($item) use ($fila) {
                 return $item['car_item_fila_numero'] == $fila['fila_id'];
@@ -599,6 +628,50 @@ class CarregamentoRepository
         }
 
         return ['header' => $header, 'filas' => $filas];
+    }
+
+    /**
+     * Busca lotes de um produto específico que ainda possuem saldo em estoque.
+     * Formatado para Select2.
+     *
+     * @param int $produtoId O ID do produto a ser pesquisado.
+     * @return array
+     */
+    public function findLotesComSaldoPorProduto(int $produtoId): array
+    {
+        $sql = "
+        SELECT 
+            itens_com_saldo.id,
+            CONCAT(
+                'Lote: ', 
+                itens_com_saldo.lote_completo_calculado, 
+                ' - Saldo: ',
+                CAST(itens_com_saldo.saldo_atual AS DECIMAL(10,3))
+            ) as text
+        FROM (
+            SELECT 
+                es.estoque_lote_item_id as id,
+                p.prod_codigo,
+                lnh.lote_completo_calculado,
+                SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as saldo_atual
+            FROM tbl_estoque es
+            JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
+            GROUP BY 
+                es.estoque_lote_item_id, 
+                p.prod_codigo, 
+                lnh.lote_completo_calculado
+        ) AS itens_com_saldo
+        WHERE 
+            itens_com_saldo.saldo_atual > 0
+            AND itens_com_saldo.prod_codigo = :produto_id -- O filtro principal!
+        ORDER BY text ASC;
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':produto_id' => $produtoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -689,39 +762,108 @@ class CarregamentoRepository
      * @param int $filaId
      * @return array|null
      */
+    /* public function findFilaComClientesEItens(int $filaId): ?array
+     {
+         // 1. Busca os dados da fila
+         $stmtFila = $this->pdo->prepare(
+             "SELECT f.fila_id, f.fila_numero_sequencial 
+                     FROM tbl_carregamento_filas f 
+                     WHERE f.fila_id = :id"
+         );
+         $stmtFila->execute([':id' => $filaId]);
+         $fila = $stmtFila->fetch(PDO::FETCH_ASSOC);
+
+         if (!$fila) {
+             return null; // Retorna nulo se a fila não for encontrada
+         }
+
+         // 2. Busca todos os itens daquela fila, já com os nomes de cliente e produto
+         $stmtItens = $this->pdo->prepare(
+             "SELECT 
+             ci.car_item_lote_novo_item_id as loteItemId,
+             ci.car_item_quantidade as quantidade,
+             ci.car_item_cliente_id as clienteId,
+             e.ent_razao_social as clienteNome,
+             CONCAT(p.prod_descricao, ' (Cód: ', p.prod_codigo_interno, ')') as produtoTexto
+          FROM tbl_carregamento_itens ci
+          JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+          JOIN tbl_lote_itens li ON ci.car_item_lote_novo_item_id = li.item_id
+          JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+          WHERE ci.car_item_fila_numero = :fila_id"
+         );
+         $stmtItens->execute([':fila_id' => $filaId]);
+         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+         // 3. Agrupa os itens por cliente
+         $clientes = [];
+         foreach ($todosOsItens as $item) {
+             $clienteId = $item['clienteId'];
+             if (!isset($clientes[$clienteId])) {
+                 $clientes[$clienteId] = [
+                     'clienteId' => $clienteId,
+                     'clienteNome' => $item['clienteNome'],
+                     'produtos' => []
+                 ];
+             }
+             $clientes[$clienteId]['produtos'][] = [
+                 'loteItemId' => $item['loteItemId'],
+                 'quantidade' => $item['quantidade'],
+                 'produtoTexto' => $item['produtoTexto']
+             ];
+         }
+
+         $fila['clientes'] = array_values($clientes); // Converte o array associativo para um array simples
+         return $fila;
+     }*/
+
+    /**
+     * Busca os detalhes de uma única fila, incluindo seus itens agrupados por cliente.
+     * VERSÃO CORRIGIDA para ser compatível com o NOVO sistema de lotes.
+     *
+     * @param int $filaId
+     * @return array|null
+     */
     public function findFilaComClientesEItens(int $filaId): ?array
     {
-        // 1. Busca os dados da fila
+        // 1. Busca os dados da fila (sem alteração)
         $stmtFila = $this->pdo->prepare(
             "SELECT f.fila_id, f.fila_numero_sequencial 
-                    FROM tbl_carregamento_filas f 
-                    WHERE f.fila_id = :id"
+         FROM tbl_carregamento_filas f 
+         WHERE f.fila_id = :id"
         );
         $stmtFila->execute([':id' => $filaId]);
         $fila = $stmtFila->fetch(PDO::FETCH_ASSOC);
 
         if (!$fila) {
-            return null; // Retorna nulo se a fila não for encontrada
+            return null;
         }
 
-        // 2. Busca todos os itens daquela fila, já com os nomes de cliente e produto
+        // --- INÍCIO DA CORREÇÃO ---
+        // 2. Busca todos os itens daquela fila com os JOINS corretos para o novo sistema
         $stmtItens = $this->pdo->prepare(
             "SELECT 
-            ci.car_item_lote_item_id as loteItemId,
+            ci.car_item_lote_novo_item_id as loteItemId,
             ci.car_item_quantidade as quantidade,
             ci.car_item_cliente_id as clienteId,
             e.ent_razao_social as clienteNome,
-            CONCAT(p.prod_descricao, ' (Cód: ', p.prod_codigo_interno, ')') as produtoTexto
+            p.prod_codigo as produtoId,
+            CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as produtoTexto
          FROM tbl_carregamento_itens ci
+         
+         -- Joins para buscar os nomes e IDs necessários
          JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
-         JOIN tbl_lote_itens li ON ci.car_item_lote_item_id = li.item_id
-         JOIN tbl_produtos p ON li.item_produto_id = p.prod_codigo
+         JOIN tbl_lotes_novo_embalagem lne ON ci.car_item_lote_novo_item_id = lne.item_emb_id
+         JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+         JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+         
          WHERE ci.car_item_fila_numero = :fila_id"
         );
+        // --- FIM DA CORREÇÃO ---
+
         $stmtItens->execute([':fila_id' => $filaId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Agrupa os itens por cliente
+        // 3. Agrupa os itens por cliente (sem alteração)
         $clientes = [];
         foreach ($todosOsItens as $item) {
             $clienteId = $item['clienteId'];
@@ -735,13 +877,15 @@ class CarregamentoRepository
             $clientes[$clienteId]['produtos'][] = [
                 'loteItemId' => $item['loteItemId'],
                 'quantidade' => $item['quantidade'],
+                'produtoId' => $item['produtoId'], // Passa o ID do produto
                 'produtoTexto' => $item['produtoTexto']
             ];
         }
 
-        $fila['clientes'] = array_values($clientes); // Converte o array associativo para um array simples
+        $fila['clientes'] = array_values($clientes);
         return $fila;
     }
+
 
     /**
      * Atualiza uma fila composta, apagando seus itens antigos e inserindo os novos.
@@ -815,9 +959,9 @@ class CarregamentoRepository
             if ($dadosAntigos['car_status'] === 'FINALIZADO') {
                 // A lógica de estorno é idêntica à do método reabrir
                 $stmtItens = $this->pdo->prepare(
-                    "SELECT car_item_lote_item_id, car_item_quantidade, item_produto_id 
+                    "SELECT car_item_lote_novo_item_id, car_item_quantidade, item_emb_produto_id 
                      FROM tbl_carregamento_itens 
-                     JOIN tbl_lote_itens ON item_id = car_item_lote_item_id
+                     JOIN tbl_lotes_novo_embalagem ON item_emb_id = car_item_lote_novo_item_id
                      WHERE car_item_carregamento_id = :id"
                 );
                 $stmtItens->execute([':id' => $carregamentoId]);
@@ -828,7 +972,7 @@ class CarregamentoRepository
                     $stmtUpdateItem = $this->pdo->prepare(
                         "UPDATE tbl_lote_itens SET item_quantidade_finalizada = item_quantidade_finalizada - :qtd WHERE item_id = :id"
                     );
-                    $stmtUpdateItem->execute([':qtd' => $item['car_item_quantidade'], ':id' => $item['car_item_lote_item_id']]);
+                    $stmtUpdateItem->execute([':qtd' => $item['car_item_quantidade'], ':id' => $item['car_item_lote_novo_item_id']]);
 
                     // Cria o movimento de ENTRADA (estorno) no estoque
                     $stmtEstoque = $this->pdo->prepare(
@@ -836,8 +980,8 @@ class CarregamentoRepository
                          VALUES (:prod_id, :lote_item_id, :qtd, 'ENTRADA POR CANCELAMENTO', :obs)"
                     );
                     $stmtEstoque->execute([
-                        ':prod_id' => $item['item_produto_id'],
-                        ':lote_item_id' => $item['car_item_lote_item_id'],
+                        ':prod_id' => $item['item_emb_produto_id'],
+                        ':lote_item_id' => $item['car_item_lote_novo_item_id'],
                         ':qtd' => $item['car_item_quantidade'],
                         ':obs' => "Cancelamento do Carregamento Nº {$dadosAntigos['car_numero']}"
                     ]);
@@ -862,6 +1006,7 @@ class CarregamentoRepository
             throw $e;
         }
     }
+
     /**
      * Exclui permanentemente um carregamento e todos os seus dados associados (filas e itens).
      * Usa uma transação para garantir a integridade.
@@ -934,12 +1079,6 @@ class CarregamentoRepository
 
     /**
      * Reabre um carregamento finalizado, revertendo todos os movimentos de estoque.
-     * (Versão Final e Segura com estorno de estoque)
-     *
-     * @param int $carregamentoId
-     * @param string $motivo
-     * @return bool
-     * @throws Exception
      */
     public function reabrir(int $carregamentoId, string $motivo): bool
     {
@@ -956,9 +1095,9 @@ class CarregamentoRepository
 
             // 2. Busca todos os itens que foram baixados por este carregamento
             $stmtItens = $this->pdo->prepare(
-                "SELECT car_item_lote_item_id, car_item_quantidade, item_produto_id 
+                "SELECT car_item_lote_novo_item_id, car_item_quantidade, item_emb_prod_sec_id 
                  FROM tbl_carregamento_itens 
-                 JOIN tbl_lote_itens ON item_id = car_item_lote_item_id
+                 JOIN tbl_lotes_novo_embalagem ON item_emb_id = car_item_lote_novo_item_id
                  WHERE car_item_carregamento_id = :id"
             );
             $stmtItens->execute([':id' => $carregamentoId]);
@@ -972,22 +1111,22 @@ class CarregamentoRepository
             foreach ($itensParaEstornar as $item) {
                 // 3a. Devolve a quantidade para o lote de origem
                 $stmtUpdateItem = $this->pdo->prepare(
-                    "UPDATE tbl_lote_itens SET item_quantidade_finalizada = item_quantidade_finalizada - :qtd 
-                     WHERE item_id = :id"
+                    "UPDATE tbl_lotes_novo_embalagem SET item_emb_qtd_finalizada = item_emb_qtd_finalizada + :qtd 
+                     WHERE item_emb_id = :id"
                 );
                 $stmtUpdateItem->execute([
                     ':qtd' => $item['car_item_quantidade'],
-                    ':id' => $item['car_item_lote_item_id']
+                    ':id' => $item['car_item_lote_novo_item_id']
                 ]);
 
                 // 3b. Cria o movimento de ENTRADA (estorno) no estoque
                 $stmtEstoque = $this->pdo->prepare(
-                    "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                    "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_novo_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
                      VALUES (:prod_id, :lote_item_id, :qtd, 'ENTRADA POR ESTORNO', :obs)"
                 );
                 $stmtEstoque->execute([
-                    ':prod_id' => $item['item_produto_id'],
-                    ':lote_item_id' => $item['car_item_lote_item_id'],
+                    ':prod_id' => $item['item_emb_prod_sec_id'],
+                    ':lote_item_id' => $item['car_item_lote_novo_item_id'],
                     ':qtd' => $item['car_item_quantidade'],
                     ':obs' => "Estorno do Carregamento Nº {$dadosAntigos['car_numero']} (Reabertura)"
                 ]);
@@ -1005,11 +1144,42 @@ class CarregamentoRepository
             // Se tudo correu bem, confirma todas as operações
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             // Se algo deu errado, desfaz tudo
             $this->pdo->rollBack();
             throw $e;
         }
     }
+
+    public function getFilaDetalhes($fila_id)
+    {
+        $query = "
+        SELECT 
+            f.fila_id,
+            f.fila_numero_sequencial,
+            ci.car_item_quantidade,
+            c.cli_id AS cliente_id,
+            c.cli_razao_social AS cliente_razao_social,
+            p.prod_id,
+            p.prod_descricao,
+            lni.lote_novo_item_id AS lote_item_id,
+            lni.lote_completo_calculado
+        FROM tbl_filas f
+        LEFT JOIN tbl_carregamento_itens ci ON f.fila_id = ci.car_item_fila_numero
+        LEFT JOIN tbl_clientes c ON ci.car_item_cliente_id = c.cli_id
+        LEFT JOIN tbl_produtos p ON ci.car_item_produto_id = p.prod_id
+        LEFT JOIN tbl_lotes_novo_embalagem lni ON ci.car_item_lote_novo_item_id = lni.lote_novo_item_id
+        WHERE f.fila_id = :fila_id
+    ";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute(['fila_id' => $fila_id]);
+        $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'fila_id' => $fila_id,
+            'fila_numero_sequencial' => $itens[0]['fila_numero_sequencial'] ?? 0,
+            'itens' => $itens
+        ];
+    }
 }
+

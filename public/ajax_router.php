@@ -359,6 +359,12 @@ switch ($action) {
     case 'getItensDeEstoqueParaCarregamento':
         getItensDeEstoqueParaCarregamento($carregamentoRepo);
         break;
+    case 'getLotesComSaldoPorProduto':
+        getLotesComSaldoPorProduto($carregamentoRepo);
+        break;
+    case 'getProdutosDisponiveisEmEstoque':
+        getProdutosDisponiveisEmEstoque($carregamentoRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -1477,11 +1483,13 @@ function adicionarFila(CarregamentoRepository $repo)
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
         $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
-        if (!$carregamentoId || !$clienteId)
-            throw new Exception("Dados inválidos.");
+        
+        if (!$carregamentoId) { // Apenas o ID do carregamento é essencial para criar a fila.
+            throw new Exception("ID do Carregamento é inválido.");
+        }
 
-        $filaId = $repo->adicionarFila($carregamentoId, $clienteId);
-        echo json_encode(['success' => true, 'message' => 'Cliente adicionado à fila com sucesso.', 'fila_id' => $filaId]);
+        $filaId = $repo->adicionarFila($carregamentoId);
+        echo json_encode(['success' => true, 'message' => 'Fila adicionada com sucesso.', 'fila_id' => $filaId]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -1552,6 +1560,7 @@ function getFilaDetalhes(CarregamentoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
 
 function atualizarFilaComposta(CarregamentoRepository $repo)
 {
@@ -1635,4 +1644,21 @@ function getItensDeEstoqueParaCarregamento(CarregamentoRepository $repo)
     $itens = $repo->getItensDeEstoqueDisponivelParaSelecao($term);
     // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
     echo json_encode(['results' => $itens]);
+}
+
+function getLotesComSaldoPorProduto(CarregamentoRepository $repo)
+{
+    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+    if (!$produtoId) {
+        echo json_encode(['results' => []]);
+        return;
+    }
+    $lotes = $repo->findLotesComSaldoPorProduto($produtoId);
+    echo json_encode(['results' => $lotes]);
+}
+
+function getProdutosDisponiveisEmEstoque(CarregamentoRepository $repo)
+{
+    $produtos = $repo->getProdutosDisponiveisEmEstoque();
+    echo json_encode(['results' => $produtos]);
 }
