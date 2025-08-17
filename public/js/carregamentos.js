@@ -142,7 +142,7 @@ $(document).ready(function () {
                 const $select = $('#car_entidade_id_organizador');
                 $select.empty().append('<option value="">Selecione...</option>');
                 response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.ent_razao_social, cliente.ent_codigo));
+                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
                 });
             }
         });
@@ -326,7 +326,8 @@ $(document).ready(function () {
                 const $select = $('#car_entidade_id_organizador');
                 $select.empty().append('<option value="">Selecione um cliente...</option>');
                 response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.ent_razao_social, cliente.ent_codigo));
+                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
+
                 });
             } else {
                 // SUBSTITUÍDO: alert() por notificacaoErro()

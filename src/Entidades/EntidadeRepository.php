@@ -421,9 +421,22 @@ class EntidadeRepository
 
         return false;
     }
+
     public function getFornecedorOptions(): array
     {
-        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno FROM tbl_entidades WHERE (ent_tipo_entidade = 'Fornecedor' OR ent_tipo_entidade = 'Cliente e Fornecedor') AND ent_situacao = 'A' ORDER BY ent_razao_social ASC");
+        // ALTERAÇÃO: Adicionamos COALESCE para priorizar o nome fantasia
+        // e damos o apelido 'nome_display' para o resultado.
+        $sql = "SELECT 
+                    ent_codigo, 
+                    ent_codigo_interno,
+                    COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS nome_display
+                FROM tbl_entidades 
+                WHERE (ent_tipo_entidade = 'Fornecedor' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
+                AND ent_situacao = 'A' 
+                ORDER BY nome_display ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -442,11 +455,18 @@ class EntidadeRepository
 
     public function getClienteOptions(): array
     {
-        $stmt = $this->pdo->query("SELECT ent_codigo, ent_razao_social, ent_codigo_interno 
-                                FROM tbl_entidades 
-                                WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
-                                AND ent_situacao = 'A' 
-                                ORDER BY ent_razao_social ASC");
+        // ALTERAÇÃO: A mesma lógica é aplicada aqui.
+        $sql = "SELECT 
+                    ent_codigo, 
+                    ent_codigo_interno,
+                    COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS nome_display 
+                FROM tbl_entidades 
+                WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
+                AND ent_situacao = 'A' 
+                ORDER BY nome_display ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

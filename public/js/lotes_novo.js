@@ -4,6 +4,10 @@ $(document).ready(function () {
     // --- Seletores e Variáveis Globais ---
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $modalLoteNovo = $('#modal-lote-novo');
+    const $modalFinalizarLote = $('#modal-finalizar-lote');
+    const $tabelaLotes = $('#tabela-lotes-novo');
+    const $tabelaItensProducao = $('#tabela-itens-producao-novo');
+    const $tabelaItensEmbalagem = $('#tabela-itens-embalagem-novo');
     const $formHeader = $('#form-lote-novo-header');
     const $modalImpressao = $('#modal-imprimir-etiqueta');
     let tabelaLotesNovo, loteIdAtual;
@@ -127,7 +131,8 @@ $(document).ready(function () {
                     $select.append(
                         $('<option>', {
                             value: fornecedor.ent_codigo,
-                            text: `${fornecedor.ent_razao_social} (Cód: ${fornecedor.ent_codigo_interno})`,
+                            // text: `${fornecedor.ent_razao_social} (Cód: ${fornecedor.ent_codigo_interno})`,
+                            text: `${fornecedor.nome_display} (Cód: ${fornecedor.ent_codigo_interno})`,
                             'data-codigo-interno': fornecedor.ent_codigo_interno
                         })
                     );
@@ -152,7 +157,8 @@ $(document).ready(function () {
                     $select.append(
                         $('<option>', {
                             value: cliente.ent_codigo,
-                            text: `${cliente.ent_razao_social} (Cód: ${cliente.ent_codigo_interno})`,
+                            // text: `${cliente.ent_razao_social} (Cód: ${cliente.ent_codigo_interno})`,
+                            text: `${cliente.nome_display} (Cód: ${cliente.ent_codigo_interno})`,
                             'data-codigo-interno': cliente.ent_codigo_interno
                         })
                     );
@@ -281,15 +287,28 @@ $(document).ready(function () {
                 $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').removeClass('disabled');
                 new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
 
+                // Determina o estado de "somente leitura" a partir da resposta AJAX
                 const status = response.data.header.lote_status;
-                if (status === 'FINALIZADO' || status === 'CANCELADO') {
-                    configurarModalModoLeitura(true); // Ativa o modo de leitura
-                } else {
-                    configurarModalModoLeitura(false); // Garante o modo de edição
-                }
+                const isReadOnly = (status === 'FINALIZADO' || status === 'CANCELADO');
+
+                // 1. Configura o modo de leitura para os elementos estáticos (formulários, botões principais, cabeçalhos das tabelas)
+                // configurarModalModoLeitura(isReadOnly);
+
+
+                $.when(recarregarItensProducao(loteId), recarregarItensEmbalagem(loteId)).done(function () {
+                    // Este código só será executado DEPOIS que as duas chamadas AJAX terminarem com sucesso.
+                    // Agora, aplicamos o modo de leitura ao modal inteiro, incluindo as linhas e botões recém-criados.
+                    configurarModalModoLeitura(isReadOnly);
+                });
+
+                /* if (status === 'FINALIZADO' || status === 'CANCELADO') {
+                     configurarModalModoLeitura(true); // Ativa o modo de leitura
+                 } else {
+                     configurarModalModoLeitura(false); // Garante o modo de edição
+                 }*/
                 // Carrega a tabela de itens de produção ao editar um lote
-                recarregarItensProducao(loteId);
-                recarregarItensEmbalagem(loteId);
+                /*   recarregarItensProducao(loteId);
+                   recarregarItensEmbalagem(loteId);*/
 
                 $modalLoteNovo.modal('show');
             } else {
@@ -331,15 +350,15 @@ $(document).ready(function () {
 
     /**
     * Configura o modal de lote para modo de edição ou apenas visualização.
-    * ATUALIZADO PARA O NOVO MÓDULO DE LOTES.
     * @param {boolean} isReadOnly - True para modo de visualização, false para edição.
     */
     function configurarModalModoLeitura(isReadOnly) {
         // Seleciona todos os formulários e botões dentro do modal novo
         const $forms = $modalLoteNovo.find('form');
         const $botoesDeAcao = $modalLoteNovo.find('#btn-salvar-lote-novo-header, #btn-adicionar-item-producao, #btn-adicionar-item-embalagem, #btn-cancelar-edicao-producao, #btn-cancelar-edicao-embalagem');
-        const $colunaAcoesProducao = $('#tabela-itens-producao-novo').find('.coluna-acoes');
-        const $colunaAcoesEmbalagem = $('#tabela-itens-embalagem-novo').find('.coluna-acoes');
+
+        // Seleciona os CABEÇALHOS das colunas de ações
+        const $colunasDeAcoes = $modalLoteNovo.find('.coluna-acoes');
 
         // Desabilita/habilita todos os campos de input, select, etc.
         $forms.find('input, select, textarea').prop('disabled', isReadOnly);
@@ -347,9 +366,8 @@ $(document).ready(function () {
         // Mostra ou esconde os botões de ação (Salvar, Adicionar, etc.)
         $botoesDeAcao.toggle(!isReadOnly);
 
-        // Mostra ou esconde as colunas de Ações das tabelas de itens
-        $colunaAcoesProducao.toggle(!isReadOnly);
-        $colunaAcoesEmbalagem.toggle(!isReadOnly);
+        // Mostra ou esconde a coluna de ações inteira (cabeçalho e corpo)
+        $colunasDeAcoes.toggle(!isReadOnly);
 
         // Se estiver em modo de leitura, muda o texto do botão de editar principal
         if (isReadOnly) {
@@ -368,7 +386,7 @@ $(document).ready(function () {
         const $tbody = $('#tabela-itens-producao-novo');
         $tbody.html('<tr><td colspan="5" class="text-center">A carregar itens...</td></tr>');
 
-        $.ajax({
+        return $.ajax({
             url: 'ajax_router.php?action=buscarLoteNovo',
             type: 'POST',
             data: { lote_id: loteId, csrf_token: csrfToken },
@@ -383,24 +401,27 @@ $(document).ready(function () {
                             <td class="text-center align-middle">${parseFloat(item.item_prod_quantidade).toFixed(3)}</td>
                             <td class="text-center align-middle"">${parseFloat(item.item_prod_saldo).toFixed(3)}</td>
                             <td class="text-center align-middle"">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                           <td class="text-center coluna-acoes">
+                            <td class="text-center align-middle coluna-acoes">
                                 <button class="btn btn-warning btn-sm btn-editar-item-producao" 
                                             data-id="${item.item_prod_id}"
                                             data-produto-id="${item.item_prod_produto_id}"
                                             data-quantidade="${item.item_prod_quantidade}"
                                             data-validade="${item.item_prod_data_validade}"
                                             title="Editar Item">Editar</button>
-                                <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item">Excluir Item</button>
+                                <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item">Excluir</button>
                             </td>
                         </tr>
                     `;
                     $tbody.append(rowHtml);
                 });
             } else {
-                const colunas = 5;
+                /* const colunas = 5;*/
                 $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
+
+                //$tbody.html(`<tr><td colspan="${isReadOnly ? 4 : 5}" class="text-center text-muted">Nenhum item...</td></tr>`);
+
             }
-            configurarModalModoLeitura(isReadOnly)
+            //configurarModalModoLeitura(isReadOnly)
         });
     }
 
@@ -414,7 +435,7 @@ $(document).ready(function () {
         const $tbody = $('#tabela-itens-embalagem-novo');
         $tbody.html('<tr><td colspan="5" class="text-center">A carregar itens...</td></tr>');
 
-        $.ajax({
+        return $.ajax({
             url: `ajax_router.php?action=getItensEmbalagemNovo&lote_id=${loteId}`,
             type: 'GET',
             dataType: 'json'
@@ -445,7 +466,7 @@ $(document).ready(function () {
             } else {
                 $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum item de embalagem adicionado a este lote.</td></tr>');
             }
-            configurarModalModoLeitura(isReadOnly)
+            // configurarModalModoLeitura(isReadOnly)
         });
     }
 
@@ -474,40 +495,6 @@ $(document).ready(function () {
                 $select.trigger('change.select2');
             }
         });
-    }
-
-    function calcularConsumoEmbalagem() {
-        const $selectPrimario = $('#item_emb_prod_prim_id_novo');
-        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
-        const $qtdInput = $('#item_emb_qtd_sec_novo');
-        const $feedback = $('#feedback-consumo-embalagem');
-        const $btnAdicionar = $('#btn-adicionar-item-embalagem');
-
-        const saldoTexto = $selectPrimario.find('option:selected').text(); // Ex: "Produto X (Saldo: 150.000)"
-        const match = saldoTexto.match(/Saldo: ([\d\.]+)/);
-        const saldoDisponivel = match ? parseFloat(match[1]) : 0;
-
-        const unidadesPorEmbalagem = parseFloat($selectSecundario.find('option:selected').data('unidades-primarias')) || 0;
-        const quantidade = parseInt($qtdInput.val()) || 0;
-
-        if (saldoDisponivel === 0 || unidadesPorEmbalagem === 0 || quantidade === 0) {
-            $feedback.text('Preencha os campos para calcular o consumo.').removeClass('text-danger fw-bold').addClass('text-muted');
-            $btnAdicionar.prop('disabled', true);
-            return;
-        }
-
-        const consumoCalculado = quantidade * unidadesPorEmbalagem;
-        const saldoRestante = saldoDisponivel - consumoCalculado;
-
-        if (consumoCalculado > saldoDisponivel) {
-            $feedback.html(`Consumo: <strong class="text-danger">${consumoCalculado.toFixed(3)}</strong> (Saldo insuficiente! Restante: ${saldoRestante.toFixed(3)})`)
-                .removeClass('text-muted').addClass('text-danger fw-bold');
-            $btnAdicionar.prop('disabled', true);
-        } else {
-            $feedback.html(`Consumo: <strong>${consumoCalculado.toFixed(3)}</strong> (Saldo restante: ${saldoRestante.toFixed(3)})`)
-                .removeClass('text-danger fw-bold').addClass('text-muted');
-            $btnAdicionar.prop('disabled', false);
-        }
     }
 
     function calcularConsumoEmbalagem() {
@@ -553,30 +540,103 @@ $(document).ready(function () {
         }
     }
 
+    /**
+    * Reseta completamente o formulário de produção para o seu estado inicial.
+    */
+    function resetarFormularioProducao() {
+        // 1. Limpa todos os campos do formulário
+        $('#form-lote-novo-producao')[0].reset();
+
+        // 2. Limpa campos específicos e reseta controles
+        $('#item_prod_id_novo').val(''); // Limpa o ID oculto do item
+        $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
+        $('#btn-adicionar-item-producao').text('Adicionar Item'); // Restaura o texto do botão
+
+        // 3. Garante que o campo de data de validade volte ao estado bloqueado
+        $('#liberar_edicao_validade_novo').prop('checked', false);
+        $('#item_prod_data_validade_novo').prop('readonly', true);
+    }
+
     // --- Event Handlers ---
 
     // Evento para o botão "Adicionar Novo Lote"
-    $('#btn-adicionar-lote-novo').on('click', function () {
-        $(this).blur();
+    /*  $('#btn-adicionar-lote-novo').on('click', function () {
+          configurarModalModoLeitura(false);
+          // 1. Limpa o formulário e o modal
+          $formHeader[0].reset();
+          $('#lote_id_novo').val('');
+          $('#modal-lote-novo-label').text('Adicionar Novo Lote');
+  
+          // Inicializa os dropdowns do modal
+          $('#lote_fornecedor_id_novo, #lote_cliente_id_novo, #item_prod_produto_id_novo').select2({
+              placeholder: 'Selecione uma opção',
+              dropdownParent: $modalLoteNovo,
+              theme: "bootstrap-5"
+          });
+  
+          // Carrega os dados para os dropdowns
+          carregarFornecedores();
+          carregarClientes();
+          carregarProdutosPrimarios();
+  
+          // Busca o próximo número de lote
+          $.get('ajax_router.php?action=getProximoNumeroLoteNovo', function (response) {
+              if (response.success) {
+                  $('#lote_numero_novo').val(response.proximo_numero);
+                  atualizarLoteCompletoNovo(); // Calcula o lote inicial
+              } else {
+                  $('#lote_numero').val('Erro!');
+              }
+          });
+          // 2. Desabilita as abas de produção e embalagens e ativa a primeira
+          new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
+          $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
+  
+          $modalLoteNovo.modal('show');
+      });*/
 
-        // 1. Limpa o formulário e o modal
+    // /public/js/lotes_novo.js
+    $('#btn-adicionar-lote-novo').on('click', function () {
+        configurarModalModoLeitura(false);
+
+        // 1. Limpa o formulário principal (cabeçalho)
         $formHeader[0].reset();
         $('#lote_id_novo').val('');
         $('#modal-lote-novo-label').text('Adicionar Novo Lote');
 
-        // Inicializa os dropdowns do modal
+        // 2. Limpa os formulários das outras abas
+        $('#form-lote-novo-producao')[0].reset();
+        $('#form-lote-novo-embalagem')[0].reset();
+
+        // 2.a - Garante que o campo de data de validade comece bloqueado e o switch desmarcado.
+        $('#liberar_edicao_validade_novo').prop('checked', false);
+        $('#item_prod_data_validade_novo').prop('readonly', true);
+
+        // 3. Limpa as tabelas de itens e restaura a mensagem padrão
+        $('#tabela-itens-producao-novo').empty().html('<tr><td colspan="5" class="text-center text-muted">Salve o cabeçalho do lote para adicionar itens.</td></tr>');
+        $('#tabela-itens-embalagem-novo').empty().html('<tr><td colspan="5" class="text-center text-muted">Adicione itens de produção para poder embalar.</td></tr>');
+
+        // 4. Garante que os botões de ação voltem ao estado inicial
+        $('#btn-adicionar-item-producao').text('Adicionar Item');
+        $('#btn-adicionar-item-embalagem').text('Adicionar Item');
+
+        // 5. Remove botões de "cancelar edição" que podem ter sido adicionados dinamicamente
+        $('#btn-cancelar-edicao-producao').show(); // Garante que o botão de limpar padrão esteja visível
+        $('#btn-cancelar-edicao-embalagem').remove(); // Remove o botão de cancelar da aba de embalagem
+
+        // 6. Inicializa os dropdowns do modal
         $('#lote_fornecedor_id_novo, #lote_cliente_id_novo, #item_prod_produto_id_novo').select2({
             placeholder: 'Selecione uma opção',
             dropdownParent: $modalLoteNovo,
             theme: "bootstrap-5"
         });
 
-        // Carrega os dados para os dropdowns
+        // 7. Carrega os dados para os dropdowns
         carregarFornecedores();
         carregarClientes();
         carregarProdutosPrimarios();
 
-        // Busca o próximo número de lote
+        // 8. Busca o próximo número de lote
         $.get('ajax_router.php?action=getProximoNumeroLoteNovo', function (response) {
             if (response.success) {
                 $('#lote_numero_novo').val(response.proximo_numero);
@@ -585,13 +645,13 @@ $(document).ready(function () {
                 $('#lote_numero').val('Erro!');
             }
         });
-        // 2. Desabilita as abas de produção e embalagens e ativa a primeira
+
+        // 9. Desabilita as abas de produção e embalagens e ativa a primeira
         new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
         $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
 
         $modalLoteNovo.modal('show');
     });
-
     // Evento de clique para o botão "Adicionar Item"
     $('#btn-adicionar-item-producao').on('click', function () {
         const loteId = loteIdAtual; // A variável global que guarda o ID do lote
@@ -716,11 +776,15 @@ $(document).ready(function () {
         });
     });
 
+    /* $('#btn-cancelar-edicao-producao').on('click', function () {
+         $('#form-lote-novo-producao')[0].reset();
+         $('#item_prod_id_novo').val(''); // Limpa o ID do item
+         $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
+         $('#btn-adicionar-item-producao').text('Adicionar Item'); // Restaura o texto do botão
+     });*/
+
     $('#btn-cancelar-edicao-producao').on('click', function () {
-        $('#form-lote-novo-producao')[0].reset();
-        $('#item_prod_id_novo').val(''); // Limpa o ID do item
-        $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
-        $('#btn-adicionar-item-producao').text('Adicionar Item'); // Restaura o texto do botão
+        resetarFormularioProducao();
     });
 
     $('#btn-confirmar-finalizacao').on('click', function () {
@@ -772,6 +836,14 @@ $(document).ready(function () {
         });
     });
 
+    $formHeader.on('change keyup', 'input, select', function (event) {
+        // Impede que o cálculo seja refeito quando o próprio campo de lote completo é alterado (se um dia for editável)
+        if (event.target.id === 'lote_completo_calculado_novo') {
+            return;
+        }
+        atualizarLoteCompletoNovo();
+    });
+
     // Evento para o novo botão "Cancelar Edição"
     $modalLoteNovo.on('click', '#btn-cancelar-edicao-embalagem', function () {
         $('#form-lote-novo-embalagem')[0].reset();
@@ -783,7 +855,7 @@ $(document).ready(function () {
     });
 
     // Evento para o checkbox "Finalizar Tudo" no cabeçalho
-    $('#modal-finalizar-lote').on('click', '#check-finalizar-todos', function () {
+    $modalFinalizarLote.on('click', '#check-finalizar-todos', function () {
         const isChecked = $(this).is(':checked');
         $('#tabela-itens-para-finalizar .qtd-a-finalizar').each(function () {
             if (isChecked) {
@@ -795,12 +867,12 @@ $(document).ready(function () {
     });
 
     // Evento para o botão "Máx" em cada linha
-    $('#modal-finalizar-lote').on('click', '.btn-finalizar-tudo-item', function () {
+    $modalFinalizarLote.on('click', '.btn-finalizar-tudo-item', function () {
         const $input = $(this).closest('tr').find('.qtd-a-finalizar');
         $input.val($input.attr('max'));
     });
 
-    $('#modal-finalizar-lote').on('input', '.qtd-a-finalizar', function () {
+    $modalFinalizarLote.on('input', '.qtd-a-finalizar', function () {
         const valor = parseFloat($(this).val()) || 0;
         const max = parseFloat($(this).attr('max')) || 0;
         if (valor > max) {
@@ -809,7 +881,7 @@ $(document).ready(function () {
         }
     });
 
-    $('#tabela-lotes-novo').on('click', '.btn-finalizar-lote-novo', function () {
+    $tabelaLotes.on('click', '.btn-finalizar-lote-novo', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
         const $modal = $('#modal-finalizar-lote');
@@ -860,12 +932,8 @@ $(document).ready(function () {
         });
     });
 
-    $('#form-lote-novo-embalagem').on('change keyup', 'select, input', function () {
-        calcularConsumoEmbalagem();
-    });
-
     // Ação para o botão "Editar" na tabela principal de lotes 
-    $('#tabela-lotes-novo').on('click', '.btn-editar-lote-novo', function () {
+    $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
         loteIdAtual = $(this).data('id');
         // Garante que os dropdowns estejam prontos antes de buscar os dados
         $.when(carregarFornecedores(), carregarClientes()).done(function () {
@@ -874,7 +942,7 @@ $(document).ready(function () {
     });
 
     // Evento para o botão "Cancelar Lote" no menu dropdown
-    $('#tabela-lotes-novo').on('click', '.btn-cancelar-lote', function () {
+    $tabelaLotes.on('click', '.btn-cancelar-lote', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
 
@@ -899,7 +967,7 @@ $(document).ready(function () {
     });
 
     // Evento para o botão "Reativar Lote" no menu dropdown
-    $('#tabela-lotes-novo').on('click', '.btn-reativar-lote-novo', function () {
+    $tabelaLotes.on('click', '.btn-reativar-lote-novo', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
 
@@ -924,7 +992,7 @@ $(document).ready(function () {
     });
 
     // Evento para o botão "Reabrir Lote" no menu dropdown
-    $('#tabela-lotes-novo').on('click', '.btn-reabrir-lote', function () {
+    $tabelaLotes.on('click', '.btn-reabrir-lote', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
 
@@ -973,7 +1041,7 @@ $(document).ready(function () {
     });
 
     // Evento para o botão "Excluir Permanentemente" no menu dropdown
-    $('#tabela-lotes-novo').on('click', '.btn-excluir-lote', function () {
+    $tabelaLotes.on('click', '.btn-excluir-lote', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
 
@@ -1017,8 +1085,11 @@ $(document).ready(function () {
         });
     });
 
-    $('#tabela-itens-producao-novo').on('click', '.btn-editar-item-producao', function () {
+    $tabelaItensProducao.on('click', '.btn-editar-item-producao', function () {
         const $btn = $(this);
+
+        // Primeiro, reseta o formulário para garantir um estado limpo.
+        resetarFormularioProducao();
 
         // 1. Pega os dados dos atributos data-* do botão
         const itemId = $btn.data('id');
@@ -1039,44 +1110,95 @@ $(document).ready(function () {
         $modalLoteNovo.animate({ scrollTop: 0 }, "slow");
     });
 
-    $('#tabela-itens-embalagem-novo').on('click', '.btn-editar-item-embalagem', function () {
+    $tabelaItensEmbalagem.on('click', '.btn-editar-item-embalagem', function () {
         const $btn = $(this);
         const itemId = $btn.data('id');
         const primarioItemId = $btn.data('primario-item-id');
         const secundarioProdId = $btn.data('secundario-prod-id');
         const quantidade = $btn.data('quantidade');
-        const $form = $('#form-lote-novo-embalagem');
-
-
-        // Guarda o consumo original lido diretamente do botão
         const consumoOriginal = $btn.data('consumo');
-        $('#form-lote-novo-embalagem').data('consumo-original', consumoOriginal);
 
-        // Preenche o campo hidden
-        $('#item_emb_id_novo').val(itemId);
+        const $selectPrimario = $('#item_emb_prod_prim_id_novo');
+        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
 
-        // Preenche o primeiro dropdown
-        $('#item_emb_prod_prim_id_novo').val(primarioItemId).trigger('change');
+        // Apresenta um estado de "a carregar" nos dropdowns
+        $selectPrimario.empty().append('<option value="">A carregar itens...</option>').prop('disabled', true).trigger('change.select2');
+        $selectSecundario.empty().append('<option value="">Aguardando item primário...</option>').prop('disabled', true).trigger('change.select2');
 
-        // Preenche o segundo dropdown (precisamos esperar ele ser populado pelo evento 'change' acima)
-        // Usamos um listener de evento único para garantir que o valor seja setado após o AJAX terminar
-        $(document).one('ajaxStop', function () {
-            $('#item_emb_prod_sec_id_novo').val(secundarioProdId).trigger('change.select2');
+        // LÓGICA CENTRALIZADA E INDEPENDENTE
+        // Fazemos uma única chamada AJAX para obter todos os dados de produção do lote.
+        $.ajax({
+            url: 'ajax_router.php?action=buscarLoteNovo',
+            type: 'POST',
+            data: { lote_id: loteIdAtual, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            if (!response.success) {
+                notificacaoErro('Erro!', 'Não foi possível carregar os dados do lote.');
+                return;
+            }
+
+            const producaoItens = response.data.producao;
+
+            // --- PASSO A: POPULAR O DROPDOWN PRIMÁRIO ---
+            $selectPrimario.empty().append('<option value="">Selecione...</option>');
+            producaoItens.forEach(item => {
+                // A lógica crítica: incluir item se saldo > 0 OU se for o item que estamos a editar.
+                if (parseFloat(item.item_prod_saldo) > 0 || item.item_prod_id == primarioItemId) {
+                    const texto = `${item.prod_descricao} (Saldo: ${parseFloat(item.item_prod_saldo).toFixed(3)})`;
+                    const option = new Option(texto, item.item_prod_id);
+                    $selectPrimario.append(option);
+                }
+            });
+            $selectPrimario.prop('disabled', false);
+
+            // --- PASSO B: SELECIONAR O ITEM PRIMÁRIO CORRETO ---
+            $selectPrimario.val(primarioItemId).trigger('change.select2');
+
+            // --- PASSO C: POPULAR E SELECIONAR O DROPDOWN SECUNDÁRIO ---
+            const itemSelecionado = producaoItens.find(item => item.item_prod_id == primarioItemId);
+            if (itemSelecionado) {
+                const primarioProdutoId = itemSelecionado.item_prod_produto_id;
+                $selectSecundario.empty().append('<option value="">A carregar...</option>').prop('disabled', true);
+
+                $.ajax({
+                    url: `ajax_router.php?action=getSecundariosPorPrimario&primario_id=${primarioProdutoId}`,
+                    type: 'GET',
+                    dataType: 'json'
+                }).done(function (secResponse) {
+                    if (secResponse.success) {
+                        $selectSecundario.empty().append('<option value="">Selecione...</option>');
+                        if (secResponse.data.length > 0) {
+                            secResponse.data.forEach(produto => {
+                                const texto = `${produto.prod_descricao} (Cód: ${produto.prod_codigo_interno || 'N/A'})`;
+                                const option = new Option(texto, produto.prod_codigo);
+                                $(option).data('unidades-primarias', produto.prod_unidades_primarias_calculado);
+                                $selectSecundario.append(option);
+                            });
+                        }
+                        $selectSecundario.val(secundarioProdId).trigger('change.select2');
+                        $selectSecundario.prop('disabled', false);
+                    }
+                });
+            }
+
+            // --- PASSO D: PREENCHER O RESTO DO FORMULÁRIO ---
+            $('#form-lote-novo-embalagem').data('consumo-original', consumoOriginal);
+            $('#item_emb_id_novo').val(itemId);
+            $('#item_emb_qtd_sec_novo').val(parseInt(quantidade));
+
+            $('#btn-adicionar-item-embalagem').text('Atualizar Item');
+            if ($('#btn-cancelar-edicao-embalagem').length === 0) {
+                $('#btn-adicionar-item-embalagem').after(' <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-embalagem">Cancelar</button>');
+            }
+
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação!', 'Falha ao buscar dados do lote.');
+            $selectPrimario.empty().append('<option value="">Erro ao carregar</option>').prop('disabled', true).trigger('change.select2');
         });
-
-        // Preenche a quantidade
-        $('#item_emb_qtd_sec_novo').val(parseInt(quantidade));
-
-        // Muda o texto do botão de ação
-        $('#btn-adicionar-item-embalagem').text('Atualizar Item');
-
-        // Adiciona um botão "Cancelar Edição"
-        if ($('#btn-cancelar-edicao-embalagem').length === 0) {
-            $('#btn-adicionar-item-embalagem').after(' <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-embalagem">Cancelar</button>');
-        }
     });
 
-    $('#tabela-itens-producao-novo').on('click', '.btn-excluir-item-producao', function () {
+    $tabelaItensProducao.on('click', '.btn-excluir-item-producao', function () {
         const itemId = $(this).data('id');
 
         confirmacaoAcao('Excluir Item?', 'Só será possível excluir se o saldo não tiver sido consumido. Deseja continuar?')
@@ -1101,7 +1223,7 @@ $(document).ready(function () {
             });
     });
 
-    $('#tabela-itens-embalagem-novo').on('click', '.btn-excluir-item-embalagem', function () {
+    $tabelaItensEmbalagem.on('click', '.btn-excluir-item-embalagem', function () {
         const itemId = $(this).data('id');
 
         confirmacaoAcao('Excluir Item?', 'Esta ação irá reverter o saldo consumido. Tem a certeza?')
@@ -1125,6 +1247,10 @@ $(document).ready(function () {
                     });
                 }
             });
+    });
+
+    $('#form-lote-novo-embalagem').on('change keyup', 'select, input', function () {
+        calcularConsumoEmbalagem();
     });
 
     // Evento que é acionado QUANDO A ABA DE PRODUÇÃO É MOSTRADA
@@ -1224,11 +1350,4 @@ $(document).ready(function () {
         $('#item_prod_data_validade_novo').prop('readonly', !isChecked);
     });
 
-    $formHeader.on('change keyup', 'input, select', function (event) {
-        // Impede que o cálculo seja refeito quando o próprio campo de lote completo é alterado (se um dia for editável)
-        if (event.target.id === 'lote_completo_calculado_novo') {
-            return;
-        }
-        atualizarLoteCompletoNovo();
-    });
 });

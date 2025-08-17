@@ -246,6 +246,10 @@ switch ($action) {
     case 'excluirLoteNovo':
         excluirLoteNovo($loteNovoRepo);
         break;
+    case 'getDadosDoLoteItemNovo':
+        getDadosDoLoteItemNovo($loteNovoRepo);
+        break;
+
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -1110,6 +1114,17 @@ function reabrirLoteNovo(LoteNovoRepository $repo)
     }
 }
 
+function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
+{
+    $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+    if (!$loteItemId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
+        return;
+    }
+    $data = $repo->findLoteNovoItemDetalhes($loteItemId);
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 function imprimirEtiquetaItem(PDO $pdo)
 {
@@ -1483,7 +1498,7 @@ function adicionarFila(CarregamentoRepository $repo)
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
         $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
-        
+
         if (!$carregamentoId) { // Apenas o ID do carregamento é essencial para criar a fila.
             throw new Exception("ID do Carregamento é inválido.");
         }

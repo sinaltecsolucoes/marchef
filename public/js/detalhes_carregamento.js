@@ -39,7 +39,7 @@ $(document).ready(function () {
                 url: 'ajax_router.php?action=getClienteOptions',
                 dataType: 'json',
                 processResults: function (data) {
-                    const mappedData = data.data.map(item => ({ id: item.ent_codigo, text: item.ent_razao_social }));
+                    const mappedData = data.data.map(item => ({ id: item.ent_codigo, text: item.nome_display }));
                     return { results: mappedData };
                 }
             }
@@ -125,10 +125,10 @@ $(document).ready(function () {
                                     // Célula 2: Ações (com a classe 'coluna-acoes')
                                     $linha.append(`
                                         <td class="text-center align-middle coluna-acoes" rowspan="${totalItensNaFila}">
-                                            <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                                            <button class="btn btn-sm btn-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
                                                 <i class="fas fa-pencil-alt"></i> Editar
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                            <button class="btn btn-sm btn-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
                                                 <i class="fas fa-trash"></i> Remover
                                             </button>
                                         </td>
@@ -226,102 +226,35 @@ $(document).ready(function () {
     }
 
     // --- EVENT HANDLERS ---
-    /* $modalGerenciarFila.on('show.bs.modal', function (event) {
-         if ($('.select2-hidden-accessible').length) {
-             $('.select2-hidden-accessible').select2('close');
-         }
- 
-         // Sempre limpa o modal para garantir estado inicial consistente
-         $selectClienteParaFila.val(null).trigger('change');
-         $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
- 
-         // Calcula o próximo número de fila apenas para inclusão
-         if (modoModal === 'inclusao') {
-             let proximoNumeroFila = 1;
-             const filasNaTabela = [];
-             $tabelaComposicaoBody.find('tr[data-fila-id]').each(function () {
-                 const filaId = $(this).data('fila-id');
-                 if (!filasNaTabela.includes(filaId)) {
-                     filasNaTabela.push(filaId);
-                 }
-             });
-             proximoNumeroFila = filasNaTabela.length + 1;
-             $('#numero-fila-modal').text(String(proximoNumeroFila).padStart(2, '0'));
-         }
-     });*/
 
-    $modalGerenciarFila.on('shown.bs.modal', function () {
-        // Limpa o select de cliente (já existente no seu código)
+    //Evento para limpar o modal e configurar o estado inicial para o modo de inclusão
+    $modalGerenciarFila.on('show.bs.modal', function () {
+        // --- Ações de Limpeza (executadas sempre que o modal abre) ---
+
+        // 1. Fecha qualquer dropdown Select2 que possa estar aberto
+        if ($('.select2-hidden-accessible').length) {
+            $('.select2-hidden-accessible').select2('close');
+        }
+        // 2. Garante que o select de clientes e o container de produtos comecem limpos
         $selectClienteParaFila.val(null).trigger('change');
+        $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
 
-        if (modoModal === 'edicao' && filaIdParaEditar) {
-            // Se estamos a editar, busca os dados via POST
-            $containerClientesNoModal.html('<p class="text-muted">A carregar dados da fila...</p>');
+        // --- Lógica Específica para o Modo (Adicionar vs. Editar) ---
 
-            $.ajax({
-                url: 'ajax_router.php?action=getFilaDetalhes',
-                type: 'POST', 
-                data: {
-                    fila_id: filaIdParaEditar,
-                    csrf_token: csrfToken
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                $containerClientesNoModal.empty(); // Limpa a mensagem "A carregar..."
-                if (response.success && response.data) {
-                    const fila = response.data;
+        if (modoModal === 'edicao') {
+            // Se estiver a editar, apenas define o título correto.
+            // A busca dos dados será feita no evento 'shown.bs.modal' (depois de o modal aparecer).
+            const seq = $tabelaComposicaoBody.find(`.btn-editar-fila-principal[data-fila-id="${filaIdParaEditar}"]`).data('fila-sequencial');
+            $(this).find('.modal-title').text(`Editar Fila ${String(seq).padStart(2, '0')}`);
 
-                    if (fila.clientes.length === 0) {
-                        $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente/produto nesta fila para editar.</p>');
-                        return;
-                    }
-
-                    // Itera sobre os clientes e cria os cards
-                    fila.clientes.forEach(cliente => {
-                        const $novoCard = $($('#template-card-cliente-modal').html());
-                        const selectIdUnico = `select-produto-${cliente.clienteId}-${new Date().getTime()}`;
-
-                        const numeroCliente = $containerClientesNoModal.find('.card-cliente-na-fila').length + 1;
-                        const novoTitulo = `CLIENTE ${String(numeroCliente).padStart(2, '0')} - ${cliente.clienteNome}`;
-
-                        $novoCard.attr('data-cliente-id', cliente.clienteId);
-                        $novoCard.find('.nome-cliente-card').text(novoTitulo);
-                        $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
-
-                        const $listaProdutos = $novoCard.find('.lista-produtos-cliente tbody'); // Aponta para o tbody
-
-                        cliente.produtos.forEach(produto => {
-                            const produtoHtml = `
-                            <tr data-lote-item-id="${produto.loteItemId}">
-                                <td>${produto.produtoTexto}</td>
-                                <td class="text-end">${parseFloat(produto.quantidade).toFixed(3)}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-warning btn-editar-produto-da-lista me-1" title="Editar Item"><i class="fas fa-pencil-alt"></i></button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover-produto-da-lista" title="Remover Item"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>`;
-                            $listaProdutos.append(produtoHtml);
-                        });
-
-                        $containerClientesNoModal.append($novoCard);
-                        inicializarSelectProdutoNoCard(selectIdUnico); // Inicializa o select do novo card
-                    });
-                } else {
-                    notificacaoErro('Erro', response.message || 'Não foi possível carregar os dados da fila.');
-                    $modalGerenciarFila.modal('hide');
-                }
-            }).fail(function () {
-                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da fila.');
-                $modalGerenciarFila.modal('hide');
-            });
         } else {
-            // Lógica para modo de inclusão (já existente no seu código)
-            $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
-            let proximoNumeroFila = 1 + $tabelaComposicaoBody.find('tr[data-fila-id]').get().map(tr => $(tr).data('fila-id')).filter((v, i, a) => a.indexOf(v) === i).length;
-            $('#numero-fila-modal').text(String(proximoNumeroFila).padStart(2, '0'));
+            // Se estiver a adicionar, calcula o próximo número de fila e define o título.
+            const proximoNumeroFila = 1 + new Set($tabelaComposicaoBody.find('tr[data-fila-id]').map((i, el) => $(el).data('fila-id'))).size;
+            $(this).find('.modal-title').text(`Adicionar Nova Fila (Nº ${String(proximoNumeroFila).padStart(2, '0')})`);
         }
     });
 
+    //Evento para carregar os dados de uma fila existente no modo de edição.
     $modalGerenciarFila.on('shown.bs.modal', function (event) {
         if (modoModal === 'edicao' && filaIdParaEditar) {
             $.ajax({
@@ -345,45 +278,46 @@ $(document).ready(function () {
                         $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
 
                         const $listaProdutos = $novoCard.find('.lista-produtos-cliente');
+
                         cliente.produtos.forEach(produto => {
                             const produtoHtml = `
-                                <tr data-lote-item-id="${produto.loteItemId}" data-produto-id="${produto.produtoId}">
-                                    <td>${produto.produtoTexto}</td>
-                                    <td class="text-end">${parseFloat(produto.quantidade).toFixed(3)}</td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-warning btn-editar-produto-da-lista me-1" title="Editar Item">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-remover-produto-da-lista" title="Remover Item">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
+                                 <tr data-lote-item-id="${produto.loteItemId}" data-produto-id="${produto.produtoId}">
+                                     <td>${produto.produtoTexto}</td>
+                                     <td class="text-end">${parseFloat(produto.quantidade).toFixed(3)}</td>
+                                     <td class="text-center">
+                                         <button type="button" class="btn btn-warning btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
+                                         <button type="button" class="btn btn-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
+                                     </td>
+                                 </tr>`;
                             $listaProdutos.append(produtoHtml);
                         });
 
                         $containerClientesNoModal.append($novoCard);
                         inicializarSelectProdutoNoCard(selectIdUnico);
                     });
-
-                    if ($containerClientesNoModal.find('.card-cliente-na-fila').length > 0) {
-                        $containerClientesNoModal.find('p.text-muted').remove();
-                    }
                 } else {
-                    notificacaoErro('Erro', response.message || 'Não foi possível carregar os dados da fila.');
+                    notificacaoErro('Erro!', response.message || 'Não foi possível carregar os dados desta fila.');
                 }
-            }).fail(function () {
-                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da fila.');
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('Erro AJAX getFilaDetalhes:', textStatus, errorThrown);
+                notificacaoErro('Erro de Comunicação', 'A requisição para buscar os dados da fila falhou.');
             });
         }
     });
 
-    $modalGerenciarFila.on('click', '.btn-remover-cliente-da-fila', function () {
-        $(this).closest('.card-cliente-na-fila').remove();
-        if ($containerClientesNoModal.find('.card-cliente-na-fila').length === 0) {
-            $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
-        }
+    // Evento acionado sempre que o modal de gerir fila é fechado, por qualquer motivo.
+    $modalGerenciarFila.on('hide.bs.modal', function () {
+
+        // 1. Reseta as variáveis de controle para o estado padrão de "inclusão"
+        modoModal = 'inclusao';
+        filaIdParaEditar = null;
+
+        // 2. Limpa o conteúdo dinâmico que foi adicionado
+        $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
+        $selectClienteParaFila.val(null).trigger('change');
+
+        // 3. Garante que o título do modal volte ao título padrão de "Adicionar"
+        // (O evento 'show.bs.modal' irá definir o título correto na próxima vez que abrir)
     });
 
     $modalGerenciarFila.on('click', '#btn-adicionar-cliente-a-fila', function () {
@@ -410,6 +344,13 @@ $(document).ready(function () {
         $selectClienteParaFila.val(null).trigger('change');
     });
 
+    $modalGerenciarFila.on('click', '.btn-remover-cliente-da-fila', function () {
+        $(this).closest('.card-cliente-na-fila').remove();
+        if ($containerClientesNoModal.find('.card-cliente-na-fila').length === 0) {
+            $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
+        }
+    });
+
     $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (event) {
         event.preventDefault();
         const $form = $(this);
@@ -422,6 +363,7 @@ $(document).ready(function () {
         const quantidade = parseFloat($quantidadeInput.val());
         const $listaProdutos = $card.find('.lista-produtos-cliente');
         const isEditing = $form.data('editing-row');
+        const loteId = $loteSelect.val();
 
         if (!produtoId || !loteItemId || !quantidade || quantidade <= 0) {
             notificacaoErro('Dados Inválidos', 'Por favor, preencha todos os campos corretamente.');
@@ -429,35 +371,47 @@ $(document).ready(function () {
         }
 
         // Monta o texto do produto apenas com nome e lote, sem saldo
-        const produtoTexto = `${$produtoSelect.find('option:selected').text()} (Lote: ${$loteSelect.find('option:selected').text().split(' - Saldo:')[0]})`;
+        const produtoTexto = `${$produtoSelect.find('option:selected').text()} (${$loteSelect.find('option:selected').text().split(' - Saldo:')[0]})`;
         const quantidadeTexto = quantidade.toFixed(3);
 
         if (isEditing) {
             const $row = $form.data('editing-row');
             $row.find('td:first').text(produtoTexto);
             $row.find('td:nth-child(2)').text(quantidadeTexto);
-            $row.data('lote-item-id', loteItemId);
+            //$row.data('lote-item-id', loteItemId);
             $row.data('produto-id', produtoId);
+            $row.data('lote-id', loteId);
 
             // Restaura o formulário
             $form.find('button[type="submit"]').html('<i class="fas fa-plus me-2"></i> Adicionar').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
             $form.find('.btn-cancelar-edicao').remove();
             $form.removeData('editing-row');
         } else {
-            const produtoHtml = `
-                <tr data-lote-item-id="${loteItemId}" data-produto-id="${produtoId}">
-                    <td>${produtoTexto}</td>
-                    <td class="text-end">${quantidadeTexto}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-sm btn-outline-warning btn-editar-produto-da-lista me-1" title="Editar Item">
-                            <i class="fas fa-pencil-alt me-1"></i> Editar
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-remover-produto-da-lista" title="Remover Item">
-                            <i class="fas fa-trash me-1"></i> Remover
-                        </button>
-                    </td>
-                </tr>
-            `;
+           /* const produtoHtml = `
+                 <tr data-lote-item-id="${loteItemId}" data-produto-id="${produtoId}">
+                     <td>${produtoTexto}</td>
+                     <td class="text-end">${quantidadeTexto}</td>
+                     <td class="text-center">
+                         <button type="button" class="btn btn-sm btn-warning btn-editar-produto-da-lista me-1" title="Editar Item">
+                             <i class="fas fa-pencil-alt me-1"></i> Editar
+                         </button>
+                         <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista" title="Remover Item">
+                             <i class="fas fa-trash me-1"></i> Remover
+                         </button>
+                     </td>
+                 </tr>
+             `;*/
+
+              const produtoHtml = `
+             <tr data-lote-id="${loteId}" data-produto-id="${produtoId}">
+                 <td>${produtoTexto}</td>
+                 <td class="text-end">${quantidadeTexto}</td>
+                 <td class="text-center">
+                     <button type="button" class="btn btn-sm btn-warning btn-editar-produto-da-lista me-1">Editar</button>
+                     <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista">Remover</button>
+                 </td>
+             </tr>
+         `;
             $listaProdutos.append(produtoHtml);
         }
 
@@ -468,37 +422,35 @@ $(document).ready(function () {
 
     $modalGerenciarFila.on('click', '.btn-editar-produto-da-lista', function () {
         const $row = $(this).closest('tr');
-        const $card = $row.closest('.card-cliente-na-fila');
-        const $form = $card.find('.form-adicionar-produto-ao-cliente');
+        const $form = $row.closest('.card-cliente-na-fila').find('.form-adicionar-produto-ao-cliente');
+
         const $produtoSelect = $form.find('.select-produto-estoque');
         const $loteSelect = $form.find('.select-lote-estoque');
         const $quantidadeInput = $form.find('input[type="number"]');
-        const loteItemId = $row.data('lote-item-id');
-        const produtoId = $row.data('produto-id');
+
+        // Pega os dados do item que está a ser editado
+       // const loteItemId = $row.data('lote-item-id');
+        const loteId = $row.data('lote-id'); 
+       const produtoId = $row.data('produto-id');
         const quantidade = parseFloat($row.find('td:nth-child(2)').text());
 
-        // Armazena a linha que está sendo editada
-        $form.data('editing-row', $row);
+        // --- LÓGICA DE PREENCHIMENTO ---
 
-        // Preenche o campo de quantidade
+        $form.data('editing-row', $row);
         $quantidadeInput.val(quantidade);
 
-        // Reinicializa o select de produtos para evitar duplicatas
-        $produtoSelect.empty().append('<option value="">Selecione um produto...</option>').select2({
-            placeholder: 'A carregar produtos do estoque...',
-            theme: "bootstrap-5",
-            dropdownParent: $modalGerenciarFila,
-            language: "pt-BR"
-        });
+        // Limpa e prepara os dropdowns
+        $produtoSelect.empty().prop('disabled', true).select2({ placeholder: 'A carregar produtos...', theme: "bootstrap-5", dropdownParent: $modalGerenciarFila });
+        $loteSelect.empty().prop('disabled', true).select2({ placeholder: 'Selecione um produto primeiro', theme: "bootstrap-5", dropdownParent: $modalGerenciarFila });
 
-        // Carrega os produtos disponíveis e seleciona o produto correto
+        // ETAPA 1: Recupera do banco todos os produtos disponíveis
         $.ajax({
             url: 'ajax_router.php?action=getProdutosDisponiveisEmEstoque',
             type: 'GET',
             dataType: 'json'
         }).done(function (response) {
             if (response.results) {
-                // Preenche o select com os produtos disponíveis
+                // Inicializa o Select2 com a lista de todos os produtos
                 $produtoSelect.select2({
                     placeholder: 'Selecione um produto do estoque...',
                     theme: "bootstrap-5",
@@ -507,56 +459,43 @@ $(document).ready(function () {
                     data: response.results
                 });
 
-                // Seleciona o produto do item sendo editado
+                // ETAPA 2: O sistema seleciona o produto que será editado e aciona o 'change'
+                // para que o dropdown de lotes seja configurado corretamente.
                 $produtoSelect.val(produtoId).trigger('change');
+                $produtoSelect.prop('disabled', false);
 
-                // Após selecionar o produto, carrega os lotes disponíveis
-                $loteSelect.prop('disabled', false).select2({
-                    placeholder: 'Selecione um lote...',
-                    theme: "bootstrap-5",
-                    dropdownParent: $modalGerenciarFila,
-                    language: "pt-BR",
-                    ajax: {
-                        url: 'ajax_router.php?action=getLotesComSaldoPorProduto',
-                        dataType: 'json',
-                        data: function (params) {
-                            return { produto_id: produtoId };
-                        },
-                        processResults: function (data) {
-                            return { results: data.results };
-                        }
-                    }
-                });
+                // --- INÍCIO DA CORREÇÃO ---
+                // ETAPA 3: Pré-selecionar o Lote específico que está a ser editado.
+                // Como o select de lote agora é carregado via AJAX, a opção para o lote
+                // que queremos editar pode ainda não existir. Vamos criá-la manualmente.
 
-                // Preenche o select de lote com o lote correto
-                $.ajax({
-                    url: 'ajax_router.php?action=getLotesComSaldoPorProduto',
-                    type: 'GET',
-                    data: { produto_id: produtoId },
-                    dataType: 'json'
-                }).done(function (loteResponse) {
-                    if (loteResponse.results) {
-                        const loteOption = loteResponse.results.find(l => l.id == loteItemId);
-                        if (loteOption) {
-                            const newLoteOption = new Option(loteOption.text, loteOption.id, true, true);
-                            $loteSelect.append(newLoteOption).trigger('change');
-                        }
-                    }
-                }).fail(function () {
-                    notificacaoErro('Erro', 'Não foi possível carregar os lotes para edição.');
-                });
+                // 3.1. Obter o texto do lote a partir da linha da tabela.
+                const textoCompletoProduto = $row.find('td:first').text();
+                // Ex: "Produto X (Lote: 1234/25)" -> extrai "1234/25"
+                const textoDoLote = textoCompletoProduto.split(' (')[1]?.replace(')', '') || 'Lote não encontrado';
+
+                // 3.2. Criar uma nova <option> com os dados do lote a ser editado.
+                // Os parâmetros são: (texto, valor, defaultSelected, selected)
+                const optionDoLote = new Option(textoDoLote, loteId, true, true);
+
+                // 3.3. Adicionar esta opção ao select e notificar o Select2 da mudança.
+                $loteSelect.append(optionDoLote).trigger('change');
+
+                // 3.4. Garantir que o select de lote está habilitado para o utilizador.
+                $loteSelect.prop('disabled', false);
+                // --- FIM DA CORREÇÃO ---
+
             }
         }).fail(function () {
-            notificacaoErro('Erro', 'Não foi possível carregar os produtos para edição.');
+            notificacaoErro('Erro', 'Não foi possível carregar a lista de produtos.');
         });
 
-        // Altera o botão de submit para modo de edição
+        // ETAPA 4: Altera os botões para o modo de edição
         const $submitButton = $form.find('button[type="submit"]');
-        $submitButton.html('<i class="fas fa-check me-2"></i> Atualizar').attr('title', 'Atualizar Produto').removeClass('btn-primary').addClass('btn-warning');
+        $submitButton.html('<i class="fas fa-check"></i> Atualizar').attr('title', 'Atualizar Produto').removeClass('btn-primary').addClass('btn-warning');
 
-        // Adiciona botão de cancelar edição
-        if (!$form.find('.btn-cancelar-edicao').length) {
-            $submitButton.after('<button type="button" class="btn btn-sm btn-secondary btn-cancelar-edicao ms-2" title="Cancelar Edição"><i class="fas fa-times me-1"></i> Cancelar</button>');
+        if ($form.find('.btn-cancelar-edicao').length === 0) {
+            $submitButton.after('<button type="button" class="btn btn-sm btn-secondary btn-cancelar-edicao ms-2" title="Cancelar Edição"><i class="fas fa-times"></i> Cancelar</button>');
         }
     });
 
@@ -626,7 +565,7 @@ $(document).ready(function () {
         $form.removeData('editing-row');
 
         // Restaura o botão de Adicionar e remove o de Cancelar
-        $form.find('button[type="submit"]').html('<i class="fas fa-plus me-2"></i> Adicionar').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
+        $form.find('button[type="submit"]').html('<i class="fas fa-plus me-2"></i> +').attr('title', 'Adicionar Produto').removeClass('btn-warning').addClass('btn-primary');
         $(this).remove();
     });
 
@@ -640,10 +579,16 @@ $(document).ready(function () {
             const produtos = [];
             $card.find('.lista-produtos-cliente tr').each(function () {
                 const $linhaProduto = $(this);
+                /* produtos.push({
+                     loteItemId: $linhaProduto.data('lote-item-id'),
+                     quantidade: parseFloat($linhaProduto.find('td:nth-child(2)').text())
+                 });*/
                 produtos.push({
-                    loteItemId: $linhaProduto.data('lote-item-id'),
+                    produtoId: $linhaProduto.data('produto-id'), // Adiciona o ID do produto
+                    loteId: $linhaProduto.data('lote-id'), // Usa o novo atributo data
                     quantidade: parseFloat($linhaProduto.find('td:nth-child(2)').text())
                 });
+
             });
             if (produtos.length > 0) {
                 filaData.push({ clienteId: clienteId, produtos: produtos });
@@ -848,27 +793,6 @@ $(document).ready(function () {
         });
     });
 
-    /* $tabelaComposicaoBody.on('click', '.btn-editar-fila-principal', function () {
-         const $botao = $(this);
-         filaIdParaEditar = $botao.data('fila-id');
-         modoModal = 'edicao';
-         $modalGerenciarFila.modal('show');
-     });*/
-
-    /* $tabelaComposicaoBody.on('click', '.btn-editar-fila-principal', function () {
-         const filaId = $(this).data('fila-id');
-         const filaSequencial = $(this).data('fila-sequencial');
-         modoModal = 'edicao';
-         filaIdParaEditar = filaId;
- 
-         // Atualiza o título do modal
-         $modalGerenciarFila.find('.modal-title').text(`Editar Fila ${filaSequencial}`);
- 
-         // Abre o modal e preenche os dados
-         $modalGerenciarFila.modal('show');
-         preencherModalParaEdicao(filaId);
-     });*/
-
     $tabelaComposicaoBody.on('click', '.btn-editar-fila-principal', function () {
         const filaId = $(this).data('fila-id');
         const filaSequencial = $(this).data('fila-sequencial');
@@ -881,7 +805,6 @@ $(document).ready(function () {
         $modalGerenciarFila.find('.modal-title').text(`Editar Fila ${String(filaSequencial).padStart(2, '0')}`);
         $modalGerenciarFila.modal('show');
     });
-
 
     // --- INICIALIZAÇÃO DA PÁGINA ---
     preencherCabecalho();

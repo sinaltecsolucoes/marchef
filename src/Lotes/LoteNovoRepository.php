@@ -219,7 +219,6 @@ class LoteNovoRepository
             $this->pdo->commit();
 
             return $novoId;
-
         } catch (Exception $e) {
             // 10. Se algo deu errado, desfaz tudo
             $this->pdo->rollBack();
@@ -275,7 +274,6 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return $success;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -488,7 +486,6 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -562,7 +559,6 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -668,7 +664,6 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -683,7 +678,7 @@ class LoteNovoRepository
      * @return bool
      * @throws Exception
      */
-    public function finalizarLoteParcialmente(int $loteId, array $itensParaFinalizar): bool
+    /*    public function finalizarLoteParcialmente(int $loteId, array $itensParaFinalizar): bool
     {
         if (empty($itensParaFinalizar)) {
             throw new Exception("Nenhum item foi selecionado para finalização.");
@@ -752,7 +747,128 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }*/
 
+    // /src/Lotes/LoteNovoRepository.php
+
+    /**
+     * Processa a finalização parcial ou total de itens de um lote, agrupando por produto antes de atualizar o estoque.
+     *
+     * @param int $loteId O ID do lote.
+     * @param array $itensParaFinalizar Um array de itens, onde cada item é ['item_id' => id, 'quantidade' => qtd].
+     * @return bool
+     * @throws Exception
+     */
+    public function finalizarLoteParcialmente(int $loteId, array $itensParaFinalizar): bool
+    {
+        if (empty($itensParaFinalizar)) {
+            throw new Exception("Nenhum item foi selecionado para finalização.");
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // Busca o número do lote para usar na observação
+            $stmt_lote_header = $this->pdo->prepare("SELECT lote_numero FROM tbl_lotes_novo_header WHERE lote_id = :id");
+            $stmt_lote_header->execute([':id' => $loteId]);
+            $numeroDoLote = $stmt_lote_header->fetchColumn();
+
+            if (!$numeroDoLote) {
+                throw new Exception("Lote com ID {$loteId} não encontrado para finalização.");
+            }
+
+            // Array para agrupar as quantidades totais por ID de produto
+            $quantidadesAgrupadasPorProduto = [];
+
+            // --- PREPARA AS QUERIES QUE SERÃO USADAS NOS LOOPS ---
+            $stmt_item = $this->pdo->prepare(
+                "SELECT item_emb_prod_sec_id, (item_emb_qtd_sec - item_emb_qtd_finalizada) AS disponivel 
+             FROM tbl_lotes_novo_embalagem WHERE item_emb_id = :id FOR UPDATE"
+            );
+            $stmt_update_item = $this->pdo->prepare(
+                "UPDATE tbl_lotes_novo_embalagem SET item_emb_qtd_finalizada = item_emb_qtd_finalizada + :qtd 
+             WHERE item_emb_id = :id"
+            );
+
+            // --- PRIMEIRO LOOP: Validar, atualizar itens individuais e AGRUPAR por produto ---
+            foreach ($itensParaFinalizar as $item) {
+                $itemId = $item['item_id'];
+                $qtdAFinalizar = (float) $item['quantidade'];
+
+                if ($qtdAFinalizar <= 0)
+                    continue;
+
+                $stmt_item->execute([':id' => $itemId]);
+                $itemDb = $stmt_item->fetch(PDO::FETCH_ASSOC);
+
+                if (!$itemDb || $qtdAFinalizar > (float) $itemDb['disponivel']) {
+                    throw new Exception("Quantidade a finalizar para o item ID {$itemId} é maior que a disponível.");
+                }
+
+                $produtoId = $itemDb['item_emb_prod_sec_id'];
+
+                // Agrega a quantidade no array de agrupamento
+                if (!isset($quantidadesAgrupadasPorProduto[$produtoId])) {
+                    $quantidadesAgrupadasPorProduto[$produtoId] = 0;
+                }
+                $quantidadesAgrupadasPorProduto[$produtoId] += $qtdAFinalizar;
+
+                // Atualiza a quantidade finalizada do item de embalagem individual
+                $stmt_update_item->execute([':qtd' => $qtdAFinalizar, ':id' => $itemId]);
+            }
+
+            // --- SEGUNDO LOOP: Inserir no estoque os totais AGRUPADOS ---
+            /*  $stmt_insert_estoque = $this->pdo->prepare(
+                "INSERT INTO tbl_estoque (estoque_lote_item_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+             VALUES (:lote_item_id, :produto_id, :quantidade, 'ENTRADA', :observacao)"
+            );*/
+
+
+            // --- SEGUNDO LOOP CORRIGIDO: Inserir no estoque os totais AGRUPADOS ---
+            $stmt_insert_estoque = $this->pdo->prepare(
+                "INSERT INTO tbl_estoque (estoque_lote_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+             VALUES (:lote_id, :produto_id, :quantidade, 'ENTRADA', :observacao)"
+            );
+
+            foreach ($quantidadesAgrupadasPorProduto as $produtoId => $totalQuantidade) {
+                $stmt_insert_estoque->execute([
+                    ':lote_id'      => $loteId, // <-- AQUI ESTÁ A MUDANÇA PRINCIPAL!
+                    ':produto_id'   => $produtoId,
+                    ':quantidade'   => $totalQuantidade,
+                    ':observacao'   => "ENTRADA LOTE " . $numeroDoLote
+                ]);
+
+                $this->auditLogger->log('CREATE', $this->pdo->lastInsertId(), 'tbl_estoque', null, ['lote_id' => $loteId, 'produto_id' => $produtoId, 'quantidade_total' => $totalQuantidade]);
+            }
+
+            // NOTA: Ao agrupar, perdemos a referência a um único 'itemId' para o log de estoque.
+            // Uma abordagem é usar o ID do lote ou o primeiro itemId encontrado para aquele produto como referência.
+            // Aqui, usaremos NULL para estoque_lote_item_id, pois representa um movimento consolidado.
+            /*      foreach ($quantidadesAgrupadasPorProduto as $produtoId => $totalQuantidade) {
+                $stmt_insert_estoque->execute([
+                    ':lote_item_id' => null, // Opcional: pode ser o ID do lote ou o ID do primeiro item
+                    ':produto_id' => $produtoId,
+                    ':quantidade' => $totalQuantidade,
+                    ':observacao' => "ENTRADA LOTE " . $numeroDoLote
+                ]);
+
+                // Log de auditoria para o movimento de estoque consolidado
+                $this->auditLogger->log('CREATE', $this->pdo->lastInsertId(), 'tbl_estoque', null, ['lote_id' => $loteId, 'produto_id' => $produtoId, 'quantidade_total' => $totalQuantidade]);
+            }*/
+
+            // Atualiza o status do lote (FINALIZADO ou PARCIALMENTE FINALIZADO)
+            $itensAindaAbertos = $this->getItensParaFinalizar($loteId);
+            $novoStatus = (empty($itensAindaAbertos)) ? 'FINALIZADO' : 'PARCIALMENTE FINALIZADO';
+
+            $stmt_update_header = $this->pdo->prepare("UPDATE tbl_lotes_novo_header SET lote_status = :status WHERE lote_id = :id");
+            $stmt_update_header->execute([':status' => $novoStatus, ':id' => $loteId]);
+            $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['novo_status' => $novoStatus]);
+
+            $this->pdo->commit();
+            return true;
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -909,12 +1025,11 @@ class LoteNovoRepository
     }
 
     /**
-     * Busca os dados para a Visão Geral do Estoque.
-     *
+     * Busca os dados para a Visão Geral do Estoque, focado apenas no novo sistema de lotes.
      * @param array $params Parâmetros do DataTables.
      * @return array
      */
-    public function getVisaoGeralEstoque(array $params): array
+    /* public function getVisaoGeralEstoque(array $params): array
     {
         // Parâmetros do DataTables
         $draw = $params['draw'] ?? 1;
@@ -922,37 +1037,51 @@ class LoteNovoRepository
         $length = $params['length'] ?? 10;
         $searchValue = $params['search']['value'] ?? '';
 
+        // Query Base (sem alteração)
         $baseQuery = "
         FROM tbl_estoque es
-        
-        -- Join para buscar os dados do PRODUTO (comum a ambos os sistemas)
         JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
+        LEFT JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
+        LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+        LEFT JOIN tbl_entidades e ON lnh.lote_cliente_id = e.ent_codigo
+        ";
 
-        -- Joins para o sistema de LOTES ANTIGO
-        LEFT JOIN tbl_lote_itens li_antigo ON es.estoque_lote_item_id = li_antigo.item_id AND es.estoque_observacao NOT LIKE 'ENTRADA LOTE%'
-        LEFT JOIN tbl_lotes lh_antigo ON li_antigo.item_lote_id = lh_antigo.lote_id
-        LEFT JOIN tbl_entidades e_antigo ON lh_antigo.lote_cliente_id = e_antigo.ent_codigo
-
-        -- Joins para o sistema de LOTES NOVO
-        LEFT JOIN tbl_lotes_novo_embalagem lne_novo ON es.estoque_lote_item_id = lne_novo.item_emb_id AND es.estoque_observacao LIKE 'ENTRADA LOTE%'
-        LEFT JOIN tbl_lotes_novo_header lnh_novo ON lne_novo.item_emb_lote_id = lnh_novo.lote_id
-        LEFT JOIN tbl_entidades e_novo ON lnh_novo.lote_cliente_id = e_novo.ent_codigo
-         ";
-
-        $totalRecords = $this->pdo->query("SELECT COUNT(DISTINCT p.prod_codigo, COALESCE(lh_antigo.lote_id, lnh_novo.lote_id, es.estoque_id)) " . $baseQuery)->fetchColumn();
+        // Agrupamento correto que já implementamos
+        $groupByClause = "GROUP BY p.prod_codigo, lnh.lote_id";
 
         $whereClause = "";
+        $queryParams = []; // Array para guardar os parâmetros da busca
+
         if (!empty($searchValue)) {
-            $whereClause = "WHERE (p.prod_descricao LIKE :search OR lh_antigo.lote_completo_calculado LIKE :search OR lnh_novo.lote_completo_calculado LIKE :search)";
+            // 1. Mapeamos explicitamente as colunas que queremos pesquisar
+            $searchableColumns = [
+                'p.prod_descricao',
+                'lnh.lote_completo_calculado',
+                'p.prod_codigo_interno',
+                'e.ent_razao_social'
+            ];
+            $searchConditions = [];
+
+            foreach ($searchableColumns as $index => $column) {
+                // 2. Criamos um nome de parâmetro único para cada coluna (ex: :search0, :search1)
+                $placeholder = ":search{$index}";
+                $searchConditions[] = "{$column} LIKE {$placeholder}";
+                // 3. Adicionamos o valor ao nosso array de parâmetros
+                $queryParams[$placeholder] = '%' . $searchValue . '%';
+            }
+
+            $whereClause = "WHERE (" . implode(' OR ', $searchConditions) . ")";
         }
 
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT p.prod_codigo, COALESCE(lh_antigo.lote_id, lnh_novo.lote_id, es.estoque_id)) " . $baseQuery . $whereClause);
-        if (!empty($searchValue)) {
-            $stmtFiltered->bindValue(':search', '%' . $searchValue . '%');
-        }
-        $stmtFiltered->execute();
+        // Contagem Total (usa a query base e o agrupamento)
+        $totalRecords = $this->pdo->query("SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$groupByClause}) as subquery")->fetchColumn();
+
+        // Contagem Filtrada (usa a query base, a nova whereClause e o agrupamento)
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$whereClause} {$groupByClause}) as subquery");
+        $stmtFiltered->execute($queryParams); // Executa com os parâmetros da busca
         $totalFiltered = $stmtFiltered->fetchColumn();
 
+        // Query Principal para buscar os dados
         $sqlData = "
         SELECT 
             p.prod_tipo as tipo_produto,
@@ -961,34 +1090,30 @@ class LoteNovoRepository
             p.prod_codigo_interno as codigo_interno,
             p.prod_descricao as descricao_produto,
             p.prod_peso_embalagem as peso_embalagem,
-            
-            -- COALESCE escolhe o primeiro valor não nulo. Se veio do lote novo, usa os dados do novo, senão, do antigo.
-            COALESCE(lnh_novo.lote_completo_calculado, lh_antigo.lote_completo_calculado, 'N/A') as lote,
-            COALESCE(e_novo.ent_razao_social, e_antigo.ent_razao_social) as cliente_lote_nome,
-            COALESCE(lnh_novo.lote_data_fabricacao, lh_antigo.lote_data_fabricacao) as data_fabricacao,
-
-            -- Agrega os movimentos de estoque para calcular o saldo
+            COALESCE(lnh.lote_completo_calculado, 'Lote Avulso') as lote,
+            e.ent_razao_social as cliente_lote_nome,
+            lnh.lote_data_fabricacao as data_fabricacao,
             SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as total_caixas,
             SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) * p.prod_peso_embalagem as peso_total
         
         {$baseQuery}
         {$whereClause}
         
-        -- Agrupa por produto e pelo lote de origem (seja novo ou antigo)
-        GROUP BY 
-            p.prod_codigo, 
-            COALESCE(lnh_novo.lote_id, lh_antigo.lote_id, es.estoque_id)
+        {$groupByClause}
 
         ORDER BY descricao_produto ASC, lote ASC
         LIMIT :start, :length
-    ";
+        ";
 
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-        if (!empty($searchValue)) {
-            $stmt->bindValue(':search', '%' . $searchValue . '%');
+
+        // Vincula os parâmetros da busca (se existirem) à consulta
+        foreach ($queryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
         }
+
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -998,5 +1123,131 @@ class LoteNovoRepository
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data
         ];
+    }*/
+
+    public function getVisaoGeralEstoque(array $params): array
+    {
+        // Parâmetros do DataTables
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+
+        // Query Base CORRIGIDA para funcionar com lançamentos antigos e novos
+        $baseQuery = "
+        FROM tbl_estoque es
+        JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
+        
+        -- Join para buscar o item de embalagem (para compatibilidade com registros antigos)
+        LEFT JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
+        
+        -- Join inteligente para buscar o cabeçalho do lote:
+        -- Tenta primeiro pelo novo campo 'estoque_lote_id'. 
+        -- Se for nulo (registro antigo), tenta pelo caminho antigo através de 'lne.item_emb_lote_id'.
+        LEFT JOIN tbl_lotes_novo_header lnh ON lnh.lote_id = COALESCE(es.estoque_lote_id, lne.item_emb_lote_id)
+        
+        LEFT JOIN tbl_entidades e ON lnh.lote_cliente_id = e.ent_codigo
+        ";
+
+        // Agrupamento correto que já implementamos
+        $groupByClause = "GROUP BY p.prod_codigo, lnh.lote_id";
+
+        $whereClause = "";
+        $queryParams = []; // Array para guardar os parâmetros da busca
+
+        if (!empty($searchValue)) {
+            $searchableColumns = [
+                'p.prod_descricao',
+                'lnh.lote_completo_calculado',
+                'p.prod_codigo_interno',
+                'e.ent_razao_social'
+            ];
+            $searchConditions = [];
+
+            foreach ($searchableColumns as $index => $column) {
+                $placeholder = ":search{$index}";
+                $searchConditions[] = "{$column} LIKE {$placeholder}";
+                $queryParams[$placeholder] = '%' . $searchValue . '%';
+            }
+
+            $whereClause = "WHERE (" . implode(' OR ', $searchConditions) . ")";
+        }
+
+        // Contagem Total
+        $totalRecordsQuery = "SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$groupByClause}) as subquery";
+        $totalRecords = $this->pdo->query($totalRecordsQuery)->fetchColumn();
+
+        // Contagem Filtrada
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$whereClause} {$groupByClause}) as subquery");
+        $stmtFiltered->execute($queryParams);
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        // Query Principal para buscar os dados
+        $sqlData = "
+        SELECT 
+            p.prod_tipo as tipo_produto,
+            p.prod_subtipo as subtipo,
+            p.prod_classificacao as classificacao,
+            p.prod_codigo_interno as codigo_interno,
+            p.prod_descricao as descricao_produto,
+            p.prod_peso_embalagem as peso_embalagem,
+            COALESCE(lnh.lote_completo_calculado, 'Lote Avulso') as lote,
+            e.ent_razao_social as cliente_lote_nome,
+            lnh.lote_data_fabricacao as data_fabricacao,
+            SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as total_caixas,
+            SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) * p.prod_peso_embalagem as peso_total
+        
+        {$baseQuery}
+        {$whereClause}
+        
+        {$groupByClause}
+
+        ORDER BY descricao_produto ASC, lote ASC
+        LIMIT :start, :length
+        ";
+
+        $stmt = $this->pdo->prepare($sqlData);
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+
+        foreach ($queryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw" => (int) $draw,
+            "recordsTotal" => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data" => $data
+        ];
+    }
+
+
+    /**
+     * Busca os detalhes completos de um único item de lote do novo sistema.
+     * @param int $loteItemId ID do item da tabela tbl_lotes_novo_embalagem
+     * @return array|null
+     */
+    public function findLoteNovoItemDetalhes(int $loteItemId): ?array
+    {
+        $sql = "
+        SELECT
+            lne.item_emb_id as lote_item_id,
+            p.prod_codigo as produto_id,
+            p.prod_descricao,
+            p.prod_codigo_interno,
+            CONCAT('Lote: ', lnh.lote_completo_calculado, ' - Saldo: ', CAST((lne.item_emb_qtd_sec - lne.item_emb_qtd_finalizada) AS DECIMAL(10,3))) as lote_texto
+        FROM tbl_lotes_novo_embalagem lne
+        JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+        JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+        WHERE lne.item_emb_id = :id
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $loteItemId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
     }
 }
