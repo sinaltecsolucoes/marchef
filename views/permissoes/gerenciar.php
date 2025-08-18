@@ -11,11 +11,12 @@ if ($_SESSION['tipoUsuario'] !== 'Admin') {
 // A permissão foi renomeada para ser mais clara sobre sua função.
 $paginas_e_acoes_disponiveis = [
     'home' => 'Página Inicial (Home)',
-    'usuarios' => 'Gerenciar Usuários (Ver Lista)',
+    'usuarios' => 'Gerenciar Usuários',
     'clientes' => 'Gerenciar Clientes',
     'fornecedores' => 'Gerenciar Fornecedores',
     'produtos' => 'Gerenciar Produtos',
-    'lotes' => 'Gerenciar Lotes',
+    //'lotes' => 'Gerenciar Lotes',
+    'lotes_novo' => 'Gerenciar Lotes',
     'templates' => 'Gerenciar Templates de Etiqueta',
     'regras' => 'Gerenciar Regras de Etiqueta',
     'editar_outros_usuarios' => 'Ação: Editar Outros Usuários',

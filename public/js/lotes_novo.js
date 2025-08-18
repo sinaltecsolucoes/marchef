@@ -23,14 +23,16 @@ $(document).ready(function () {
         },
         "columns": [
             {
-                "data": "lote_completo_calculado"
+                "data": "lote_completo_calculado",
+                "className": "text-center align-middle",
             },
             {
-                "data": "fornecedor_razao_social"
+                "data": "fornecedor_razao_social",
+                "className": "align-middle",
             },
             {
                 "data": "lote_data_fabricacao",
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     //return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -40,7 +42,7 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_status",
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     let badgeClass = 'bg-secondary';
                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
@@ -52,7 +54,7 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_data_cadastro",
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     //return new Date(data).toLocaleString('pt-BR');
                     if (!data) return '';
@@ -63,9 +65,7 @@ $(document).ready(function () {
             {
                 "data": "lote_id",
                 "orderable": false,
-                "className": "text-center",
-                // Dentro de "columns": [ ... ]
-                // Substitua a função "render" da última coluna por esta:
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     const status = row.lote_status;
                     const loteId = row.lote_id;
@@ -560,42 +560,6 @@ $(document).ready(function () {
     // --- Event Handlers ---
 
     // Evento para o botão "Adicionar Novo Lote"
-    /*  $('#btn-adicionar-lote-novo').on('click', function () {
-          configurarModalModoLeitura(false);
-          // 1. Limpa o formulário e o modal
-          $formHeader[0].reset();
-          $('#lote_id_novo').val('');
-          $('#modal-lote-novo-label').text('Adicionar Novo Lote');
-  
-          // Inicializa os dropdowns do modal
-          $('#lote_fornecedor_id_novo, #lote_cliente_id_novo, #item_prod_produto_id_novo').select2({
-              placeholder: 'Selecione uma opção',
-              dropdownParent: $modalLoteNovo,
-              theme: "bootstrap-5"
-          });
-  
-          // Carrega os dados para os dropdowns
-          carregarFornecedores();
-          carregarClientes();
-          carregarProdutosPrimarios();
-  
-          // Busca o próximo número de lote
-          $.get('ajax_router.php?action=getProximoNumeroLoteNovo', function (response) {
-              if (response.success) {
-                  $('#lote_numero_novo').val(response.proximo_numero);
-                  atualizarLoteCompletoNovo(); // Calcula o lote inicial
-              } else {
-                  $('#lote_numero').val('Erro!');
-              }
-          });
-          // 2. Desabilita as abas de produção e embalagens e ativa a primeira
-          new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
-          $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
-  
-          $modalLoteNovo.modal('show');
-      });*/
-
-    // /public/js/lotes_novo.js
     $('#btn-adicionar-lote-novo').on('click', function () {
         configurarModalModoLeitura(false);
 
@@ -603,6 +567,7 @@ $(document).ready(function () {
         $formHeader[0].reset();
         $('#lote_id_novo').val('');
         $('#modal-lote-novo-label').text('Adicionar Novo Lote');
+        $modalLoteNovo.modal('show');
 
         // 2. Limpa os formulários das outras abas
         $('#form-lote-novo-producao')[0].reset();
@@ -652,6 +617,7 @@ $(document).ready(function () {
 
         $modalLoteNovo.modal('show');
     });
+
     // Evento de clique para o botão "Adicionar Item"
     $('#btn-adicionar-item-producao').on('click', function () {
         const loteId = loteIdAtual; // A variável global que guarda o ID do lote
@@ -775,13 +741,6 @@ $(document).ready(function () {
             }
         });
     });
-
-    /* $('#btn-cancelar-edicao-producao').on('click', function () {
-         $('#form-lote-novo-producao')[0].reset();
-         $('#item_prod_id_novo').val(''); // Limpa o ID do item
-         $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
-         $('#btn-adicionar-item-producao').text('Adicionar Item'); // Restaura o texto do botão
-     });*/
 
     $('#btn-cancelar-edicao-producao').on('click', function () {
         resetarFormularioProducao();

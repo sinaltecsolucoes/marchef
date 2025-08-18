@@ -6,7 +6,7 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Filtrar Registos</h6>
+        <h6 class="m-0 font-weight-bold text-primary">Filtrar Registros</h6>
     </div>
     <div class="card-body">
         <div class="row">

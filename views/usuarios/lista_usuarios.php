@@ -40,7 +40,6 @@
         </div>
     </div>
 </div>
-</div>
 
 <div class="modal fade" id="modal-usuario" tabindex="-1" role="dialog" aria-labelledby="modal-usuario-label"
     aria-hidden="true">

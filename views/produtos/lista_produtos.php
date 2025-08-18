@@ -5,51 +5,76 @@
 
 <h4 class="fw-bold mb-3">Gestão de Produtos</h4>
 
-<!-- Botão Adicionar Produto -->
-<a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-produto"
-    id="btn-adicionar-produto-main">Adicionar Produto</a>
 
-<!-- Filtros de Situação -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <label class="form-label">Filtrar por Situação:</label><br>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos" value="Todos"
-                checked>
-            <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo" value="A">
-            <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo" value="I">
-            <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Gerenciar Produtos</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <!-- Botão Adicionar -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+                <button class="btn btn-primary" id="btn-adicionar-produto-main">
+                    <i class="fas fa-plus me-2"></i> Adicionar Produto
+                </button>
+            </div>
+
+            <!-- Espaço vazio (coluna 2) -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
+
+            <!-- Espaço vazio (coluna 3) -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
+
+            <!-- Filtro por Situação -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+                <label class="form-label me-2" style="white-space: nowrap;">Filtrar por Situação:</label>
+                <div class="d-flex flex-wrap">
+                    <div class="form-check form-check-inline me-3">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
+                            value="Todos" checked>
+                        <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
+                    </div>
+                    <div class="form-check form-check-inline me-3">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
+                            value="A">
+                        <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
+                            value="I">
+                        <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Área para mensagens de feedback -->
-<div id="feedback-message-area-produto" class="mt-3"></div>
-
 <!-- Tabela de Produtos -->
-<div class="table-responsive">
-    <table id="tabela-produtos" class="table table-hover my-4" style="width:100%">
-        <thead>
-            <tr>
-                <th class="text-center">Situação</th>
-                <th class="text-center">Cód. Interno</th>
-                <th class="text-center">Descrição</th>
-                <th class="text-center">Tipo</th>
-                <th class="text-center">Embalagem</th>
-                <th class="text-center">Peso</th>
-                <th class="text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Dados carregados via AJAX -->
-        </tbody>
-    </table>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Produtos</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="tabela-produtos" class="table table-hover my-4" style="width:100%">
+                <thead>
+                    <tr>
+                        <th class="text-center">Situação</th>
+                        <th class="text-center">Cód. Interno</th>
+                        <th class="text-center">Descrição</th>
+                        <th class="text-center">Tipo</th>
+                        <th class="text-center">Embalagem</th>
+                        <th class="text-center">Peso</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados carregados via AJAX -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Modal Adicionar/Editar Produto -->
@@ -81,7 +106,8 @@
                         </div>
                         <div class="col-md-8 mb-3">
                             <label for="prod_classe" class="form-label">Classe (Descrição para Etiqueta)</label>
-                            <input type="text" class="form-control" id="prod_classe" name="prod_classe" placeholder="Será calculado automaticamente...">
+                            <input type="text" class="form-control" id="prod_classe" name="prod_classe"
+                                placeholder="Será calculado automaticamente...">
                         </div>
                     </div>
                     <div class="row">
@@ -216,7 +242,8 @@
 
                         <div class="col-md-6 mb-3">
                             <div class="form-group">
-                                <label for="prod_validade_meses" class="form-label">Validade Padrão (em meses)</label>
+                                <label for="prod_validade_meses" class="form-label">Validade Padrão (em
+                                    meses)</label>
                                 <input type="number" class="form-control" id="prod_validade_meses"
                                     name="prod_validade_meses" placeholder="Ex: 12">
                                 <small class="form-text text-muted">Para 1 ano, digite 12. Para 1 ano e 6 meses,

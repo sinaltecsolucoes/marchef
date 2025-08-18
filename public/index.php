@@ -79,7 +79,6 @@ try {
 }
 // ### FIM DO NOVO BLOCO ###
 
-
 try {
     $pdo = Database::getConnection();
     if (empty($_SESSION['csrf_token'])) {
@@ -108,12 +107,12 @@ try {
     $queryPermissoes->execute([':tipo_usuario' => $tipoUsuarioLogado]);
     $paginasPermitidasUsuario = $queryPermissoes->fetchAll(PDO::FETCH_COLUMN, 0);
 
-    // CORREÇÃO #1: Garante que a permissão de 'permissoes' seja adicionada para o Admin
+    // Garante que a permissão de 'permissoes' seja adicionada para o Admin
     if ($tipoUsuarioLogado === 'Admin' && !in_array('permissoes', $paginasPermitidasUsuario)) {
         $paginasPermitidasUsuario[] = 'permissoes';
     }
 
-    // CORREÇÃO #2: Calcula o valor real da variável $podeEditarOutrosUsuarios
+    // Calcula o valor real da variável $podeEditarOutrosUsuarios
     $podeEditarOutrosUsuarios = ($tipoUsuarioLogado === 'Admin' || in_array('editar_outros_usuarios', $paginasPermitidasUsuario));
 
     // Lógica de roteamento
@@ -124,8 +123,8 @@ try {
         'clientes' => 'entidades/lista_entidades.php',
         'fornecedores' => 'entidades/lista_entidades.php',
         'produtos' => 'produtos/lista_produtos.php',
-        'lotes' => 'lotes/lista_lotes.php',
-        'lotes_novo' => 'lotes_novo/lista_lotes_novo.php',
+        //'lotes' => 'lotes/lista_lotes.php',
+        'lotes' => 'lotes_novo/lista_lotes_novo.php',
         'permissoes' => 'permissoes/gerenciar.php',
         'templates' => 'etiquetas/lista_templates.php',
         'regras' => 'etiquetas/lista_regras.php',

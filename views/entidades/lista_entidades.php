@@ -8,63 +8,92 @@ $titulo = $is_cliente ? 'Clientes' : 'Fornecedores';
 $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
 ?>
 
-<h4 class="fw-bold mb-3"><?php echo $titulo; ?></h4>
+<h4 class="fw-bold mb-3">Gestão de <?php echo $titulo; ?></h4>
 
-<a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-adicionar-entidade"
-    id="btn-adicionar-entidade">Adicionar <?php echo $singular; ?></a>
-
-<div class="row mb-3">
-    <div class="col-md-6">
-        <label for="filtro-tipo-entidade" class="form-label">Filtrar por Tipo Específico:</label>
-        <select class="form-select" id="filtro-tipo-entidade">
-            <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
-
-            <?php if ($pageType === 'cliente'): // Se estiver na página de Clientes ?>
-                <option value="Cliente">Apenas Clientes</option>
-            <?php else: // Se estiver na página de Fornecedores ?>
-                <option value="Fornecedor">Apenas Fornecedores</option>
-            <?php endif; ?>
-
-            <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
-        </select>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Gerenciar Registros</h6>
     </div>
-    <div class="col-md-6">
-        <label class="form-label">Filtrar por Situação:</label><br>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos" value="Todos"
-                checked>
-            <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo" value="A">
-            <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo" value="I">
-            <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <!-- Botão Adicionar -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+                <button class="btn btn-primary" id="btn-adicionar-entidade">
+                    <i class="fas fa-plus me-2"></i> Adicionar <?php echo $singular; ?>
+                </button>
+            </div>
+
+            <!-- Espaço vazio (coluna 2) -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
+
+            <!-- Filtro por Tipo Específico -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+                <label for="filtro-tipo-entidade" class="form-label me-2" style="white-space: nowrap;">Filtrar por
+                    Tipo:</label>
+                <select class="form-select" id="filtro-tipo-entidade">
+                    <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
+                    <?php if ($pageType === 'cliente'): ?>
+                        <option value="Cliente">Apenas Clientes</option>
+                    <?php else: ?>
+                        <option value="Fornecedor">Apenas Fornecedores</option>
+                    <?php endif; ?>
+                    <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
+                </select>
+            </div>
+
+            <!-- Filtro por Situação -->
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+                <label class="form-label me-2" style="white-space: nowrap;">Filtrar por Situação:</label>
+                <div class="d-flex flex-wrap">
+                    <div class="form-check form-check-inline me-3">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
+                            value="Todos" checked>
+                        <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
+                    </div>
+                    <div class="form-check form-check-inline me-3">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
+                            value="A">
+                        <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
+                            value="I">
+                        <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 
-<div id="feedback-message-area-entidade" class="mt-3"></div>
-
-<div class="table-responsive">
-    <table id="tabela-entidades" class="table table-hover my-4" style="width:100%">
-        <thead>
-            <tr>
-                <th class="text-center">Situação</th>
-                <th class="text-center">Tipo</th>
-                <th class="text-center">Código Interno</th>
-                <th class="text-center">Razão Social</th>
-                <th class="text-center">CPF/CNPJ</th>
-                <th class="text-center">Endereço Principal</th>
-                <th class="text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de <?php echo $titulo; ?></h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="tabela-entidades" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th class="text-center">Situação</th>
+                        <th class="text-center">Tipo</th>
+                        <th class="text-center">Código Interno</th>
+                        <th class="text-center">Razão Social</th>
+                        <th class="text-center">CPF/CNPJ</th>
+                        <th class="text-center">Endereço Principal</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+
+
+
 
 <div class="modal fade" id="modal-adicionar-entidade" tabindex="-1" aria-labelledby="modal-adicionar-entidade-label"
     aria-hidden="true">

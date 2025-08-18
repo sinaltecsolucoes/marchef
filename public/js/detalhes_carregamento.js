@@ -387,22 +387,7 @@ $(document).ready(function () {
             $form.find('.btn-cancelar-edicao').remove();
             $form.removeData('editing-row');
         } else {
-           /* const produtoHtml = `
-                 <tr data-lote-item-id="${loteItemId}" data-produto-id="${produtoId}">
-                     <td>${produtoTexto}</td>
-                     <td class="text-end">${quantidadeTexto}</td>
-                     <td class="text-center">
-                         <button type="button" class="btn btn-sm btn-warning btn-editar-produto-da-lista me-1" title="Editar Item">
-                             <i class="fas fa-pencil-alt me-1"></i> Editar
-                         </button>
-                         <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista" title="Remover Item">
-                             <i class="fas fa-trash me-1"></i> Remover
-                         </button>
-                     </td>
-                 </tr>
-             `;*/
-
-              const produtoHtml = `
+            const produtoHtml = `
              <tr data-lote-id="${loteId}" data-produto-id="${produtoId}">
                  <td>${produtoTexto}</td>
                  <td class="text-end">${quantidadeTexto}</td>
@@ -429,9 +414,9 @@ $(document).ready(function () {
         const $quantidadeInput = $form.find('input[type="number"]');
 
         // Pega os dados do item que está a ser editado
-       // const loteItemId = $row.data('lote-item-id');
-        const loteId = $row.data('lote-id'); 
-       const produtoId = $row.data('produto-id');
+        // const loteItemId = $row.data('lote-item-id');
+        const loteId = $row.data('lote-id');
+        const produtoId = $row.data('produto-id');
         const quantidade = parseFloat($row.find('td:nth-child(2)').text());
 
         // --- LÓGICA DE PREENCHIMENTO ---
@@ -527,14 +512,25 @@ $(document).ready(function () {
         const $loteSelect = $card.find('.select-lote-estoque');
         const produtoId = $produtoSelect.val();
 
-        // Limpa e desativa o dropdown de lote para uma nova seleção
-        $loteSelect.val(null).trigger('change');
+        // --- ETAPA 1: DESTRUIR E LIMPAR COMPLETAMENTE ---
+        // Verifica se o Select2 já foi inicializado neste elemento
+        if ($loteSelect.hasClass("select2-hidden-accessible")) {
+            // Se sim, destrói a instância anterior para evitar conflitos
+            $loteSelect.select2('destroy');
+        }
+
+        // Limpa quaisquer <option> que possam ter ficado e reseta o valor
+        $loteSelect.empty();
+        $loteSelect.val(null);
         $loteSelect.prop('disabled', true);
 
+
+        // --- ETAPA 2: REINICIALIZAR SE UM PRODUTO FOI SELECIONADO ---
         if (produtoId) {
-            // Se um produto foi selecionado, ativa o dropdown de lote e o configura
-            // para buscar os lotes via AJAX.
-            $loteSelect.prop('disabled', false).select2({
+            $loteSelect.prop('disabled', false);
+
+            // Inicializa o Select2 com a nova configuração AJAX
+            $loteSelect.select2({
                 placeholder: 'Selecione um lote...',
                 theme: "bootstrap-5",
                 dropdownParent: $modalGerenciarFila,
@@ -550,6 +546,19 @@ $(document).ready(function () {
                     processResults: function (data) {
                         return { results: data.results };
                     }
+                }
+            });
+
+            // --- ETAPA 3: GARANTIR QUE A SELEÇÃO SEJA MANTIDA (Ainda necessária) ---
+            // Este evento garante que, após a seleção, o valor correto seja exibido
+            $loteSelect.on('select2:select', function (e) {
+                const data = e.params.data;
+                // Previne a execução duplicada de eventos
+                e.preventDefault();
+
+                if ($(this).find("option[value='" + data.id + "']").length === 0) {
+                    const newOption = new Option(data.text, data.id, true, true);
+                    $(this).append(newOption).trigger('change');
                 }
             });
         }
@@ -579,10 +588,6 @@ $(document).ready(function () {
             const produtos = [];
             $card.find('.lista-produtos-cliente tr').each(function () {
                 const $linhaProduto = $(this);
-                /* produtos.push({
-                     loteItemId: $linhaProduto.data('lote-item-id'),
-                     quantidade: parseFloat($linhaProduto.find('td:nth-child(2)').text())
-                 });*/
                 produtos.push({
                     produtoId: $linhaProduto.data('produto-id'), // Adiciona o ID do produto
                     loteId: $linhaProduto.data('lote-id'), // Usa o novo atributo data

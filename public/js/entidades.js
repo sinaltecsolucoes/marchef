@@ -247,6 +247,12 @@ $(document).ready(function () {
     // EVENTOS (AÇÕES DO USUÁRIO)
     // =================================================================
 
+    // Abrir modal para Adicionar
+    $('#btn-adicionar-entidade').on('click', function () {
+        $formEntidade[0].reset();
+        $modalEntidade.modal('show');
+    });
+
     // Dispara a lógica de UI quando o tipo de pessoa muda
     $tipoPessoaRadios.on('change', function () {
 

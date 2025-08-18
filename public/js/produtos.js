@@ -173,6 +173,12 @@ $(document).ready(function () {
     $tipoEmbalagemSelect.on('change', toggleEmbalagemFields);
     $pesoEmbalagemSecundariaInput.on('keyup', calcularUnidades);
 
+    // Abrir modal para Adicionar
+    $('#btn-adicionar-produto-main').on('click', function () {
+        $formProduto[0].reset();
+        $modalProduto.modal('show');
+    });
+
     $produtoPrimarioSelect.on('change', function () {
         const selectedId = $(this).val();
         if (selectedId && produtoPrimarioCache[selectedId]) {

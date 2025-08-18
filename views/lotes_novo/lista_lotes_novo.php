@@ -2,26 +2,38 @@
 // /views/lotes_novo/lista_lotes_novo.php
 ?>
 
-<h4 class="fw-bold mb-3">Gestão de Lotes de Produção (Novo)</h4>
+<h4 class="fw-bold mb-3">Gestão de Lotes de Produção</h4>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold text-primary">Lotes Registados</h6>
-        <button class="btn btn-primary" id="btn-adicionar-lote-novo">
-            <i class="fas fa-plus me-2"></i> Adicionar Novo Lote
-        </button>
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Novo Lote</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <button class="btn btn-primary" id="btn-adicionar-lote-novo">
+                    <i class="fas fa-plus me-2"></i> Adicionar Lote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Lotes</h6>
     </div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-bordered" id="tabela-lotes-novo" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>Lote Completo</th>
-                        <th>Fornecedor</th>
-                        <th class="text-center">Data Fabricação</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">Data Cadastro</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center aling-middle">Lote Completo</th>
+                        <th class="text-center aling-middle">Fornecedor</th>
+                        <th class="text-center aling-middle">Data Fabricação</th>
+                        <th class="text-center aling-middle">Status</th>
+                        <th class="text-center aling-middle">Data Cadastro</th>
+                        <th class="text-center aling-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,13 +97,12 @@
                                 <div class="col-md-7">
                                     <label for="lote_fornecedor_id_novo" class="form-label">Fornecedor <span
                                             class="text-danger">*</span></label>
-                                    <select class="form-select" id="lote_fornecedor_id_novo"
-                                        name="lote_fornecedor_id" style="width: 100%;"></select>
+                                    <select class="form-select" id="lote_fornecedor_id_novo" name="lote_fornecedor_id"
+                                        style="width: 100%;"></select>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="lote_viveiro_novo" class="form-label">Viveiro</label>
-                                    <input type="text" class="form-control" id="lote_viveiro_novo"
-                                        name="lote_viveiro">
+                                    <input type="text" class="form-control" id="lote_viveiro_novo" name="lote_viveiro">
                                 </div>
                                 <div class="col-md-2">
                                     <label for="lote_ciclo_novo" class="form-label">Ciclo</label>
@@ -145,8 +156,8 @@
                                 </div>
                             </div>
                             <div class="text-end mt-3">
-                                <button type="button" class="btn btn-success"
-                                    id="btn-adicionar-item-producao">Adicionar Item</button>
+                                <button type="button" class="btn btn-success" id="btn-adicionar-item-producao">Adicionar
+                                    Item</button>
                                 <button type="button" class="btn btn-secondary"
                                     id="btn-cancelar-edicao-producao">Limpar</button>
                             </div>
@@ -161,7 +172,8 @@
                                         <th class="text-center align-middle">Qtd. Produzida</th>
                                         <th class="text-center align-middle">Saldo (p/ Embalar)</th>
                                         <th class="text-center align-middle">Validade</th>
-                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações</th>
+                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-itens-producao-novo">
@@ -214,7 +226,8 @@
                                         <th class="text-center align-middle">Qtd. Embalagens</th>
                                         <th class="text-center align-middle">Consumido De (Produto Primário)</th>
                                         <th class="text-center align-middle">Qtd. Primária Consumida</th>
-                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações</th>
+                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-itens-embalagem-novo">
