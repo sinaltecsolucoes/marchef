@@ -234,6 +234,60 @@ class LoteNovoRepository
      * @return bool
      * @throws Exception
      */
+    /*  public function excluirLote(int $loteId): bool
+      {
+          $this->pdo->beginTransaction();
+          try {
+              // 1. Busca os dados do lote para validação e auditoria
+              $stmtLote = $this->pdo->prepare("SELECT * FROM tbl_lotes_novo_header WHERE lote_id = :id");
+              $stmtLote->execute([':id' => $loteId]);
+              $loteAtual = $stmtLote->fetch(PDO::FETCH_ASSOC);
+
+              if (!$loteAtual) {
+                  throw new Exception("Lote não encontrado.");
+              }
+
+              // 2. VALIDAÇÃO DA REGRA #1: Status deve ser 'CANCELADO'
+              if ($loteAtual['lote_status'] !== 'CANCELADO') {
+                  throw new Exception("Apenas lotes com o status 'CANCELADO' podem ser excluídos permanentemente. Por favor, cancele o lote primeiro.");
+              }
+
+              // 3. VALIDAÇÃO DA REGRA #2: Lote não pode ter gerado estoque
+              $stmtCheckEstoque = $this->pdo->prepare(
+                  "SELECT SUM(item_emb_qtd_finalizada) FROM tbl_lotes_novo_embalagem WHERE item_emb_lote_id = :lote_id"
+              );
+              $stmtCheckEstoque->execute([':lote_id' => $loteId]);
+              $totalFinalizado = (float) $stmtCheckEstoque->fetchColumn();
+
+              if ($totalFinalizado > 0) {
+                  throw new Exception("Este lote não pode ser excluído pois já possui um histórico de finalização de estoque.");
+              }
+
+              // 4. Se todas as validações passaram, executa a exclusão em cascata
+              // (De tabelas filhas para a tabela pai)
+              $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_lote_id = :id")->execute([':id' => $loteId]);
+              $this->pdo->prepare("DELETE FROM tbl_lotes_novo_producao WHERE item_prod_lote_id = :id")->execute([':id' => $loteId]);
+              $stmtDeleteHeader = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_header WHERE lote_id = :id");
+              $success = $stmtDeleteHeader->execute([':id' => $loteId]);
+
+              $this->auditLogger->log('DELETE', $loteId, 'tbl_lotes_novo_header', $loteAtual, null, "Exclusão permanente do lote e todos os seus itens.");
+
+              $this->pdo->commit();
+              return $success;
+          } catch (Exception $e) {
+              $this->pdo->rollBack();
+              throw $e;
+          }
+      }*/
+
+    /**
+     * Exclui permanentemente um lote e todos os seus itens associados,
+     * revertendo qualquer estoque gerado para garantir a integridade dos dados.
+     *
+     * @param int $loteId O ID do lote a ser excluído.
+     * @return bool
+     * @throws Exception
+     */
     public function excluirLote(int $loteId): bool
     {
         $this->pdo->beginTransaction();
@@ -247,30 +301,48 @@ class LoteNovoRepository
                 throw new Exception("Lote não encontrado.");
             }
 
-            // 2. VALIDAÇÃO DA REGRA #1: Status deve ser 'CANCELADO'
-            if ($loteAtual['lote_status'] !== 'CANCELADO') {
-                throw new Exception("Apenas lotes com o status 'CANCELADO' podem ser excluídos permanentemente. Por favor, cancele o lote primeiro.");
+            // 2. VALIDAÇÃO: Permite a exclusão apenas de lotes 'CANCELADO' ou 'EM ANDAMENTO'.
+            // Lotes finalizados devem ser reabertos ou cancelados primeiro.
+            if (!in_array($loteAtual['lote_status'], ['CANCELADO', 'EM ANDAMENTO'])) {
+                throw new Exception("Apenas lotes com status 'EM ANDAMENTO' ou 'CANCELADO' podem ser excluídos. Por favor, cancele ou reabra o lote primeiro.");
             }
 
-            // 3. VALIDAÇÃO DA REGRA #2: Lote não pode ter gerado stock
-            $stmtCheckEstoque = $this->pdo->prepare(
-                "SELECT SUM(item_emb_qtd_finalizada) FROM tbl_lotes_novo_embalagem WHERE item_emb_lote_id = :lote_id"
+            // 3. Busca todos os movimentos de ENTRADA de estoque associados a este lote.
+            $stmtEstoque = $this->pdo->prepare(
+                "SELECT estoque_id, estoque_produto_id, estoque_quantidade 
+             FROM tbl_estoque 
+             WHERE estoque_lote_id = :lote_id AND estoque_tipo_movimento = 'ENTRADA'"
             );
-            $stmtCheckEstoque->execute([':lote_id' => $loteId]);
-            $totalFinalizado = (float) $stmtCheckEstoque->fetchColumn();
+            $stmtEstoque->execute([':lote_id' => $loteId]);
+            $movimentosDeEstoque = $stmtEstoque->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($totalFinalizado > 0) {
-                throw new Exception("Este lote não pode ser excluído pois já possui um histórico de finalização de stock.");
+            if ($movimentosDeEstoque) {
+                $stmtInsertEstorno = $this->pdo->prepare(
+                    "INSERT INTO tbl_estoque (estoque_lote_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                 VALUES (:lote_id, :produto_id, :quantidade, 'SAIDA', :observacao)"
+                );
+
+                // 4. Para cada movimento de entrada, cria um movimento de saída (estorno)
+                foreach ($movimentosDeEstoque as $movimento) {
+                    $stmtInsertEstorno->execute([
+                        ':lote_id' => $loteId,
+                        ':produto_id' => $movimento['estoque_produto_id'],
+                        ':quantidade' => $movimento['estoque_quantidade'],
+                        ':observacao' => "SAIDA POR EXCLUSAO PERMANENTE LOTE " . $loteAtual['lote_numero']
+                    ]);
+                }
             }
 
-            // 4. Se todas as validações passaram, executa a exclusão em cascata
-            // (De tabelas filhas para a tabela pai)
+            // 5. Se todas as validações e estornos passaram, executa a exclusão em cascata
             $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_lote_id = :id")->execute([':id' => $loteId]);
             $this->pdo->prepare("DELETE FROM tbl_lotes_novo_producao WHERE item_prod_lote_id = :id")->execute([':id' => $loteId]);
+
+            // Finalmente, exclui o cabeçalho do lote
             $stmtDeleteHeader = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_header WHERE lote_id = :id");
             $success = $stmtDeleteHeader->execute([':id' => $loteId]);
 
-            $this->auditLogger->log('DELETE', $loteId, 'tbl_lotes_novo_header', $loteAtual, null, "Exclusão permanente do lote e todos os seus itens.");
+            // 6. Log de auditoria
+            $this->auditLogger->log('DELETE', $loteId, 'tbl_lotes_novo_header', $loteAtual, null, "Exclusão permanente do lote e estorno de estoque associado.");
 
             $this->pdo->commit();
             return $success;
@@ -600,7 +672,7 @@ class LoteNovoRepository
     }
 
     /**
-     * Reabre um lote finalizado, revertendo o stock gerado e alterando o status para 'EM ANDAMENTO'.
+     * Reabre um lote finalizado, revertendo o estoque gerado e alterando o status para 'EM ANDAMENTO'.
      *
      * @param int $loteId O ID do lote a ser reaberto.
      * @param string $motivo O motivo da reabertura, para fins de auditoria.
@@ -638,7 +710,7 @@ class LoteNovoRepository
             foreach ($itensParaReverter as $item) {
                 $quantidadeReverter = (float) $item['item_emb_qtd_finalizada'];
                 if ($quantidadeReverter > 0) {
-                    // Cria o movimento de SAÍDA no stock (estorno)
+                    // Cria o movimento de SAÍDA no estoque (estorno)
                     $stmtInsertEstoque = $this->pdo->prepare(
                         "INSERT INTO tbl_estoque (estoque_lote_item_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
                      VALUES (:lote_item_id, :produto_id, :quantidade, 'SAIDA', :observacao)"

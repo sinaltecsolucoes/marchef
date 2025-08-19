@@ -57,7 +57,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-produtos" class="table table-hover my-4" style="width:100%">
+            <table class="table table-bordered" id="tabela-produtos" width="100%" cellspacing="0">
                 <thead>
                     <tr>
                         <th class="text-center">Situação</th>

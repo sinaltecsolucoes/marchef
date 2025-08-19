@@ -38,7 +38,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered" id="tabelaLogs" width="100%" cellspacing="0">
+            <table class="table table-bordered" id="tabelaLogs" width="100%" cellspacing="0"></table> 
                 <thead>
                     <tr>
                         <th>Data/Hora</th>

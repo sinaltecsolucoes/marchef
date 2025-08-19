@@ -622,7 +622,7 @@ function salvarUsuario(UsuarioRepository $repo)
     // Lógica para limitar a criação de novos usuários
     if (!$id) { // Só executa esta verificação se for um NOVO usuário (sem ID)
         $totalUsuarios = $repo->countAll();
-        if ($totalUsuarios >= 4) {
+        if ($totalUsuarios >= 7) {
             echo json_encode(['success' => false, 'message' => 'Limite máximo de 4 usuários atingido. Não é possível adicionar mais usuários.']);
             return; // Interrompe a execução
         }

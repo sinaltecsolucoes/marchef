@@ -33,10 +33,10 @@ class EntidadeRepository
         $pageType = $params['tipo_entidade'] ?? 'cliente';
         $filtroTipoEntidade = $params['filtro_tipo_entidade'] ?? 'Todos';
 
-        $columns = ['ent_situacao', 'ent_tipo_entidade', 'ent_codigo_interno', 'ent_razao_social', 'ent_cpf', 'end_logradouro'];
+        $columns = ['ent_situacao', 'ent_tipo_entidade', 'ent_codigo_interno', 'ent_razao_social', 'ent_nome_fantasia', 'ent_cpf', 'end_logradouro'];
         $orderColumn = $columns[$orderColumnIndex] ?? 'ent_razao_social';
 
-        $searchableColumns = ['ent_razao_social', 'ent_cpf', 'ent_cnpj', 'ent_codigo_interno'];
+        $searchableColumns = ['ent_razao_social', 'ent_nome_fantasia','ent_cpf', 'ent_cnpj', 'ent_codigo_interno'];
 
         $sqlBase = "FROM tbl_entidades ent LEFT JOIN (SELECT end_entidade_id, end_logradouro, end_numero, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 WHEN 'Comercial' THEN 2 ELSE 3 END, end_codigo ASC) as rn FROM tbl_enderecos) end ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1";
 

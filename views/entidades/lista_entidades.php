@@ -12,25 +12,25 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Gerenciar Registros</h6>
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
     </div>
     <div class="card-body">
         <div class="row align-items-center">
+
             <!-- Botão Adicionar -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+            <div class="col-12 col-md-3 mb-3 mb-md-0 w-25">
                 <button class="btn btn-primary" id="btn-adicionar-entidade">
                     <i class="fas fa-plus me-2"></i> Adicionar <?php echo $singular; ?>
                 </button>
             </div>
 
             <!-- Espaço vazio (coluna 2) -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block w-25"></div>
 
             <!-- Filtro por Tipo Específico -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
-                <label for="filtro-tipo-entidade" class="form-label me-2" style="white-space: nowrap;">Filtrar por
-                    Tipo:</label>
-                <select class="form-select" id="filtro-tipo-entidade">
+            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center w-25">
+                <label for="filtro-tipo-entidade" class="form-label me-2 text-nowrap">Filtrar por Tipo:</label>
+                <select class="form-select flex-grow-1" id="filtro-tipo-entidade">
                     <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
                     <?php if ($pageType === 'cliente'): ?>
                         <option value="Cliente">Apenas Clientes</option>
@@ -43,7 +43,7 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
 
             <!-- Filtro por Situação -->
             <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
-                <label class="form-label me-2" style="white-space: nowrap;">Filtrar por Situação:</label>
+                <label class="form-label me-2 text-nowrap">Filtrar por Situação:</label>
                 <div class="d-flex flex-wrap">
                     <div class="form-check form-check-inline me-3">
                         <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
@@ -62,6 +62,7 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -80,6 +81,7 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
                         <th class="text-center">Tipo</th>
                         <th class="text-center">Código Interno</th>
                         <th class="text-center">Razão Social</th>
+                        <th class="text-center">Nome Fantasia</th>
                         <th class="text-center">CPF/CNPJ</th>
                         <th class="text-center">Endereço Principal</th>
                         <th class="text-center">Ações</th>
@@ -90,10 +92,6 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
         </div>
     </div>
 </div>
-
-
-
-
 
 <div class="modal fade" id="modal-adicionar-entidade" tabindex="-1" aria-labelledby="modal-adicionar-entidade-label"
     aria-hidden="true">
