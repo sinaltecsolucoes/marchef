@@ -11,6 +11,7 @@ RewriteBase /marchef/public/
 RewriteCond %{THE_REQUEST} \.php
 RewriteCond %{REQUEST_URI} !/index\.php$ [NC]
 RewriteCond %{REQUEST_URI} !/ajax_router\.php$ [NC]
+RewriteCond %{REQUEST_URI} !/api\.php$ [NC]
 RewriteCond %{REQUEST_URI} !/installer\.php$ [NC]
 RewriteCond %{REQUEST_URI} !/installer_ajax\.php$ [NC]
 RewriteRule .* /marchef/public/ [R=301,L]
