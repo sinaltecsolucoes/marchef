@@ -850,4 +850,106 @@ class CarregamentoRepository
             throw $e;
         }
     }
+
+    /**
+     * Valida uma string de QR Code, verificando se o produto/lote existe e tem saldo.
+     *
+     * @param string $qrCodeContent O conteúdo bruto lido do QR Code.
+     * @return array Retorna ['success' => true] ou ['success' => false, 'message' => '...']
+     */
+    public function validarQrCode(string $qrCodeContent): array
+    {
+        // ETAPA 1: Parsear a string para extrair os identificadores
+        // Esta lógica de parsing é um exemplo e precisa ser ajustada para a estrutura exata da sua string GS1
+        // Ela assume que os identificadores (01, 241, etc.) estão presentes.
+
+        $gtin = null;
+        $lote = null;
+
+        // Extrai GTIN (01) - 14 dígitos
+        if (strpos($qrCodeContent, '01') === 0) {
+            $gtin = substr($qrCodeContent, 2, 14);
+        }
+
+        // Extrai Lote (241) - Assumindo que ele termina antes do próximo AI (ex: 11)
+        if (($posLote = strpos($qrCodeContent, '241')) !== false) {
+            $startLote = $posLote + 3;
+            $endLote = strpos($qrCodeContent, '11', $startLote); // Procura o próximo AI
+            if ($endLote === false)
+                $endLote = strlen($qrCodeContent); // Se não houver, vai até o fim
+
+            $lote = substr($qrCodeContent, $startLote, $endLote - $startLote);
+        }
+
+        if (!$gtin || !$lote) {
+            return ['success' => false, 'message' => 'QR Code em formato inválido.'];
+        }
+
+        // ETAPA 2: Verificar se o item existe e tem saldo em estoque
+        $sql = "
+            SELECT 
+                es.estoque_lote_item_id,
+                p.prod_descricao,
+                SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as saldo_estoque
+            FROM tbl_estoque es
+            JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
+            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            WHERE p.prod_gtin = :gtin AND lnh.lote_completo_calculado = :lote
+            GROUP BY es.estoque_lote_item_id, p.prod_descricao
+            HAVING saldo_estoque > 0
+            LIMIT 1;
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':gtin' => $gtin, ':lote' => $lote]);
+        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($item) {
+            return ['success' => true, 'message' => 'Item válido.', 'produto' => $item['prod_descricao']];
+        } else {
+            return ['success' => false, 'message' => 'Produto/Lote não encontrado ou sem saldo em estoque.'];
+        }
+    }
+
+    /**
+     * Altera o status de um carregamento para AGUARDANDO CONFERENCIA.
+     *
+     * @param int $carregamentoId O ID do carregamento a ser alterado.
+     * @param int $userId O ID do usuário que realizou a ação.
+     * @return bool
+     */
+    public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
+            $stmtAntigo->execute([':id' => $carregamentoId]);
+            $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
+
+            if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'EM ANDAMENTO') {
+                throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
+            }
+
+            $stmt = $this->pdo->prepare(
+                "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
+            );
+            $stmt->execute([':id' => $carregamentoId]);
+
+            $rowCount = $stmt->rowCount();
+
+            if ($rowCount > 0) {
+                $dadosNovos = $dadosAntigos;
+                $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
+                $this->auditLogger->log('STATUS_CHANGE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, "Enviado para conferência pelo App (Usuário ID: {$userId})");
+            }
+
+            $this->pdo->commit();
+            return $rowCount > 0;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e; // Propaga a exceção para ser capturada pela API
+        }
+    }
 }

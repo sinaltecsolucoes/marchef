@@ -56,6 +56,10 @@ switch ($action) {
         apiSalvarCarregamentoHeader($carregamentoRepo, $usuarioRepo);
         break;
 
+    case 'validarLeitura':
+        apiValidarLeitura($carregamentoRepo, $usuarioRepo);
+        break;
+
     case 'salvarFilaComLeituras':
         apiSalvarFilaComLeituras($carregamentoRepo, $usuarioRepo);
         break;
@@ -258,7 +262,7 @@ function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $user
 /**
  * Lida com a finalização de um carregamento.
  */
-function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+/* function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
     $input = json_decode(file_get_contents('php://input'), true);
@@ -282,5 +286,58 @@ function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepositor
         http_response_code(500); // Internal Server Error
         error_log("API Error in finalizarCarregamento: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro interno ao finalizar o carregamento.']);
+    }
+}*/
+
+function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    $carregamentoId = $input['carregamentoId'] ?? null;
+
+    if (!$carregamentoId) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['success' => false, 'message' => 'O ID do carregamento é obrigatório.']);
+        return;
+    }
+
+    try {
+        // A lógica foi alterada para chamar o novo método
+        if ($repo->marcarComoAguardandoConferencia((int) $carregamentoId, $user['usu_codigo'])) {
+            echo json_encode(['success' => true, 'message' => 'Carregamento enviado para conferência com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Não foi possível enviar para conferência. Verifique se o carregamento ainda está "EM ANDAMENTO".']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500); // Internal Server Error
+        error_log("API Error in finalizarCarregamento: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro interno ao processar a solicitação.']);
+    }
+}
+
+/**
+ * Valida o conteúdo de um QR Code em tempo real.
+ */
+function apiValidarLeitura(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
+    $input = json_decode(file_get_contents('php://input'), true);
+    $qrCodeContent = $input['qrCode'] ?? null;
+
+    if (!$qrCodeContent) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['success' => false, 'message' => 'Conteúdo do QR Code não fornecido.']);
+        return;
+    }
+
+    try {
+        $validationResult = $repo->validarQrCode($qrCodeContent);
+        echo json_encode($validationResult);
+
+    } catch (Exception $e) {
+        http_response_code(500); // Internal Server Error
+        error_log("API Error in validarLeitura: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro interno ao validar a leitura.']);
     }
 }

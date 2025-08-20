@@ -20,7 +20,7 @@ $(document).ready(function () {
                 const $select = $('#regra_cliente_id');
                 $select.empty().append('<option value="">Todos os Clientes</option>');
                 response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.ent_razao_social, cliente.ent_codigo));
+                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
                 });
             }
         });
