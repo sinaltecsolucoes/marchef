@@ -232,6 +232,7 @@ switch ($action) {
         getItensParaFinalizar($loteNovoRepo);
         break;
     case 'finalizarLoteParcialmenteNovo':
+        error_log(print_r($_POST, true));
         finalizarLoteParcialmenteNovo($loteNovoRepo);
         break;
     case 'cancelarLoteNovo':

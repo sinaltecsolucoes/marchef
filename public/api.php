@@ -71,6 +71,38 @@ switch ($action) {
         apiFinalizarCarregamento($carregamentoRepo, $usuarioRepo);
         break;
 
+    case 'getCarregamentosAtivos':
+        apiGetCarregamentos($carregamentoRepo, $usuarioRepo, 'ativos');
+        break;
+
+    case 'getCarregamentosFinalizados':
+        apiGetCarregamentos($carregamentoRepo, $usuarioRepo, 'finalizados');
+        break;
+
+    case 'getResumoCarregamento':
+        apiGetResumoCarregamento($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'getFilasPorCarregamento':
+        apiGetFilasPorCarregamento($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'criarFila':
+        apiCriarFila($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'atualizarCarregamentoHeader':
+        apiAtualizarCarregamentoHeader($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'getCarregamentoHeader':
+        apiGetCarregamentoHeader($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'getDetalhesFila':
+        apiGetDetalhesFila($carregamentoRepo, $usuarioRepo);
+        break;
+
     default:
         http_response_code(404); // Not Found
         echo json_encode(['success' => false, 'message' => 'Endpoint não encontrado.']);
@@ -80,34 +112,6 @@ switch ($action) {
 // =================================================================
 // FUNÇÕES DE CONTROLE DA API
 // =================================================================
-
-/**
- * Pega o token do cabeçalho da requisição e retorna os dados do usuário.
- * Se o token for inválido, encerra a execução com erro 401.
- */
-/*function getAuthenticatedUser(UsuarioRepository $repo): array
-{
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? null;
-
-    if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-        http_response_code(401); // Unauthorized
-        echo json_encode(['success' => false, 'message' => 'Token de autorização não fornecido ou em formato inválido.']);
-        exit;
-    }
-
-    $token = $matches[1];
-    $user = $repo->findUserByToken($token);
-
-    if (!$user) {
-        http_response_code(401); // Unauthorized
-        echo json_encode(['success' => false, 'message' => 'Token inválido ou expirado.']);
-        exit;
-    }
-    return $user;
-}*/
-
-// Em public/api.php
 
 /**
  * Pega o token do cabeçalho da requisição e retorna os dados do usuário.
@@ -296,36 +300,6 @@ function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $user
     }
 }
 
-/**
- * Lida com a finalização de um carregamento.
- */
-/* function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    $carregamentoId = $input['carregamentoId'] ?? null;
-
-    if (!$carregamentoId) {
-        http_response_code(400); // Bad Request
-        echo json_encode(['success' => false, 'message' => 'O ID do carregamento é obrigatório.']);
-        return;
-    }
-
-    try {
-        if ($repo->finalize((int) $carregamentoId)) {
-            echo json_encode(['success' => true, 'message' => 'Carregamento finalizado com sucesso!']);
-        } else {
-            // Isso pode acontecer se o ID não existir ou o lote já estiver finalizado
-            echo json_encode(['success' => false, 'message' => 'Não foi possível finalizar o carregamento. Verifique se o ID está correto e se o carregamento ainda está "EM ANDAMENTO".']);
-        }
-    } catch (Exception $e) {
-        http_response_code(500); // Internal Server Error
-        error_log("API Error in finalizarCarregamento: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro interno ao finalizar o carregamento.']);
-    }
-}*/
-
 function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
@@ -376,5 +350,195 @@ function apiValidarLeitura(CarregamentoRepository $repo, UsuarioRepository $user
         http_response_code(500); // Internal Server Error
         error_log("API Error in validarLeitura: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro interno ao validar a leitura.']);
+    }
+}
+
+/**
+ * Fornece a lista de carregamentos (ativos ou finalizados).
+ */
+function apiGetCarregamentos(CarregamentoRepository $carregamentoRepo, UsuarioRepository $userRepo, string $tipo)
+{
+    getAuthenticatedUser($userRepo); // Protege o endpoint
+
+    try {
+        if ($tipo === 'ativos') {
+            $carregamentos = $carregamentoRepo->findAtivos();
+        } else {
+            $carregamentos = $carregamentoRepo->findFinalizados();
+        }
+        echo json_encode(['success' => true, 'data' => $carregamentos]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar carregamentos: ' . $e->getMessage()]);
+    }
+}
+function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
+    $carregamentoId = (int) ($_GET['carregamentoId'] ?? 0);
+
+    if ($carregamentoId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
+        return;
+    }
+
+    try {
+        $data = $repo->findCarregamentoComFilasEItens($carregamentoId);
+
+        if (!$data) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Carregamento não encontrado.']);
+            return;
+        }
+
+        $header = $data['header'];
+        $filas = $data['filas'];
+
+        // Calcular totais
+        $total_filas = count($filas);
+        $total_quilos = 0;
+        $produtos = [];
+
+        foreach ($filas as $fila) {
+            foreach ($fila['itens'] as $item) {
+                $quantidade = (float) $item['car_item_quantidade'];
+                $total_quilos += $quantidade; // Assumindo quantidade em quilos
+
+                $produtos[] = [
+                    'nome' => $item['prod_descricao'],
+                    'lote' => $item['lote_completo_calculado'],
+                    'quantidade' => $quantidade
+                ];
+            }
+        }
+
+        $resumo = [
+            'numero' => $header['car_numero'],
+            'responsavel' => $header['responsavel'] ?: 'Desconhecido',
+            'total_filas' => $total_filas,
+            'total_quilos' => $total_quilos,
+            'produtos' => $produtos
+        ];
+
+        echo json_encode(['success' => true, 'data' => $resumo]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        error_log("API Error in getResumoCarregamento: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar resumo do carregamento: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Fornece a lista de filas para um carregamento específico.
+ */
+function apiGetFilasPorCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $carregamentoId = (int) ($_GET['carregamentoId'] ?? 0);
+
+    if ($carregamentoId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
+        return;
+    }
+
+    $filas = $repo->findFilasByCarregamentoId($carregamentoId);
+    echo json_encode(['success' => true, 'data' => $filas]);
+}
+
+/**
+ * Cria uma nova fila para um carregamento.
+ */
+function apiCriarFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+    $carregamentoId = $input['carregamentoId'] ?? null;
+
+    if (!$carregamentoId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'O ID do carregamento é obrigatório.']);
+        return;
+    }
+
+    try {
+        $newFilaId = $repo->adicionarFila((int) $carregamentoId);
+        echo json_encode(['success' => true, 'message' => 'Fila criada com sucesso!', 'filaId' => $newFilaId]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao criar a fila: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Lida com a atualização do cabeçalho de um carregamento.
+ */
+function apiAtualizarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+    $carregamentoId = $input['carregamentoId'] ?? null;
+
+    if (!$carregamentoId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento é obrigatório.']);
+        return;
+    }
+
+    try {
+        $repo->updateHeader((int) $carregamentoId, $input, $user['usu_codigo']);
+        echo json_encode(['success' => true, 'message' => 'Dados atualizados com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao atualizar dados: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Fornece os detalhes do cabeçalho de um carregamento.
+ */
+function apiGetCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $carregamentoId = (int) ($_GET['carregamentoId'] ?? 0);
+
+    if ($carregamentoId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
+        return;
+    }
+
+    $header = $repo->findHeaderById($carregamentoId);
+
+    if ($header) {
+        echo json_encode(['success' => true, 'data' => $header]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Carregamento não encontrado.']);
+    }
+}
+
+/**
+ * Fornece os detalhes de uma fila, com seus clientes e itens.
+ */
+function apiGetDetalhesFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $filaId = (int) ($_GET['filaId'] ?? 0);
+
+    if ($filaId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID da fila inválido.']);
+        return;
+    }
+
+    $fila = $repo->findFilaComClientesEItens($filaId);
+
+    if ($fila) {
+        echo json_encode(['success' => true, 'data' => $fila]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Fila não encontrada.']);
     }
 }

@@ -343,7 +343,7 @@ class CarregamentoRepository
         }
     }
 
-    public function findFilaComClientesEItens(int $filaId): ?array
+    /* public function findFilaComClientesEItens(int $filaId): ?array
     {
         $stmtFila = $this->pdo->prepare(
             "SELECT f.fila_id, f.fila_numero_sequencial
@@ -393,7 +393,68 @@ class CarregamentoRepository
 
         $fila['clientes'] = array_values($clientes);
         return $fila;
+    }*/
+
+    // Em src/Carregamentos/CarregamentoRepository.php
+
+
+    // Em src/Carregamentos/CarregamentoRepository.php
+
+    public function findFilaComClientesEItens(int $filaId): ?array
+    {
+        $stmtFila = $this->pdo->prepare(
+            "SELECT f.fila_id, f.fila_numero_sequencial
+             FROM tbl_carregamento_filas f 
+             WHERE f.fila_id = :id"
+        );
+        $stmtFila->execute([':id' => $filaId]);
+        $fila = $stmtFila->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fila)
+            return null;
+
+        $stmtItens = $this->pdo->prepare(
+            "SELECT
+                ci.car_item_lote_novo_item_id as loteId,
+                ci.car_item_quantidade as quantidade,
+                ci.car_item_cliente_id as clienteId,
+                lne.item_emb_prod_sec_id as produtoId, -- Buscando o ID do produto através da tabela de embalagem
+                e.ent_razao_social as clienteNome,
+                CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as produtoTexto
+             FROM tbl_carregamento_itens ci
+             JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+             -- O caminho correto para o produto passa pela tabela de embalagem
+             JOIN tbl_lotes_novo_embalagem lne ON ci.car_item_lote_novo_item_id = lne.item_emb_id
+             JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+             LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+             WHERE ci.car_item_fila_id = :fila_id"
+        );
+
+        $stmtItens->execute([':fila_id' => $filaId]);
+        $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        $clientes = [];
+        foreach ($todosOsItens as $item) {
+            $clienteId = $item['clienteId'];
+            if (!isset($clientes[$clienteId])) {
+                $clientes[$clienteId] = [
+                    'clienteId' => $clienteId,
+                    'clienteNome' => $item['clienteNome'],
+                    'produtos' => []
+                ];
+            }
+            $clientes[$clienteId]['produtos'][] = [
+                'loteId' => $item['loteId'],
+                'quantidade' => $item['quantidade'],
+                'produtoId' => $item['produtoId'],
+                'produtoTexto' => $item['produtoTexto']
+            ];
+        }
+
+        $fila['clientes'] = array_values($clientes);
+        return $fila;
     }
+
 
     public function findLotesComSaldoPorProduto(int $produtoId): array
     {
@@ -889,64 +950,161 @@ class CarregamentoRepository
         }
     }
 
+    // Em src/Carregamentos/CarregamentoRepository.php
+
     /**
-     * Valida uma string de QR Code, verificando se o produto/lote existe e tem saldo.
-     *
-     * @param string $qrCodeContent O conteúdo bruto lido do QR Code.
-     * @return array Retorna ['success' => true] ou ['success' => false, 'message' => '...']
+     * Valida uma string de QR Code complexa (GS1), verificando se o produto/lote existe.
+     */
+    /* public function validarQrCode(string $qrCodeContent): array
+     {
+         // ==========================================================
+         // NOVA LÓGICA DE PARSE INTELIGENTE
+         // ==========================================================
+         function parseGS1(string $code): array
+         {
+             $data = [];
+             $i = 0;
+             while ($i < strlen($code)) {
+                 // Tenta identificar os AIs (Application Identifiers) conhecidos
+                 if (strpos($code, '01', $i) === $i) { // GTIN (sempre 14 dígitos)
+                     $data['01'] = substr($code, $i + 2, 14);
+                     $i += 16;
+                 } elseif (strpos($code, '241', $i) === $i) { // Código do Produto (comprimento variável, buscamos pelo próximo AI)
+                     $start = $i + 3;
+                     // O próximo AI conhecido é '11' ou '10'. Adicione outros se necessário.
+                     $nextAiPos11 = strpos($code, '11', $start);
+                     $nextAiPos10 = strpos($code, '10', $start);
+
+                     $end = PHP_INT_MAX;
+                     if ($nextAiPos11 !== false)
+                         $end = min($end, $nextAiPos11);
+                     if ($nextAiPos10 !== false)
+                         $end = min($end, $nextAiPos10);
+
+                     if ($end === PHP_INT_MAX)
+                         $end = strlen($code);
+
+                     $value = substr($code, $start, $end - $start);
+                     $data['241'] = $value;
+                     $i = $end;
+                 } elseif (strpos($code, '10', $i) === $i) { // Lote (comprimento variável)
+                     $start = $i + 2;
+                     $nextAiPos11 = strpos($code, '11', $start);
+                     $end = ($nextAiPos11 !== false) ? $nextAiPos11 : strlen($code);
+
+                     $value = substr($code, $start, $end - $start);
+                     $data['10'] = $value;
+                     $i = $end;
+                 } else {
+                     // Se encontrar um caractere desconhecido, para o parse para evitar loop infinito
+                     break;
+                 }
+             }
+             return $data;
+         }
+
+         $parsedData = parseGS1($qrCodeContent);
+
+         // Extraímos o GTIN e o código do produto
+         $gtin = $parsedData['01'] ?? null;
+         $codigoProduto = $parsedData['241'] ?? null;
+         $lote = $parsedData['10'] ?? null;
+
+         if (!$gtin || !$codigoProduto || !$lote) {
+             return ['success' => false, 'message' => 'QR Code não contém GTIN (01), Produto (241) ou Lote (10).'];
+         }
+
+         // A consulta SQL para usar o código do produto
+         $sql = "
+             SELECT 
+                 lne.item_emb_id as lote_item_id,
+                 p.prod_descricao
+             FROM tbl_produtos p
+             JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
+             JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+             WHERE p.prod_dun14 = :gtin 
+               AND p.prod_codigo_interno = :codigo_produto
+               AND lnh.lote_completo_calculado = :lote
+             LIMIT 1;
+         ";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute([':gtin' => $gtin, ':codigo_produto' => $codigoProduto, ':lote' => $lote]);
+         $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+         if ($item) {
+             return [
+                 'success' => true,
+                 'message' => 'Item válido.',
+                 'produto' => $item['prod_descricao'],
+                 'lote' => $lote,
+                 'lote_item_id' => $item['lote_item_id']
+             ];
+         } else {
+             return ['success' => false, 'message' => "Produto/Lote não encontrado. GTIN: $gtin, CodProd: $codigoProduto, Lote: $lote"];
+         }
+     }*/
+
+    // Em src/Carregamentos/CarregamentoRepository.php
+
+    /**
+     * Valida uma string de QR Code complexa (GS1) usando Expressão Regular.
      */
     public function validarQrCode(string $qrCodeContent): array
     {
-        // ETAPA 1: Parsear a string para extrair os identificadores
-        // Esta lógica de parsing é um exemplo e precisa ser ajustada para a estrutura exata da sua string GS1
-        // Ela assume que os identificadores (01, 241, etc.) estão presentes.
-
+        // ==========================================================
+        // NOVA LÓGICA DE PARSE COM EXPRESSÃO REGULAR (RegEx)
+        // ==========================================================
         $gtin = null;
+        $codigoProduto = null;
         $lote = null;
 
-        // Extrai GTIN (01) - 14 dígitos
-        if (strpos($qrCodeContent, '01') === 0) {
-            $gtin = substr($qrCodeContent, 2, 14);
+        // Este "molde" procura pelas tags 01, 241 e 10 em sequência
+        // e captura o que vem depois delas, até a próxima tag.
+        $pattern = '/^01(\d{14})241(.+?)10(.+?)11/';
+
+        if (preg_match($pattern, $qrCodeContent, $matches)) {
+            $gtin = $matches[1] ?? null;          // O que foi capturado no primeiro ( )
+            $codigoProduto = $matches[2] ?? null; // O que foi capturado no segundo ( )
+            $lote = $matches[3] ?? null;          // O que foi capturado no terceiro ( )
         }
 
-        // Extrai Lote (241) - Assumindo que ele termina antes do próximo AI (ex: 11)
-        if (($posLote = strpos($qrCodeContent, '241')) !== false) {
-            $startLote = $posLote + 3;
-            $endLote = strpos($qrCodeContent, '11', $startLote); // Procura o próximo AI
-            if ($endLote === false)
-                $endLote = strlen($qrCodeContent); // Se não houver, vai até o fim
-
-            $lote = substr($qrCodeContent, $startLote, $endLote - $startLote);
+        if (!$gtin || !$codigoProduto || !$lote) {
+            return ['success' => false, 'message' => "Parse Falhou. GTIN(01), Produto(241) ou Lote(10) não encontrados no formato esperado."];
         }
 
-        if (!$gtin || !$lote) {
-            return ['success' => false, 'message' => 'QR Code em formato inválido.'];
-        }
-
-        // ETAPA 2: Verificar se o item existe e tem saldo em estoque
+        // Agora, usamos os dados extraídos para buscar no banco.
         $sql = "
             SELECT 
-                es.estoque_lote_item_id,
-                p.prod_descricao,
-                SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as saldo_estoque
-            FROM tbl_estoque es
-            JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
-            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                lne.item_emb_id as lote_item_id,
+                p.prod_descricao
+            FROM tbl_produtos p
+            JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
             JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-            WHERE p.prod_gtin = :gtin AND lnh.lote_completo_calculado = :lote
-            GROUP BY es.estoque_lote_item_id, p.prod_descricao
-            HAVING saldo_estoque > 0
+            WHERE p.prod_dun14 = :gtin 
+              AND p.prod_codigo_interno = :codigo_produto
+              AND lnh.lote_completo_calculado = :lote
             LIMIT 1;
         ";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':gtin' => $gtin, ':lote' => $lote]);
-        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':gtin' => $gtin, ':codigo_produto' => $codigoProduto, ':lote' => $lote]);
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($item) {
-            return ['success' => true, 'message' => 'Item válido.', 'produto' => $item['prod_descricao']];
-        } else {
-            return ['success' => false, 'message' => 'Produto/Lote não encontrado ou sem saldo em estoque.'];
+            if ($item) {
+                return [
+                    'success' => true,
+                    'message' => 'Item válido.',
+                    'produto' => $item['prod_descricao'],
+                    'lote' => $lote,
+                    'lote_item_id' => $item['lote_item_id']
+                ];
+            } else {
+                return ['success' => false, 'message' => "Produto/Lote não encontrado no sistema. Verifique os dados."];
+            }
+        } catch (\PDOException $e) {
+            return ['success' => false, 'message' => 'Erro de SQL: ' . $e->getMessage()];
         }
     }
 
@@ -988,5 +1146,132 @@ class CarregamentoRepository
             $this->pdo->rollBack();
             throw $e; // Propaga a exceção para ser capturada pela API
         }
+    }
+
+    /**
+     * Busca os últimos carregamentos com status 'EM ANDAMENTO'.
+     */
+    public function findAtivos(int $limit = 3): array
+    {
+        $sql = "SELECT 
+                    c.car_id as carregamentoId,
+                    c.car_numero as numero, 
+                    c.car_data as data, 
+                    e.ent_nome_fantasia as nome_cliente,
+                    u.usu_nome as responsavel
+                FROM tbl_carregamentos c
+                JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+                JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+                WHERE c.car_status = 'EM ANDAMENTO'
+                ORDER BY c.car_data DESC, c.car_id DESC
+                LIMIT :limit";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca os últimos carregamentos com status 'FINALIZADO'.
+     */
+    public function findFinalizados(int $limit = 3): array
+    {
+        $sql = "SELECT 
+                    c.car_id as carregamentoId,
+                    c.car_numero as numero, 
+                    c.car_data as data, 
+                    e.ent_nome_fantasia as nome_cliente,
+                    u.usu_nome as responsavel
+                FROM tbl_carregamentos c
+                JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+                JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+                WHERE c.car_status = 'FINALIZADO' 
+                ORDER BY c.car_data DESC, c.car_id DESC
+                LIMIT :limit";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca todas as filas de um carregamento específico com contagem de clientes e itens.
+     */
+    public function findFilasByCarregamentoId(int $carregamentoId): array
+    {
+        // Esta query é um exemplo. Pode ser que a sua tabela de itens
+        // não se chame tbl_carregamento_itens. Ajustaremos se necessário.
+        $sql = "SELECT 
+                    f.fila_id, 
+                    f.fila_numero_sequencial,
+                    (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
+                     FROM tbl_carregamento_itens ci 
+                     WHERE ci.car_item_fila_id = f.fila_id) as total_clientes,
+                    (SELECT SUM(ci.car_item_quantidade) 
+                     FROM tbl_carregamento_itens ci 
+                     WHERE ci.car_item_fila_id = f.fila_id) as total_quantidade
+                FROM tbl_carregamento_filas f
+                WHERE f.fila_carregamento_id = :carregamento_id
+                ORDER BY f.fila_numero_sequencial ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':carregamento_id' => $carregamentoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Atualiza os dados do cabeçalho de um carregamento existente.
+     */
+    public function updateHeader(int $carregamentoId, array $data, int $userId): bool
+    {
+        // Busca os dados antigos para o log de auditoria
+        $dadosAntigos = $this->findHeaderById($carregamentoId);
+
+        $sql = "UPDATE tbl_carregamentos SET
+                    car_lacre = :lacre,
+                    car_placa_veiculo = :placa,
+                    car_hora_inicio = :hora_inicio,
+                    car_ordem_expedicao = :ordem_expedicao
+                WHERE car_id = :carregamento_id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $success = $stmt->execute([
+            ':lacre' => $data['lacre'] ?? null,
+            ':placa' => $data['placa'] ?? null,
+            ':hora_inicio' => $data['hora_inicio'] ?? null,
+            ':ordem_expedicao' => $data['ordem_expedicao'] ?? null,
+            ':carregamento_id' => $carregamentoId
+        ]);
+
+        if ($success) {
+            $this->auditLogger->log('UPDATE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $data);
+        }
+
+        return $success;
+    }
+
+    /**
+     * Busca os dados completos do cabeçalho de um único carregamento.
+     */
+    public function findHeaderById(int $carregamentoId): ?array
+    {
+        $sql = "SELECT 
+                    c.car_numero,
+                    c.car_data,
+                    c.car_lacre,
+                    c.car_placa_veiculo,
+                    c.car_hora_inicio,
+                    c.car_ordem_expedicao,
+                    e.ent_nome_fantasia as nome_cliente
+                FROM tbl_carregamentos c
+                JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+                WHERE c.car_id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $carregamentoId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
     }
 }

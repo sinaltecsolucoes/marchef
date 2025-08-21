@@ -816,7 +816,7 @@ class LoteNovoRepository
 
             // --- SEGUNDO LOOP CORRIGIDO: Inserir no estoque os totais AGRUPADOS ---
             $stmt_insert_estoque = $this->pdo->prepare(
-                "INSERT INTO tbl_estoque (estoque_lote_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
+                "INSERT INTO tbl_estoque (estoque_lote_item_id, estoque_produto_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
              VALUES (:lote_id, :produto_id, :quantidade, 'ENTRADA', :observacao)"
             );
 
