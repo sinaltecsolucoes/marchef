@@ -1,6 +1,5 @@
 <?php
 // /public/api.php
-
 require_once __DIR__ . '/../src/bootstrap.php';
 
 // --- Autoloader ---
@@ -86,10 +85,48 @@ switch ($action) {
  * Pega o token do cabeçalho da requisição e retorna os dados do usuário.
  * Se o token for inválido, encerra a execução com erro 401.
  */
-function getAuthenticatedUser(UsuarioRepository $repo): array
+/*function getAuthenticatedUser(UsuarioRepository $repo): array
 {
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? null;
+
+    if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+        http_response_code(401); // Unauthorized
+        echo json_encode(['success' => false, 'message' => 'Token de autorização não fornecido ou em formato inválido.']);
+        exit;
+    }
+
+    $token = $matches[1];
+    $user = $repo->findUserByToken($token);
+
+    if (!$user) {
+        http_response_code(401); // Unauthorized
+        echo json_encode(['success' => false, 'message' => 'Token inválido ou expirado.']);
+        exit;
+    }
+    return $user;
+}*/
+
+// Em public/api.php
+
+/**
+ * Pega o token do cabeçalho da requisição e retorna os dados do usuário.
+ * Se o token for inválido, encerra a execução com erro 401.
+ */
+function getAuthenticatedUser(UsuarioRepository $repo): array
+{
+    $authHeader = null;
+
+    // Tenta pegar o cabeçalho 'Authorization' de várias fontes possíveis
+    if (isset($_SERVER['Authorization'])) {
+        $authHeader = $_SERVER['Authorization'];
+    } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) { // O mais comum em CGI/FastCGI
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        // A função getallheaders() pode retornar chaves em minúsculas
+        $authHeader = $headers['authorization'] ?? $headers['Authorization'] ?? null;
+    }
 
     if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         http_response_code(401); // Unauthorized

@@ -239,8 +239,8 @@ class UsuarioRepository
 
         // Busca um token na tabela que corresponda ao hash e que ainda não tenha expirado
         $sql = "SELECT u.* FROM tbl_api_tokens t
-            JOIN tbl_usuarios u ON t.token_usuario_id = u.usu_codigo
-            WHERE t.token_hash = :token_hash AND t.token_expires_at > NOW()";
+        JOIN tbl_usuarios u ON t.token_usuario_id = u.usu_codigo
+        WHERE t.token_hash = :token_hash AND t.token_expires_at > NOW()";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':token_hash' => $tokenHash]);
@@ -268,5 +268,4 @@ class UsuarioRepository
         $stmt = $this->pdo->query("SELECT usu_codigo, usu_nome FROM tbl_usuarios ORDER BY usu_nome ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
 }

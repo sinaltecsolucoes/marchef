@@ -25,7 +25,7 @@ class CarregamentoRepository
         return str_pad($proximoNumero, 4, '0', STR_PAD_LEFT);
     }
 
-    public function createHeader(array $data, int $userId): int
+    /*  public function createHeader(array $data, int $userId): int
     {
         $sql = "INSERT INTO tbl_carregamentos (
                     car_numero, car_data, car_entidade_id_organizador, car_lacre,
@@ -44,6 +44,44 @@ class CarregamentoRepository
             ':placa' => $data['car_placa_veiculo'] ?? null,
             ':hora_inicio' => $data['car_hora_inicio'] ?? null,
             ':ordem_expedicao' => $data['car_ordem_expedicao'] ?? null,
+            ':user_id' => $userId
+        ]);
+
+        $novoId = (int) $this->pdo->lastInsertId();
+
+        if ($novoId > 0) {
+            $dadosLog = $data;
+            $dadosLog['car_status'] = 'EM ANDAMENTO';
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamentos', null, $dadosLog);
+        }
+
+        return $novoId;
+    }*/
+
+    // Em src/Carregamentos/CarregamentoRepository.php
+
+    public function createHeader(array $data, int $userId): int
+    {
+        $sql = "INSERT INTO tbl_carregamentos (
+                car_numero, car_data, car_entidade_id_organizador, car_lacre,
+                car_placa_veiculo, car_hora_inicio, car_ordem_expedicao, car_usuario_id_responsavel
+            ) VALUES (
+                :numero, :data, :clienteOrganizadorId, :lacre,
+                :placa, :hora_inicio, :ordem_expedicao, :user_id
+            )";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        $stmt->execute([
+            ':numero' => $data['numero'],
+            ':data' => $data['data'],
+            ':clienteOrganizadorId' => $data['clienteOrganizadorId'],
+
+            ':lacre' => $data['lacre'] ?? null,
+            ':placa' => $data['placa'] ?? null,
+            ':hora_inicio' => $data['hora_inicio'] ?? null,
+            ':ordem_expedicao' => $data['ordem_expedicao'] ?? null,
+
             ':user_id' => $userId
         ]);
 
@@ -946,7 +984,6 @@ class CarregamentoRepository
 
             $this->pdo->commit();
             return $rowCount > 0;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e; // Propaga a exceção para ser capturada pela API
