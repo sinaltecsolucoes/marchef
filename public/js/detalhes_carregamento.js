@@ -80,6 +80,107 @@ $(document).ready(function () {
         });
     }
 
+    /*   function recarregarETabelaPrincipal() {
+           console.log("Buscando dados atualizados do carregamento...");
+           $.ajax({
+               url: `ajax_router.php?action=getCarregamentoDetalhes&id=${carregamentoId}`,
+               type: 'GET',
+               dataType: 'json'
+           }).done(function (response) {
+               if (response.success && response.data) {
+                   const filas = response.data.filas;
+                   $tabelaComposicaoBody.empty();
+   
+                   if (!filas || filas.length === 0) {
+                       $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td></tr>');
+                       return;
+                   }
+   
+                   filas.forEach(fila => {
+                       // Define totalItensNaFila para a fila atual
+                       const totalItensNaFila = fila.itens ? fila.itens.length : 0;
+   
+                       if (totalItensNaFila > 0) {
+                           // Agrupa itens por cliente
+                           const clientesDaFila = fila.itens.reduce((acc, item) => {
+                               (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
+                               return acc;
+                           }, {});
+   
+                           let isFirstRowOfQueue = true;
+                           for (const nomeCliente in clientesDaFila) {
+                               const itensDoCliente = clientesDaFila[nomeCliente];
+                               const totalItensDoCliente = itensDoCliente.length;
+   
+                               itensDoCliente.forEach((item, index) => {
+                                   const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
+   
+                                   // Células de Fila e Ações são criadas apenas na primeira linha do grupo da Fila
+                                   if (isFirstRowOfQueue && index === 0) {
+                                       const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+   
+                                       // Célula 1: Fila
+                                       $linha.append(`<td class="text-center align-middle" rowspan="${totalItensNaFila}">${numSequencial}</td>`);
+   
+                                       // Célula 2: Ações (com a classe 'coluna-acoes')
+                                       $linha.append(`
+                                           <td class="text-center align-middle coluna-acoes" rowspan="${totalItensNaFila}">
+                                               <button class="btn btn-sm btn-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                                                   <i class="fas fa-pencil-alt"></i> Editar
+                                               </button>
+                                               <button class="btn btn-sm btn-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                                   <i class="fas fa-trash"></i> Remover
+                                               </button>
+                                           </td>
+                                       `);
+                                   }
+   
+                                   // Célula 3: Cliente (criada uma vez por grupo de cliente)
+                                   if (index === 0) {
+                                       $linha.append(`<td class="align-middle" rowspan="${totalItensDoCliente}">${nomeCliente}</td>`);
+                                   }
+   
+                                   // Células restantes
+                                   $linha.append(`<td class="align-middle">${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
+                                   $linha.append(`<td class="text-center align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
+                                   $linha.append(`<td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>`);
+                                   $linha.append(`<td class="text-end align-middle">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
+   
+                                   $tabelaComposicaoBody.append($linha);
+                               });
+                               isFirstRowOfQueue = false;
+                           }
+                       } else {
+                           // Caso a fila não tenha itens, exibe apenas o número da fila e ações
+                           const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+                           const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
+                           $linha.append(`<td class="text-center align-middle">${numSequencial}</td>`);
+                           $linha.append(`
+                               <td class="text-center align-middle coluna-acoes">
+                                   <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                                       <i class="fas fa-pencil-alt"></i> Editar
+                                   </button>
+                                   <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                                       <i class="fas fa-trash"></i> Remover
+                                   </button>
+                               </td>
+                           `);
+                           $linha.append(`<td colspan="5" class="text-center text-muted">Nenhum item nesta fila.</td>`);
+                           $tabelaComposicaoBody.append($linha);
+                       }
+                   });
+               } else {
+                   $tabelaComposicaoBody.html(`<tr><td colspan="7" class="text-center text-danger">Erro ao carregar os dados: ${response.message || ''}</td></tr>`);
+               }
+               controlarVisibilidadeAcoes();
+           }).fail(function (jqXHR, textStatus, errorThrown) {
+               console.error('Erro ao recarregar tabela:', textStatus, errorThrown, 'Resposta:', jqXHR.responseText);
+               $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
+           });
+       } */
+
+    // Em public/js/detalhes_carregamento.js
+
     function recarregarETabelaPrincipal() {
         console.log("Buscando dados atualizados do carregamento...");
         $.ajax({
@@ -97,11 +198,32 @@ $(document).ready(function () {
                 }
 
                 filas.forEach(fila => {
-                    // Define totalItensNaFila para a fila atual
                     const totalItensNaFila = fila.itens ? fila.itens.length : 0;
+                    const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+
+                    // ==========================================================
+                    // LÓGICA DE AÇÕES CORRIGIDA E CENTRALIZADA
+                    // ==========================================================
+                    // 1. Monta a base dos botões de Ação
+                    let acoesHtml = `
+                    <button class="btn btn-sm btn-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
+                        <i class="fas fa-pencil-alt"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
+                        <i class="fas fa-trash"></i> Remover
+                    </button>
+                `;
+
+                    // 2. Adiciona o botão de Ver Foto APENAS se o caminho existir
+                    if (fila.fila_foto_path) {
+                        acoesHtml += `
+                        <a href="${fila.fila_foto_path}" target="_blank" class="btn btn-sm btn-info" title="Ver Foto">
+                            <i class="fas fa-camera"></i>
+                        </a>
+                    `;
+                    }
 
                     if (totalItensNaFila > 0) {
-                        // Agrupa itens por cliente
                         const clientesDaFila = fila.itens.reduce((acc, item) => {
                             (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
                             return acc;
@@ -115,56 +237,30 @@ $(document).ready(function () {
                             itensDoCliente.forEach((item, index) => {
                                 const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
 
-                                // Células de Fila e Ações são criadas apenas na primeira linha do grupo da Fila
                                 if (isFirstRowOfQueue && index === 0) {
-                                    const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
-
-                                    // Célula 1: Fila
                                     $linha.append(`<td class="text-center align-middle" rowspan="${totalItensNaFila}">${numSequencial}</td>`);
-
-                                    // Célula 2: Ações (com a classe 'coluna-acoes')
-                                    $linha.append(`
-                                        <td class="text-center align-middle coluna-acoes" rowspan="${totalItensNaFila}">
-                                            <button class="btn btn-sm btn-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
-                                                <i class="fas fa-pencil-alt"></i> Editar
-                                            </button>
-                                            <button class="btn btn-sm btn-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
-                                                <i class="fas fa-trash"></i> Remover
-                                            </button>
-                                        </td>
-                                    `);
+                                    // 3. Adiciona a célula de Ações completa
+                                    $linha.append(`<td class="text-center align-middle coluna-acoes" rowspan="${totalItensNaFila}">${acoesHtml}</td>`);
                                 }
 
-                                // Célula 3: Cliente (criada uma vez por grupo de cliente)
                                 if (index === 0) {
                                     $linha.append(`<td class="align-middle" rowspan="${totalItensDoCliente}">${nomeCliente}</td>`);
                                 }
 
-                                // Células restantes
                                 $linha.append(`<td class="align-middle">${item.prod_descricao} (Cód: ${item.prod_codigo_interno})</td>`);
                                 $linha.append(`<td class="text-center align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
                                 $linha.append(`<td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>`);
                                 $linha.append(`<td class="text-end align-middle">${parseFloat(item.car_item_quantidade).toFixed(3)}</td>`);
-
                                 $tabelaComposicaoBody.append($linha);
                             });
                             isFirstRowOfQueue = false;
                         }
                     } else {
-                        // Caso a fila não tenha itens, exibe apenas o número da fila e ações
-                        const numSequencial = String(fila.fila_numero_sequencial).padStart(2, '0');
+                        // Caso a fila não tenha itens
                         const $linha = $(`<tr data-fila-id="${fila.fila_id}">`);
                         $linha.append(`<td class="text-center align-middle">${numSequencial}</td>`);
-                        $linha.append(`
-                            <td class="text-center align-middle coluna-acoes">
-                                <button class="btn btn-sm btn-outline-warning btn-editar-fila-principal me-1" data-fila-id="${fila.fila_id}" data-fila-sequencial="${numSequencial}" title="Editar Fila">
-                                    <i class="fas fa-pencil-alt"></i> Editar
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger btn-remover-fila-principal" data-fila-sequencial="${numSequencial}" title="Remover Fila Completa">
-                                    <i class="fas fa-trash"></i> Remover
-                                </button>
-                            </td>
-                        `);
+                        // 4. Adiciona a célula de Ações completa (para filas vazias)
+                        $linha.append(`<td class="text-center align-middle coluna-acoes">${acoesHtml}</td>`);
                         $linha.append(`<td colspan="5" class="text-center text-muted">Nenhum item nesta fila.</td>`);
                         $tabelaComposicaoBody.append($linha);
                     }
@@ -178,6 +274,9 @@ $(document).ready(function () {
             $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
         });
     }
+
+
+
 
     function executarRemocaoFila(filaId) {
         $.ajax({

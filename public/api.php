@@ -229,7 +229,7 @@ function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioReposi
 /**
  * Lida com o salvamento de uma fila e suas leituras de QR Code.
  */
-function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+/* function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
     $input = json_decode(file_get_contents('php://input'), true);
@@ -253,7 +253,55 @@ function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepositor
         error_log("API Error in salvarFilaComLeituras: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro interno ao salvar a fila.']);
     }
+}*/
+
+
+// Em public/api.php
+
+/**
+ * Lida com o salvamento de uma lista de leituras para um cliente em uma fila.
+ */
+function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    $carregamentoId = $input['carregamentoId'] ?? null;
+    $filaId = $input['filaId'] ?? null;
+    $clienteId = $input['clienteId'] ?? null;
+    $leituras = $input['leituras'] ?? null;
+
+    if (!$carregamentoId || !$filaId || !$clienteId || !is_array($leituras) || empty($leituras)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Dados de entrada inválidos.']);
+        return;
+    }
+
+    $pdo = $repo->getPdo(); // Precisamos do objeto PDO para controlar a transação
+    $pdo->beginTransaction();
+    try {
+        // Itera sobre cada produto agrupado enviado pelo Flutter
+        foreach ($leituras as $leitura) {
+            // Adiciona o item no banco de dados
+            $repo->adicionarItemAFila(
+                (int) $filaId,
+                (int) $leitura['produtoId'],
+                (int) $leitura['loteId'],
+                (float) $leitura['quantidade'],
+                (int) $carregamentoId,
+                (int) $clienteId
+            );
+        }
+        $pdo->commit(); // Se tudo deu certo, confirma as alterações no banco
+        echo json_encode(['success' => true, 'message' => 'Itens salvos com sucesso!']);
+    } catch (Exception $e) {
+        $pdo->rollBack(); // Se deu algum erro, desfaz todas as alterações
+        http_response_code(500);
+        error_log("API Error in salvarFilaComLeituras: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro interno ao salvar os itens: ' . $e->getMessage()]);
+    }
 }
+
 
 /**
  * Lida com o upload de uma foto para uma fila de carregamento.
