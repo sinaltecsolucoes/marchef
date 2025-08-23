@@ -14,7 +14,7 @@
     <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/img/icone_2.ico" type="image/x-icon">
     <link rel="stylesheet" type="text/css" href="<?php echo BASE_URL; ?>/libs/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
-        href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" />
+        href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css" />
 </head>
 
 <body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>"
@@ -57,10 +57,10 @@
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
                             // Adiciona manualmente o link para o novo módulo de lotes
-                            /* if (in_array('lotes_novo', $paginasPermitidasUsuario)): ?>
-                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/index.php?page=lotes_novo">Gestão
-                                         de Lotes</a></li>
-                             <?php endif;*/
+                           /* if (in_array('lotes_novo', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/index.php?page=lotes_novo">Gestão
+                                        de Lotes</a></li>
+                            <?php endif;*/
                             ?>
                         </ul>
                     </li>
@@ -168,9 +168,9 @@
     <script type="text/javascript" src="<?php echo BASE_URL; ?>/libs/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript"
-        src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+        src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript"
-        src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+        src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
@@ -187,41 +187,41 @@
     <script src="<?php echo BASE_URL; ?>/js/usuarios.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/app_notifications.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/app_config.js"></script>
+</body>
 
-
-    <?php if ($paginaAtual === 'permissoes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'produtos'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
-    <?php endif; ?>
-    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'lotes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'templates'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'regras'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'auditoria'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/auditoria.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'backup'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'carregamentos'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'carregamento_detalhes'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
-    <?php endif; ?>
-    <?php if ($paginaAtual === 'estoque'): ?>
-        <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
-    <?php endif; ?>
+<?php if ($paginaAtual === 'permissoes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'produtos'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
+<?php endif; ?>
+<?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'lotes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'templates'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/templates.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'regras'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/regras.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'auditoria'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/auditoria.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'backup'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/backup.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'carregamentos'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/carregamentos.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'carregamento_detalhes'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/detalhes_carregamento.js"></script>
+<?php endif; ?>
+<?php if ($paginaAtual === 'estoque'): ?>
+    <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
+<?php endif; ?>
 
 </body>
 
