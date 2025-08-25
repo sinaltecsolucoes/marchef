@@ -30,41 +30,6 @@ class CarregamentoRepository
         return str_pad($proximoNumero, 4, '0', STR_PAD_LEFT);
     }
 
-    /*  public function createHeader(array $data, int $userId): int
-    {
-        $sql = "INSERT INTO tbl_carregamentos (
-                    car_numero, car_data, car_entidade_id_organizador, car_lacre,
-                    car_placa_veiculo, car_hora_inicio, car_ordem_expedicao, car_usuario_id_responsavel
-                ) VALUES (
-                    :numero, :data, :clienteOrganizadorId, :lacre,
-                    :placa, :hora_inicio, :ordem_expedicao, :user_id
-                )";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':numero' => $data['car_numero'],
-            ':data' => $data['car_data'],
-            ':clienteOrganizadorId' => $data['car_entidade_id_organizador'],
-            ':lacre' => $data['car_lacre'] ?? null,
-            ':placa' => $data['car_placa_veiculo'] ?? null,
-            ':hora_inicio' => $data['car_hora_inicio'] ?? null,
-            ':ordem_expedicao' => $data['car_ordem_expedicao'] ?? null,
-            ':user_id' => $userId
-        ]);
-
-        $novoId = (int) $this->pdo->lastInsertId();
-
-        if ($novoId > 0) {
-            $dadosLog = $data;
-            $dadosLog['car_status'] = 'EM ANDAMENTO';
-            $this->auditLogger->log('CREATE', $novoId, 'tbl_carregamentos', null, $dadosLog);
-        }
-
-        return $novoId;
-    }*/
-
-    // Em src/Carregamentos/CarregamentoRepository.php
-
     public function createHeader(array $data, int $userId): int
     {
         $sql = "INSERT INTO tbl_carregamentos (
@@ -359,6 +324,7 @@ class CarregamentoRepository
 
         $stmtItens = $this->pdo->prepare(
             "SELECT
+                ci.car_item_id as itemId,
                 ci.car_item_lote_novo_item_id as loteId,
                 ci.car_item_quantidade as quantidade,
                 ci.car_item_cliente_id as clienteId,
@@ -388,6 +354,7 @@ class CarregamentoRepository
                 ];
             }
             $clientes[$clienteId]['produtos'][] = [
+                'itemId' => $item['itemId'],
                 'loteId' => $item['loteId'],
                 'quantidade' => $item['quantidade'],
                 'produtoId' => $item['produtoId'],
@@ -461,63 +428,6 @@ class CarregamentoRepository
      * @param integer $clienteId
      * @return boolean
      */
-    /* public function adicionarItemAFila(int $filaId, int $produtoId, int $loteId, float $quantidade, int $carregamentoId, int $clienteId): bool
-     {
-         // ETAPA 1: Encontrar o ID da embalagem (item_emb_id) usando o loteId e produtoId.
-         $stmtFindItem = $this->pdo->prepare(
-             "SELECT item_emb_id FROM tbl_lotes_novo_embalagem 
-                WHERE item_emb_lote_id = :lote_id AND item_emb_prod_sec_id = :produto_id
-                LIMIT 1"
-         );
-         $stmtFindItem->execute([
-             ':lote_id' => $loteId,
-             ':produto_id' => $produtoId
-         ]);
-         $loteNovoItemId = $stmtFindItem->fetchColumn();
-
-         // Se não encontrar uma embalagem correspondente, lança um erro.
-         if (!$loteNovoItemId) {
-             throw new Exception("Não foi possível encontrar a embalagem para o produto ID {$produtoId} no lote ID {$loteId}.");
-         }
-
-         // ETAPA 2: Inserir o item de carregamento com o ID da embalagem correto.
-         $sql = "INSERT INTO tbl_carregamento_itens (
-                       car_item_carregamento_id, 
-                       car_item_fila_id,
-                       car_item_cliente_id, 
-                       car_item_lote_novo_item_id, 
-                       car_item_quantidade
-                   ) VALUES (
-                       :carregamento_id, 
-                       :fila_id, 
-                       :cliente_id,
-                       :lote_novo_item_id, 
-                       :qtd
-                   )";
-
-         $stmt = $this->pdo->prepare($sql);
-         $success = $stmt->execute([
-             ':carregamento_id' => $carregamentoId,
-             ':fila_id' => $filaId,
-             ':cliente_id' => $clienteId,
-             //':lote_novo_item_id' => $loteNovoItemId, // Usando o ID que encontramos
-             ':lote_novo_item_id' => $produtoId,
-             ':qtd' => $quantidade
-         ]);
-
-         if ($success) {
-             $this->auditLogger->log('CREATE', $this->pdo->lastInsertId(), 'tbl_carregamento_itens', null, [
-                 'fila_id' => $filaId,
-                 'cliente_id' => $clienteId,
-                 'lote_novo_item_id' => $loteNovoItemId,
-                 'quantidade' => $quantidade
-             ]);
-         }
-
-         return $success;
-     }*/
-
-
     public function adicionarItemAFila(int $filaId, int $produtoId, int $loteId, float $quantidade, int $carregamentoId, int $clienteId): bool
     {
         // ETAPA 1: Encontrar o ID da embalagem (item_emb_id) usando o loteId e produtoId.
@@ -573,8 +483,6 @@ class CarregamentoRepository
 
         return $success;
     }
-
-
 
     /**
      * Calcula o próximo número sequencial para uma nova fila dentro de um carregamento.
@@ -985,7 +893,7 @@ class CarregamentoRepository
         WHERE p.prod_codigo_interno = :codigo_produto
           AND lnh.lote_completo_calculado = :lote
         LIMIT 1;
-    ";
+        ";
 
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -1180,5 +1088,113 @@ class CarregamentoRepository
         $stmt->execute([':id' => $carregamentoId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
+    }
+
+    /**
+     * Remove todos os itens de um cliente específico de uma fila.
+     */
+    public function removerClienteDeFila(int $filaId, int $clienteId): bool
+    {
+        $sql = "DELETE FROM tbl_carregamento_itens 
+                WHERE car_item_fila_id = :fila_id AND car_item_cliente_id = :cliente_id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':fila_id' => $filaId,
+            ':cliente_id' => $clienteId
+        ]);
+
+        // Retorna true se alguma linha foi afetada (ou seja, se algo foi deletado)
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Atualiza todos os itens de um cliente em uma fila.
+     * Primeiro apaga os itens antigos e depois insere os novos.
+     */
+    /* public function atualizarItensClienteEmFila(int $filaId, int $clienteId, int $carregamentoId, array $leituras)
+    {
+        // Apaga todos os itens existentes para este cliente nesta fila
+        $stmtDelete = $this->pdo->prepare(
+            "DELETE FROM tbl_carregamento_itens 
+             WHERE car_item_fila_id = :fila_id AND car_item_cliente_id = :cliente_id"
+        );
+        $stmtDelete->execute([':fila_id' => $filaId, ':cliente_id' => $clienteId]);
+
+        // Se a nova lista de leituras não estiver vazia, insere os novos itens
+        if (!empty($leituras)) {
+            foreach ($leituras as $leitura) {
+                $this->adicionarItemAFila(
+                    $filaId,
+                    (int)$leitura['produtoId'],
+                    (int)$leitura['loteId'],
+                    (float)$leitura['quantidade'],
+                    $carregamentoId,
+                    $clienteId
+                );
+            }
+        }
+    }*/
+
+    /**
+     * Sincroniza os itens de um cliente em uma fila, realizando INSERT, UPDATE e DELETE.
+     * Esta função substitui a antiga lógica de "apagar e recriar".
+     */
+    public function atualizarItensClienteEmFila(int $filaId, int $clienteId, int $carregamentoId, array $leituras)
+    {
+        // 1. Busca os IDs de todos os itens que JÁ EXISTEM no banco para este cliente/fila.
+        $stmtExistentes = $this->pdo->prepare(
+            "SELECT car_item_id FROM tbl_carregamento_itens 
+             WHERE car_item_fila_id = :fila_id AND car_item_cliente_id = :cliente_id"
+        );
+        $stmtExistentes->execute([':fila_id' => $filaId, ':cliente_id' => $clienteId]);
+        // Cria um array simples com os IDs existentes, ex: [101, 102, 105]
+        $idsExistentesNoBanco = $stmtExistentes->fetchAll(PDO::FETCH_COLUMN);
+
+        // Array para guardar os IDs que o app enviou e que já existiam
+        $idsProcessados = [];
+
+        // 2. Itera sobre a lista de leituras enviada pelo App
+        foreach ($leituras as $leitura) {
+            $itemId = $leitura['itemId'] ?? null;
+            $quantidade = (float)$leitura['quantidade'];
+
+            if ($itemId && in_array($itemId, $idsExistentesNoBanco)) {
+                // CASO 1: UPDATE
+                // O item já existia no banco, então atualizamos a quantidade.
+                $stmtUpdate = $this->pdo->prepare(
+                    "UPDATE tbl_carregamento_itens SET car_item_quantidade = :qtd 
+                     WHERE car_item_id = :item_id"
+                );
+                $stmtUpdate->execute([':qtd' => $quantidade, ':item_id' => $itemId]);
+                $idsProcessados[] = $itemId; // Marca este ID como processado
+
+            } else {
+                // CASO 2: INSERT
+                // O item não tem 'itemId' (é novo) ou o 'itemId' é inválido. Inserimos como novo.
+                $this->adicionarItemAFila(
+                    $filaId,
+                    (int)$leitura['produtoId'],
+                    (int)$leitura['loteId'],
+                    $quantidade,
+                    $carregamentoId,
+                    $clienteId
+                );
+            }
+        }
+
+        // 3. Calcula os itens a serem DELETADOS
+        // Compara a lista de IDs que existiam no banco com a lista dos que foram processados (atualizados).
+        // O que sobrar são os itens que o usuário apagou no app.
+        $idsParaDeletar = array_diff($idsExistentesNoBanco, $idsProcessados);
+
+        if (!empty($idsParaDeletar)) {
+            // Constrói a query para deletar múltiplos IDs de uma vez (mais eficiente)
+            $placeholders = rtrim(str_repeat('?,', count($idsParaDeletar)), ',');
+            $stmtDelete = $this->pdo->prepare(
+                "DELETE FROM tbl_carregamento_itens WHERE car_item_id IN ($placeholders)"
+            );
+            $stmtDelete->execute(array_values($idsParaDeletar));
+        }
     }
 }

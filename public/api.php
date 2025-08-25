@@ -103,6 +103,18 @@ switch ($action) {
         apiGetDetalhesFila($carregamentoRepo, $usuarioRepo);
         break;
 
+    case 'excluirCarregamento':
+        apiExcluirCarregamento($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'removerClienteDeFila':
+        apiRemoverClienteDeFila($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'atualizarItensCliente':
+        apiAtualizarItensCliente($carregamentoRepo, $usuarioRepo);
+        break;
+
     default:
         http_response_code(404); // Not Found
         echo json_encode(['success' => false, 'message' => 'Endpoint não encontrado.']);
@@ -225,38 +237,6 @@ function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioReposi
         echo json_encode(['success' => false, 'message' => 'Erro ao salvar o cabeçalho: ' . $e->getMessage()]);
     }
 }
-
-/**
- * Lida com o salvamento de uma fila e suas leituras de QR Code.
- */
-/* function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    $carregamentoId = $input['carregamentoId'] ?? null;
-    $clienteId = $input['clienteId'] ?? null;
-    $leituras = $input['leituras'] ?? null;
-
-    // Validação dos dados recebidos do aplicativo
-    if (!$carregamentoId || !$clienteId || !is_array($leituras) || empty($leituras)) {
-        http_response_code(400); // Bad Request
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos. É necessário fornecer carregamentoId, clienteId e uma lista de leituras.']);
-        return;
-    }
-
-    try {
-        $newFilaId = $repo->createFilaWithLeituras($carregamentoId, $clienteId, $leituras);
-        echo json_encode(['success' => true, 'message' => 'Fila e leituras salvas com sucesso!', 'filaId' => $newFilaId]);
-    } catch (Exception $e) {
-        http_response_code(500); // Internal Server Error
-        error_log("API Error in salvarFilaComLeituras: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro interno ao salvar a fila.']);
-    }
-}*/
-
-
-// Em public/api.php
 
 /**
  * Lida com o salvamento de uma lista de leituras para um cliente em uma fila.
@@ -393,7 +373,6 @@ function apiValidarLeitura(CarregamentoRepository $repo, UsuarioRepository $user
     try {
         $validationResult = $repo->validarQrCode($qrCodeContent);
         echo json_encode($validationResult);
-
     } catch (Exception $e) {
         http_response_code(500); // Internal Server Error
         error_log("API Error in validarLeitura: " . $e->getMessage());
@@ -420,6 +399,7 @@ function apiGetCarregamentos(CarregamentoRepository $carregamentoRepo, UsuarioRe
         echo json_encode(['success' => false, 'message' => 'Erro ao buscar carregamentos: ' . $e->getMessage()]);
     }
 }
+
 function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
@@ -588,5 +568,91 @@ function apiGetDetalhesFila(CarregamentoRepository $repo, UsuarioRepository $use
     } else {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Fila não encontrada.']);
+    }
+}
+
+/**
+ * Lida com a exclusão de um carregamento.
+ */
+function apiExcluirCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo); // Protege o endpoint
+    $input = json_decode(file_get_contents('php://input'), true);
+    $carregamentoId = $input['carregamentoId'] ?? null;
+
+    if (!$carregamentoId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'O ID do carregamento é obrigatório.']);
+        return;
+    }
+
+    try {
+        if ($repo->excluir((int)$carregamentoId)) {
+            echo json_encode(['success' => true, 'message' => 'Carregamento excluído com sucesso!']);
+        } else {
+            // Isso pode acontecer se o repo->excluir retornar false por alguma razão interna
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Carregamento não encontrado ou não pôde ser excluído.']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Lida com a remoção de um cliente e seus itens de uma fila.
+ */
+function apiRemoverClienteDeFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+    $filaId = $input['filaId'] ?? null;
+    $clienteId = $input['clienteId'] ?? null;
+
+    if (!$filaId || !$clienteId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'IDs da fila e do cliente são obrigatórios.']);
+        return;
+    }
+
+    try {
+        $repo->removerClienteDeFila((int)$filaId, (int)$clienteId);
+        echo json_encode(['success' => true, 'message' => 'Cliente e seus itens foram removidos da fila.']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao remover cliente: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Lida com a atualização dos itens de um cliente em uma fila.
+ */
+function apiAtualizarItensCliente(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    $filaId = $input['filaId'] ?? null;
+    $clienteId = $input['clienteId'] ?? null;
+    $carregamentoId = $input['carregamentoId'] ?? null;
+    $leituras = $input['leituras'] ?? []; // Pode ser uma lista vazia
+
+    if (!$filaId || !$clienteId || !$carregamentoId || !is_array($leituras)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Dados de entrada inválidos.']);
+        return;
+    }
+
+    $pdo = $repo->getPdo();
+    $pdo->beginTransaction();
+    try {
+        $repo->atualizarItensClienteEmFila((int)$filaId, (int)$clienteId, (int)$carregamentoId, $leituras);
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => 'Itens do cliente atualizados com sucesso!']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao atualizar itens: ' . $e->getMessage()]);
     }
 }
