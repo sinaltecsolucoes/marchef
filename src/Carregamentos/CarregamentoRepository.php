@@ -43,14 +43,14 @@ class CarregamentoRepository
         $stmt = $this->pdo->prepare($sql);
 
         $params = [
-            ':numero'               => isset($data['numero']) ? $data['numero'] : $data['car_numero'],
-            ':data'                 => isset($data['data']) ? $data['data'] : $data['car_data'],
+            ':numero' => isset($data['numero']) ? $data['numero'] : $data['car_numero'],
+            ':data' => isset($data['data']) ? $data['data'] : $data['car_data'],
             ':clienteOrganizadorId' => isset($data['clienteOrganizadorId']) ? $data['clienteOrganizadorId'] : $data['car_entidade_id_organizador'],
-            ':lacre'                => $data['lacre'] ?? $data['car_lacre'] ?? null,
-            ':placa'                => $data['placa'] ?? $data['car_placa_veiculo'] ?? null,
-            ':hora_inicio'          => $data['hora_inicio'] ?? $data['car_hora_inicio'] ?? null,
-            ':ordem_expedicao'      => $data['ordem_expedicao'] ?? $data['car_ordem_expedicao'] ?? null,
-            ':user_id'              => $userId
+            ':lacre' => $data['lacre'] ?? $data['car_lacre'] ?? null,
+            ':placa' => $data['placa'] ?? $data['car_placa_veiculo'] ?? null,
+            ':hora_inicio' => $data['hora_inicio'] ?? $data['car_hora_inicio'] ?? null,
+            ':ordem_expedicao' => $data['ordem_expedicao'] ?? $data['car_ordem_expedicao'] ?? null,
+            ':user_id' => $userId
         ];
 
         $stmt->execute($params);
@@ -955,6 +955,72 @@ class CarregamentoRepository
         }
     }
 
+    /* public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
+     {
+         $this->pdo->beginTransaction();
+         try {
+             $dadosAntigos = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
+             $dadosAntigos->execute([':id' => $carregamentoId]);
+             $dadosAntigos = $dadosAntigos->fetch(PDO::FETCH_ASSOC);
+
+             if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'EM ANDAMENTO') {
+                 throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
+             }
+
+             // --- INÍCIO DA VALIDAÇÃO MELHORADA ---
+             // Busca a PRIMEIRA fila sem foto, ordenada pela sequência.
+             $stmtCheckFotos = $this->pdo->prepare(
+                 "SELECT fila_id, fila_numero_sequencial FROM tbl_carregamento_filas 
+              WHERE fila_carregamento_id = :carregamento_id 
+              AND (fila_foto_path IS NULL OR fila_foto_path = '')
+              ORDER BY fila_numero_sequencial ASC 
+              LIMIT 1"
+             );
+             $stmtCheckFotos->execute([':carregamento_id' => $carregamentoId]);
+             $filaPendente = $stmtCheckFotos->fetch(PDO::FETCH_ASSOC);
+
+             // Se encontrou uma fila pendente, lança uma exceção com dados estruturados.
+             if ($filaPendente) {
+                 // Criamos uma "exceção estruturada" para o app poder ler os dados.
+                 $errorData = json_encode([
+                     'error_code' => 'FILA_SEM_FOTO',
+                     'message' => "A Fila nº {$filaPendente['fila_numero_sequencial']} está sem foto.",
+                     'data' => [
+                         'filaId' => $filaPendente['fila_id'],
+                         'filaNumero' => $filaPendente['fila_numero_sequencial']
+                     ]
+                 ]);
+                 throw new Exception($errorData);
+             }
+             // --- FIM DA VALIDAÇÃO MELHORADA ---
+
+             $stmt = $this->pdo->prepare(
+                 "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
+             );
+             $stmt->execute([':id' => $carregamentoId]);
+
+             $rowCount = $stmt->rowCount();
+
+             if ($rowCount > 0) {
+                 $dadosNovos = $dadosAntigos;
+                 $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
+                 $this->auditLogger->log('STATUS_CHANGE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, "Enviado para conferência pelo App (Usuário ID: {$userId})");
+             }
+
+             $this->pdo->commit();
+             return $rowCount > 0;
+         } catch (Exception $e) {
+             $this->pdo->rollBack();
+             throw $e;
+         }
+     }*/
+
+    /**
+     * Busca os últimos carregamentos com status 'EM ANDAMENTO'.
+     */
+
+    // /src/Carregamentos/CarregamentoRepository.php
+
     public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
     {
         $this->pdo->beginTransaction();
@@ -967,21 +1033,25 @@ class CarregamentoRepository
                 throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
             }
 
-            // --- INÍCIO DA VALIDAÇÃO MELHORADA ---
-            // Busca a PRIMEIRA fila sem foto, ordenada pela sequência.
+            // --- INÍCIO DA CORREÇÃO DA LÓGICA DE FOTOS ---
+            // A consulta agora verifica se existe alguma fila QUE TENHA ITENS, mas que NÃO TENHA fotos na nova tabela.
             $stmtCheckFotos = $this->pdo->prepare(
-                "SELECT fila_id, fila_numero_sequencial FROM tbl_carregamento_filas 
-             WHERE fila_carregamento_id = :carregamento_id 
-             AND (fila_foto_path IS NULL OR fila_foto_path = '')
-             ORDER BY fila_numero_sequencial ASC 
+                "SELECT f.fila_id, f.fila_numero_sequencial 
+             FROM tbl_carregamento_filas f
+             -- Verifica se a fila tem itens
+             WHERE EXISTS (SELECT 1 FROM tbl_carregamento_itens ci WHERE ci.car_item_fila_id = f.fila_id)
+             -- E verifica se a fila NÃO tem fotos na nova tabela
+             AND NOT EXISTS (SELECT 1 FROM tbl_carregamento_fila_fotos ff WHERE ff.foto_fila_id = f.fila_id)
+             AND f.fila_carregamento_id = :carregamento_id
+             ORDER BY f.fila_numero_sequencial ASC 
              LIMIT 1"
             );
             $stmtCheckFotos->execute([':carregamento_id' => $carregamentoId]);
             $filaPendente = $stmtCheckFotos->fetch(PDO::FETCH_ASSOC);
+            // --- FIM DA CORREÇÃO DA LÓGICA DE FOTOS ---
 
-            // Se encontrou uma fila pendente, lança uma exceção com dados estruturados.
+            // Se encontrou uma fila pendente, lança a exceção estruturada.
             if ($filaPendente) {
-                // Criamos uma "exceção estruturada" para o app poder ler os dados.
                 $errorData = json_encode([
                     'error_code' => 'FILA_SEM_FOTO',
                     'message' => "A Fila nº {$filaPendente['fila_numero_sequencial']} está sem foto.",
@@ -992,15 +1062,14 @@ class CarregamentoRepository
                 ]);
                 throw new Exception($errorData);
             }
-            // --- FIM DA VALIDAÇÃO MELHORADA ---
 
             $stmt = $this->pdo->prepare(
                 "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
             );
             $stmt->execute([':id' => $carregamentoId]);
 
+            // ... (o restante da função para o log de auditoria continua o mesmo)
             $rowCount = $stmt->rowCount();
-
             if ($rowCount > 0) {
                 $dadosNovos = $dadosAntigos;
                 $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
@@ -1009,15 +1078,13 @@ class CarregamentoRepository
 
             $this->pdo->commit();
             return $rowCount > 0;
+
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }
     }
 
-    /**
-     * Busca os últimos carregamentos com status 'EM ANDAMENTO'.
-     */
     public function findAtivos(int $limit = 3): array
     {
         $sql = "SELECT 
@@ -1373,5 +1440,33 @@ class CarregamentoRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':fila_id' => $filaId]);
         return (int) $stmt->fetchColumn();
+    }
+
+    public function countForToday(): int
+    {
+        // CURDATE() pega a data atual do servidor de banco de dados
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM tbl_carregamentos WHERE DATE(car_data) = CURDATE()");
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Busca os carregamentos em aberto mais antigos.
+     * @param int $limit O número máximo de carregamentos a retornar.
+     * @return array
+     */
+    public function findOpenShipments(int $limit = 5): array
+    {
+        $sql = "SELECT c.car_id, c.car_numero, c.car_data, c.car_status, e.ent_razao_social
+            FROM tbl_carregamentos c
+            LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo -- <<< CORREÇÃO AQUI
+            WHERE c.car_status NOT IN ('FINALIZADO', 'CANCELADO')
+            ORDER BY c.car_data ASC
+            LIMIT :limit";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

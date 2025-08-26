@@ -251,7 +251,6 @@ switch ($action) {
         getDadosDoLoteItemNovo($loteNovoRepo);
         break;
 
-
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
         salvarPermissoes($permissionRepo);
@@ -369,6 +368,44 @@ switch ($action) {
         break;
     case 'getProdutosDisponiveisEmEstoque':
         getProdutosDisponiveisEmEstoque($carregamentoRepo);
+        break;
+    case 'getFotosDaFila':
+        getFotosDaFila($carregamentoRepo);
+        break;
+
+    // --- ROTAS PARA O DASHBOARD (KPIs) ---
+    case 'getKpiLotesAtivos':
+        getKpiLotesAtivos($loteNovoRepo); // Apenas chama a função
+        break;
+    case 'getKpiCarregamentosHoje':
+        getKpiCarregamentosHoje($carregamentoRepo); // Apenas chama a função
+        break;
+    case 'getKpiTotalUsuarios':
+        getKpiTotalUsuarios($usuarioRepo); // Apenas chama a função
+        break;
+    case 'getKpiTotalProdutos':
+        getKpiTotalProdutos($produtoRepo); // Apenas chama a função
+        break;
+    case 'getGraficoLotesFinalizados':
+        getGraficoLotesFinalizados($loteNovoRepo);
+        break;
+
+    // --- ROTAS PARA OS PAINÉIS DO DASHBOARD GERENCIAL ---
+    case 'getPainelLotesAtivos':
+        getPainelLotesAtivos($loteNovoRepo);
+        break;
+    case 'getPainelCarregamentosAbertos':
+        getPainelCarregamentosAbertos($carregamentoRepo);
+        break;
+
+    // --- ROTA PARA O PAINEL DE PRODUÇÃO ---
+    case 'getPainelProducaoLotes':
+        getPainelProducaoLotes($loteNovoRepo);
+        break;
+
+    // ROTA PARA BUSCAR LOTES FINALIZADOS NO PAINEL DE PRODUÇÃO
+    case 'getPainelProducaoLotesFinalizados':
+        getPainelProducaoLotesFinalizados($loteNovoRepo);
         break;
 
     default:
@@ -1677,4 +1714,130 @@ function getProdutosDisponiveisEmEstoque(CarregamentoRepository $repo)
 {
     $produtos = $repo->getProdutosDisponiveisEmEstoque();
     echo json_encode(['results' => $produtos]);
+}
+
+function getFotosDaFila(CarregamentoRepository $repo)
+{
+    // Usamos GET pois estamos apenas buscando dados
+    $filaId = filter_input(INPUT_GET, 'fila_id', FILTER_VALIDATE_INT);
+
+    if (!$filaId) {
+        echo json_encode(['success' => false, 'message' => 'ID da fila inválido.']);
+        return;
+    }
+
+    try {
+        $fotos = $repo->findFotosByFilaId($filaId);
+        // Adicionando a URL base para facilitar a vida do JavaScript
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]/marchef/public/";
+
+        foreach ($fotos as &$foto) {
+            $foto['full_url'] = $baseUrl . $foto['foto_path'];
+        }
+
+        echo json_encode(['success' => true, 'data' => $fotos]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA O DASHBOARD (KPIs) ---
+
+function getKpiLotesAtivos(LoteNovoRepository $repo)
+{
+    try {
+        $count = $repo->countByStatus('Aberto');
+        echo json_encode(['success' => true, 'count' => $count]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getKpiCarregamentosHoje(CarregamentoRepository $repo)
+{
+    try {
+        $count = $repo->countForToday();
+        echo json_encode(['success' => true, 'count' => $count]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getKpiTotalUsuarios(UsuarioRepository $repo)
+{
+    try {
+        $count = $repo->countAll();
+        echo json_encode(['success' => true, 'count' => $count]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getKpiTotalProdutos(ProdutoRepository $repo)
+{
+    try {
+        $count = $repo->countAll();
+        echo json_encode(['success' => true, 'count' => $count]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA O GRÁFICO DO DASHBOARD ---
+function getGraficoLotesFinalizados(LoteNovoRepository $repo)
+{
+    try {
+        // Pega os dados dos últimos 7 dias
+        $chartData = $repo->getDailyFinalizedCountForLastDays(7);
+        echo json_encode(['success' => true, 'data' => $chartData]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA OS PAINÉIS DO DASHBOARD ---
+
+function getPainelLotesAtivos(LoteNovoRepository $repo)
+{
+    try {
+        // Busca os 5 lotes ativos mais antigos
+        $lotes = $repo->findActiveLots(5);
+        echo json_encode(['success' => true, 'data' => $lotes]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getPainelCarregamentosAbertos(CarregamentoRepository $repo)
+{
+    try {
+        // Busca os 5 carregamentos em aberto mais antigos
+        $carregamentos = $repo->findOpenShipments(5);
+        echo json_encode(['success' => true, 'data' => $carregamentos]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA O PAINEL DE PRODUÇÃO ---
+function getPainelProducaoLotes(LoteNovoRepository $repo)
+{
+    try {
+        // Reutilizamos a função do gerente, mas podemos pedir mais itens se quisermos (ex: 10)
+        $lotes = $repo->findActiveLots(10);
+        echo json_encode(['success' => true, 'data' => $lotes]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getPainelProducaoLotesFinalizados(LoteNovoRepository $repo)
+{
+    try {
+        // Busca os 5 lotes finalizados mais recentes
+        $lotes = $repo->findRecentlyFinishedLots(5);
+        echo json_encode(['success' => true, 'data' => $lotes]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }

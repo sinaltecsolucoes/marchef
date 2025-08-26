@@ -51,7 +51,7 @@ header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
 header("Content-Security-Policy: default-src 'self'; " .
     "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net; " .
-    "img-src 'self' data:; " .
+    "img-src 'self' data: https://cdn.jsdelivr.net; " .
     "font-src 'self' https://fonts.gstatic.com; " .
     "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br; " .
     "form-action 'self';");

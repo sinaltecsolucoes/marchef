@@ -308,4 +308,10 @@ class ProdutoRepository
         $stmt->execute([':primario_id' => $primarioId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function countAll(): int
+    {
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM tbl_produtos");
+        return (int) $stmt->fetchColumn();
+    }
 }

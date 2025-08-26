@@ -15,6 +15,8 @@
     <link rel="stylesheet" type="text/css" href="<?php echo BASE_URL; ?>/libs/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" />
+
 </head>
 
 <body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>"
@@ -167,6 +169,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script type="text/javascript" src="<?php echo BASE_URL; ?>/libs/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript"
         src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript"
@@ -177,6 +180,9 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+
     <script>
         const BASE_URL = '<?php echo BASE_URL; ?>';
         const PODE_EDITAR_OUTROS_USUARIOS = <?php echo $podeEditarOutrosUsuarios ? 'true' : 'false'; ?>;
@@ -221,6 +227,16 @@
     <?php endif; ?>
     <?php if ($paginaAtual === 'estoque'): ?>
         <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'home'): ?>
+        <?php if ($_SESSION['tipoUsuario'] === 'Admin'): ?>
+            <script src="<?php echo BASE_URL; ?>/js/dashboard_admin.js"></script>
+        <?php elseif ($_SESSION['tipoUsuario'] === 'Gerente'): ?>
+            <script src="<?php echo BASE_URL; ?>/js/dashboard_gerente.js"></script>
+        <?php elseif ($_SESSION['tipoUsuario'] === 'Producao'): ?>
+            <script src="<?php echo BASE_URL; ?>/js/dashboard_producao.js"></script>
+        <?php endif; ?>
     <?php endif; ?>
 
 </body>

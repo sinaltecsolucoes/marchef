@@ -894,8 +894,18 @@ class LoteNovoRepository
             $itensAindaAbertos = $this->getItensParaFinalizar($loteId);
             $novoStatus = (empty($itensAindaAbertos)) ? 'FINALIZADO' : 'PARCIALMENTE FINALIZADO';
 
-            $stmt_update_header = $this->pdo->prepare("UPDATE tbl_lotes_novo_header SET lote_status = :status WHERE lote_id = :id");
-            $stmt_update_header->execute([':status' => $novoStatus, ':id' => $loteId]);
+            // Prepara a base da query de atualização
+            $sql_update_header = "UPDATE tbl_lotes_novo_header SET lote_status = :status";
+            $params_update_header = [':status' => $novoStatus, ':id' => $loteId];
+
+            // APENAS adiciona a data de finalização se o status for 'FINALIZADO'
+            if ($novoStatus === 'FINALIZADO') {
+                $sql_update_header .= ", lote_data_finalizacao = NOW()";
+            }
+
+            $stmt_update_header = $this->pdo->prepare($sql_update_header);
+            $stmt_update_header->execute($params_update_header);
+
             $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['novo_status' => $novoStatus]);
 
             $this->pdo->commit();
@@ -1181,5 +1191,100 @@ class LoteNovoRepository
         $stmt->execute([':id' => $loteItemId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
+    }
+
+    public function countByStatus(string $status): int
+    {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM tbl_lotes_novo_header WHERE lote_status = ?");
+        $stmt->execute([$status]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getDailyFinalizedCountForLastDays(int $days = 7): array
+    {
+        // 1. Prepara um array com todos os dias do período, com valor inicial 0.
+        $periodData = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-$i days"));
+            $periodData[$date] = 0;
+        }
+
+        // Usando a coluna correta que adicionamos
+        $dateColumnName = 'lote_data_finalizacao';
+
+        // 2. Busca no banco os dados reais de contagem para o período.
+        $query = "
+        SELECT 
+            DATE($dateColumnName) as dia, 
+            COUNT(*) as contagem
+        FROM 
+            tbl_lotes_novo_header
+        WHERE 
+            lote_status = 'Finalizado' AND  
+            $dateColumnName >= CURDATE() - INTERVAL ? DAY
+        GROUP BY 
+            dia
+        ORDER BY 
+            dia ASC
+    ";
+
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute([$days]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Atualiza o array do período com os dados vindos do banco.
+        foreach ($results as $row) {
+            if (isset($periodData[$row['dia']])) {
+                $periodData[$row['dia']] = (int) $row['contagem'];
+            }
+        }
+
+        // 4. Formata os dados para o formato que o Chart.js espera.
+        $labels = array_map(function ($date) {
+            return date('d/m', strtotime($date));
+        }, array_keys($periodData));
+
+        $data = array_values($periodData);
+
+        return [
+            'labels' => $labels,
+            'data' => $data,
+        ];
+    }
+
+    /**
+     * Busca os lotes ativos mais antigos (Em Andamento ou Parcialmente Finalizados).
+     * @param int $limit O número máximo de lotes a retornar.
+     * @return array
+     */
+    public function findActiveLots(int $limit = 5): array
+    {
+        $sql = "SELECT lote_id, lote_completo_calculado, lote_data_cadastro, lote_status
+            FROM tbl_lotes_novo_header
+            WHERE lote_status IN ('EM ANDAMENTO', 'PARCIALMENTE FINALIZADO')
+            ORDER BY lote_data_cadastro ASC
+            LIMIT :limit";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca os lotes finalizados mais recentes.
+     * @param int $limit O número máximo de lotes a retornar.
+     * @return array
+     */
+    public function findRecentlyFinishedLots(int $limit = 5): array
+    {
+        $sql = "SELECT lote_id, lote_completo_calculado, lote_data_finalizacao
+            FROM tbl_lotes_novo_header
+            WHERE lote_status = 'FINALIZADO' AND lote_data_finalizacao IS NOT NULL
+            ORDER BY lote_data_finalizacao DESC
+            LIMIT :limit";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
