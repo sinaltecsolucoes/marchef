@@ -42,18 +42,18 @@ class CarregamentoRepository
 
         $stmt = $this->pdo->prepare($sql);
 
-        $stmt->execute([
-            ':numero' => $data['numero'],
-            ':data' => $data['data'],
-            ':clienteOrganizadorId' => $data['clienteOrganizadorId'],
+        $params = [
+            ':numero'               => isset($data['numero']) ? $data['numero'] : $data['car_numero'],
+            ':data'                 => isset($data['data']) ? $data['data'] : $data['car_data'],
+            ':clienteOrganizadorId' => isset($data['clienteOrganizadorId']) ? $data['clienteOrganizadorId'] : $data['car_entidade_id_organizador'],
+            ':lacre'                => $data['lacre'] ?? $data['car_lacre'] ?? null,
+            ':placa'                => $data['placa'] ?? $data['car_placa_veiculo'] ?? null,
+            ':hora_inicio'          => $data['hora_inicio'] ?? $data['car_hora_inicio'] ?? null,
+            ':ordem_expedicao'      => $data['ordem_expedicao'] ?? $data['car_ordem_expedicao'] ?? null,
+            ':user_id'              => $userId
+        ];
 
-            ':lacre' => $data['lacre'] ?? null,
-            ':placa' => $data['placa'] ?? null,
-            ':hora_inicio' => $data['hora_inicio'] ?? null,
-            ':ordem_expedicao' => $data['ordem_expedicao'] ?? null,
-
-            ':user_id' => $userId
-        ]);
+        $stmt->execute($params);
 
         $novoId = (int) $this->pdo->lastInsertId();
 
@@ -193,32 +193,56 @@ class CarregamentoRepository
      * Salva uma fila completa com seus clientes e produtos.
      * Nenhuma alteração necessária aqui, mas incluído para contexto.
      */
-
     public function findCarregamentoComFilasEItens(int $carregamentoId): ?array
     {
-        // $stmtHeader = $this->pdo->prepare("SELECT c.*, e.ent_razao_social FROM tbl_carregamentos c LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo WHERE c.car_id = :id");
+        // A busca do Header, agora com COALESCE
         $stmtHeader = $this->pdo->prepare(
             "SELECT 
             c.*, 
             e.ent_razao_social,
-            u.usu_nome as responsavel
-         FROM tbl_carregamentos c 
-         LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
-         LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
-         WHERE c.car_id = :id"
+            u.usu_nome as responsavel,
+            -- INÍCIO DA ALTERAÇÃO
+            COALESCE((SELECT SUM(ci_sum.car_item_quantidade) 
+                FROM tbl_carregamento_itens ci_sum 
+                WHERE ci_sum.car_item_carregamento_id = c.car_id), 0) as total_caixas_geral,
+            
+            COALESCE((SELECT SUM(ci_sum.car_item_quantidade * p_sum.prod_peso_embalagem)
+                FROM tbl_carregamento_itens ci_sum
+                JOIN tbl_lotes_novo_embalagem lne_sum ON ci_sum.car_item_lote_novo_item_id = lne_sum.item_emb_id
+                JOIN tbl_produtos p_sum ON lne_sum.item_emb_prod_sec_id = p_sum.prod_codigo
+                WHERE ci_sum.car_item_carregamento_id = c.car_id), 0) as total_quilos_geral
+            -- FIM DA ALTERAÇÃO
+        FROM tbl_carregamentos c 
+        LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+        LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+        WHERE c.car_id = :id"
         );
-
         $stmtHeader->execute([':id' => $carregamentoId]);
         $header = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+
         if (!$header)
             return null;
 
-        // <<< ALTERAÇÃO AQUI: Adicionamos f.fila_foto_path à consulta >>>
-        $stmtFilas = $this->pdo->prepare("SELECT f.fila_id, f.fila_numero_sequencial, f.fila_foto_path FROM tbl_carregamento_filas f WHERE f.fila_carregamento_id = :id ORDER BY f.fila_id");
+        // A busca das Filas, agora com COALESCE
+        $stmtFilas = $this->pdo->prepare(
+            "SELECT 
+            f.fila_id, 
+            f.fila_numero_sequencial,
+            (SELECT COUNT(*) FROM tbl_carregamento_fila_fotos ff WHERE ff.foto_fila_id = f.fila_id) as total_fotos,
+            (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
+                FROM tbl_carregamento_itens ci 
+                WHERE ci.car_item_fila_id = f.fila_id) as total_clientes,
+            COALESCE((SELECT SUM(ci.car_item_quantidade) 
+                FROM tbl_carregamento_itens ci 
+                WHERE ci.car_item_fila_id = f.fila_id), 0) as total_caixas
+        FROM tbl_carregamento_filas f 
+        WHERE f.fila_carregamento_id = :id 
+        ORDER BY f.fila_id"
+        );
         $stmtFilas->execute([':id' => $carregamentoId]);
         $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
 
-        // O restante da função permanece exatamente igual
+        // O restante do código permanece exatamente o mesmo
         $stmtItens = $this->pdo->prepare(
             "SELECT 
             ci.car_item_fila_id,
@@ -239,7 +263,6 @@ class CarregamentoRepository
 
          WHERE ci.car_item_carregamento_id = :id"
         );
-
         $stmtItens->execute([':id' => $carregamentoId]);
         $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
@@ -251,7 +274,6 @@ class CarregamentoRepository
 
         return ['header' => $header, 'filas' => $filas];
     }
-
 
     public function salvarFilaComposta(int $carregamentoId, array $filaData): void
     {
@@ -640,7 +662,7 @@ class CarregamentoRepository
     /**
      * Atualiza o caminho da foto para uma fila específica.
      */
-    public function updateFilaPhotoPath(int $filaId, string $filePath): bool
+    /*   public function updateFilaPhotoPath(int $filaId, string $filePath): bool
     {
         // PASSO 1: Buscar dados antigos ANTES de atualizar
         $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamento_filas WHERE fila_id = :id");
@@ -659,7 +681,7 @@ class CarregamentoRepository
         }
 
         return $success;
-    }
+    }*/
 
     /**
      * Altera o status de um carregamento para 'CANCELADO'.
@@ -933,105 +955,6 @@ class CarregamentoRepository
         }
     }
 
-    /**
-     * Altera o status de um carregamento para AGUARDANDO CONFERENCIA.
-     *
-     * @param int $carregamentoId O ID do carregamento a ser alterado.
-     * @param int $userId O ID do usuário que realizou a ação.
-     * @return bool
-     */
-    /* public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
-    {
-        $this->pdo->beginTransaction();
-        try {
-            $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
-            $stmtAntigo->execute([':id' => $carregamentoId]);
-            $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
-
-            if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'EM ANDAMENTO') {
-                throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
-            }
-
-            $stmt = $this->pdo->prepare(
-                "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
-            );
-            $stmt->execute([':id' => $carregamentoId]);
-
-            $rowCount = $stmt->rowCount();
-
-            if ($rowCount > 0) {
-                $dadosNovos = $dadosAntigos;
-                $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
-                $this->auditLogger->log('STATUS_CHANGE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, "Enviado para conferência pelo App (Usuário ID: {$userId})");
-            }
-
-            $this->pdo->commit();
-            return $rowCount > 0;
-        } catch (Exception $e) {
-            $this->pdo->rollBack();
-            throw $e; // Propaga a exceção para ser capturada pela API
-        }
-    }*/
-
-    // Em /src/Carregamentos/CarregamentoRepository.php
-
-    /**
-     * Altera o status de um carregamento para AGUARDANDO CONFERENCIA.
-     *
-     * @param int $carregamentoId O ID do carregamento a ser alterado.
-     * @param int $userId O ID do usuário que realizou a ação.
-     * @return bool
-     */
-    /* public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
-     {
-         $this->pdo->beginTransaction();
-         try {
-             $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
-             $stmtAntigo->execute([':id' => $carregamentoId]);
-             $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
-
-             if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'EM ANDAMENTO') {
-                 throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
-             }
-
-             // Verifica se todas as filas do carregamento têm uma foto associada.
-             $stmtCheckFotos = $this->pdo->prepare(
-                 "SELECT COUNT(*) FROM tbl_carregamento_filas 
-                  WHERE fila_carregamento_id = :carregamento_id 
-                  AND (fila_foto_path IS NULL OR fila_foto_path = '')"
-             );
-             $stmtCheckFotos->execute([':carregamento_id' => $carregamentoId]);
-             $filasSemFoto = $stmtCheckFotos->fetchColumn();
-
-             if ($filasSemFoto > 0) {
-                 // Se houver uma ou mais filas sem foto, lança um erro e interrompe a operação.
-                 throw new Exception("Não é possível finalizar. Existem {$filasSemFoto} fila(s) sem foto.");
-             }
-
-             $stmt = $this->pdo->prepare(
-                 "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
-             );
-             $stmt->execute([':id' => $carregamentoId]);
-
-             $rowCount = $stmt->rowCount();
-
-             if ($rowCount > 0) {
-                 $dadosNovos = $dadosAntigos;
-                 $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
-                 $this->auditLogger->log('STATUS_CHANGE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, "Enviado para conferência pelo App (Usuário ID: {$userId})");
-             }
-
-             $this->pdo->commit();
-             return $rowCount > 0;
-         } catch (Exception $e) {
-             $this->pdo->rollBack(); // Desfaz a transação em caso de qualquer erro
-             throw $e; // Propaga a exceção para ser capturada pela API
-         }
-     }*/
-
-
-    // Em /src/Carregamentos/CarregamentoRepository.php
-
     public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
     {
         $this->pdo->beginTransaction();
@@ -1143,7 +1066,7 @@ class CarregamentoRepository
     /**
      * Busca todas as filas de um carregamento específico com contagem de clientes e itens.
      */
-    public function findFilasByCarregamentoId(int $carregamentoId): array
+    /*    public function findFilasByCarregamentoId(int $carregamentoId): array
     {
         // Esta query é um exemplo. Pode ser que a sua tabela de itens
         // não se chame tbl_carregamento_itens. Ajustaremos se necessário.
@@ -1164,7 +1087,7 @@ class CarregamentoRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':carregamento_id' => $carregamentoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    }*/
 
     /**
      * Atualiza os dados do cabeçalho de um carregamento existente.
@@ -1237,34 +1160,6 @@ class CarregamentoRepository
         // Retorna true se alguma linha foi afetada (ou seja, se algo foi deletado)
         return $stmt->rowCount() > 0;
     }
-
-    /**
-     * Atualiza todos os itens de um cliente em uma fila.
-     * Primeiro apaga os itens antigos e depois insere os novos.
-     */
-    /* public function atualizarItensClienteEmFila(int $filaId, int $clienteId, int $carregamentoId, array $leituras)
-    {
-        // Apaga todos os itens existentes para este cliente nesta fila
-        $stmtDelete = $this->pdo->prepare(
-            "DELETE FROM tbl_carregamento_itens 
-             WHERE car_item_fila_id = :fila_id AND car_item_cliente_id = :cliente_id"
-        );
-        $stmtDelete->execute([':fila_id' => $filaId, ':cliente_id' => $clienteId]);
-
-        // Se a nova lista de leituras não estiver vazia, insere os novos itens
-        if (!empty($leituras)) {
-            foreach ($leituras as $leitura) {
-                $this->adicionarItemAFila(
-                    $filaId,
-                    (int)$leitura['produtoId'],
-                    (int)$leitura['loteId'],
-                    (float)$leitura['quantidade'],
-                    $carregamentoId,
-                    $clienteId
-                );
-            }
-        }
-    }*/
 
     /**
      * Sincroniza os itens de um cliente em uma fila, realizando INSERT, UPDATE e DELETE.
@@ -1373,7 +1268,7 @@ class CarregamentoRepository
      * @return bool
      * @throws Exception
      */
-    public function deleteFilaPhoto(int $filaId): bool
+    /*  public function deleteFilaPhoto(int $filaId): bool
     {
         // Primeiro, busca o caminho do arquivo para podermos deletá-lo do disco.
         $stmt = $this->pdo->prepare("SELECT fila_foto_path FROM tbl_carregamento_filas WHERE fila_id = :id");
@@ -1398,5 +1293,85 @@ class CarregamentoRepository
         }
 
         return $success;
+    }*/
+
+    /**
+     * Adiciona o caminho de uma nova foto a uma fila.
+     */
+    public function adicionarFotoFila(int $filaId, string $filePath): bool
+    {
+        $sql = "INSERT INTO tbl_carregamento_fila_fotos (foto_fila_id, foto_path) VALUES (:fila_id, :path)";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([':fila_id' => $filaId, ':path' => $filePath]);
+    }
+
+    /**
+     * Busca todas as fotos de uma fila específica.
+     */
+    public function findFotosByFilaId(int $filaId): array
+    {
+        $sql = "SELECT foto_id, foto_path FROM tbl_carregamento_fila_fotos WHERE foto_fila_id = :fila_id ORDER BY foto_timestamp ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':fila_id' => $filaId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Remove uma foto específica pelo seu ID.
+     */
+    public function removerFotoPorId(int $fotoId): bool
+    {
+        // 1. Busca o caminho do arquivo para podermos deletá-lo do disco.
+        $stmt = $this->pdo->prepare("SELECT foto_path FROM tbl_carregamento_fila_fotos WHERE foto_id = :id");
+        $stmt->execute([':id' => $fotoId]);
+        $filePath = $stmt->fetchColumn();
+
+        if ($filePath) {
+            $fullPath = __DIR__ . '/../../public/' . $filePath; // Caminho absoluto no servidor
+            if (file_exists($fullPath)) {
+                unlink($fullPath); // Deleta o arquivo físico
+            }
+        }
+
+        // 2. Deleta o registro do banco de dados.
+        $stmtDelete = $this->pdo->prepare("DELETE FROM tbl_carregamento_fila_fotos WHERE foto_id = :id");
+        $stmtDelete->execute([':id' => $fotoId]);
+
+        return $stmtDelete->rowCount() > 0;
+    }
+
+    /**
+     * Altere a função findFilasByCarregamentoId para incluir a contagem de fotos
+     */
+    public function findFilasByCarregamentoId(int $carregamentoId): array
+    {
+        $sql = "SELECT 
+                    f.fila_id, 
+                    f.fila_numero_sequencial,
+                    (SELECT COUNT(*) FROM tbl_carregamento_fila_fotos ff WHERE ff.foto_fila_id = f.fila_id) as total_fotos,
+                    (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
+                     FROM tbl_carregamento_itens ci 
+                     WHERE ci.car_item_fila_id = f.fila_id) as total_clientes,
+                    (SELECT SUM(ci.car_item_quantidade) 
+                     FROM tbl_carregamento_itens ci 
+                     WHERE ci.car_item_fila_id = f.fila_id) as total_quantidade
+                FROM tbl_carregamento_filas f
+                WHERE f.fila_carregamento_id = :carregamento_id
+                ORDER BY f.fila_numero_sequencial ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':carregamento_id' => $carregamentoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Conta quantas fotos uma fila específica já possui.
+     */
+    public function countFotosByFilaId(int $filaId): int
+    {
+        $sql = "SELECT COUNT(foto_id) FROM tbl_carregamento_fila_fotos WHERE foto_fila_id = :fila_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':fila_id' => $filaId]);
+        return (int) $stmt->fetchColumn();
     }
 }

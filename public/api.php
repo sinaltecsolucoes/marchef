@@ -123,7 +123,11 @@ switch ($action) {
         apiAtualizarQuantidadeItem($carregamentoRepo, $usuarioRepo);
         break;
 
-    case 'excluirFotoFila':
+    case 'getFotosDaFila':
+        apiGetFotosDaFila($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'excluirFotoFila': // Este endpoint agora receberá `foto_id`
         apiExcluirFotoFila($carregamentoRepo, $usuarioRepo);
         break;
 
@@ -294,110 +298,10 @@ function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepositor
     }
 }
 
-
 /**
  * Lida com o upload de uma foto para uma fila de carregamento.
  */
-/* function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-
-    // Validação dos dados recebidos
-    $filaId = filter_input(INPUT_POST, 'filaId', FILTER_VALIDATE_INT);
-
-    if (!$filaId || !isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
-        http_response_code(400); // Bad Request
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos. É necessário enviar uma foto e um filaId válido.']);
-        return;
-    }
-
-    $uploadDir = __DIR__ . '/uploads/carregamentos/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0775, true); // Cria o diretório se não existir
-    }
-
-    // Gera um nome de arquivo único para evitar sobreposições
-    $fileExtension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-    $fileName = uniqid('fila_' . $filaId . '_', true) . '.' . $fileExtension;
-    $uploadFilePath = $uploadDir . $fileName;
-
-    // Move o arquivo temporário para o destino final
-    if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFilePath)) {
-        // O caminho a ser salvo no banco deve ser relativo à pasta public
-        $publicPath = 'uploads/carregamentos/' . $fileName;
-
-        try {
-            $repo->updateFilaPhotoPath($filaId, $publicPath);
-            echo json_encode(['success' => true, 'message' => 'Foto enviada com sucesso!']);
-        } catch (Exception $e) {
-            http_response_code(500);
-            error_log("API Error in apiUploadFotoFila DB: " . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Foto salva, mas houve um erro ao registrar no banco de dados.']);
-        }
-    } else {
-        http_response_code(500); // Internal Server Error
-        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o arquivo da foto no servidor.']);
-    }
-}*/
-
-/* function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    getAuthenticatedUser($userRepo); // Protege o endpoint
-
-    $filaId = filter_input(INPUT_POST, 'filaId', FILTER_VALIDATE_INT);
-
-    if (!$filaId || !isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos. É necessário enviar uma foto e um filaId válido.']);
-        return;
-    }
-
-    try {
-        // 1. Buscar informações do carregamento e da fila
-        $info = $repo->getInfoParaNomeArquivo($filaId);
-        if (!$info) {
-            throw new Exception("Fila ou Carregamento não encontrado.");
-        }
-
-        $carregamentoId = $info['car_id'];
-        $ordemExpedicao = $info['car_ordem_expedicao'];
-        $numeroFila = $info['fila_numero_sequencial'];
-
-        // 2. Criar o diretório do carregamento se não existir
-        $uploadDir = __DIR__ . '/uploads/carregamentos/' . $carregamentoId . '/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0775, true); // O 'true' permite criar diretórios aninhados
-        }
-
-        // 3. Montar o novo nome do arquivo
-        $ordemExpedicaoSanitizada = str_replace(['.', '/'], '', $ordemExpedicao);
-        $fileExtension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-        $newFileName = 'oe' . $ordemExpedicaoSanitizada . '_fila' . $numeroFila . '.' . $fileExtension;
-
-        $uploadFilePath = $uploadDir . $newFileName;
-
-        // 4. Mover o arquivo para o destino com o novo nome
-        if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFilePath)) {
-            // O caminho a ser salvo no banco deve ser relativo à pasta public
-            $publicPath = 'uploads/carregamentos/' . $carregamentoId . '/' . $newFileName;
-
-            $repo->updateFilaPhotoPath($filaId, $publicPath);
-            echo json_encode(['success' => true, 'message' => 'Foto enviada com sucesso!', 'path' => $publicPath]);
-        } else {
-            throw new Exception("Erro ao salvar o arquivo da foto no servidor.");
-        }
-
-    } catch (Exception $e) {
-        http_response_code(500);
-        error_log("API Error in apiUploadFotoFila: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
-    }
-}*/
-
-
-// Em /public/api.php
-
-function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+/*function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     getAuthenticatedUser($userRepo);
 
@@ -440,7 +344,9 @@ function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $user
             // O caminho a ser salvo no banco deve ser relativo à pasta public
             $publicPath = 'uploads/carregamentos/' . $nomePasta . '/' . $newFileName;
 
-            $repo->updateFilaPhotoPath($filaId, $publicPath);
+            //$repo->updateFilaPhotoPath($filaId, $publicPath);
+            $repo->adicionarFotoFila($filaId, $publicPath);
+
             echo json_encode(['success' => true, 'message' => 'Foto enviada com sucesso!', 'path' => $publicPath]);
         } else {
             throw new Exception("Erro ao salvar o arquivo da foto no servidor.");
@@ -452,41 +358,72 @@ function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $user
         error_log("API Error in apiUploadFotoFila: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
     }
-}
+}*/
 
-/* function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+
+// /public/api.php
+
+function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-    $input = json_decode(file_get_contents('php://input'), true);
+    getAuthenticatedUser($userRepo);
 
-    $carregamentoId = $input['carregamentoId'] ?? null;
+    $filaId = filter_input(INPUT_POST, 'filaId', FILTER_VALIDATE_INT);
 
-    if (!$carregamentoId) {
-        http_response_code(400); // Bad Request
-        echo json_encode(['success' => false, 'message' => 'O ID do carregamento é obrigatório.']);
+    if (!$filaId || !isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos. É necessário enviar uma foto e um filaId válido.']);
         return;
     }
 
     try {
-        // A lógica foi alterada para chamar o novo método
-        if ($repo->marcarComoAguardandoConferencia((int) $carregamentoId, $user['usu_codigo'])) {
-            echo json_encode(['success' => true, 'message' => 'Carregamento enviado para conferência com sucesso!']);
+        $info = $repo->getInfoParaNomeArquivo($filaId);
+        if (!$info) {
+            throw new Exception("Fila ou Carregamento não encontrado.");
+        }
+
+        $ordemExpedicao = $info['car_ordem_expedicao'];
+        $numeroFila = $info['fila_numero_sequencial'];
+
+        // Sanitiza a ordem de expedição para usar como nome da pasta
+        $nomePasta = preg_replace('/[^a-zA-Z0-9]/', '', $ordemExpedicao);
+
+        // Cria o diretório se não existir
+        $uploadDir = __DIR__ . '/uploads/carregamentos/' . $nomePasta . '/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0775, true);
+        }
+
+        // --- INÍCIO DA CORREÇÃO DO NOME DO ARQUIVO ---
+
+        // 1. Conta quantas fotos já existem para obter o próximo número sequencial
+        $proximoNumeroFoto = $repo->countFotosByFilaId($filaId) + 1;
+
+        // 2. Monta o novo nome do arquivo com o sequencial
+        $fileExtension = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+        $newFileName = 'oe' . $nomePasta . '_fila' . $numeroFila . '_foto' . $proximoNumeroFoto . '.' . $fileExtension;
+
+        // --- FIM DA CORREÇÃO ---
+
+        $uploadFilePath = $uploadDir . $newFileName;
+
+        if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFilePath)) {
+            $publicPath = 'uploads/carregamentos/' . $nomePasta . '/' . $newFileName;
+
+            $repo->adicionarFotoFila($filaId, $publicPath);
+            echo json_encode(['success' => true, 'message' => 'Foto enviada com sucesso!', 'path' => $publicPath]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Não foi possível enviar para conferência. Verifique se o carregamento ainda está "EM ANDAMENTO".']);
+            throw new Exception("Erro ao salvar o arquivo da foto no servidor.");
         }
     } catch (Exception $e) {
-        http_response_code(500); // Internal Server Error
-        error_log("API Error in finalizarCarregamento: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro interno ao processar a solicitação.']);
+        http_response_code(500);
+        error_log("API Error in apiUploadFotoFila: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
     }
-}*/
+}
 
 /**
  * Valida o conteúdo de um QR Code em tempo real.
  */
-
-// Em /public/api.php
-
 function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo);
@@ -502,7 +439,6 @@ function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepositor
     try {
         $repo->marcarComoAguardandoConferencia((int) $carregamentoId, $user['usu_codigo']);
         echo json_encode(['success' => true, 'message' => 'Carregamento enviado para conferência com sucesso!']);
-
     } catch (Exception $e) {
         // Tenta decodificar a mensagem da exceção
         $errorData = json_decode($e->getMessage(), true);
@@ -566,69 +502,9 @@ function apiGetCarregamentos(CarregamentoRepository $carregamentoRepo, UsuarioRe
     }
 }
 
-/* function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-    $carregamentoId = (int) ($_GET['carregamentoId'] ?? 0);
-
-    if ($carregamentoId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
-        return;
-    }
-
-    try {
-        $data = $repo->findCarregamentoComFilasEItens($carregamentoId);
-
-        if (!$data) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Carregamento não encontrado.']);
-            return;
-        }
-
-        $header = $data['header'];
-        $filas = $data['filas'];
-
-        // Calcular totais
-        $total_filas = count($filas);
-        $total_quilos = 0;
-        $produtos = [];
-
-        foreach ($filas as $fila) {
-            foreach ($fila['itens'] as $item) {
-                $quantidade = (float) $item['car_item_quantidade'];
-                $total_quilos += $quantidade; // Assumindo quantidade em quilos
-
-                $produtos[] = [
-                    'nome' => $item['prod_descricao'],
-                    'lote' => $item['lote_completo_calculado'],
-                    'quantidade' => $quantidade
-                ];
-            }
-        }
-
-        $resumo = [
-            'numero' => $header['car_numero'],
-            'responsavel' => $header['responsavel'] ?: 'Desconhecido',
-            'total_filas' => $total_filas,
-            'total_quilos' => $total_quilos,
-            'produtos' => $produtos
-        ];
-
-        echo json_encode(['success' => true, 'data' => $resumo]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        error_log("API Error in getResumoCarregamento: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro ao buscar resumo do carregamento: ' . $e->getMessage()]);
-    }
-}*/
-
 /**
  * Fornece a lista de filas para um carregamento específico.
  */
-
-// Em /public/api.php
-
 function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     getAuthenticatedUser($userRepo); // Protege o endpoint
@@ -652,7 +528,6 @@ function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepositor
 
         // Apenas retornamos os dados completos, sem sumarizar no PHP
         echo json_encode(['success' => true, 'data' => $data]);
-
     } catch (Exception $e) {
         http_response_code(500);
         error_log("API Error in getResumoCarregamento: " . $e->getMessage());
@@ -914,22 +789,39 @@ function apiExcluirFotoFila(CarregamentoRepository $repo, UsuarioRepository $use
 {
     getAuthenticatedUser($userRepo); // Protege o endpoint
     $input = json_decode(file_get_contents('php://input'), true);
-    $filaId = $input['filaId'] ?? null;
+    //$filaId = $input['filaId'] ?? null;
+    $fotoId = $input['fotoId'] ?? null;
 
-    if (!$filaId) {
+    //if (!$filaId) {
+    if (!$fotoId) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'O ID da fila é obrigatório.']);
         return;
     }
 
     try {
-        if ($repo->deleteFilaPhoto((int) $filaId)) {
-            echo json_encode(['success' => true, 'message' => 'Foto removida com sucesso!']);
-        } else {
+        // if ($repo->deleteFilaPhoto((int) $filaId)) {
+        $repo->removerFotoPorId((int) $fotoId);
+        echo json_encode(['success' => true, 'message' => 'Foto removida com sucesso!']);
+        /* } else {
             echo json_encode(['success' => false, 'message' => 'Não foi possível remover a foto.']);
-        }
+        }*/
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erro ao remover a foto: ' . $e->getMessage()]);
     }
+}
+
+function apiGetFotosDaFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+    $filaId = (int) ($_GET['filaId'] ?? 0);
+
+    if ($filaId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID da fila inválido.']);
+        return;
+    }
+    $fotos = $repo->findFotosByFilaId($filaId);
+    echo json_encode(['success' => true, 'data' => $fotos]);
 }
