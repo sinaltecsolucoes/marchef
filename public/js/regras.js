@@ -20,7 +20,8 @@ $(document).ready(function () {
                 const $select = $('#regra_cliente_id');
                 $select.empty().append('<option value="">Todos os Clientes</option>');
                 response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
+                    const textoOpcao = `${cliente.nome_display} (Cód: ${cliente.ent_codigo_interno})`;
+                    $select.append(new Option(textoOpcao, cliente.ent_codigo));
                 });
             }
         });
@@ -33,7 +34,8 @@ $(document).ready(function () {
                 const $select = $('#regra_produto_id');
                 $select.empty().append('<option value="">Todos os Produtos</option>');
                 response.data.forEach(function (produto) {
-                    $select.append(new Option(produto.prod_descricao, produto.prod_codigo));
+                    const textoOpcao = `${produto.prod_descricao} (Cód: ${produto.prod_codigo_interno || 'N/A'})`;
+                    $select.append(new Option(textoOpcao, produto.prod_codigo));
                 });
             }
         });

@@ -2,7 +2,7 @@
 // /views/lotes_novo/lista_lotes_novo.php
 ?>
 
-<h4 class="fw-bold mb-3">Gestão de Lotes de Produção</h4>
+<h4 class="fw-bold mb-3">Gestão de Lotes (Produção)</h4>
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
@@ -169,8 +169,8 @@
                                 <thead>
                                     <tr>
                                         <th>Produto</th>
-                                        <th class="text-center align-middle">Qtd. Produzida</th>
-                                        <th class="text-center align-middle">Saldo (p/ Embalar)</th>
+                                        <th class="text-center align-middle">Qtd.<br>Produzida</th>
+                                        <th class="text-center align-middle">Saldo<br>(p/ Embalar)</th>
                                         <th class="text-center align-middle">Validade</th>
                                         <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações
                                         </th>
@@ -219,7 +219,7 @@
                         <hr>
                         <h6 class="mt-4">Itens de Embalagem Adicionados a Este Lote</h6>
                         <div class="table-responsive">
-                            <table class="table table-sm table-striped">
+                            <table class="table table-sm table-striped w-100">
                                 <thead>
                                     <tr>
                                         <th>Produto (Embalagem)</th>

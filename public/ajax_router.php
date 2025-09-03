@@ -257,8 +257,11 @@ switch ($action) {
         break;
 
     // --- ROTA DE ETIQUETAS ---  
-    case 'imprimirEtiquetaItem':
-        imprimirEtiquetaItem($pdo); // A função precisa da conexão PDO
+    /* case 'imprimirEtiquetaItem':
+         imprimirEtiquetaItem($pdo); // A função precisa da conexão PDO
+         break; */
+    case 'imprimirEtiquetaLoteItem':
+        imprimirEtiquetaLoteItem($pdo);
         break;
 
     // --- ROTAS DE TEMPLATES DE ETIQUETA ---
@@ -266,6 +269,11 @@ switch ($action) {
         listarTemplates($templateRepo);
         break;
     case 'getTemplate':
+        // LOG 1: Verificar se a rota foi chamada
+        error_log("DEBUG: Rota 'getTemplate' foi acionada.");
+
+        // LOG 2: Verificar os dados recebidos via POST
+        error_log("DEBUG: Dados recebidos (POST): " . print_r($_POST, true));
         getTemplate($templateRepo);
         break;
     case 'salvarTemplate':
@@ -1164,7 +1172,7 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
 }
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
-function imprimirEtiquetaItem(PDO $pdo)
+/* function imprimirEtiquetaItem(PDO $pdo)
 {
     // Validação dos dados de entrada
     $loteItemId = filter_input(INPUT_POST, 'loteItemId', FILTER_VALIDATE_INT);
@@ -1248,6 +1256,70 @@ function imprimirEtiquetaItem(PDO $pdo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
     }
+} */
+
+// /public/ajax_router.php
+
+/**
+ * Função de controle universal para impressão de etiquetas de lote.
+ * Ela recebe o tipo de item (producao ou embalagem) e o ID,
+ * e passa para o LabelService para fazer o trabalho pesado.
+ */
+function imprimirEtiquetaLoteItem(PDO $pdo)
+{
+    try {
+        // 1. Validação dos dados de entrada
+        $itemId = filter_input(INPUT_POST, 'itemId', FILTER_VALIDATE_INT);
+        $itemType = $_POST['itemType'] ?? ''; // 'producao' ou 'embalagem'
+        $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
+        if ($clienteId === false)
+            $clienteId = null;
+
+        if (!$itemId || !in_array($itemType, ['producao', 'embalagem'])) {
+            throw new Exception("Dados inválidos para gerar etiqueta.");
+        }
+
+        // 2. Chama o serviço de etiquetas (que precisará ser adaptado)
+        $labelService = new App\Labels\LabelService($pdo);
+
+        // NOTA: A função 'gerarZplParaItemLote' será a nossa próxima tarefa.
+        // Ela receberá o tipo e o id para saber qual tabela consultar.
+        $labelData = $labelService->gerarZplParaItemLote($itemId, $itemType, $clienteId);
+
+        if ($labelData === null || empty($labelData['zpl'])) {
+            throw new Exception('Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.');
+        }
+
+        // 3. O resto do processo (converter ZPL para PDF e salvar) permanece o mesmo.
+        $zpl = $labelData['zpl'];
+        $filename = $labelData['filename'];
+
+        $curl = curl_init('http://api.labelary.com/v1/printers/12dpmm/labels/4x7/0/');
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $zpl);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/pdf']);
+        $pdfContent = curl_exec($curl);
+
+        if (curl_getinfo($curl, CURLINFO_HTTP_CODE) != 200) {
+            throw new Exception('Erro da API Labelary: ' . $pdfContent);
+        }
+        curl_close($curl);
+
+        $tempDir = __DIR__ . '/temp_labels/';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
+        $filePath = $tempDir . $filename;
+        file_put_contents($filePath, $pdfContent);
+        $publicUrl = 'temp_labels/' . $filename;
+
+        echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
+
+    } catch (Exception $e) {
+        // Captura qualquer erro e envia uma resposta JSON amigável
+        echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
+    }
 }
 
 // --- FUNÇÕES DE CONTROLE PARA TEMPLATES DE ETIQUETA ---
@@ -1257,8 +1329,14 @@ function listarTemplates(TemplateRepository $repo)
     echo json_encode($repo->findAllForDataTable($_POST));
 }
 
-function getTemplate(TemplateRepository $repo)
+/* function getTemplate(TemplateRepository $repo)
 {
+    // LOG 1: Verificar se a função foi chamada
+    error_log("DEBUG: Função getTemplate foi acionada.");
+
+    // LOG 2: Verificar os dados recebidos via POST
+    error_log("DEBUG: Dados recebidos (POST): " . print_r($_POST, true));
+
     $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'ID inválido.']);
@@ -1269,6 +1347,24 @@ function getTemplate(TemplateRepository $repo)
         echo json_encode(['success' => true, 'data' => $template]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Template não encontrado.']);
+    }
+}*/
+
+function getTemplate(TemplateRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
+        if (!$id) {
+            throw new Exception("ID do template inválido.");
+        }
+        $template = $repo->find($id);
+        if ($template === null) {
+            throw new Exception("Template não encontrado.");
+        }
+        echo json_encode(['success' => true, 'data' => $template]);
+    } catch (Exception $e) {
+        error_log("Erro em getTemplate: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 

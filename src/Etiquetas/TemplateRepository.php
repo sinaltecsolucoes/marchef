@@ -59,10 +59,17 @@ class TemplateRepository
      */
     public function find(int $id): ?array
     {
+        // LOG 3: Verificar se a função foi chamada e com qual ID
+        error_log("DEBUG: Entrando em TemplateRepository->find() com o ID: " . $id);
+
         $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_templates WHERE template_id = :id");
         $stmt->execute([':id' => $id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
+
+        // LOG 4: Verificar o que o banco de dados retornou
+        error_log("DEBUG: Resultado da consulta ao banco: " . print_r($result, true));
+
     }
 
     /**
@@ -70,12 +77,28 @@ class TemplateRepository
      */
     public function create(array $data): bool
     {
+        /* $sql = "INSERT INTO tbl_etiqueta_templates (template_nome, template_descricao, template_conteudo_zpl) VALUES (:nome, :descricao, :zpl)";
+         $stmt = $this->pdo->prepare($sql);
+         $success = $stmt->execute([
+             ':nome' => $data['template_nome'],
+             ':descricao' => $data['template_descricao'] ?? null,
+             ':zpl' => $data['template_conteudo_zpl']
+         ]);*/
+
+        $zplContent = $data['template_conteudo_zpl']; // Padrão: usa o conteúdo da textarea
+
+        // Se um arquivo foi enviado com sucesso, usa o conteúdo dele
+        if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
+            $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
+            $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+        }
+
         $sql = "INSERT INTO tbl_etiqueta_templates (template_nome, template_descricao, template_conteudo_zpl) VALUES (:nome, :descricao, :zpl)";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             ':nome' => $data['template_nome'],
             ':descricao' => $data['template_descricao'] ?? null,
-            ':zpl' => $data['template_conteudo_zpl']
+            ':zpl' => $zplContent // Usa o conteúdo do arquivo ou da textarea
         ]);
 
         if ($success) {
@@ -95,13 +118,30 @@ class TemplateRepository
         if (!$dadosAntigos)
             return false;
 
+        /* $sql = "UPDATE tbl_etiqueta_templates SET template_nome = :nome, template_descricao = :descricao, template_conteudo_zpl = :zpl WHERE template_id = :id";
+         $stmt = $this->pdo->prepare($sql);
+         $success = $stmt->execute([
+             ':id' => $id,
+             ':nome' => $data['template_nome'],
+             ':descricao' => $data['template_descricao'] ?? null,
+             ':zpl' => $data['template_conteudo_zpl']
+         ]);*/
+
+        $zplContent = $data['template_conteudo_zpl']; // Padrão: usa o conteúdo da textarea
+
+        // Se um NOVO arquivo foi enviado, substitui o conteúdo
+        if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
+            $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
+            $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+        }
+
         $sql = "UPDATE tbl_etiqueta_templates SET template_nome = :nome, template_descricao = :descricao, template_conteudo_zpl = :zpl WHERE template_id = :id";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             ':id' => $id,
             ':nome' => $data['template_nome'],
             ':descricao' => $data['template_descricao'] ?? null,
-            ':zpl' => $data['template_conteudo_zpl']
+            ':zpl' => $zplContent // Usa o conteúdo do novo arquivo ou da textarea
         ]);
 
         if ($success) {
@@ -129,4 +169,26 @@ class TemplateRepository
 
         return $success;
     }
+
+    /**
+     * Processa o conteúdo ZPL para substituir dados de exemplo por placeholders do sistema.
+     * @param string $zplContent O conteúdo ZPL original.
+     * @return string O conteúdo ZPL com os placeholders corretos.
+     */
+    private function processarPlaceholdersAutomaticos(string $zplContent): string
+    {
+        // Define o mapa de substituições: "Dado de Exemplo" => "Placeholder do Sistema"
+        $substituicoes = [
+            '00000000000000' => '{dados_barras_1d}',
+            '0112345678912343' => '{dados_qrcode_gs1}',
+        ];
+
+        foreach ($substituicoes as $exemplo => $placeholder) {
+            // Esta forma é mais segura e substitui apenas o conteúdo dentro do comando ^FD...^FS
+            $zplContent = str_replace('^FD' . $exemplo . '^FS', '^FD' . $placeholder . '^FS', $zplContent);
+        }
+
+        return $zplContent;
+    }
+
 }

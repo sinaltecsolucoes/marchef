@@ -124,7 +124,9 @@ try {
         'fornecedores' => 'entidades/lista_entidades.php',
         'produtos' => 'produtos/lista_produtos.php',
         //'lotes' => 'lotes/lista_lotes.php',
-        'lotes' => 'lotes_novo/lista_lotes_novo.php',
+        //'lotes' => 'lotes_novo/lista_lotes_novo.php',
+        'lotes_producao' => 'lotes_novo/lista_lotes_producao.php',
+        'lotes_embalagem' => 'lotes_novo/lista_lotes_embalagem.php',
         'permissoes' => 'permissoes/gerenciar.php',
         'templates' => 'etiquetas/lista_templates.php',
         'regras' => 'etiquetas/lista_regras.php',
@@ -140,6 +142,11 @@ try {
         $pageType = 'cliente';
     if ($paginaAtual === 'fornecedores')
         $pageType = 'fornecedor';
+
+    if ($paginaAtual === 'lotes_producao')
+        $pageType = 'lotes_producao';
+    if ($paginaAtual === 'lotes_embalagem')
+        $pageType = 'lotes_embalagem';
 
     $homePadraoPorTipo = [
         'Admin' => 'home/home_admin.php',

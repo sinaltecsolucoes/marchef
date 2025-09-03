@@ -1,65 +1,65 @@
 <?php
 // /src/Labels/LabelService.php
+
 namespace App\Labels;
 
-use PDO;
-use Exception;
 use App\Etiquetas\RegraRepository;
 use App\Etiquetas\TemplateRepository;
 use App\Produtos\ProdutoRepository;
+use Exception;
+use PDO;
 
 class LabelService
 {
     private PDO $pdo;
-    private RegraRepository $regraRepo;
-    private TemplateRepository $templateRepo;
+    private $regraRepo;
+    private $templateRepo;
     private ProdutoRepository $produtoRepo;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-        // Seus repositórios que já existiam
         $this->regraRepo = new RegraRepository($pdo);
         $this->templateRepo = new TemplateRepository($pdo);
         $this->produtoRepo = new ProdutoRepository($pdo);
     }
 
     /**
-     * NOVA FUNÇÃO UNIVERSAL: Gera o ZPL de um item de lote (produção ou embalagem).
+     * Gera o ZPL para um item de lote, selecionando dinamicamente o template
+     * com base nas regras e no cliente de destino.
+     *
+     * @param int $loteItemId O ID do item do lote.
+     * @param int|null $clienteId O ID do cliente de destino (pode ser nulo).
+     * @return array|null Um array com 'zpl' e 'filename' ou null se falhar.
      */
-    public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
+    public function gerarZplParaItem(int $loteItemId, ?int $clienteId): ?array
     {
-        // 1. Buscar os dados do item com base no seu tipo.
-        $dados = null;
-        if ($itemType === 'producao') {
-            $dados = $this->findDadosItemProducao($itemId, $clienteId);
-        } elseif ($itemType === 'embalagem') {
-            $dados = $this->findDadosItemEmbalagem($itemId, $clienteId);
-        }
-
+        // 1. Buscar todos os dados necessários de uma vez
+        $dados = $this->getDadosParaEtiqueta($loteItemId, $clienteId);
         if (!$dados) {
-            throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
+            throw new Exception("Dados para a etiqueta do item ID {$loteItemId} não foram encontrados.");
         }
 
-        // 2. Usar o RegraRepository para descobrir qual template usar.
+        // 2. Descobrir qual template usar com base nas regras
         $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteId);
         if ($templateId === null) {
             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
         }
 
-        // 3. Buscar o conteúdo ZPL do template encontrado.
+        // 3. Buscar o conteúdo ZPL do template encontrado
         $template = $this->templateRepo->find($templateId);
         if (!$template || empty($template['template_conteudo_zpl'])) {
             throw new Exception("O template de etiqueta (ID: {$templateId}) definido pela regra não foi encontrado ou está vazio.");
         }
+        $zplTemplate = $template['template_conteudo_zpl'];
 
-        // 4. USAR A LÓGICA EXISTENTE para substituir os placeholders.
-        $zplFinal = $this->substituirPlaceholders($template['template_conteudo_zpl'], $dados);
+        // 4. Substituir os placeholders no ZPL com a lógica de negócio
+        $zplFinal = $this->substituirPlaceholders($zplTemplate, $dados);
 
-        // 5. Gerar um nome de arquivo.
+        // 5. Gerar um nome de ficheiro descritivo
         $nomeArquivo = sprintf(
             'etiqueta_%s_%s.pdf',
-            preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['prod_codigo_interno'] ?? 'produto'),
+            preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['prod_cod_fabrica'] ?? 'produto'),
             preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['lote_num_completo'] ?? 'lote')
         );
 
@@ -67,62 +67,35 @@ class LabelService
     }
 
     /**
-     * FUNÇÃO DE BUSCA: Busca dados para etiqueta de um item de PRODUÇÃO.
+     * Função auxiliar para buscar todos os dados de uma vez.
+     * (Esta função pode já existir ou ser similar no seu código)
      */
-    private function findDadosItemProducao(int $itemProdId, ?int $clienteId): ?array
+    private function getDadosParaEtiqueta(int $loteItemId, ?int $clienteId): ?array
     {
+        // Esta query já é bastante completa e busca a maioria dos dados que precisamos
         $sql = "SELECT 
-                    p.*,
-                    lnh.lote_completo_calculado as lote_num_completo,
-                    lnh.lote_data_fabricacao,
-                    lnp.item_prod_data_validade as lote_item_data_val,
-                    lnp.item_prod_quantidade as lote_item_qtd,
+                    li.*, lh.*, p.*,
+                    CONCAT(lh.lote_numero, '-', li.lote_item_sequencial) as lote_num_completo,
                     c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
                     end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep
-                FROM tbl_lotes_novo_producao lnp
-                JOIN tbl_lotes_novo_header lnh ON lnp.item_prod_lote_id = lnh.lote_id
-                JOIN tbl_produtos p ON lnp.item_prod_produto_id = p.prod_codigo
+                FROM tbl_lotes_itens li
+                JOIN tbl_lotes_header lh ON li.lote_id = lh.lote_id
+                JOIN tbl_produtos p ON li.lote_item_produto = p.prod_codigo
                 LEFT JOIN tbl_entidades c ON c.ent_codigo = :cliente_id
                 LEFT JOIN (
                     SELECT *, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 ELSE 2 END) as rn 
                     FROM tbl_enderecos
                 ) end ON c.ent_codigo = end.end_entidade_id AND end.rn = 1
-                WHERE lnp.item_prod_id = :item_id";
+                WHERE li.lote_item_id = :lote_item_id";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':item_id' => $itemProdId, ':cliente_id' => $clienteId]);
+        $stmt->execute([':lote_item_id' => $loteItemId, ':cliente_id' => $clienteId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
-     * FUNÇÃO DE BUSCA: Busca dados para etiqueta de um item de EMBALAGEM.
+     * Função auxiliar para substituir os placeholders.
      */
-    private function findDadosItemEmbalagem(int $itemEmbId, ?int $clienteId): ?array
-    {
-        $sql = "SELECT 
-                    p.*,
-                    lnh.lote_completo_calculado as lote_num_completo,
-                    lnh.lote_data_fabricacao,
-                    lnp.item_prod_data_validade as lote_item_data_val,
-                    lne.item_emb_qtd_sec as lote_item_qtd,
-                    c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
-                    end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep
-                FROM tbl_lotes_novo_embalagem lne
-                JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
-                LEFT JOIN tbl_entidades c ON c.ent_codigo = :cliente_id
-                LEFT JOIN (
-                    SELECT *, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 ELSE 2 END) as rn 
-                    FROM tbl_enderecos
-                ) end ON c.ent_codigo = end.end_entidade_id AND end.rn = 1
-                WHERE lne.item_emb_id = :item_id";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':item_id' => $itemEmbId, ':cliente_id' => $clienteId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
     private function substituirPlaceholders(string $zpl, array $dados): string
     {
         // --- LÓGICA DE FONTE DINÂMICA ---
@@ -187,8 +160,9 @@ class LabelService
         return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
     }
 
+    // --- FUNÇÕES AJUDANTES (HELPERS) ---
     private function formatCnpj(string $cnpj): string
-    {
+    { 
         $cnpj = preg_replace('/[^0-9]/', '', $cnpj);
         if (strlen($cnpj) != 14) {
             return $cnpj;
@@ -197,7 +171,7 @@ class LabelService
     }
 
     private function buildClassificationLine(array $produto): string
-    {
+    { 
         $partes = [];
         if ($produto['prod_tipo_embalagem'] === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
             $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
@@ -216,8 +190,11 @@ class LabelService
         return implode(' ', $partes);
     }
 
+    /**
+     * Monta a string de dados para o QR Code no padrão GS1 Data Matrix.
+     */
     private function buildGs1DataString(array $dados, string $gtin): string
-    {
+    { 
         $stringGs1 = "";
         $stringGs1 .= "01" . str_pad($gtin, 14, '0', STR_PAD_LEFT);
         if (!empty($dados['prod_codigo_interno']))

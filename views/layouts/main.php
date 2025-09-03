@@ -54,18 +54,35 @@
                             unset($paginasParaCadastro['backup']);
                             unset($paginasParaCadastro['estoque']);
                             unset($paginasParaCadastro['carregamento_detalhes']);
-                            unset($paginasParaCadastro['lotes_novo']);
+                            unset($paginasParaCadastro['lotes_producao']);
+                            unset($paginasParaCadastro['lotes_embalagem']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
-                            // Adiciona manualmente o link para o novo módulo de lotes
-                            /* if (in_array('lotes_novo', $paginasPermitidasUsuario)): ?>
-                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/index.php?page=lotes_novo">Gestão
-                                         de Lotes</a></li>
-                             <?php endif;*/
                             ?>
                         </ul>
                     </li>
+
+                    <?php
+                    // Define as páginas que pertencem a este menu
+                    $paginasLotes = ['lotes_producao', 'lotes_embalagem'];
+                    // Verifica se o usuário tem permissão para ver PELO MENOS UMA página do menu
+                    if (count(array_intersect($paginasLotes, $paginasPermitidasUsuario)) > 0):
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Lotes</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('lotes_producao', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=lotes_producao">Gestão de Lotes
+                                            (Produção)</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('lotes_embalagem', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=lotes_embalagem">Gestão de Lotes
+                                            (Embalagem)</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
                     <?php
                     // Verifica se o usuário tem permissão para ver a página de estoque
@@ -204,7 +221,7 @@
     <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
         <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
     <?php endif; ?>
-    <?php if ($paginaAtual === 'lotes'): ?>
+    <?php if ($paginaAtual === 'lotes_producao' || $paginaAtual === 'lotes_embalagem'): ?>
         <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
     <?php endif; ?>
     <?php if ($paginaAtual === 'templates'): ?>

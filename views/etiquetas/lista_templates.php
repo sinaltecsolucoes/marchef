@@ -32,26 +32,38 @@
                 <h5 class="modal-title" id="modal-template-label">Adicionar Novo Template</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <form id="form-template">
+            <form id="form-template" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="template_id" name="template_id">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
 
                     <div id="mensagem-template-modal" class="mb-3"></div>
 
                     <div class="mb-3">
-                        <label for="template_nome" class="form-label">Nome do Template <span class="text-danger">*</span></label>
+                        <label for="template_nome" class="form-label">Nome do Template <span
+                                class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="template_nome" name="template_nome" required>
                     </div>
 
                     <div class="mb-3">
                         <label for="template_descricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="template_descricao" name="template_descricao" rows="2"></textarea>
+                        <textarea class="form-control" id="template_descricao" name="template_descricao"
+                            rows="2"></textarea>
                     </div>
 
                     <div class="mb-3">
-                        <label for="template_conteudo_zpl" class="form-label">Código ZPL <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="template_conteudo_zpl" name="template_conteudo_zpl" rows="15" placeholder="Cole aqui o código ZPL completo gerado pelo Zebra Designer..."></textarea>
+                        <label for="zpl_file_upload" class="form-label">Ou Carregar de um Arquivo (.zpl, .prn,
+                            .txt)</label>
+                        <input class="form-control" type="file" id="zpl_file_upload" name="zpl_file_upload"
+                            accept=".zpl,.prn,.txt">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="template_conteudo_zpl" class="form-label">Código ZPL <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="template_conteudo_zpl" name="template_conteudo_zpl" rows="15"
+                            placeholder="Cole o código ZPL aqui ou use o botão acima para carregar de um arquivo..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">

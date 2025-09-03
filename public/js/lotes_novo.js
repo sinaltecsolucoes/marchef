@@ -66,6 +66,61 @@ $(document).ready(function () {
                 "data": "lote_id",
                 "orderable": false,
                 "className": "text-center align-middle",
+                /*   "render": function (data, type, row) {
+                        const status = row.lote_status;
+                        const loteId = row.lote_id;
+                        const loteNome = row.lote_completo_calculado;
+                        let acoesHtml = '';
+                        let menuItens = '';
+    
+                        // MODIFICAÇÃO: Captura o pageType no início para ser usado em toda a função
+                        const pageType = $('body').data('page-type');
+    
+                        // Define os botões principais com base no status
+                        if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
+                            acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
+    
+                            if (pageType === 'lotes_embalagem') {
+                                acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote">Finalizar</button>`;
+                            }
+    
+                            // MODIFICAÇÃO: Apenas adiciona o item "Cancelar" na tela de Produção
+                            if (pageType === 'lotes_producao') {
+                                menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+                            }
+    
+                        } else if (status === 'FINALIZADO') {
+                            acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+                            menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+    
+                        } else if (status === 'CANCELADO') {
+                            acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
+                            menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
+                        }
+    
+                        // MODIFICAÇÃO: Apenas adiciona o item "Excluir" na tela de Produção
+                        if (pageType === 'lotes_producao') {
+                            if (menuItens !== '') {
+                                menuItens += `<li><hr class="dropdown-divider"></li>`;
+                            }
+                            menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
+                        }
+    
+                        // Constrói o menu dropdown APENAS se houver itens nele
+                        if (menuItens) {
+                            acoesHtml += `
+                        <div class="btn-group d-inline-block">
+                            <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Mais
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                ${menuItens}
+                            </ul>
+                        </div>`;
+                        }
+                        return acoesHtml;
+                    }*/
+
                 "render": function (data, type, row) {
                     const status = row.lote_status;
                     const loteId = row.lote_id;
@@ -73,48 +128,54 @@ $(document).ready(function () {
                     let acoesHtml = '';
                     let menuItens = '';
 
+                    // MODIFICAÇÃO: Captura o pageType no início para ser usado em toda a função
+                    const pageType = $('body').data('page-type');
+
                     // Define os botões principais com base no status
                     if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
                         acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
-                        acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote">Finalizar</button>`;
 
-                        // Itens do menu para lotes ativos
-                        menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+                        if (pageType === 'lotes_embalagem') {
+                            acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote">Finalizar</button>`;
+                        }
+
+                        // MODIFICAÇÃO: Apenas adiciona o item "Cancelar" na tela de Produção
+                        if (pageType === 'lotes_producao') {
+                            menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+                        }
 
                     } else if (status === 'FINALIZADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-
-                        // Itens do menu para lotes finalizados
                         menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
 
                     } else if (status === 'CANCELADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-
-                        // Item do menu para lotes cancelados
                         menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
                     }
 
-                    // A opção de excluir permanentemente pode existir para todos os estados
-                    // Adicionamos um separador se já existirem outros itens no menu
-                    if (menuItens !== '') {
-                        menuItens += `<li><hr class="dropdown-divider"></li>`;
+                    // MODIFICAÇÃO: Apenas adiciona o item "Excluir" na tela de Produção
+                    if (pageType === 'lotes_producao') {
+                        if (menuItens !== '') {
+                            menuItens += `<li><hr class="dropdown-divider"></li>`;
+                        }
+                        menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
                     }
-                    menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
 
-                    // Constrói o menu dropdown se houver itens nele
+                    // Constrói o menu dropdown APENAS se houver itens nele
                     if (menuItens) {
                         acoesHtml += `
-                                    <div class="btn-group d-inline-block">
-                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Mais
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            ${menuItens}
-                                        </ul>
-                                    </div>`;
+                    <div class="btn-group d-inline-block">
+                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            Mais
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            ${menuItens}
+                        </ul>
+                    </div>`;
                     }
                     return acoesHtml;
                 }
+
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
@@ -289,26 +350,54 @@ $(document).ready(function () {
 
                 // Determina o estado de "somente leitura" a partir da resposta AJAX
                 const status = response.data.header.lote_status;
-                const isReadOnly = (status === 'FINALIZADO' || status === 'CANCELADO');
+                const pageType = $('body').data('page-type');
 
-                // 1. Configura o modo de leitura para os elementos estáticos (formulários, botões principais, cabeçalhos das tabelas)
-                // configurarModalModoLeitura(isReadOnly);
+                // Define se o modal INTEIRO será somente leitura (lotes finalizados/cancelados)
+                const isReadOnlyGlobal = (status === 'FINALIZADO' || status === 'CANCELADO');
 
+                /*  $.when(recarregarItensProducao(loteId), recarregarItensEmbalagem(loteId)).done(function () {
+                      if (isReadOnlyGlobal) {
+                          // Se o lote está fechado, trava tudo, independente da página
+                          configurarModalModoLeitura(true);
+                      } else if (pageType === 'lotes_embalagem') {
+                          // Se estamos na pág. de embalagem e o lote está aberto
+                          configurarModalModoLeitura(false); // Garante que botões e colunas de ação fiquem visíveis
+  
+                          // Bloqueia APENAS os campos das abas 1 e 2
+                          $('#form-lote-novo-header').find('input, select').prop('disabled', true);
+                          $('#btn-salvar-lote-novo-header').hide();
+  
+                          $('#form-lote-novo-producao').find('input, select').prop('disabled', true);
+                          $('#form-lote-novo-producao').find('button').hide(); // Esconde Adicionar/Limpar
+  
+                          // Leva o usuário direto para a aba de embalagem
+                          new bootstrap.Tab($('#aba-embalagem-novo-tab')[0]).show();
+                      } else {
+                          // Comportamento padrão para a página de produção (tudo editável)
+                          configurarModalModoLeitura(false);
+                      }
+                  });*/
 
                 $.when(recarregarItensProducao(loteId), recarregarItensEmbalagem(loteId)).done(function () {
-                    // Este código só será executado DEPOIS que as duas chamadas AJAX terminarem com sucesso.
-                    // Agora, aplicamos o modo de leitura ao modal inteiro, incluindo as linhas e botões recém-criados.
-                    configurarModalModoLeitura(isReadOnly);
+                    // 1. Aplica o modo de leitura global se o lote estiver fechado
+                    configurarModalModoLeitura(isReadOnlyGlobal);
+
+                    // 2. Aplica a lógica específica da página
+                    if (pageType === 'lotes_embalagem') {
+
+                        // Se o lote estiver ABERTO, desabilita os formulários das abas 1 e 2
+                        if (!isReadOnlyGlobal) {
+                            $('#form-lote-novo-header').find('input, select').prop('disabled', true);
+                            $('#btn-salvar-lote-novo-header').hide();
+                            $('#form-lote-novo-producao').find('input, select').prop('disabled', true);
+                            $('#form-lote-novo-producao').find('button').hide();
+                        }
+
+                        // 3. SEMPRE ativa a aba de embalagem nesta página
+                        new bootstrap.Tab($('#aba-embalagem-novo-tab')[0]).show();
+                    }
                 });
 
-                /* if (status === 'FINALIZADO' || status === 'CANCELADO') {
-                     configurarModalModoLeitura(true); // Ativa o modo de leitura
-                 } else {
-                     configurarModalModoLeitura(false); // Garante o modo de edição
-                 }*/
-                // Carrega a tabela de itens de produção ao editar um lote
-                /*   recarregarItensProducao(loteId);
-                   recarregarItensEmbalagem(loteId);*/
 
                 $modalLoteNovo.modal('show');
             } else {
@@ -397,11 +486,11 @@ $(document).ready(function () {
                 response.data.producao.forEach(item => {
                     const rowHtml = `
                         <tr>
-                            <td>${item.prod_descricao}</td>
-                            <td class="text-center align-middle">${parseFloat(item.item_prod_quantidade).toFixed(3)}</td>
-                            <td class="text-center align-middle"">${parseFloat(item.item_prod_saldo).toFixed(3)}</td>
-                            <td class="text-center align-middle"">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                            <td class="text-center align-middle coluna-acoes">
+                            <td class="align-middle font-small">${item.prod_descricao}</td>
+                            <td class="text-center align-middle font-small">${parseFloat(item.item_prod_quantidade).toFixed(3)}</td>
+                            <td class="text-center align-middle font-small">${parseFloat(item.item_prod_saldo).toFixed(3)}</td>
+                            <td class="text-center align-middle font-small">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                            <td class="text-center align-middle coluna-acoes-lote">
                                 <button class="btn btn-warning btn-sm btn-editar-item-producao" 
                                             data-id="${item.item_prod_id}"
                                             data-produto-id="${item.item_prod_produto_id}"
@@ -409,19 +498,15 @@ $(document).ready(function () {
                                             data-validade="${item.item_prod_data_validade}"
                                             title="Editar Item">Editar</button>
                                 <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item">Excluir</button>
+                                <button class="btn btn-info btn-sm btn-imprimir-etiqueta-producao" data-id="${item.item_prod_id}" title="Imprimir Etiqueta"><i class="fas fa-print"></i>Etiqueta</button>
                             </td>
                         </tr>
                     `;
                     $tbody.append(rowHtml);
                 });
             } else {
-                /* const colunas = 5;*/
                 $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
-
-                //$tbody.html(`<tr><td colspan="${isReadOnly ? 4 : 5}" class="text-center text-muted">Nenhum item...</td></tr>`);
-
             }
-            //configurarModalModoLeitura(isReadOnly)
         });
     }
 
@@ -445,11 +530,11 @@ $(document).ready(function () {
                 response.data.forEach(item => {
                     const rowHtml = `
                     <tr>
-                        <td class="align-middle">${item.produto_secundario_nome}</td>
-                        <td class="text-center align-middle">${parseInt(item.item_emb_qtd_sec)}</td>
-                        <td>${item.produto_primario_nome}</td>
-                        <td class="text-center align-middle">${parseFloat(item.item_emb_qtd_prim_cons).toFixed(3)}</td>
-                        <td class="text-center align-middle coluna-acoes">
+                        <td class="align-middle font-small">${item.produto_secundario_nome}</td>
+                        <td class="text-center align-middle font-small">${parseInt(item.item_emb_qtd_sec)}</td>
+                        <td class="align-middle font-small">${item.produto_primario_nome}</td>
+                        <td class="text-center align-middle font-small">${parseFloat(item.item_emb_qtd_prim_cons).toFixed(0)}</td>
+                        <td class="text-center align-middle coluna-acoes-lote">
                             <button class="btn btn-warning btn-sm btn-editar-item-embalagem" 
                                         data-id="${item.item_emb_id}"
                                         data-primario-item-id="${item.item_emb_prod_prim_id}"
@@ -458,7 +543,8 @@ $(document).ready(function () {
                                         data-consumo="${item.item_emb_qtd_prim_cons}"
                                         title="Editar Item">Editar</button>
                             <button class="btn btn-danger btn-sm btn-excluir-item-embalagem" data-id="${item.item_emb_id}" title="Excluir Item">Excluir</button>
-                        </td>
+                            <button class="btn btn-info btn-sm btn-imprimir-etiqueta-embalagem" data-id="${item.item_emb_id}" title="Imprimir Etiqueta"><i class="fas fa-print"></i>Etiqueta</button>
+                            </td>
                     </tr>
                 `;
                     $tbody.append(rowHtml);
@@ -560,7 +646,90 @@ $(document).ready(function () {
     // --- Event Handlers ---
 
     // Evento para o botão "Adicionar Novo Lote"
+    /*  $('#btn-adicionar-lote-novo').on('click', function () {
+          const pageType = $('body').data('page-type');
+  
+          $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').show();
+  
+          if (pageType === 'lotes_producao') {
+              // Se a página for de PRODUÇÃO, esconde a aba de embalagem
+              $('#aba-embalagem-novo-tab').hide();
+          }
+  
+          //$('#aba-embalagem-novo-tab').show();
+          configurarModalModoLeitura(false);
+  
+          // 1. Limpa o formulário principal (cabeçalho)
+          $formHeader[0].reset();
+          $('#lote_id_novo').val('');
+          $('#modal-lote-novo-label').text('Adicionar Novo Lote');
+          $modalLoteNovo.modal('show');
+  
+          // 2. Limpa os formulários das outras abas
+          $('#form-lote-novo-producao')[0].reset();
+          $('#form-lote-novo-embalagem')[0].reset();
+  
+          // 2.a - Garante que o campo de data de validade comece bloqueado e o switch desmarcado.
+          $('#liberar_edicao_validade_novo').prop('checked', false);
+          $('#item_prod_data_validade_novo').prop('readonly', true);
+  
+          // 3. Limpa as tabelas de itens e restaura a mensagem padrão
+          $('#tabela-itens-producao-novo').empty().html('<tr><td colspan="5" class="text-center text-muted">Salve o cabeçalho do lote para adicionar itens.</td></tr>');
+          $('#tabela-itens-embalagem-novo').empty().html('<tr><td colspan="5" class="text-center text-muted">Adicione itens de produção para poder embalar.</td></tr>');
+  
+          // 4. Garante que os botões de ação voltem ao estado inicial
+          $('#btn-adicionar-item-producao').text('Adicionar Item');
+          $('#btn-adicionar-item-embalagem').text('Adicionar Item');
+  
+          // 5. Remove botões de "cancelar edição" que podem ter sido adicionados dinamicamente
+          $('#btn-cancelar-edicao-producao').show(); // Garante que o botão de limpar padrão esteja visível
+          $('#btn-cancelar-edicao-embalagem').remove(); // Remove o botão de cancelar da aba de embalagem
+  
+          // 6. Inicializa os dropdowns do modal
+          $('#lote_fornecedor_id_novo, #lote_cliente_id_novo, #item_prod_produto_id_novo').select2({
+              placeholder: 'Selecione uma opção',
+              dropdownParent: $modalLoteNovo,
+              theme: "bootstrap-5"
+          });
+  
+          // 7. Carrega os dados para os dropdowns
+          carregarFornecedores();
+          carregarClientes();
+          carregarProdutosPrimarios();
+  
+          // 8. Busca o próximo número de lote
+          $.get('ajax_router.php?action=getProximoNumeroLoteNovo', function (response) {
+              if (response.success) {
+                  $('#lote_numero_novo').val(response.proximo_numero);
+                  atualizarLoteCompletoNovo(); // Calcula o lote inicial
+              } else {
+                  $('#lote_numero').val('Erro!');
+              }
+          });
+  
+          // 9. Desabilita as abas de produção e embalagens e ativa a primeira
+          new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
+          $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
+  
+          $modalLoteNovo.modal('show');
+      });*/
+
+    // /public/js/lotes_novo.js
+
+    // Evento para o botão "Adicionar Novo Lote"
     $('#btn-adicionar-lote-novo').on('click', function () {
+        // --- INÍCIO DA CORREÇÃO ---
+        const pageType = $('body').data('page-type');
+
+        // Garante que todas as abas estejam visíveis antes de aplicar a lógica
+        $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').show();
+
+        if (pageType === 'lotes_producao') {
+            // Se a página for de PRODUÇÃO, esconde a aba de embalagem
+            $('#aba-embalagem-novo-tab').hide();
+        }
+        // --- FIM DA CORREÇÃO ---
+
         configurarModalModoLeitura(false);
 
         // 1. Limpa o formulário principal (cabeçalho)
@@ -620,6 +789,13 @@ $(document).ready(function () {
 
     // Evento de clique para o botão "Adicionar Item"
     $('#btn-adicionar-item-producao').on('click', function () {
+
+        const dataValidade = $('#item_prod_data_validade_novo').val();
+        if (!dataValidade) {
+            notificacaoErro('Validação', 'Por favor, insira uma Data de Validade para este produto.');
+            return; // Impede a execução do resto da função
+        }
+
         const loteId = loteIdAtual; // A variável global que guarda o ID do lote
         const itemId = $('#item_prod_id_novo').val(); // Pega o ID do campo hidden
         const isEditing = !!itemId; // Converte para booleano: true se tiver ID, false se não
@@ -892,7 +1068,42 @@ $(document).ready(function () {
     });
 
     // Ação para o botão "Editar" na tabela principal de lotes 
+    /* $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
+         const pageType = $('body').data('page-type');
+ 
+         // Mostra todas as abas por padrão antes de qualquer lógica
+         $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').show();
+ 
+         if (pageType === 'lotes_producao') {
+             // Se estiver na página de produção, esconde a aba de embalagem
+             $('#aba-embalagem-novo-tab').hide();
+         }
+ 
+         loteIdAtual = $(this).data('id');
+         // Garante que os dropdowns estejam prontos antes de buscar os dados
+         $.when(carregarFornecedores(), carregarClientes()).done(function () {
+             buscarDadosLoteParaEdicao(loteIdAtual);
+         });
+     });*/
+
     $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
+        const pageType = $('body').data('page-type');
+
+        // --- INÍCIO DA MODIFICAÇÃO ---
+        // Garante que todas as abas estejam visíveis por padrão antes de aplicar a lógica
+        $('#aba-info-lote-novo-tab, #aba-producao-novo-tab, #aba-embalagem-novo-tab').show();
+
+        if (pageType === 'lotes_producao') {
+            // Se estiver na página de PRODUÇÃO, esconde a aba de embalagem
+            $('#aba-embalagem-novo-tab').hide();
+
+        } else if (pageType === 'lotes_embalagem') {
+            // Se estiver na página de EMBALAGEM, esconde as abas de info e produção
+            $('#aba-info-lote-novo-tab').hide();
+            $('#aba-producao-novo-tab').hide();
+        }
+        // --- FIM DA MODIFICAÇÃO ---
+
         loteIdAtual = $(this).data('id');
         // Garante que os dropdowns estejam prontos antes de buscar os dados
         $.when(carregarFornecedores(), carregarClientes()).done(function () {
@@ -1207,6 +1418,110 @@ $(document).ready(function () {
                 }
             });
     });
+
+    // Evento para imprimir etiqueta de EMBALAGEM
+    /*  $tabelaItensEmbalagem.on('click', '.btn-imprimir-etiqueta-embalagem', function () {
+          const loteItemId = $(this).data('id');
+          const $btn = $(this);
+          const originalIcon = $btn.html();
+  
+          $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+  
+          $.ajax({
+              url: 'ajax_router.php?action=imprimirEtiquetaItem',
+              type: 'POST',
+              data: {
+                  loteItemId: loteItemId,
+                  clienteId: $('#lote_cliente_id_novo').val(), // Pega o cliente do lote
+                  csrf_token: csrfToken
+              },
+              dataType: 'json'
+          }).done(function (response) {
+              if (response.success) {
+                  window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+              } else {
+                  notificacaoErro('Erro ao gerar etiqueta', response.message);
+              }
+          }).fail(function () {
+              notificacaoErro('Erro de comunicação', 'Não foi possível contactar o servidor.');
+          }).always(function () {
+              $btn.prop('disabled', false).html(originalIcon);
+          });
+      });*/
+
+    // Evento para imprimir etiqueta de EMBALAGEM
+    $tabelaItensEmbalagem.on('click', '.btn-imprimir-etiqueta-embalagem', function () {
+        const loteItemId = $(this).data('id');
+        const $btn = $(this);
+        const originalIcon = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.ajax({
+            url: 'ajax_router.php?action=imprimirEtiquetaLoteItem', // <-- ROTA UNIFICADA
+            type: 'POST',
+            data: {
+                itemId: loteItemId,
+                itemType: 'embalagem', // <-- NOVO PARÂMETRO
+                clienteId: $('#lote_cliente_id_novo').val(),
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+            } else {
+                notificacaoErro('Erro ao gerar etiqueta', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro de comunicação', 'Não foi possível contactar o servidor.');
+        }).always(function () {
+            $btn.prop('disabled', false).html(originalIcon);
+        });
+    });
+
+    // Evento para imprimir etiqueta de PRODUÇÃO
+    /* $tabelaItensProducao.on('click', '.btn-imprimir-etiqueta-producao', function () {
+         const loteItemId = $(this).data('id');
+         // AVISO: A rota 'imprimirEtiquetaProducao' ainda não existe no backend.
+         // Isso é uma preparação para o próximo passo.
+         alert(`FUNCIONALIDADE EM DESENVOLVIMENTO:\nImprimir etiqueta para o item de produção ID: ${loteItemId}`);
+ 
+         // O código final será parecido com o da etiqueta de embalagem,
+         // mas chamando uma nova rota no ajax_router.php que precisaremos criar.
+     }); */
+
+    // Evento para imprimir etiqueta de PRODUÇÃO
+    $tabelaItensProducao.on('click', '.btn-imprimir-etiqueta-producao', function () {
+        const loteItemId = $(this).data('id');
+        const $btn = $(this);
+        const originalIcon = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.ajax({
+            url: 'ajax_router.php?action=imprimirEtiquetaLoteItem', // <-- ROTA UNIFICADA
+            type: 'POST',
+            data: {
+                itemId: loteItemId,
+                itemType: 'producao', // <-- NOVO PARÂMETRO
+                clienteId: $('#lote_cliente_id_novo').val(),
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+            } else {
+                notificacaoErro('Erro ao gerar etiqueta', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro de comunicação', 'Não foi possível contactar o servidor.');
+        }).always(function () {
+            $btn.prop('disabled', false).html(originalIcon);
+        });
+    });
+
 
     $('#form-lote-novo-embalagem').on('change keyup', 'select, input', function () {
         calcularConsumoEmbalagem();

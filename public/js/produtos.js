@@ -161,9 +161,19 @@ $(document).ready(function () {
         "responsive": true,
         "columns": [
             { "data": "prod_situacao", "className": "text-center", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
-            { "data": "prod_codigo_interno", "className": "text-center" }, { "data": "prod_descricao" }, { "data": "prod_tipo", "className": "text-center" },
-            { "data": "prod_tipo_embalagem", "className": "text-center" }, { "data": "prod_peso_embalagem", "className": "text-center" },
-            { "data": "prod_codigo", "orderable": false, "className": "text-center", "render": (data) => `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>` }
+            { "data": "prod_codigo_interno", "className": "text-center" },
+            { "data": "prod_descricao" },
+            { "data": "prod_tipo", "className": "text-center" },
+            { "data": "prod_tipo_embalagem", "className": "text-center" },
+            { "data": "prod_peso_embalagem", "className": "text-center" },
+            {
+                "data": "prod_codigo",
+                "orderable": false,
+                "className": "text-center ",
+                "render": (data) =>
+                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> 
+                     <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>`
+            }
         ],
         //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }

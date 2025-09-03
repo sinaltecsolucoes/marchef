@@ -50,6 +50,7 @@ $(document).ready(function () {
 
     // Abrir modal para EDITAR
     $('#tabela-templates').on('click', '.btn-editar-template', function () {
+        
         const id = $(this).data('id');
         $.ajax({
             url: 'ajax_router.php?action=getTemplate',
@@ -69,8 +70,10 @@ $(document).ready(function () {
             } else {
                 notificacaoErro('Erro ao Carregar', response.message);
             }
-        }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template.');
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.log('AJAX Fail Details:', textStatus, errorThrown, jqXHR.responseText);
+            // notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template.');
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template. Detalhes: ' + (jqXHR.responseText || 'Resposta vazia'));
         });
     });
 
@@ -128,5 +131,27 @@ $(document).ready(function () {
         }).always(function () {
             $button.prop('disabled', false);
         });
+    });
+
+    // Evento para ler o arquivo ZPL e preencher a textarea
+    $('#zpl_file_upload').on('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return; // Nenhum arquivo selecionado
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const content = e.target.result;
+            $('#template_conteudo_zpl').val(content); // Preenche a textarea com o conteúdo do arquivo
+            notificacaoSucesso('Sucesso!', 'Conteúdo do arquivo carregado na caixa de texto.');
+        };
+
+        reader.onerror = function () {
+            notificacaoErro('Erro!', 'Não foi possível ler o arquivo selecionado.');
+        };
+
+        reader.readAsText(file); // Lê o arquivo como texto
     });
 });

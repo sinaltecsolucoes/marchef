@@ -114,36 +114,65 @@ qtd-a-finalizar {
 * Ajustes de layouts para responsividade das telas
 */
 .card-custom .card-body .row {
-    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+    flex-wrap: wrap;
+    /* Permite que os itens quebrem para a próxima linha */
 }
 
 .card-custom .card-body .col-12 {
-    margin-bottom: 15px; /* Espaçamento consistente entre blocos */
+    margin-bottom: 15px;
+    /* Espaçamento consistente entre blocos */
 }
 
 .card-custom .card-body .d-flex {
-    align-items: center; /* Alinha verticalmente os itens */
+    align-items: center;
+    /* Alinha verticalmente os itens */
 }
 
 @media (max-width: 768px) {
     .card-custom .card-body .row {
-        flex-direction: column; /* Empilha todas as colunas */
+        flex-direction: column;
+        /* Empilha todas as colunas */
     }
+
     .card-custom .card-body .col-md-3 {
-        width: 100%; /* Cada coluna ocupa 100% da largura */
-        margin-bottom: 15px; /* Espaçamento entre os blocos empilhados */
+        width: 100%;
+        /* Cada coluna ocupa 100% da largura */
+        margin-bottom: 15px;
+        /* Espaçamento entre os blocos empilhados */
     }
+
     .card-custom .card-body .d-flex {
-        flex-direction: column; /* Empilha label e input/rádios verticalmente */
-        align-items: flex-start; /* Alinha à esquerda */
+        flex-direction: column;
+        /* Empilha label e input/rádios verticalmente */
+        align-items: flex-start;
+        /* Alinha à esquerda */
     }
+
     .card-custom .card-body .form-label {
-        margin-bottom: 5px; /* Espaço entre label e input/rádios */
+        margin-bottom: 5px;
+        /* Espaço entre label e input/rádios */
     }
+
     .card-custom .card-body .form-check {
-        margin-right: 0; /* Remove margem excessiva dos rádios */
+        margin-right: 0;
+        /* Remove margem excessiva dos rádios */
     }
+
     .card-custom .card-body .btn {
-        width: 100%; /* Botão ocupa toda a largura em telas menores */
+        width: 100%;
+        /* Botão ocupa toda a largura em telas menores */
     }
+}
+
+/* Garante que a coluna de ações nas tabelas do modal de lote tenha espaço suficiente */
+.coluna-acoes-lote {
+    min-width: 230px;
+    /* Ajuste este valor se necessário */
+    white-space: nowrap;
+    /* Impede que os botões quebrem a linha */
+}
+
+/* Adiciona um pequeno espaçamento entre os botões de ação */
+.coluna-acoes-lote .btn {
+    margin-right: 4px;
 }
