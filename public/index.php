@@ -134,7 +134,10 @@ try {
         'backup' => 'backup/pagina_backup.php',
         'carregamentos' => 'carregamentos/lista_carregamentos.php',
         'carregamento_detalhes' => 'carregamentos/detalhes_carregamento.php',
-        'estoque' => 'estoque/lista_estoque.php'
+        'estoque' => 'estoque/lista_estoque.php',
+        'estoque_camaras' => 'estoque/lista_camaras.php',
+        'estoque_enderecos' => 'estoque/lista_enderecos.php',
+        'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php',
     ];
 
     $pageType = '';

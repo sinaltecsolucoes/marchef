@@ -176,3 +176,15 @@ qtd-a-finalizar {
 .coluna-acoes-lote .btn {
     margin-right: 4px;
 }
+
+/* Estilos para o submenu aninhado no navbar */
+.dropdown-menu .dropdown-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -7px;
+}
+
+.dropdown-menu>li:hover>.dropdown-submenu {
+    display: block;
+}

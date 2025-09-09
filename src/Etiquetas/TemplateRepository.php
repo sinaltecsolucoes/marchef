@@ -57,19 +57,27 @@ class TemplateRepository
     /**
      * Busca um único template pelo seu ID.
      */
+    /* public function find(int $id): ?array
+     {
+         // LOG 3: Verificar se a função foi chamada e com qual ID
+         error_log("DEBUG: Entrando em TemplateRepository->find() com o ID: " . $id);
+
+         $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_templates WHERE template_id = :id");
+         $stmt->execute([':id' => $id]);
+         $result = $stmt->fetch(PDO::FETCH_ASSOC);
+         return $result ?: null;
+
+         // LOG 4: Verificar o que o banco de dados retornou
+         error_log("DEBUG: Resultado da consulta ao banco: " . print_r($result, true));
+
+     }*/
+
     public function find(int $id): ?array
     {
-        // LOG 3: Verificar se a função foi chamada e com qual ID
-        error_log("DEBUG: Entrando em TemplateRepository->find() com o ID: " . $id);
-
         $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_templates WHERE template_id = :id");
         $stmt->execute([':id' => $id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
-
-        // LOG 4: Verificar o que o banco de dados retornou
-        error_log("DEBUG: Resultado da consulta ao banco: " . print_r($result, true));
-
     }
 
     /**
@@ -88,9 +96,15 @@ class TemplateRepository
         $zplContent = $data['template_conteudo_zpl']; // Padrão: usa o conteúdo da textarea
 
         // Se um arquivo foi enviado com sucesso, usa o conteúdo dele
+        /* if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
+             $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
+             $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+         }*/
+
         if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
             $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
             $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+            $zplContent = str_replace("\0", '', $zplContent);
         }
 
         $sql = "INSERT INTO tbl_etiqueta_templates (template_nome, template_descricao, template_conteudo_zpl) VALUES (:nome, :descricao, :zpl)";
@@ -130,9 +144,15 @@ class TemplateRepository
         $zplContent = $data['template_conteudo_zpl']; // Padrão: usa o conteúdo da textarea
 
         // Se um NOVO arquivo foi enviado, substitui o conteúdo
+        /* if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
+             $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
+             $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+         }*/
+
         if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
             $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
             $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+            $zplContent = str_replace("\0", '', $zplContent); // <-- LINHA ADICIONADA
         }
 
         $sql = "UPDATE tbl_etiqueta_templates SET template_nome = :nome, template_descricao = :descricao, template_conteudo_zpl = :zpl WHERE template_id = :id";

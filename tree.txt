@@ -1,0 +1,263 @@
+
+ÃÄÄÄconfig
+³       database.php
+³       install.lock
+³       schema.sql
+³       
+ÃÄÄÄpublic
+³   ³   .htaccess
+³   ³   ajax_router.php
+³   ³   api.php
+³   ³   index.php
+³   ³   installer.php
+³   ³   installer_ajax.php
+³   ³   login.php
+³   ³   
+³   ÃÄÄÄbackups
+³   ³       backup-marchef-2025-08-12_16-21-22.sql
+³   ³       backup-marchef-2025-08-13_17-07-03.sql
+³   ³       backup-marchef-2025-08-15_02-06-32.sql
+³   ³       backup-marchef-2025-08-15_17-20-06.sql
+³   ³       backup-marchef-2025-08-15_23-11-35.sql
+³   ³       backup-marchef-2025-08-16_12-52-11.sql
+³   ³       backup-marchef-2025-08-17_02-14-49.sql
+³   ³       backup-marchef-2025-08-18_17-13-31.sql
+³   ³       backup-marchef-2025-08-19_16-54-46.sql
+³   ³       backup-marchef-2025-08-21_17-25-21.sql
+³   ³       backup-marchef-2025-08-23_20-53-51.sql
+³   ³       backup-marchef-2025-08-25_17-45-42.sql
+³   ³       backup-marchef-2025-08-26_00-16-39.sql
+³   ³       backup-marchef-2025-08-26_11-10-32.sql
+³   ³       backup-marchef-2025-08-26_15-14-41.sql
+³   ³       bkp_marchef_20250804_17_16_10.sql
+³   ³       bkp_marchef_20250806_14_35_18.sql
+³   ³       bkp_marchef_20250807_14_33_49.sql
+³   ³       bkp_marchef_20250807_17_11_11.sql
+³   ³       bkp_marchef_20250808_17_54_32.sql
+³   ³       bkp_marchef_20250809_12_37_32.sql
+³   ³       
+³   ÃÄÄÄcss
+³   ³       login.css
+³   ³       main.css
+³   ³       
+³   ÃÄÄÄimg
+³   ³   ³   download.jpg
+³   ³   ³   icone.ico
+³   ³   ³   icone_2.ico
+³   ³   ³   logo-grande.png
+³   ³   ³   logo-icone.png
+³   ³   ³   logo-texto-grande.png
+³   ³   ³   logo-texto.png
+³   ³   ³   logo_marchef.png
+³   ³   ³   PlanoFundo.jpg
+³   ³   ³   
+³   ³   ÀÄÄÄlogo
+³   ³           logo_1754506597_logo_marchef.png
+³   ³           logo_1754508711_logo_marchef.png
+³   ³           logo_1754510298_logo_marchef.png
+³   ³           logo_1754511668_logo_marchef.png
+³   ³           
+³   ÃÄÄÄjs
+³   ³       app_config.js
+³   ³       app_notifications.js
+³   ³       auditoria.js
+³   ³       backup.js
+³   ³       carregamentos.js
+³   ³       configuracao_inicial.js
+³   ³       dashboard_admin.js
+³   ³       dashboard_gerente.js
+³   ³       dashboard_producao.js
+³   ³       detalhes_carregamento.js
+³   ³       entidades.js
+³   ³       enviar-dados-perfil.js
+³   ³       estoque.js
+³   ³       exibe-senha.js
+³   ³       lotes.js
+³   ³       lotes_novo.js
+³   ³       mascaras.js
+³   ³       permissoes.js
+³   ³       produtos.js
+³   ³       regras.js
+³   ³       templates.js
+³   ³       usuarios.js
+³   ³       
+³   ÃÄÄÄlibs
+³   ³   ³   datatables.css
+³   ³   ³   datatables.js
+³   ³   ³   datatables.min.css
+³   ³   ³   datatables.min.js
+³   ³   ³   
+³   ³   ÀÄÄÄDataTables-1.10.23
+³   ³       ³   Portuguese-Brasil.json
+³   ³       ³   
+³   ³       ÃÄÄÄcss
+³   ³       ³       dataTables.bootstrap.css
+³   ³       ³       dataTables.bootstrap.min.css
+³   ³       ³       dataTables.bootstrap4.css
+³   ³       ³       dataTables.bootstrap4.min.css
+³   ³       ³       dataTables.foundation.css
+³   ³       ³       dataTables.foundation.min.css
+³   ³       ³       dataTables.jqueryui.css
+³   ³       ³       dataTables.jqueryui.min.css
+³   ³       ³       dataTables.semanticui.css
+³   ³       ³       dataTables.semanticui.min.css
+³   ³       ³       jquery.dataTables.css
+³   ³       ³       jquery.dataTables.min.css
+³   ³       ³       
+³   ³       ÃÄÄÄimages
+³   ³       ³       sort_asc.png
+³   ³       ³       sort_asc_disabled.png
+³   ³       ³       sort_both.png
+³   ³       ³       sort_desc.png
+³   ³       ³       sort_desc_disabled.png
+³   ³       ³       
+³   ³       ÀÄÄÄjs
+³   ³               dataTables.bootstrap.js
+³   ³               dataTables.bootstrap.min.js
+³   ³               dataTables.bootstrap4.js
+³   ³               dataTables.bootstrap4.min.js
+³   ³               dataTables.foundation.js
+³   ³               dataTables.foundation.min.js
+³   ³               dataTables.jqueryui.js
+³   ³               dataTables.jqueryui.min.js
+³   ³               dataTables.semanticui.js
+³   ³               dataTables.semanticui.min.js
+³   ³               jquery.dataTables.js
+³   ³               jquery.dataTables.min.js
+³   ³               
+³   ÃÄÄÄtemp_labels
+³   ³       INTCR0151-025425-03103854.pdf
+³   ³       PEDTCR274-025425-03103854.pdf
+³   ³       PUDCR0015-025425-03103854.pdf
+³   ³       
+³   ÀÄÄÄuploads
+³       ÀÄÄÄcarregamentos
+³           ³   fila_39_68a8b9f184f997.63015580.jpg
+³           ³   fila_41_68a8ba5c972320.96001388.jpg
+³           ³   fila_43_68a8c8a2efadf2.61829400.jpg
+³           ³   fila_45_68a8c95a3c20e6.44133444.jpg
+³           ³   fila_45_68aaa2f90b3d07.86639131.jpg
+³           ³   fila_46_68a8c985d7c486.30244099.jpg
+³           ³   fila_47_68a9cdc11892e8.38523384.jpg
+³           ³   
+³           ÃÄÄÄ0001082025
+³           ³       oe0001082025_fila1_foto1.jpg
+³           ³       oe0001082025_fila1_foto2.jpg
+³           ³       oe0001082025_fila1_foto3.jpg
+³           ³       oe0001082025_fila2_foto1.jpg
+³           ³       oe0001082025_fila2_foto2.jpg
+³           ³       oe0001082025_fila2_foto3.jpg
+³           ³       oe0001082025_fila3_foto1.jpg
+³           ³       
+³           ÃÄÄÄ0006082025
+³           ³       oe0006082025_fila1.jpg
+³           ³       oe0006082025_fila2.jpg
+³           ³       oe0006082025_fila3.jpg
+³           ³       
+³           ÃÄÄÄ0007082025
+³           ³       oe0007082025_fila1.jpg
+³           ³       oe0007082025_fila2.jpg
+³           ³       
+³           ÀÄÄÄ24
+ÃÄÄÄscripts
+³       criar_admin_inicial.php
+³       LabelServices.txt
+³       
+ÃÄÄÄsrc
+³   ³   bootstrap.php
+³   ³   
+³   ÃÄÄÄAuth
+³   ³       AuthService.php
+³   ³       
+³   ÃÄÄÄCarregamentos
+³   ³       CarregamentoRepository.php
+³   ³       
+³   ÃÄÄÄConfiguracao
+³   ³       ConfiguracaoService.php
+³   ³       
+³   ÃÄÄÄCore
+³   ³       AuditLoggerService.php
+³   ³       AuditLogRepository.php
+³   ³       BackupService.php
+³   ³       Database.php
+³   ³       error_handler.php
+³   ³       helpers.php
+³   ³       
+³   ÃÄÄÄEntidades
+³   ³       EntidadeRepository.php
+³   ³       
+³   ÃÄÄÄEtiquetas
+³   ³       RegraRepository.php
+³   ³       TemplateRepository.php
+³   ³       
+³   ÃÄÄÄLabels
+³   ³       LabelService.php
+³   ³       
+³   ÃÄÄÄLotes
+³   ³       LoteNovoRepository.php
+³   ³       LoteRepository.php
+³   ³       
+³   ÃÄÄÄPermissions
+³   ³       PermissionRepository.php
+³   ³       
+³   ÃÄÄÄProdutos
+³   ³       ProdutoRepository.php
+³   ³       
+³   ÀÄÄÄUsuarios
+³           UsuarioRepository.php
+³           
+ÃÄÄÄtemplates
+³       etiqueta_padrao.prn
+³       
+ÀÄÄÄviews
+    ÃÄÄÄauditoria
+    ³       visualizar_logs.php
+    ³       
+    ÃÄÄÄauth
+    ³       login_view.php
+    ³       
+    ÃÄÄÄbackup
+    ³       pagina_backup.php
+    ³       
+    ÃÄÄÄcarregamentos
+    ³       detalhes_carregamento.php
+    ³       lista_carregamentos.php
+    ³       
+    ÃÄÄÄconfiguracao
+    ³       configuracao_inicial.php
+    ³       
+    ÃÄÄÄentidades
+    ³       lista_entidades.php
+    ³       
+    ÃÄÄÄestoque
+    ³       lista_estoque.php
+    ³       
+    ÃÄÄÄetiquetas
+    ³       lista_regras.php
+    ³       lista_templates.php
+    ³       
+    ÃÄÄÄhome
+    ³       home_admin.php
+    ³       home_gerente.php
+    ³       home_producao.php
+    ³       
+    ÃÄÄÄlayouts
+    ³       footer_installer.php
+    ³       header_installer.php
+    ³       main.php
+    ³       
+    ÃÄÄÄlotes
+    ³       lista_lotes.php
+    ³       
+    ÃÄÄÄlotes_novo
+    ³       lista_lotes_novo.php
+    ³       
+    ÃÄÄÄpermissoes
+    ³       gerenciar.php
+    ³       
+    ÃÄÄÄprodutos
+    ³       lista_produtos.php
+    ³       
+    ÀÄÄÄusuarios
+            lista_usuarios.php
+            

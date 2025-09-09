@@ -180,8 +180,8 @@ class LabelService
             '{linha_cliente_cnpj_ie}' => $linhaCnpjIe,
 
             // Códigos de Barras
-            '{dados_barras_1d}' => $dadosBarras1D ?? '',
-            '{dados_qrcode_gs1}' => $dadosQrCode ?? ''
+            '{00000000000000}' => $dadosBarras1D ?? '',
+            '{00000000000001}' => $dadosQrCode ?? ''
         ];
 
         return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);

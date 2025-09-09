@@ -16,6 +16,8 @@
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
 
 </head>
 
@@ -56,10 +58,35 @@
                             unset($paginasParaCadastro['carregamento_detalhes']);
                             unset($paginasParaCadastro['lotes_producao']);
                             unset($paginasParaCadastro['lotes_embalagem']);
+                            unset($paginasParaCadastro['estoque_camaras']);
+                            unset($paginasParaCadastro['estoque_enderecos']);
+                            unset($paginasParaCadastro['visao_estoque_enderecos']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
                             ?>
+
+                            <?php // --- SUBMENU DE ESTOQUE ---
+                            $paginasEstoque = ['estoque_camaras', 'estoque_enderecos'];
+                            if (count(array_intersect($paginasEstoque, $paginasPermitidasUsuario)) > 0):
+                                ?>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li class="dropend">
+                                    <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">Estoque</a>
+                                    <ul class="dropdown-menu dropdown-submenu">
+                                        <?php if (in_array('estoque_camaras', $paginasPermitidasUsuario)): ?>
+                                            <li><a class="dropdown-item" href="index.php?page=estoque_camaras">Gerenciar
+                                                    Câmaras</a></li>
+                                        <?php endif; ?>
+                                        <?php if (in_array('estoque_enderecos', $paginasPermitidasUsuario)): ?>
+                                            <li><a class="dropdown-item" href="index.php?page=estoque_enderecos">Gerenciar
+                                                    Endereços</a></li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </li>
+                            <?php endif; ?>
                         </ul>
                     </li>
 
@@ -95,6 +122,10 @@
                             <ul class="dropdown-menu">
                                 <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('visao_estoque_enderecos', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
+                                            Endereços</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -246,6 +277,18 @@
         <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
     <?php endif; ?>
 
+    <?php if ($paginaAtual === 'estoque_camaras'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/camaras.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'estoque_enderecos'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/enderecos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'visao_estoque_enderecos'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/visao_estoque_enderecos.js"></script>
+    <?php endif; ?>
+
     <?php if ($paginaAtual === 'home'): ?>
         <?php if ($_SESSION['tipoUsuario'] === 'Admin'): ?>
             <script src="<?php echo BASE_URL; ?>/js/dashboard_admin.js"></script>
@@ -256,6 +299,28 @@
         <?php endif; ?>
     <?php endif; ?>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll('.dropdown-menu .dropdown-toggle').forEach(function (element) {
+                element.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    let nextEl = this.nextElementSibling;
+                    if (nextEl && nextEl.classList.contains('dropdown-menu')) {
+                        // Fecha outros submenus abertos no mesmo nível
+                        let parentMenu = this.closest('.dropdown-menu');
+                        parentMenu.querySelectorAll(':scope .dropdown-menu.show').forEach(function (submenu) {
+                            if (submenu !== nextEl) {
+                                submenu.classList.remove('show');
+                            }
+                        });
+                        nextEl.classList.toggle('show');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 
 </html>

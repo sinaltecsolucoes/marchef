@@ -46,15 +46,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderQuickActions() {
-        // (código do passo anterior, sem alterações)
         return `
             <div class="col-12 mt-4 mb-4">
                 <h3 class="border-bottom pb-2">Ações Rápidas</h3>
             </div>
             <div class="col-xl-3 col-md-6 mb-4">
-                <a href="${BASE_URL}/index.php?page=lotes" class="text-decoration-none text-dark">
+                <a href="${BASE_URL}/index.php?page=lotes_producao" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-boxes-stacked fa-3x text-primary mb-3"></i>
+                        <i class="fas fa-boxes fa-3x text-primary mb-3"></i>
                         <p class="card-text fs-5">Novo Lote de Produção</p>
                     </div></div>
                 </a>
@@ -62,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="col-xl-3 col-md-6 mb-4">
                 <a href="${BASE_URL}/index.php?page=carregamentos" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-truck-fast fa-3x text-success mb-3"></i>
+                        <i class="fas fa-truck fa-3x text-success mb-3"></i>
                         <p class="card-text fs-5">Iniciar Novo Carregamento</p>
                     </div></div>
                 </a>
@@ -70,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="col-xl-3 col-md-6 mb-4">
                 <a href="${BASE_URL}/index.php?page=usuarios" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-user-plus fa-3x text-info mb-3"></i>
+                        <i class="fas fa-user-plus fa-3x text-info mb-3"></i>
                         <p class="card-text fs-5">Cadastrar Usuário</p>
                     </div></div>
                 </a>
@@ -78,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="col-xl-3 col-md-6 mb-4">
                 <a href="${BASE_URL}/index.php?page=produtos" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-box-open fa-3x text-warning mb-3"></i>
+                        <i class="fas fa-box-open fa-3x text-warning mb-3"></i>
                         <p class="card-text fs-5">Registrar Produto</p>
                     </div></div>
                 </a>
@@ -106,6 +105,24 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
     }
+
+    function renderResumoEstoqueCard() {
+        return `
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Resumo do Estoque por Câmara</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="painel-resumo-estoque">
+                            <p class="text-center text-muted">A carregar dados do estoque...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
 
     // NOVA FUNÇÃO: Desenha o gráfico usando Chart.js
     function renderLotesChart(chartData) {
@@ -143,6 +160,50 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function carregarResumoEstoque() {
+        const painel = $('#painel-resumo-estoque');
+
+        $.ajax({
+            url: 'ajax_router.php?action=getKpiEstoquePorCamara',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                painel.empty(); // Limpa a mensagem de "carregando"
+                if (response.success && response.data.length > 0) {
+                    let tableHtml = '<table class="table table-sm table-hover">';
+                    tableHtml += `
+                    <thead class="table-light">
+                        <tr>
+                            <th>Câmara</th>
+                            <th class="text-end">Total Caixas</th>
+                            <th class="text-end">Total Quilos (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                    response.data.forEach(function (camara) {
+                        tableHtml += `
+                        <tr>
+                            <td>${camara.camara_nome}</td>
+                            <td class="text-end">${parseFloat(camara.total_caixas).toFixed(3)}</td>
+                            <td class="text-end">${parseFloat(camara.total_quilos).toFixed(3)}</td>
+                        </tr>
+                    `;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    painel.html(tableHtml);
+
+                } else {
+                    painel.html('<p class="text-center text-muted">Nenhum item alocado no estoque para exibir.</p>');
+                }
+            },
+            error: function () {
+                painel.html('<p class="text-center text-danger">Não foi possível carregar o resumo do estoque.</p>');
+            }
+        });
+    }
+
     // --- Função Principal de Orquestração ---
 
     async function initDashboard() {
@@ -170,10 +231,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const chartData = results[4].data; // Os dados do gráfico estão no 5º resultado
 
             // Renderiza todos os componentes HTML de uma vez
-            dashboardContent.innerHTML = renderKpiCards(kpiData) + renderChartContainer() + renderQuickActions();
+            dashboardContent.innerHTML = renderKpiCards(kpiData) + renderResumoEstoqueCard() + renderChartContainer() + renderQuickActions();
+
 
             // IMPORTANTE: Só podemos renderizar o gráfico DEPOIS que o <canvas> já existe na página
             renderLotesChart(chartData);
+            carregarResumoEstoque();
 
         } catch (error) {
             console.error('Erro ao carregar dados do dashboard:', error);

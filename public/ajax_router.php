@@ -33,6 +33,8 @@ use App\Core\AuditLogRepository;
 use App\Core\BackupService;
 use App\Carregamentos\CarregamentoRepository;
 use App\Lotes\LoteNovoRepository;
+use App\Estoque\CamaraRepository;
+use App\Estoque\EnderecoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -65,6 +67,8 @@ try {
     $regraRepo = new RegraRepository($pdo); // Cria a instância do repositório para Regras das Etiquetas
     $auditLogRepo = new AuditLogRepository($pdo); // Cria a instância do repositório para Auditoria de Logs
     $carregamentoRepo = new CarregamentoRepository($pdo); // Cria a instância do repositório para Carregamentos
+    $camaraRepo = new CamaraRepository($pdo);// Cria a instância do repositório para Câmaras
+    $enderecoRepo = new EnderecoRepository($pdo);// Cria a instância do repositório para Endereçamento das Câmaras
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -92,6 +96,9 @@ switch ($action) {
         break;
     case 'getProdutoOptions':
         getProdutoOptions($produtoRepo);
+        break;
+    case 'getSecundariosPorPrimario':
+        getSecundariosPorPrimario($produtoRepo);
         break;
 
     // --- ROTAS DE ENTIDADES ---
@@ -178,7 +185,7 @@ switch ($action) {
         getLoteItem($loteRepo);
         break;
     case 'getItensDeEstoqueOptions':
-        getItensDeEstoqueOptions($loteRepo); // Usa o LoteRepository
+        getItensDeEstoqueOptions($loteRepo);
         break;
     case 'getLotesPorProduto':
         getLotesPorProduto($loteRepo);
@@ -209,9 +216,6 @@ switch ($action) {
         break;
     case 'adicionarItemEmbalagemNovo':
         adicionarItemEmbalagemNovo($loteNovoRepo);
-        break;
-    case 'getSecundariosPorPrimario':
-        getSecundariosPorPrimario($produtoRepo); // Usamos o ProdutoRepository
         break;
     case 'getItensEmbalagemNovo':
         getItensEmbalagemNovo($loteNovoRepo);
@@ -257,9 +261,6 @@ switch ($action) {
         break;
 
     // --- ROTA DE ETIQUETAS ---  
-    /* case 'imprimirEtiquetaItem':
-         imprimirEtiquetaItem($pdo); // A função precisa da conexão PDO
-         break; */
     case 'imprimirEtiquetaLoteItem':
         imprimirEtiquetaLoteItem($pdo);
         break;
@@ -397,6 +398,9 @@ switch ($action) {
     case 'getGraficoLotesFinalizados':
         getGraficoLotesFinalizados($loteNovoRepo);
         break;
+    case 'getKpiEstoquePorCamara':
+        getKpiEstoquePorCamara($enderecoRepo);
+        break;
 
     // --- ROTAS PARA OS PAINÉIS DO DASHBOARD GERENCIAL ---
     case 'getPainelLotesAtivos':
@@ -415,6 +419,50 @@ switch ($action) {
     case 'getPainelProducaoLotesFinalizados':
         getPainelProducaoLotesFinalizados($loteNovoRepo);
         break;
+
+    // --- ROTAS DE ESTOQUE (CÂMARAS) ---
+    case 'listarCamaras':
+        listarCamaras($camaraRepo);
+        break;
+    case 'getCamara':
+        getCamara($camaraRepo);
+        break;
+    case 'salvarCamara':
+        salvarCamara($camaraRepo);
+        break;
+    case 'excluirCamara':
+        excluirCamara($camaraRepo);
+        break;
+
+    // --- ROTAS DE ESTOQUE (ENDEREÇOS) ---
+    case 'getCamaraOptions': // Usado pelo dropdown
+        getCamaraOptions($enderecoRepo);
+        break;
+    case 'listarEnderecosCamaras':
+        listarEnderecosCamaras($enderecoRepo);
+        break;
+    case 'getEnderecoCamaras':
+        getEnderecoCamaras($enderecoRepo);
+        break;
+    case 'salvarEnderecoCamaras':
+        salvarEnderecoCamaras($enderecoRepo);
+        break;
+    case 'excluirEnderecoCamaras':
+        excluirEnderecoCamaras($enderecoRepo);
+        break;
+    case 'alocarItemEndereco':
+        alocarItemEndereco($enderecoRepo);
+        break;
+    case 'desalocarItemEndereco':
+        desalocarItemEndereco($enderecoRepo);
+        break;
+    case 'getItensNaoAlocados':
+        getItensNaoAlocados($enderecoRepo);
+        break;
+    case 'getVisaoEstoqueHierarquico':
+        getVisaoEstoqueHierarquico($enderecoRepo);
+        break;
+
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -442,6 +490,7 @@ function getProduto(ProdutoRepository $repo)
         echo json_encode(['success' => false, 'message' => 'Produto não encontrado.']);
     }
 }
+
 function salvarProduto(ProdutoRepository $repo)
 {
     $id = filter_input(INPUT_POST, 'prod_codigo', FILTER_VALIDATE_INT);
@@ -492,6 +541,7 @@ function getProdutoOptions(ProdutoRepository $repo)
     $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
     echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
 }
+
 function getSecundariosPorPrimario(ProdutoRepository $repo)
 {
     // Usamos filter_input para segurança
@@ -1172,93 +1222,6 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
 }
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
-/* function imprimirEtiquetaItem(PDO $pdo)
-{
-    // Validação dos dados de entrada
-    $loteItemId = filter_input(INPUT_POST, 'loteItemId', FILTER_VALIDATE_INT);
-    // O cliente pode não ser selecionado, então permitimos nulo
-    $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
-    if ($clienteId === false)
-        $clienteId = null; // Garante que seja nulo se não for um inteiro válido
-
-    if (!$loteItemId) {
-        echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
-        return;
-    }
-
-
-    // Validação básica dos dados de entrada
-    if (!isset($_POST['loteItemId']) || empty($_POST['loteItemId'])) {
-        echo json_encode(['success' => false, 'message' => 'ID do item do lote não fornecido.']);
-        return; // Usamos return em vez de exit
-    }
-
-    // $loteItemId = (int)$_POST['loteItemId'];
-
-    try {
-        // Agora usamos o 'use' do topo, fica mais limpo
-        $labelService = new LabelService($pdo);
-
-        // Gera o código ZPL usando o serviço
-        //$zpl = $labelService->gerarZplParaItem($loteItemId);
-
-        //Recebe o array com 'zpl' e 'filename'
-        //  $labelData = $labelService->gerarZplParaItem($loteItemId);
-
-        // A chamada da função agora inclui o ID do cliente
-        $labelData = $labelService->gerarZplParaItem($loteItemId, $clienteId);
-
-
-        //if ($zpl === null) {
-        if ($labelData === null) {
-            echo json_encode(['success' => false, 'message' => 'Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.']);
-            return;
-        }
-
-        // Extrai os dados do array
-        $zpl = $labelData['zpl'];
-        $filename = $labelData['filename'];
-
-        // --- Interação com a API da Labelary para converter ZPL em PDF ---
-        // $curl = curl_init('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/');
-        // Esta é a linha corrigida
-        $curl = curl_init('http://api.labelary.com/v1/printers/12dpmm/labels/4x7/0/');
-        curl_setopt($curl, CURLOPT_POST, true);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $zpl);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/pdf']);
-
-        $pdfContent = curl_exec($curl);
-
-        if (curl_getinfo($curl, CURLINFO_HTTP_CODE) != 200) {
-            echo json_encode(['success' => false, 'message' => 'Erro da API Labelary: ' . $pdfContent]);
-            curl_close($curl);
-            return;
-        }
-
-        curl_close($curl);
-
-        // --- Salvar o PDF temporariamente no servidor ---
-        $tempDir = __DIR__ . '/temp_labels/';
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0775, true);
-        }
-
-        //$filename = 'etiqueta-' . uniqid() . '.pdf';
-
-        $filePath = $tempDir . $filename;
-
-        file_put_contents($filePath, $pdfContent);
-
-        $publicUrl = 'temp_labels/' . $filename;
-
-        echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
-    }
-} */
-
-// /public/ajax_router.php
 
 /**
  * Função de controle universal para impressão de etiquetas de lote.
@@ -1329,42 +1292,30 @@ function listarTemplates(TemplateRepository $repo)
     echo json_encode($repo->findAllForDataTable($_POST));
 }
 
-/* function getTemplate(TemplateRepository $repo)
-{
-    // LOG 1: Verificar se a função foi chamada
-    error_log("DEBUG: Função getTemplate foi acionada.");
-
-    // LOG 2: Verificar os dados recebidos via POST
-    error_log("DEBUG: Dados recebidos (POST): " . print_r($_POST, true));
-
-    $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
-    if (!$id) {
-        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
-        return;
-    }
-    $template = $repo->find($id);
-    if ($template) {
-        echo json_encode(['success' => true, 'data' => $template]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Template não encontrado.']);
-    }
-}*/
-
 function getTemplate(TemplateRepository $repo)
 {
     try {
         $id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
         if (!$id) {
-            throw new Exception("ID do template inválido.");
+            echo json_encode(['success' => false, 'message' => 'Erro: ID de template inválido ou não fornecido.']);
+            return;
         }
+
+        // Tenta buscar o template. Se houver um erro de PDO aqui, o 'catch' irá pegá-lo.
         $template = $repo->find($id);
-        if ($template === null) {
-            throw new Exception("Template não encontrado.");
+
+        if ($template) {
+            echo json_encode(['success' => true, 'data' => $template]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Template com ID ' . htmlspecialchars($id) . ' não foi encontrado.']);
         }
-        echo json_encode(['success' => true, 'data' => $template]);
-    } catch (Exception $e) {
-        error_log("Erro em getTemplate: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+
+    } catch (PDOException $e) {
+        // Se QUALQUER erro de banco de dados ocorrer no bloco 'try', ele será capturado aqui.
+        error_log("ERRO FATAL EM getTemplate: " . $e->getMessage()); // Grava o erro real e detalhado no log do servidor.
+
+        // E envia uma mensagem de erro JSON clara e útil para o frontend.
+        echo json_encode(['success' => false, 'message' => 'Erro Crítico de Banco de Dados: ' . $e->getMessage()]);
     }
 }
 
@@ -1543,7 +1494,6 @@ function getProximoNumeroCarregamento(CarregamentoRepository $repo)
 function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
 {
     // A lógica de salvar (criar ou editar) já está a ser preparada no repositório.
-    // Por agora, vamos focar na criação.
     try {
         $newId = $repo->createHeader($_POST, $userId);
         echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamento_id' => $newId]);
@@ -1709,7 +1659,6 @@ function getFilaDetalhes(CarregamentoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-
 
 function atualizarFilaComposta(CarregamentoRepository $repo)
 {
@@ -1915,6 +1864,16 @@ function getPainelCarregamentosAbertos(CarregamentoRepository $repo)
     }
 }
 
+function getKpiEstoquePorCamara(EnderecoRepository $repo)
+{
+    try {
+        $resumo = $repo->getResumoEstoquePorCamara();
+        echo json_encode(['success' => true, 'data' => $resumo]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 // --- FUNÇÃO DE CONTROLE PARA O PAINEL DE PRODUÇÃO ---
 function getPainelProducaoLotes(LoteNovoRepository $repo)
 {
@@ -1933,6 +1892,196 @@ function getPainelProducaoLotesFinalizados(LoteNovoRepository $repo)
         // Busca os 5 lotes finalizados mais recentes
         $lotes = $repo->findRecentlyFinishedLots(5);
         echo json_encode(['success' => true, 'data' => $lotes]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA ESTOQUE (CÂMARAS) ---
+function listarCamaras(CamaraRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getCamara(CamaraRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'camara_id', FILTER_VALIDATE_INT);
+    $data = $id ? $repo->find($id) : null;
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
+function salvarCamara(CamaraRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'camara_id', FILTER_VALIDATE_INT);
+    try {
+        if ($id) {
+            $repo->update($id, $_POST);
+            $message = 'Câmara atualizada com sucesso!';
+        } else {
+            $repo->create($_POST);
+            $message = 'Câmara cadastrada com sucesso!';
+        }
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirCamara(CamaraRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'camara_id', FILTER_VALIDATE_INT);
+    try {
+        if ($id && $repo->delete($id)) {
+            echo json_encode(['success' => true, 'message' => 'Câmara excluída com sucesso!']);
+        } else {
+            throw new Exception('Câmara não encontrada.');
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir: ' . $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÃO DE CONTROLE PARA ESTOQUE (ENDEREÇOS) ---
+function getCamaraOptions(EnderecoRepository $repo)
+{
+    echo json_encode(['success' => true, 'data' => $repo->getCamaraOptions()]);
+}
+
+function listarEnderecosCamaras(EnderecoRepository $repo)
+{
+    $camaraId = filter_input(INPUT_POST, 'camara_id', FILTER_VALIDATE_INT);
+    if (!$camaraId) {
+        echo json_encode(["draw" => 1, "recordsTotal" => 0, "recordsFiltered" => 0, "data" => []]);
+        return;
+    }
+    echo json_encode($repo->findAllForDataTable($camaraId, $_POST));
+}
+
+function getEnderecoCamaras(EnderecoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+    $data = $id ? $repo->find($id) : null;
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
+function salvarEnderecoCamaras(EnderecoRepository $repo)
+{
+    try {
+        $repo->save($_POST);
+        echo json_encode(['success' => true, 'message' => 'Endereço salvo com sucesso!']);
+    } catch (Exception $e) {
+        // --- LÓGICA PARA TRATAR A DUPLICATA ---
+        $message = $e->getMessage();
+        if (strpos($message, 'DUPLICATE_ENTRY:') === 0) {
+            $parts = explode(':', $message);
+            $existingId = (int) $parts[1];
+            echo json_encode([
+                'success' => false,
+                'error_type' => 'duplicate_entry',
+                'message' => 'Este endereço já está cadastrado.',
+                'existing_id' => $existingId
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => $message]);
+        }
+        // --- FIM DA LÓGICA ---
+    }
+}
+
+function excluirEnderecoCamaras(EnderecoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+    try {
+        if ($id && $repo->delete($id)) {
+            echo json_encode(['success' => true, 'message' => 'Endereço excluído com sucesso!']);
+        } else {
+            throw new Exception('Endereço não encontrado.');
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao excluir: ' . $e->getMessage()]);
+    }
+}
+
+/* function alocarItemEndereco(EnderecoRepository $repo)
+{
+    try {
+        // Recebe os IDs do aplicativo Android (ou do nosso modal de teste)
+        $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+        $usuarioId = $_SESSION['codUsuario'] ?? null; // Pega o usuário da sessão
+
+        if (!$enderecoId || !$loteItemId || !$usuarioId) {
+            throw new Exception("Dados insuficientes para alocação (endereço, item e usuário são obrigatórios).");
+        }
+
+        if ($repo->alocarItem($enderecoId, $loteItemId, $usuarioId)) {
+            echo json_encode(['success' => true, 'message' => 'Item alocado com sucesso!']);
+        } else {
+            throw new Exception('Não foi possível alocar o item.');
+        }
+
+    } catch (Exception $e) {
+        // Captura erros de negócio (ex: "Endereço já ocupado") e envia para o app.
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}*/
+
+function alocarItemEndereco(EnderecoRepository $repo)
+{
+    try {
+        $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
+        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT); // <-- NOVO
+        $usuarioId = $_SESSION['codUsuario'] ?? null;
+
+        if (!$enderecoId || !$loteItemId || !$quantidade || !$usuarioId) { // <-- NOVO
+            throw new Exception("Dados insuficientes (endereço, item, quantidade e usuário são obrigatórios).");
+        }
+
+        if ($repo->alocarItem($enderecoId, $loteItemId, $quantidade, $usuarioId)) { // <-- NOVO
+            echo json_encode(['success' => true, 'message' => 'Item alocado com sucesso!']);
+        } else {
+            throw new Exception('Não foi possível alocar o item.');
+        }
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+function desalocarItemEndereco(EnderecoRepository $repo)
+{
+    try {
+        // Agora esperamos o ID da ALOCAÇÃO, não do endereço.
+        $alocacaoId = filter_input(INPUT_POST, 'alocacao_id', FILTER_VALIDATE_INT);
+        if (!$alocacaoId) {
+            throw new Exception("ID da alocação é obrigatório.");
+        }
+        if ($repo->desalocarItem($alocacaoId)) {
+            echo json_encode(['success' => true, 'message' => 'Item desalocado e endereço liberado com sucesso!']);
+        } else {
+            throw new Exception('Não foi possível desalocar o item.');
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getItensNaoAlocados(EnderecoRepository $repo)
+{
+    try {
+        $itens = $repo->findItensNaoAlocadosParaSelect();
+        // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
+        echo json_encode(['results' => $itens]);
+    } catch (Exception $e) {
+        echo json_encode(['results' => [], 'message' => $e->getMessage()]);
+    }
+}
+
+function getVisaoEstoqueHierarquico(EnderecoRepository $repo)
+{
+    try {
+        $data = $repo->getVisaoHierarquicaEstoque();
+        echo json_encode(['success' => true, 'data' => $data]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
