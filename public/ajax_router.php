@@ -35,6 +35,7 @@ use App\Carregamentos\CarregamentoRepository;
 use App\Lotes\LoteNovoRepository;
 use App\Estoque\CamaraRepository;
 use App\Estoque\EnderecoRepository;
+use App\OrdensExpedicao\OrdemExpedicaoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -69,6 +70,7 @@ try {
     $carregamentoRepo = new CarregamentoRepository($pdo); // Cria a instância do repositório para Carregamentos
     $camaraRepo = new CamaraRepository($pdo);// Cria a instância do repositório para Câmaras
     $enderecoRepo = new EnderecoRepository($pdo);// Cria a instância do repositório para Endereçamento das Câmaras
+    $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -463,6 +465,43 @@ switch ($action) {
         getVisaoEstoqueHierarquico($enderecoRepo);
         break;
 
+    // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---
+    case 'listarOrdensExpedicao':
+        listarOrdensExpedicao($ordemExpedicaoRepo);
+        break;
+    case 'getNextOrderNumber':
+        getNextOrderNumber($ordemExpedicaoRepo);
+        break;
+    case 'salvarOrdemExpedicaoHeader':
+        salvarOrdemExpedicaoHeader($ordemExpedicaoRepo, $_SESSION['codUsuario']);
+        break;
+    case 'getOrdemExpedicaoCompleta':
+        getOrdemExpedicaoCompleta($ordemExpedicaoRepo);
+        break;
+    case 'addPedidoClienteOrdem':
+        addPedidoClienteOrdem($ordemExpedicaoRepo);
+        break;
+    case 'listarEstoqueParaSelecao':
+        listarEstoqueParaSelecao($ordemExpedicaoRepo);
+        break;
+    case 'addItemPedidoOrdem':
+        addItemPedidoOrdem($ordemExpedicaoRepo);
+        break;
+    case 'getProdutosComEstoqueDisponivel':
+        getProdutosComEstoqueDisponivel($ordemExpedicaoRepo);
+        break;
+    case 'getLotesDisponiveisPorProduto':
+        getLotesDisponiveisPorProduto($ordemExpedicaoRepo);
+        break;
+    case 'getEnderecosDisponiveisPorLoteItem':
+        getEnderecosDisponiveisPorLoteItem($ordemExpedicaoRepo);
+        break;
+    case 'removePedidoOrdem':
+        removePedidoOrdem($ordemExpedicaoRepo);
+        break;
+    case 'removeItemPedidoOrdem':
+        removeItemPedidoOrdem($ordemExpedicaoRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -2084,5 +2123,109 @@ function getVisaoEstoqueHierarquico(EnderecoRepository $repo)
         echo json_encode(['success' => true, 'data' => $data]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA ORDENS DE EXPEDIÇÃO ---
+function listarOrdensExpedicao(OrdemExpedicaoRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getNextOrderNumber(OrdemExpedicaoRepository $repo)
+{
+    try {
+        echo json_encode(['success' => true, 'numero' => $repo->getNextOrderNumber()]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function salvarOrdemExpedicaoHeader(OrdemExpedicaoRepository $repo, int $usuarioId)
+{
+    try {
+        $id = $repo->createHeader($_POST, $usuarioId);
+        echo json_encode(['success' => true, 'message' => 'Cabeçalho salvo com sucesso!', 'oe_id' => $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar: ' . $e->getMessage()]);
+    }
+}
+
+function getOrdemExpedicaoCompleta(OrdemExpedicaoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'oe_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+    $header = $repo->findOrdemCompleta($id);
+    echo json_encode(['success' => !!$header, 'data' => $header]);
+}
+
+function addPedidoClienteOrdem(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $id = $repo->addPedidoCliente($_POST);
+        echo json_encode(['success' => true, 'message' => 'Pedido/Cliente adicionado com sucesso!', 'oep_id' => $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao adicionar: ' . $e->getMessage()]);
+    }
+}
+
+function listarEstoqueParaSelecao(OrdemExpedicaoRepository $repo)
+{
+    echo json_encode($repo->findEstoqueAlocadoParaSelecao($_POST));
+}
+
+function addItemPedidoOrdem(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $repo->addItemPedido($_POST);
+        echo json_encode(['success' => true, 'message' => 'Item adicionado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao adicionar item: ' . $e->getMessage()]);
+    }
+}
+
+function getProdutosComEstoqueDisponivel(OrdemExpedicaoRepository $repo)
+{
+    echo json_encode(['results' => $repo->getProdutosDisponiveisParaSelecao()]);
+}
+function getLotesDisponiveisPorProduto(OrdemExpedicaoRepository $repo)
+{
+    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+    echo json_encode(['results' => $repo->getLotesDisponiveisPorProduto($produtoId)]);
+}
+function getEnderecosDisponiveisPorLoteItem(OrdemExpedicaoRepository $repo)
+{
+    $loteItemId = filter_input(INPUT_GET, 'lote_item_id', FILTER_VALIDATE_INT);
+    echo json_encode(['results' => $repo->getEnderecosDisponiveisPorLoteItem($loteItemId)]);
+}
+
+function removePedidoOrdem(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $pedidoId = filter_input(INPUT_POST, 'oep_id', FILTER_VALIDATE_INT);
+        if (!$pedidoId) {
+            throw new Exception("ID do pedido inválido.");
+        }
+        $repo->removePedido($pedidoId);
+        echo json_encode(['success' => true, 'message' => 'Pedido removido com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao remover pedido: ' . $e->getMessage()]);
+    }
+}
+
+function removeItemPedidoOrdem(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $itemId = filter_input(INPUT_POST, 'oei_id', FILTER_VALIDATE_INT);
+        if (!$itemId) {
+            throw new Exception("ID do item inválido.");
+        }
+        $repo->removeItem($itemId);
+        echo json_encode(['success' => true, 'message' => 'Item removido com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao remover item: ' . $e->getMessage()]);
     }
 }

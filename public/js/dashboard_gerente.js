@@ -85,9 +85,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <h3 class="border-bottom pb-2">Ações Gerenciais</h3>
             </div>
             <div class="col-xl-4 col-md-6 mb-4">
-                <a href="${BASE_URL}/index.php?page=lotes" class="text-decoration-none text-dark">
+                <a href="${BASE_URL}/index.php?page=lotes_embalagem" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-boxes-stacked fa-3x text-primary mb-3"></i>
+                        <i class="fas fa-boxes fa-3x text-primary mb-3"></i>
                         <p class="card-text fs-5">Gerenciar Lotes</p>
                     </div></div>
                 </a>
@@ -95,22 +95,22 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="col-xl-4 col-md-6 mb-4">
                 <a href="${BASE_URL}/index.php?page=carregamentos" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-truck-fast fa-3x text-success mb-3"></i>
+                        <i class="fas fa-truck fa-3x text-success mb-3"></i>
                         <p class="card-text fs-5">Gerenciar Carregamentos</p>
                     </div></div>
                 </a>
             </div>
             <div class="col-xl-4 col-md-6 mb-4">
-                <a href="${BASE_URL}/index.php?page=estoque" class="text-decoration-none text-dark">
+                <a href="${BASE_URL}/index.php?page=visao_estoque_enderecos" class="text-decoration-none text-dark">
                     <div class="card h-100 shadow-sm action-card"><div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
-                        <i class="fa-solid fa-warehouse fa-3x text-info mb-3"></i>
+                        <i class="fas fa-warehouse fa-3x text-info mb-3"></i>
                         <p class="card-text fs-5">Consultar Estoque</p>
                     </div></div>
                 </a>
             </div>
         `;
     }
-
+    
     function renderLotesChart(chartData) {
         const ctx = document.getElementById('lotesChart').getContext('2d');
         new Chart(ctx, {
@@ -165,6 +165,49 @@ document.addEventListener('DOMContentLoaded', function () {
         `).join('');
     }
 
+    function renderResumoEstoqueCard() {
+        return `
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Resumo do Estoque por Câmara</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="painel-resumo-estoque">
+                            <p class="text-center text-muted">A carregar dados do estoque...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function carregarResumoEstoque() {
+        const painel = $('#painel-resumo-estoque');
+        $.ajax({
+            url: 'ajax_router.php?action=getKpiEstoquePorCamara',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                painel.empty();
+                if (response.success && response.data.length > 0) {
+                    let tableHtml = '<table class="table table-sm table-hover">';
+                    tableHtml += `<thead class="table-light"><tr><th>Câmara</th><th class="text-end">Total Caixas</th><th class="text-end">Total Quilos (kg)</th></tr></thead><tbody>`;
+                    response.data.forEach(function (camara) {
+                        tableHtml += `<tr><td>${camara.camara_nome}</td><td class="text-end">${parseFloat(camara.total_caixas).toFixed(3)}</td><td class="text-end">${parseFloat(camara.total_quilos).toFixed(3)}</td></tr>`;
+                    });
+                    tableHtml += '</tbody></table>';
+                    painel.html(tableHtml);
+                } else {
+                    painel.html('<p class="text-center text-muted">Nenhum item alocado no estoque para exibir.</p>');
+                }
+            },
+            error: function () {
+                painel.html('<p class="text-center text-danger">Não foi possível carregar o resumo do estoque.</p>');
+            }
+        });
+    }
+
     // Função principal, adaptada para chamar as funções corretas
     async function initDashboard() {
         console.log('Iniciando o dashboard gerencial...');
@@ -216,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="card-body p-0"><div class="list-group list-group-flush" id="carregamentos-abertos-list"></div></div>
                     </div>
                 </div>
-
+                ${renderResumoEstoqueCard()}
                 ${renderChartContainer()}
                 ${renderQuickActionsGerente()}
             `;
@@ -227,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             renderLotesChart(chartData);
             document.getElementById('lotes-ativos-list').innerHTML = renderLotesAtivosPanel(lotesAtivosData);
             document.getElementById('carregamentos-abertos-list').innerHTML = renderCarregamentosAbertosPanel(carregamentosAbertosData);
-
+            carregarResumoEstoque();
         } catch (error) {
             console.error('Erro ao carregar dados do dashboard gerencial:', error);
             dashboardContent.innerHTML = `<div class="alert alert-danger">Não foi possível carregar os dados do dashboard. Detalhe: ${error.message}</div>`;

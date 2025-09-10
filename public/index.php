@@ -138,6 +138,8 @@ try {
         'estoque_camaras' => 'estoque/lista_camaras.php',
         'estoque_enderecos' => 'estoque/lista_enderecos.php',
         'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php',
+        'ordens_expedicao' => 'ordens_expedicao/lista_ordens_expedicao.php',
+        'ordem_expedicao_detalhes' => 'ordens_expedicao/detalhes_ordem_expedicao.php',
     ];
 
     $pageType = '';

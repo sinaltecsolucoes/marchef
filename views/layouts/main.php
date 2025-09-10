@@ -55,7 +55,9 @@
                             unset($paginasParaCadastro['auditoria']);
                             unset($paginasParaCadastro['backup']);
                             unset($paginasParaCadastro['estoque']);
+                            unset($paginasParaCadastro['carregamentos']);
                             unset($paginasParaCadastro['carregamento_detalhes']);
+                            unset($paginasParaCadastro['ordens_expedicao']);
                             unset($paginasParaCadastro['lotes_producao']);
                             unset($paginasParaCadastro['lotes_embalagem']);
                             unset($paginasParaCadastro['estoque_camaras']);
@@ -106,6 +108,25 @@
                                 <?php if (in_array('lotes_embalagem', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=lotes_embalagem">Gestão de Lotes
                                             (Embalagem)</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php
+                    $paginasExpedicao = ['ordens_expedicao', 'carregamentos'];
+                    if (count(array_intersect($paginasExpedicao, $paginasPermitidasUsuario)) > 0):
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Expedição</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('ordens_expedicao', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=ordens_expedicao">Ordens de Expedição</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (in_array('carregamentos', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=carregamentos">Carregamentos</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -287,6 +308,14 @@
 
     <?php if ($paginaAtual === 'visao_estoque_enderecos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/visao_estoque_enderecos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'ordens_expedicao'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/ordens_expedicao.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'ordem_expedicao_detalhes'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/detalhes_ordem_expedicao.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'home'): ?>
