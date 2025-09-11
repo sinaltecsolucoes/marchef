@@ -2,9 +2,13 @@
 
 <h4 class="fw-bold mb-3" id="main-title">Nova Ordem de Expedição</h4>
 
+
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <h6 class="m-0 font-weight-bold text-primary">1. Cabeçalho</h6>
+        <a href="index.php?page=ordens_expedicao" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Voltar para a Lista
+        </a>
     </div>
     <div class="card-body">
         <form id="form-ordem-header">
@@ -12,19 +16,33 @@
             <input type="hidden" name="csrf_token"
                 value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
             <div class="row">
-                <div class="col-md-4 mb-3">
+                <div class="col-md-3 mb-3">
                     <label for="oe_numero" class="form-label">Nº da Ordem de Expedição</label>
                     <input type="text" class="form-control" id="oe_numero" name="oe_numero" readonly>
                 </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-2 mb-3">
                     <label for="oe_data" class="form-label">Data</label>
                     <input type="date" class="form-control" id="oe_data" name="oe_data"
                         value="<?php echo date('Y-m-d'); ?>">
                 </div>
-                <div class="col-md-4 mb-3 d-flex align-items-end">
-                    <button type="submit" id="btn-salvar-header" class="btn btn-primary w-100">Salvar Cabeçalho</button>
+
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Total Caixas (Geral)</label>
+                    <input type="text" id="total-caixas-geral" class="form-control text-end fw-bold" value="0" readonly>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Total Quilos (Geral)</label>
+                    <input type="text" id="total-quilos-geral" class="form-control text-end fw-bold" value="0.000"
+                        readonly>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Destinos (UF)</label>
+                    <input type="text" id="destinos-geral" class="form-control fw-bold" value="-" readonly>
                 </div>
             </div>
+            <button type="submit" id="btn-salvar-header" class="btn btn-primary" style="display: none;">Salvar
+                Cabeçalho
+            </button>
         </form>
     </div>
 </div>
@@ -99,20 +117,26 @@
                         <select id="select-endereco-estoque" name="oei_alocacao_id" class="form-select"
                             style="width: 100%;" disabled></select>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label>Saldo Disponível</label>
-                        <input type="text" id="saldo-disponivel-display" class="form-control" readonly>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="oei_quantidade" class="form-label">4. Quantidade a Adicionar</label>
-                        <input type="number" id="oei_quantidade" name="oei_quantidade" class="form-control" step="1"
-                            min="1" disabled>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="saldo-disponivel-display" class="form-label">Saldo Disponível</label>
+                            <input type="text" id="saldo-disponivel-display" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="oei_quantidade" class="form-label">4. Quantidade a Adicionar</label>
+                            <input type="number" id="oei_quantidade" name="oei_quantidade" class="form-control" step="1"
+                                min="1" disabled>
+
+                            <div class="invalid-feedback">A quantidade excede o saldo disponível neste endereço!</div>
+                        </div>
                     </div>
                     <div class="col-md-12">
                         <label for="oei_observacao" class="form-label">Observação</label>
                         <input type="text" id="oei_observacao" name="oei_observacao" class="form-control">
                     </div>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -123,4 +147,42 @@
     </div>
 </div>
 
-<a href="index.php?page=ordens_expedicao" class="btn btn-secondary">Voltar para a Lista</a>
+<div class="modal fade" id="modal-editar-item" tabindex="-1" aria-labelledby="modal-editar-item-label"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-editar-item-label">Editar Quantidade do Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form id="form-editar-item">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_oei_id" name="oei_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+                    <div class="mb-3">
+                        <label class="form-label">Produto</label>
+                        <p id="edit-produto-nome" class="form-control-plaintext bg-light p-2 rounded"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_oei_quantidade" class="form-label">Nova Quantidade</label>
+                        <input type="number" class="form-control" id="edit_oei_quantidade" name="oei_quantidade"
+                            step="1" min="1" required>
+                        <div id="edit-saldo-info" class="form-text"></div>
+                        <div class="invalid-feedback">A quantidade excede o saldo disponível!</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_oei_observacao" class="form-label">Observação</label>
+                        <input type="text" class="form-control" id="edit_oei_observacao" name="oei_observacao">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

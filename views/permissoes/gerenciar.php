@@ -15,8 +15,8 @@ $paginas_e_acoes_disponiveis = [
     'clientes' => 'Gerenciar Clientes',
     'fornecedores' => 'Gerenciar Fornecedores',
     'produtos' => 'Gerenciar Produtos',
-    //'lotes' => 'Gerenciar Lotes',
-    'lotes_novo' => 'Gerenciar Lotes',
+    'lotes_producao' => 'Gerenciar Lotes Produção',
+    'lotes_embalagem' => 'Gerenciar Lotes Embalagem',
     'templates' => 'Gerenciar Templates de Etiqueta',
     'regras' => 'Gerenciar Regras de Etiqueta',
     'editar_outros_usuarios' => 'Ação: Editar Outros Usuários',
@@ -24,7 +24,12 @@ $paginas_e_acoes_disponiveis = [
     'backup' => 'Realizar Backups do Banco de Dados',
     'carregamentos' => 'Gerenciar Carregamentos',
     'carregamento_detalhes' => 'Gerenciar Detalhes de Carregamentos',
-    'estoque' => 'Gerenciar Estoque de Produtos'
+    'estoque' => 'Gerenciar Estoque de Produtos',
+    'estoque_camaras' => 'Gerenciar Câmaras',
+    'estoque_enderecos' => 'Gerenciar Endereços Câmaras',
+    'visao_estoque_enderecos' => 'Gerenciar Estoque de Produtos por Endereço',
+    'ordens_expedicao' => 'Gerenciar Ordens de Expedição',
+    'ordem_expedicao_detalhes' => 'Gerenciar Detalhes de Ordens de Expedição',
 ];
 
 // Perfis de usuário que podem ter permissões configuradas

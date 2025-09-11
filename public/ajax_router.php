@@ -502,6 +502,17 @@ switch ($action) {
     case 'removeItemPedidoOrdem':
         removeItemPedidoOrdem($ordemExpedicaoRepo);
         break;
+    case 'getItemDetalhesParaEdicao':
+        getItemDetalhesParaEdicao($ordemExpedicaoRepo);
+        break;
+    case 'updateItemPedido':
+        updateItemPedido($ordemExpedicaoRepo);
+        break;
+
+    // --- ROTA PARA DETALHES DA RESERVA DE ESTOQUE ---
+    case 'getReservaDetalhes':
+        getReservaDetalhes($ordemExpedicaoRepo); // Usaremos o OrdemExpedicaoRepository
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -2227,5 +2238,53 @@ function removeItemPedidoOrdem(OrdemExpedicaoRepository $repo)
         echo json_encode(['success' => true, 'message' => 'Item removido com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Erro ao remover item: ' . $e->getMessage()]);
+    }
+}
+
+function getItemDetalhesParaEdicao(OrdemExpedicaoRepository $repo)
+{
+    $oeiId = filter_input(INPUT_POST, 'oei_id', FILTER_VALIDATE_INT);
+    if (!$oeiId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
+        return;
+    }
+
+    $detalhes = $repo->findItemDetalhesParaEdicao($oeiId);
+
+    if ($detalhes) {
+        echo json_encode(['success' => true, 'data' => $detalhes]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Item não encontrado.']);
+    }
+}
+
+function getReservaDetalhes(OrdemExpedicaoRepository $repo)
+{
+    $alocacaoId = filter_input(INPUT_POST, 'alocacao_id', FILTER_VALIDATE_INT);
+    if (!$alocacaoId) {
+        echo json_encode(['success' => false, 'message' => 'ID de alocação inválido.']);
+        return;
+    }
+    $detalhes = $repo->findReservaDetalhesPorAlocacao($alocacaoId);
+    echo json_encode(['success' => true, 'data' => $detalhes]);
+}
+
+function updateItemPedido(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $oeiId = filter_input(INPUT_POST, 'oei_id', FILTER_VALIDATE_INT);
+        if (!$oeiId) {
+            throw new Exception("ID do item não fornecido.");
+        }
+
+        if ($repo->updateItem($oeiId, $_POST)) {
+            echo json_encode(['success' => true, 'message' => 'Item atualizado com sucesso!']);
+        } else {
+            // Este caso é raro, pois uma exceção seria lançada antes
+            echo json_encode(['success' => false, 'message' => 'Não foi possível atualizar o item.']);
+        }
+    } catch (Exception $e) {
+        // Captura exceções de validação do repositório
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }

@@ -23,7 +23,7 @@
 
 <body data-logged-in-user-id="<?php echo htmlspecialchars($_SESSION['codUsuario'] ?? ''); ?>"
     data-page-type="<?php echo $pageType; ?>">
-    <nav class="navbar navbar-expand-lg" style="background-color: #e3f2fd;" data-bs-theme="light">
+    <nav class="navbar navbar-expand-lg shadow-sm" style="background-color: #e3f2fd;" data-bs-theme="light">
         <div class="container-fluid">
             <a class="navbar-brand" href="<?php echo BASE_URL; ?>/index.php?page=home">
                 <img src="<?php echo BASE_URL; ?>/img/logo_marchef.png" width="120px" alt="Logo Marchef">

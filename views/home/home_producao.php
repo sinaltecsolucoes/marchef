@@ -4,7 +4,7 @@
 
 <header class="pb-3 mb-4 border-bottom">
     <h1 class="display-5">
-        <i class="fa-solid fa-user-tie"></i>
+        <i class="fas fa-user-tie"></i>
         Painel de Produção
     </h1>
     <h3 class="text-muted fw-light">Bem-vindo(a), <?php echo htmlspecialchars($_SESSION['nomeUsuario']); ?>! Vamos produzir.</h3>

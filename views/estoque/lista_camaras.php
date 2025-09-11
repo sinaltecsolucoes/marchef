@@ -13,6 +13,7 @@
                 <th>Código</th>
                 <th>Nome da Câmara</th>
                 <th>Descrição</th>
+                <th>Indústria (Unidade de Origem)</th>
                 <th class="text-center">Ações</th>
             </tr>
         </thead>
@@ -45,6 +46,11 @@
                         <label for="camara_descricao" class="form-label">Descrição</label>
                         <textarea class="form-control" id="camara_descricao" name="camara_descricao"
                             rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="camara_industria" class="form-label">Indústria (Unidade de Origem)</label>
+                        <input type="text" class="form-control" id="camara_industria" name="camara_industria"
+                            placeholder="Ex: Matriz, Filial Natal, etc.">
                     </div>
                 </div>
                 <div class="modal-footer">

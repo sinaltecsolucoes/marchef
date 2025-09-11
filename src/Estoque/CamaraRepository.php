@@ -45,12 +45,13 @@ class CamaraRepository
 
     public function create(array $data): int
     {
-        $sql = "INSERT INTO tbl_estoque_camaras (camara_codigo, camara_nome, camara_descricao) VALUES (:codigo, :nome, :descricao)";
+        $sql = "INSERT INTO tbl_estoque_camaras (camara_codigo, camara_nome, camara_descricao, camara_industria) VALUES (:codigo, :nome, :descricao, :industria)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':codigo' => $data['camara_codigo'],
             ':nome' => $data['camara_nome'],
-            ':descricao' => $data['camara_descricao'] ?? null
+            ':descricao' => $data['camara_descricao'] ?? null,
+            ':industria' => $data['camara_industria'] ?? null
         ]);
         $newId = (int) $this->pdo->lastInsertId();
         $this->auditLogger->log('CREATE', $newId, 'tbl_estoque_camaras', null, $data);
@@ -63,13 +64,14 @@ class CamaraRepository
         if (!$dadosAntigos)
             return false;
 
-        $sql = "UPDATE tbl_estoque_camaras SET camara_codigo = :codigo, camara_nome = :nome, camara_descricao = :descricao WHERE camara_id = :id";
+        $sql = "UPDATE tbl_estoque_camaras SET camara_codigo = :codigo, camara_nome = :nome, camara_descricao = :descricao, camara_industria = :industria WHERE camara_id = :id";
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
             ':id' => $id,
             ':codigo' => $data['camara_codigo'],
             ':nome' => $data['camara_nome'],
-            ':descricao' => $data['camara_descricao'] ?? null
+            ':descricao' => $data['camara_descricao'] ?? null,
+            ':industria' => $data['camara_industria'] ?? null
         ]);
         $this->auditLogger->log('UPDATE', $id, 'tbl_estoque_camaras', $dadosAntigos, $data);
         return $success;

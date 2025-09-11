@@ -151,83 +151,6 @@ class EnderecoRepository
         return strtoupper(implode('-', $partes));
     }
 
-    /*  public function save(array $data): int
-      {
-          $id = filter_var($data['endereco_id'] ?? null, FILTER_VALIDATE_INT);
-          $camaraId = filter_var($data['endereco_camara_id'], FILTER_VALIDATE_INT);
-          if (!$camaraId) {
-              throw new Exception("ID da Câmara é inválido.");
-          }
-
-          $enderecoCompleto = $this->calcularEnderecoCompleto($camaraId, $data);
-
-          // Usamos o operador '??' para garantir que todos os campos existam.
-          $params = [
-              ':camara_id' => $camaraId,
-              ':lado' => $data['lado'] ?? null,
-              ':nivel' => $data['nivel'] ?? null,
-              ':fila' => $data['fila'] ?? null,
-              ':vaga' => $data['vaga'] ?? null,
-              ':descricao_simples' => $data['descricao_simples'] ?? null,
-              ':endereco_completo' => $enderecoCompleto,
-          ];
-
-          if ($id) { // UPDATE
-              $dadosAntigos = $this->find($id);
-              $sql = "UPDATE tbl_estoque_enderecos SET endereco_camara_id = :camara_id, lado = :lado, nivel = :nivel, fila = :fila, vaga = :vaga, descricao_simples = :descricao_simples, endereco_completo = :endereco_completo WHERE endereco_id = :id";
-              $params[':id'] = $id;
-              $stmt = $this->pdo->prepare($sql);
-              $stmt->execute($params);
-              $this->auditLogger->log('UPDATE', $id, 'tbl_estoque_enderecos', $dadosAntigos, $data);
-              return $id;
-          } else { // CREATE
-              $sql = "INSERT INTO tbl_estoque_enderecos (endereco_camara_id, lado, nivel, fila, vaga, descricao_simples, endereco_completo) VALUES (:camara_id, :lado, :nivel, :fila, :vaga, :descricao_simples, :endereco_completo)";
-              $stmt = $this->pdo->prepare($sql);
-              $stmt->execute($params);
-              $newId = (int) $this->pdo->lastInsertId();
-              $this->auditLogger->log('CREATE', $newId, 'tbl_estoque_enderecos', null, $data);
-              return $newId;
-          }
-      }*/
-
-    /*  public function save(array $data): int
-      {
-          $id = filter_var($data['endereco_id'] ?? null, FILTER_VALIDATE_INT);
-          $camaraId = filter_var($data['endereco_camara_id'], FILTER_VALIDATE_INT);
-          if (!$camaraId) {
-              throw new Exception("ID da Câmara é inválido.");
-          }
-
-          $enderecoCompleto = $this->calcularEnderecoCompleto($camaraId, $data);
-
-          $params = [
-              ':camara_id' => $camaraId,
-              ':lado' => $data['lado'] ?: null,
-              ':nivel' => $data['nivel'] ?: null,
-              ':fila' => $data['fila'] ?: null,
-              ':vaga' => $data['vaga'] ?: null,
-              ':descricao_simples' => $data['descricao_simples'] ?: null,
-              ':endereco_completo' => $enderecoCompleto,
-          ];
-
-          if ($id) { // UPDATE
-              $dadosAntigos = $this->find($id);
-              $sql = "UPDATE tbl_estoque_enderecos SET endereco_camara_id = :camara_id, lado = :lado, nivel = :nivel, fila = :fila, vaga = :vaga, descricao_simples = :descricao_simples, endereco_completo = :endereco_completo WHERE endereco_id = :id";
-              $params[':id'] = $id;
-              $stmt = $this->pdo->prepare($sql);
-              $stmt->execute($params);
-              $this->auditLogger->log('UPDATE', $id, 'tbl_estoque_enderecos', $dadosAntigos, $data);
-              return $id;
-          } else { // CREATE
-              $sql = "INSERT INTO tbl_estoque_enderecos (endereco_camara_id, lado, nivel, fila, vaga, descricao_simples, endereco_completo) VALUES (:camara_id, :lado, :nivel, :fila, :vaga, :descricao_simples, :endereco_completo)";
-              $stmt = $this->pdo->prepare($sql);
-              $stmt->execute($params);
-              $newId = (int) $this->pdo->lastInsertId();
-              $this->auditLogger->log('CREATE', $newId, 'tbl_estoque_enderecos', null, $data);
-              return $newId;
-          }
-      }*/
-
     public function save(array $data): int
     {
         $id = filter_var($data['endereco_id'] ?? null, FILTER_VALIDATE_INT);
@@ -448,87 +371,193 @@ class EnderecoRepository
      * Busca e organiza todos os dados de estoque de forma hierárquica.
      * @return array
      */
+    /*  public function getVisaoHierarquicaEstoque(): array
+      {
+          // QUERY ATUALIZADA: Adicionamos p.prod_peso_embalagem para podermos calcular o peso total
+          $sql = "SELECT 
+                      c.camara_id, c.camara_codigo, c.camara_nome,
+                      e.endereco_id, e.endereco_completo,
+                      a.alocacao_id, a.alocacao_quantidade, a.alocacao_data,
+                      p.prod_descricao, p.prod_peso_embalagem,
+                      lnh.lote_completo_calculado
+                  FROM 
+                      tbl_estoque_camaras c
+                  LEFT JOIN 
+                      tbl_estoque_enderecos e ON c.camara_id = e.endereco_camara_id
+                  LEFT JOIN 
+                      tbl_estoque_alocacoes a ON e.endereco_id = a.alocacao_endereco_id
+                  LEFT JOIN 
+                      tbl_lotes_novo_embalagem lne ON a.alocacao_lote_item_id = lne.item_emb_id
+                  LEFT JOIN 
+                      tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                  LEFT JOIN 
+                      tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                  ORDER BY 
+                      c.camara_codigo, e.endereco_completo, lnh.lote_completo_calculado";
+
+          $stmt = $this->pdo->query($sql);
+          $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+          $tree = [];
+          foreach ($rows as $row) {
+              $camaraId = $row['camara_id'];
+              if (!isset($tree[$camaraId])) {
+                  $tree[$camaraId] = [
+                      'nome' => $row['camara_nome'],
+                      'codigo' => $row['camara_codigo'],
+                      'enderecos' => [],
+                      'total_caixas' => 0, // Inicializa os totalizadores da câmara
+                      'total_quilos' => 0
+                  ];
+              }
+
+              if ($row['endereco_id']) {
+                  $enderecoId = $row['endereco_id'];
+                  if (!isset($tree[$camaraId]['enderecos'][$enderecoId])) {
+                      $tree[$camaraId]['enderecos'][$enderecoId] = [
+                          'endereco_id' => (int) $row['endereco_id'],
+                          'nome' => $row['endereco_completo'],
+                          'itens' => [],
+                          'total_caixas' => 0, // Inicializa os totalizadores do endereço
+                          'total_quilos' => 0
+                      ];
+                  }
+
+                  if ($row['alocacao_id']) {
+                      $quantidade = (float) $row['alocacao_quantidade'];
+                      $peso_embalagem = (float) $row['prod_peso_embalagem'];
+                      $peso_item = $quantidade * $peso_embalagem;
+
+                      // Adiciona o item ao endereço
+                      $tree[$camaraId]['enderecos'][$enderecoId]['itens'][] = [
+                          'alocacao_id' => $row['alocacao_id'],
+                          'produto' => $row['prod_descricao'],
+                          'lote' => $row['lote_completo_calculado'],
+                          'quantidade' => $row['alocacao_quantidade'],
+                          'data' => $row['alocacao_data']
+                      ];
+                      // Soma os totais para o endereço
+                      $tree[$camaraId]['enderecos'][$enderecoId]['total_caixas'] += $quantidade;
+                      $tree[$camaraId]['enderecos'][$enderecoId]['total_quilos'] += $peso_item;
+                  }
+              }
+          }
+
+          // Loop final para somar os totais dos endereços para as câmaras
+          foreach ($tree as $camaraId => &$camara) { // O '&' é importante aqui
+              foreach ($camara['enderecos'] as $endereco) {
+                  $camara['total_caixas'] += $endereco['total_caixas'];
+                  $camara['total_quilos'] += $endereco['total_quilos'];
+              }
+          }
+
+          return $tree;
+      } */
+
+
+    /**
+     * Busca e estrutura todos os dados de câmaras, endereços e itens alocados,
+     * incluindo o cálculo de quantidades físicas e reservadas.
+     * @return array
+     */
     public function getVisaoHierarquicaEstoque(): array
     {
-        // QUERY ATUALIZADA: Adicionamos p.prod_peso_embalagem para podermos calcular o peso total
-        $sql = "SELECT 
-                    c.camara_id, c.camara_codigo, c.camara_nome,
-                    e.endereco_id, e.endereco_completo,
-                    a.alocacao_id, a.alocacao_quantidade, a.alocacao_data,
-                    p.prod_descricao, p.prod_peso_embalagem,
-                    lnh.lote_completo_calculado
-                FROM 
-                    tbl_estoque_camaras c
-                LEFT JOIN 
-                    tbl_estoque_enderecos e ON c.camara_id = e.endereco_camara_id
-                LEFT JOIN 
-                    tbl_estoque_alocacoes a ON e.endereco_id = a.alocacao_endereco_id
-                LEFT JOIN 
-                    tbl_lotes_novo_embalagem lne ON a.alocacao_lote_item_id = lne.item_emb_id
-                LEFT JOIN 
-                    tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                LEFT JOIN 
-                    tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                ORDER BY 
-                    c.camara_codigo, e.endereco_completo, lnh.lote_completo_calculado";
+        // 1. A consulta principal agora é mais poderosa.
+        // Usamos uma SUBQUERY com LEFT JOIN para buscar as reservas.
+        $sql = "
+            SELECT 
+                cam.camara_id, cam.camara_codigo, cam.camara_nome,
+                endr.endereco_id, endr.endereco_completo,
+                aloc.alocacao_id,
+                aloc.alocacao_quantidade AS quantidade_fisica,
+                prod.prod_descricao,
+                prod.prod_peso_embalagem,
+                lote.lote_completo_calculado,
+                COALESCE(reservas.total_reservado, 0) AS quantidade_reservada
+            FROM tbl_estoque_camaras cam
+            LEFT JOIN tbl_estoque_enderecos endr ON cam.camara_id = endr.endereco_camara_id
+            LEFT JOIN tbl_estoque_alocacoes aloc ON endr.endereco_id = aloc.alocacao_endereco_id
+            LEFT JOIN tbl_lotes_novo_embalagem lne ON aloc.alocacao_lote_item_id = lne.item_emb_id
+            LEFT JOIN tbl_produtos prod ON lne.item_emb_prod_sec_id = prod.prod_codigo
+            LEFT JOIN tbl_lotes_novo_header lote ON lne.item_emb_lote_id = lote.lote_id
+            LEFT JOIN (
+                SELECT oei.oei_alocacao_id, SUM(oei.oei_quantidade) as total_reservado
+                FROM tbl_ordens_expedicao_itens oei
+                JOIN tbl_ordens_expedicao_pedidos oep ON oei.oei_pedido_id = oep.oep_id
+                JOIN tbl_ordens_expedicao_header oeh ON oep.oep_ordem_id = oeh.oe_id
+                WHERE oeh.oe_status = 'EM ELABORAÇÃO'
+                GROUP BY oei.oei_alocacao_id
+            ) AS reservas ON aloc.alocacao_id = reservas.oei_alocacao_id
+            ORDER BY cam.camara_nome, endr.endereco_completo, prod.prod_descricao
+        ";
 
         $stmt = $this->pdo->query($sql);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $flatData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $tree = [];
-        foreach ($rows as $row) {
+        // 2. Estrutura os dados de forma hierárquica (câmara -> endereço -> item)
+        $resultado = [];
+
+        foreach ($flatData as $row) {
             $camaraId = $row['camara_id'];
-            if (!isset($tree[$camaraId])) {
-                $tree[$camaraId] = [
-                    'nome' => $row['camara_nome'],
+
+            // Inicializa a câmara se ainda não existir
+            if (!isset($resultado[$camaraId])) {
+                $resultado[$camaraId] = [
+                    'id' => $camaraId,
                     'codigo' => $row['camara_codigo'],
-                    'enderecos' => [],
-                    'total_caixas' => 0, // Inicializa os totalizadores da câmara
-                    'total_quilos' => 0
+                    'nome' => $row['camara_nome'],
+                    'total_caixas' => 0,
+                    'total_quilos' => 0,
+                    'total_caixas_reservadas' => 0, // Novo
+                    'total_quilos_reservados' => 0, // Novo
+                    'enderecos' => []
                 ];
             }
 
             if ($row['endereco_id']) {
                 $enderecoId = $row['endereco_id'];
-                if (!isset($tree[$camaraId]['enderecos'][$enderecoId])) {
-                    $tree[$camaraId]['enderecos'][$enderecoId] = [
-                        'endereco_id' => (int) $row['endereco_id'],
+
+                if (!isset($resultado[$camaraId]['enderecos'][$enderecoId])) {
+                    $resultado[$camaraId]['enderecos'][$enderecoId] = [
+                        'endereco_id' => $enderecoId,
                         'nome' => $row['endereco_completo'],
-                        'itens' => [],
-                        'total_caixas' => 0, // Inicializa os totalizadores do endereço
-                        'total_quilos' => 0
+                        'total_caixas' => 0,
+                        'total_quilos' => 0,
+                        'total_caixas_reservadas' => 0, // Novo
+                        'total_quilos_reservados' => 0, // Novo
+                        'itens' => []
                     ];
                 }
 
                 if ($row['alocacao_id']) {
-                    $quantidade = (float) $row['alocacao_quantidade'];
-                    $peso_embalagem = (float) $row['prod_peso_embalagem'];
-                    $peso_item = $quantidade * $peso_embalagem;
+                    $qtdFisica = (float) $row['quantidade_fisica'];
+                    $qtdReservada = (float) $row['quantidade_reservada'];
+                    $peso = (float) $row['prod_peso_embalagem'];
 
-                    // Adiciona o item ao endereço
-                    $tree[$camaraId]['enderecos'][$enderecoId]['itens'][] = [
+                    $resultado[$camaraId]['enderecos'][$enderecoId]['itens'][] = [
                         'alocacao_id' => $row['alocacao_id'],
                         'produto' => $row['prod_descricao'],
                         'lote' => $row['lote_completo_calculado'],
-                        'quantidade' => $row['alocacao_quantidade'],
-                        'data' => $row['alocacao_data']
+                        'quantidade_fisica' => $qtdFisica,
+                        'quantidade_reservada' => $qtdReservada,
+                        'peso_unitario' => $peso
                     ];
+
                     // Soma os totais para o endereço
-                    $tree[$camaraId]['enderecos'][$enderecoId]['total_caixas'] += $quantidade;
-                    $tree[$camaraId]['enderecos'][$enderecoId]['total_quilos'] += $peso_item;
+                    $resultado[$camaraId]['enderecos'][$enderecoId]['total_caixas'] += $qtdFisica;
+                    $resultado[$camaraId]['enderecos'][$enderecoId]['total_quilos'] += $qtdFisica * $peso;
+                    $resultado[$camaraId]['enderecos'][$enderecoId]['total_caixas_reservadas'] += $qtdReservada;
+                    $resultado[$camaraId]['enderecos'][$enderecoId]['total_quilos_reservados'] += $qtdReservada * $peso;
+
+                    // Soma os totais para a câmara
+                    $resultado[$camaraId]['total_caixas'] += $qtdFisica;
+                    $resultado[$camaraId]['total_quilos'] += $qtdFisica * $peso;
+                    $resultado[$camaraId]['total_caixas_reservadas'] += $qtdReservada;
+                    $resultado[$camaraId]['total_quilos_reservados'] += $qtdReservada * $peso;
                 }
             }
         }
-
-        // Loop final para somar os totais dos endereços para as câmaras
-        foreach ($tree as $camaraId => &$camara) { // O '&' é importante aqui
-            foreach ($camara['enderecos'] as $endereco) {
-                $camara['total_caixas'] += $endereco['total_caixas'];
-                $camara['total_quilos'] += $endereco['total_quilos'];
-            }
-        }
-
-        return $tree;
+        return $resultado;
     }
 
     /**

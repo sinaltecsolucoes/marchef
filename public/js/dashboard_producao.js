@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return `
             <div class="col-12 mb-4 text-center">
                 <a href="${BASE_URL}/index.php?page=lotes" class="btn btn-primary btn-lg p-3">
-                    <i class="fa-solid fa-plus me-2"></i> INICIAR NOVO LOTE DE PRODUÇÃO
+                    <i class="fas fa-layer-group me-2"></i> INICIAR NOVO LOTE DE PRODUÇÃO
                 </a>
             </div>
         `;
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <p class="mb-1 text-muted">Status: ${lote.lote_status}</p>
                     </div>
                     <a href="${BASE_URL}/index.php?page=lotes&id=${lote.lote_id}" class="btn btn-success">
-                        <i class="fa-solid fa-arrow-right me-1"></i> TRABALHAR
+                        <i class="fas fa-cubes me-1"></i> TRABALHAR
                     </a>
                 </div>
             `).join('');
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <a href="${BASE_URL}/index.php?page=lotes&id=${lote.lote_id}" class="list-group-item list-group-item-action">
                     <div class="d-flex w-100 justify-content-between">
                         <h6 class="mb-1">${lote.lote_completo_calculado}</h6>
-                        <small class="text-success"><i class="fa-solid fa-check"></i></small>
+                        <small class="text-success"><i class="fas fa-check"></i></small>
                     </div>
                     <small>Finalizado em: ${formatDateTime(lote.lote_data_finalizacao)}</small>
                 </a>

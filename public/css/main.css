@@ -1,7 +1,10 @@
 body {
     margin: 0;
     padding: 0;
-    background-color: #ecf0c0;
+    /*background-color: #ecf0c0;*/
+    /* background-color: #d8e0e7;*/
+    /* background-color: #e9edf1;*/
+    background-color: #f3f5f8;
     /* Adicione esta linha para definir a cor de fundo */
 }
 
@@ -9,6 +12,13 @@ body {
 .navbar-brand {
     color: #000000;
     /* Preto puro para o brand */
+}
+
+/* Adiciona uma borda na parte inferior do menu de navegação */
+.navbar {
+    /*border-bottom: 1px solid #dee2e6;*/
+    border-bottom: 1px solid #a1c8f0;
+    /* Cor padrão de borda do Bootstrap */
 }
 
 /* Estilos para todos os links nav-link dentro da navegação */

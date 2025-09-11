@@ -15,6 +15,7 @@ $(document).ready(function () {
             { "data": "camara_codigo" },
             { "data": "camara_nome" },
             { "data": "camara_descricao" },
+            { "data": "camara_industria" },
             {
                 "data": "camara_id",
                 "orderable": false,
@@ -51,6 +52,7 @@ $(document).ready(function () {
                     $('#camara_codigo').val(data.camara_codigo);
                     $('#camara_nome').val(data.camara_nome);
                     $('#camara_descricao').val(data.camara_descricao);
+                    $('#camara_industria').val(data.camara_industria);
                     $('#modal-camara-label').text('Editar Câmara');
                     $modal.modal('show');
                 }
