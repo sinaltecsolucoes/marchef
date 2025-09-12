@@ -36,6 +36,7 @@ use App\Lotes\LoteNovoRepository;
 use App\Estoque\CamaraRepository;
 use App\Estoque\EnderecoRepository;
 use App\OrdensExpedicao\OrdemExpedicaoRepository;
+use App\Faturamento\FaturamentoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -71,6 +72,7 @@ try {
     $camaraRepo = new CamaraRepository($pdo);// Cria a instância do repositório para Câmaras
     $enderecoRepo = new EnderecoRepository($pdo);// Cria a instância do repositório para Endereçamento das Câmaras
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
+    $faturamentoRepo = new FaturamentoRepository($pdo);//Cria a instância do repositorio para Faturamento
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -505,13 +507,40 @@ switch ($action) {
     case 'getItemDetalhesParaEdicao':
         getItemDetalhesParaEdicao($ordemExpedicaoRepo);
         break;
+    case 'salvarOrdemClientes':
+        salvarOrdemClientes($ordemExpedicaoRepo);
+        break;
     case 'updateItemPedido':
         updateItemPedido($ordemExpedicaoRepo);
         break;
+    case 'getOrdensParaFaturamentoSelect':
+        getOrdensParaFaturamentoSelect($ordemExpedicaoRepo);
+        break;
+
 
     // --- ROTA PARA DETALHES DA RESERVA DE ESTOQUE ---
     case 'getReservaDetalhes':
         getReservaDetalhes($ordemExpedicaoRepo); // Usaremos o OrdemExpedicaoRepository
+        break;
+
+    // --- ROTAS DE FATURAMENTO ---
+    case 'getFaturamentoDadosPorOrdem':
+        getFaturamentoDadosPorOrdem($faturamentoRepo);
+        break;
+    case 'salvarResumoFaturamento':
+        salvarResumoFaturamento($faturamentoRepo, $_SESSION['codUsuario']);
+        break;
+    case 'getFaturamentoItemDetalhes':
+        getFaturamentoItemDetalhes($faturamentoRepo);
+        break;
+    case 'salvarFaturamentoItem':
+        salvarFaturamentoItem($faturamentoRepo);
+        break;
+    case 'getResumoSalvo':
+        getResumoSalvo($faturamentoRepo);
+        break;
+    case 'listarFaturamentos':
+        listarFaturamentos($faturamentoRepo);
         break;
 
     default:
@@ -2287,4 +2316,105 @@ function updateItemPedido(OrdemExpedicaoRepository $repo)
         // Captura exceções de validação do repositório
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function getOrdensParaFaturamentoSelect(OrdemExpedicaoRepository $repo)
+{
+    // O Select2 espera os dados dentro de uma chave 'results'
+    echo json_encode(['results' => $repo->findForSelect()]);
+}
+
+function salvarOrdemClientes(OrdemExpedicaoRepository $repo)
+{
+    // Espera um array de IDs na ordem correta
+    $ordemIds = $_POST['ordem'] ?? [];
+    if (empty($ordemIds) || !is_array($ordemIds)) {
+        echo json_encode(['success' => false, 'message' => 'Nenhuma ordem recebida.']);
+        return;
+    }
+
+    try {
+        $repo->salvarOrdemClientes($ordemIds);
+        echo json_encode(['success' => true, 'message' => 'Ordem de carregamento salva com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar a ordem: ' . $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA FATURAMENTO ---
+function getFaturamentoDadosPorOrdem(FaturamentoRepository $repo)
+{
+    $ordemId = filter_input(INPUT_POST, 'ordem_id', FILTER_VALIDATE_INT);
+    if (!$ordemId) {
+        echo json_encode(['success' => false, 'message' => 'ID da Ordem de Expedição inválido.']);
+        return;
+    }
+
+    try {
+        $dados = $repo->getDadosAgrupadosPorOrdemExpedicao($ordemId);
+        echo json_encode(['success' => true, 'data' => $dados]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao buscar dados: ' . $e->getMessage()]);
+    }
+}
+
+function salvarResumoFaturamento(FaturamentoRepository $repo, int $usuarioId)
+{
+    $ordemId = filter_input(INPUT_POST, 'ordem_id', FILTER_VALIDATE_INT);
+    if (!$ordemId) {
+        echo json_encode(['success' => false, 'message' => 'ID da Ordem de Expedição inválido.']);
+        return;
+    }
+
+    try {
+        $novoResumoId = $repo->salvarResumo($ordemId, $usuarioId);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Resumo de faturamento gerado e salvo com sucesso!',
+            'resumo_id' => $novoResumoId
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getFaturamentoItemDetalhes(FaturamentoRepository $repo)
+{
+    $fatiId = filter_input(INPUT_POST, 'fati_id', FILTER_VALIDATE_INT);
+    if (!$fatiId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item de faturamento inválido.']);
+        return;
+    }
+    $detalhes = $repo->findItemDetalhes($fatiId);
+    echo json_encode(['success' => true, 'data' => $detalhes]);
+}
+
+function salvarFaturamentoItem(FaturamentoRepository $repo)
+{
+    try {
+        $fatiId = filter_input(INPUT_POST, 'fati_id', FILTER_VALIDATE_INT);
+        if (!$fatiId) {
+            throw new Exception("ID do item de faturamento não fornecido.");
+        }
+        $repo->updateItem($fatiId, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Item atualizado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getResumoSalvo(FaturamentoRepository $repo)
+{
+    $resumoId = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+    if (!$resumoId) {
+        echo json_encode(['success' => false, 'message' => 'ID do Resumo inválido.']);
+        return;
+    }
+    $dados = $repo->getResumoSalvo($resumoId);
+    echo json_encode(['success' => true, 'data' => $dados]);
+}
+
+function listarFaturamentos(FaturamentoRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
 }

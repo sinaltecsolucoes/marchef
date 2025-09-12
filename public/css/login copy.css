@@ -1,0 +1,68 @@
+/* Estilos globais para a página */
+body {
+    margin: 0;
+    padding: 0;
+    /*background-color: #ecf0c0;*/
+    /*background-color: #d8e0e7;*/
+    /* background-color: #e9edf1;*/
+    background-color: #d7f2f8;
+    /* cor do fundo */
+    height: 100vh;
+    /* garante que o corpo ocupe a altura total da viewport */
+}
+
+/* Estilos da caixa de login */
+#login-box {
+    margin-top: 120px;
+    max-width: 600px;
+    min-height: 450px;
+    border: 1px solid #9C9C9C;
+    /*background-color: #333604;*/
+    /*background-color: #d8e0e7;*/
+    background-color: #f3f5f8;
+    /* color: #ecf0c0;*/
+    color: #111111;
+    /* cor para o texto dentro da caixa de login */
+    padding: 20px;
+    /* Espaçamento interno para evitar o uso do seletor #login-form */
+}
+
+/* Estilo para a imagem dentro da caixa de login */
+#login-box img {
+    margin-bottom: 20px;
+    /* Adiciona um espaçamento abaixo da imagem */
+}
+
+/* Estilos para o texto de erro (bootstrap alert) */
+.alert-danger {
+    color: #ecf0c0;
+    /* Garante que o texto seja legível em um fundo escuro */
+    background-color: #ff6961;
+    /* Um tom de vermelho mais escuro */
+    border-color: #ff6961;
+}
+
+/* Estilos para os labels dos inputs - Aumentando a especificidade */
+#login-box .form-group label {
+    color: black !important;
+    /* Usando !important e maior especificidade */
+}
+
+/* Estilos para os labels dos inputs */
+.form-group label {
+    color: #ecf0c0;
+    /* Assegura que o texto dos labels seja visível */
+}
+
+/* Estilos para o botão de conectar */
+.btn-info {
+    color: #fff;
+    background-color: #4484bc;
+    border-color: #4484bc;
+}
+
+.btn-info:hover {
+    color: #fff;
+    background-color: #50a0d0;
+    border-color: #50a0d0;
+}

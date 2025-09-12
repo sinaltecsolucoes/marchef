@@ -30,6 +30,8 @@ $paginas_e_acoes_disponiveis = [
     'visao_estoque_enderecos' => 'Gerenciar Estoque de Produtos por Endereço',
     'ordens_expedicao' => 'Gerenciar Ordens de Expedição',
     'ordem_expedicao_detalhes' => 'Gerenciar Detalhes de Ordens de Expedição',
+    'faturamento_listar' => 'Gerenciar Faturamento',
+    'faturamento_gerar' => 'Gerenciar Detalhes Faturamento',
 ];
 
 // Perfis de usuário que podem ter permissões configuradas
@@ -62,7 +64,7 @@ try {
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
         <div class="table-responsive">
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped table-hover">
                 <thead class="table-light">
                     <tr>
                         <th>Página / Ação</th>

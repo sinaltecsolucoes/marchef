@@ -2,44 +2,78 @@
 body {
     margin: 0;
     padding: 0;
-    background-color: #ecf0c0;
-    /* cor do fundo */
+    background-color: #d8e0e7;
+    /* Azul claro do menu da tela principal */
     height: 100vh;
-    /* garante que o corpo ocupe a altura total da viewport */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Centraliza o login-box verticalmente */
 }
 
 /* Estilos da caixa de login */
 #login-box {
-    margin-top: 120px;
-    max-width: 600px;
-    min-height: 450px;
-    border: 1px solid #9C9C9C;
-    background-color: #333604;
-    color: #ecf0c0;
-    /* cor para o texto dentro da caixa de login */
-    padding: 20px;
-    /* Espaçamento interno para evitar o uso do seletor #login-form */
+    margin-top: 0;
+    /* Remove margem fixa para centralização */
+    max-width: 400px;
+    /* Reduz um pouco o tamanho para um look mais compacto */
+    padding: 30px;
+    /* Aumenta o espaçamento interno */
+    background-color: #f3f5f8;
+    /* Cinza claro da tela principal */
+    color: #111111;
+    border-radius: 15px;
+    /* Cantos arredondados */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    /* Sombra suave para profundidade */
+    text-align: center;
+    /* Centraliza o texto dentro do box */
 }
 
 /* Estilo para a imagem dentro da caixa de login */
 #login-box img {
     margin-bottom: 20px;
-    /* Adiciona um espaçamento abaixo da imagem */
-}
-
-/* Estilos para o texto de erro (bootstrap alert) */
-.alert-danger {
-    color: #ecf0c0;
-    /* Garante que o texto seja legível em um fundo escuro */
-    background-color: #ff6961;
-    /* Um tom de vermelho mais escuro */
-    border-color: #ff6961;
+    width: 150px;
+    /* Ajusta o tamanho da logo para harmonia */
 }
 
 /* Estilos para os labels dos inputs */
-.form-group label {
-    color: #ecf0c0;
-    /* Assegura que o texto dos labels seja visível */
+#login-box .form-group label {
+    color: black !important;
+    font-weight: 500;
+    /* Deixa o texto um pouco mais bold para modernidade */
+    margin-bottom: 5px;
+    /* Espaçamento abaixo do label */
+    display: block;
+    /* Garante que cada label ocupe uma linha */
+}
+
+/* Estilos para os inputs */
+#login-box .form-control {
+    border-radius: 8px;
+    /* Arredonda os cantos dos inputs */
+    border: 1px solid #ccc;
+    /* Borda mais suave */
+    padding: 10px;
+    /* Mais espaço interno nos campos */
+    transition: border-color 0.3s ease;
+    /* Transição suave na borda */
+}
+
+#login-box .form-control:focus {
+    border-color: #4484bc;
+    /* Cor do botão ao focar */
+    outline: none;
+    /* Remove o outline padrão */
+    box-shadow: 0 0 5px rgba(68, 132, 188, 0.3);
+    /* Sombra leve ao focar */
+}
+
+/* Estilos para o checkbox */
+#login-box .form-check-label {
+    color: #333;
+    /* Tom mais escuro para harmonia */
+    font-weight: 400;
 }
 
 /* Estilos para o botão de conectar */
@@ -47,10 +81,29 @@ body {
     color: #fff;
     background-color: #4484bc;
     border-color: #4484bc;
+    border-radius: 8px;
+    /* Arredonda o botão */
+    padding: 10px 20px;
+    /* Ajusta o tamanho do botão */
+    transition: background-color 0.3s ease;
+    /* Transição suave */
+    width: 100%;
+    /* Botão ocupa toda a largura */
+    margin-top: 20px;
+    /* Espaçamento acima do botão */
 }
 
 .btn-info:hover {
     color: #fff;
     background-color: #50a0d0;
     border-color: #50a0d0;
+}
+
+/* Estilos para o texto de erro (bootstrap alert) */
+.alert-danger {
+    color: #ecf0c0;
+    background-color: #ff6961;
+    border-color: #ff6961;
+    border-radius: 8px;
+    /* Arredonda os alertas */
 }

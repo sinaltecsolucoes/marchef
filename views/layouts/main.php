@@ -133,70 +133,86 @@
                     <?php endif; ?>
 
                     <?php
-                    // Verifica se o usuário tem permissão para ver a página de estoque
-                    $paginasConsulta = ['estoque'];
-                    if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
+                    $paginasFaturamento = ['faturamento'];
+                    if (count(array_intersect($paginasFaturamento, $paginasPermitidasUsuario)) > 0):
                         ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
-                                data-bs-toggle="dropdown">Consultas</a>
+                                data-bs-toggle="dropdown">Faturamento</a>
                             <ul class="dropdown-menu">
-                                <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('visao_estoque_enderecos', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
-                                            Endereços</a></li>
-                                <?php endif; ?>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
+                                <?php if (in_array('faturamento', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=faturamento">Gerar Resumo</a>
+                                    <li><a class="dropdown-item" href="index.php?page=faturamentos_listar">Gerenciar
+                                            Faturamentos</a></li>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                    </li>
+                <?php endif; ?>
 
-                    <?php
-                    // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
-                    $paginasConfig = ['permissoes', 'templates', 'regras'];
-                    if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
-                        ?>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button"
-                                data-bs-toggle="dropdown">Configurações</a>
-                            <ul class="dropdown-menu">
-                                <?php if (in_array('permissoes', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=permissoes">Gerenciar Permissões</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('templates', $paginasPermitidasUsuario) || in_array('regras', $paginasPermitidasUsuario)): ?>
-                                    <li>
-                                        <hr class="dropdown-divider">
-                                    </li>
-                                <?php endif; ?>
-                                <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=templates">Templates de Etiqueta</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=regras">Regras de Etiqueta</a></li>
-                                <?php endif; ?>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
+                <?php
+                // Verifica se o usuário tem permissão para ver a página de estoque
+                $paginasConsulta = ['estoque'];
+                if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
+                    ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Consultas</a>
+                        <ul class="dropdown-menu">
+                            <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
+                            <?php endif; ?>
+                            <?php if (in_array('visao_estoque_enderecos', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
+                                        Endereços</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endif; ?>
 
-                    <?php
-                    // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
-                    $paginasUtils = ['auditoria', 'backup'];
-                    if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
-                        ?>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button"
-                                data-bs-toggle="dropdown">Utilitários</a>
-                            <ul class="dropdown-menu">
-                                <?php if (in_array('auditoria', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=auditoria">Logs de Auditoria</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('backup', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=backup">Backup do Sistema</a></li>
-                                <?php endif; ?>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
+                <?php
+                // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
+                $paginasConfig = ['permissoes', 'templates', 'regras'];
+                if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
+                    ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                            data-bs-toggle="dropdown">Configurações</a>
+                        <ul class="dropdown-menu">
+                            <?php if (in_array('permissoes', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=permissoes">Gerenciar Permissões</a></li>
+                            <?php endif; ?>
+                            <?php if (in_array('templates', $paginasPermitidasUsuario) || in_array('regras', $paginasPermitidasUsuario)): ?>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                            <?php endif; ?>
+                            <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=templates">Templates de Etiqueta</a></li>
+                            <?php endif; ?>
+                            <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=regras">Regras de Etiqueta</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
+                <?php
+                // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
+                $paginasUtils = ['auditoria', 'backup'];
+                if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
+                    ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Utilitários</a>
+                        <ul class="dropdown-menu">
+                            <?php if (in_array('auditoria', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=auditoria">Logs de Auditoria</a></li>
+                            <?php endif; ?>
+                            <?php if (in_array('backup', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=backup">Backup do Sistema</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endif; ?>
 
                 </ul>
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
@@ -249,7 +265,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/pt-BR.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
 
     <script>
@@ -316,6 +332,14 @@
 
     <?php if ($paginaAtual === 'ordem_expedicao_detalhes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/detalhes_ordem_expedicao.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'faturamento_gerar'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/faturamento_gerar.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'faturamentos_listar'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/lista_faturamentos.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'home'): ?>

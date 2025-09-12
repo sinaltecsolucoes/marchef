@@ -123,40 +123,41 @@ $(document).ready(function () {
                 }
 
                 const pedidoHtml = `
-            <div class="pedido-group border border-primary-subtle rounded p-3 mb-3 shadow-sm" data-oep-id="${pedido.oep_id}">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="mb-0">
-                        Cliente: ${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})
-                        <small class="text-muted fw-normal">
-                            - Total Caixas: <span id="total-caixas-${pedido.oep_id}">0</span>
-                            - Total Quilos: <span id="total-quilos-${pedido.oep_id}">0,000kg</span>
-                        </small>
-                    </h5>
-                    <div>
-                        <button class="btn btn-info btn-sm btn-adicionar-produto" data-oep-id="${pedido.oep_id}">Adicionar Produto</button>
-                        <button class="btn btn-danger btn-sm btn-remover-pedido" data-oep-id="${pedido.oep_id}">Remover Pedido</button>
-                    </div>
-                </div>
-                <table class="table table-sm table-bordered table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="text-center align-middle font-small" style="width: 5%;">Código</th>
-                            <th class="text-center align-middle font-small" style="width: 18%;">Produto</th>
-                            <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Emb. Prim.</th>
-                            <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Emb. Sec.</th>
-                            <th class="text-center align-middle font-small" style="width: 7%;">Indústria</th>
-                            <th class="text-center align-middle font-small" style="width: 10%;">Fazenda</th>
-                            <th class="text-center align-middle font-small" style="width: 10%;">Lote</th>
-                            <th class="text-center align-middle font-small" style="width: 10%;">Endereço</th>
-                            <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Qtd Caixas</th>
-                            <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Qtd Quilos</th>
-                            <th class="text-center align-middle font-small" style="width: 12%;">Obs.</th>
-                            <th class="text-center align-middle font-small" style="width: 8%;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>${itensHtml}</tbody>
-                </table>
-            </div>`;
+                        <div class="pedido-group border border-primary-subtle rounded p-3 mb-3 shadow-sm" data-oep-id="${pedido.oep_id}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">
+                                <i class="fas fa-grip-vertical me-3 text-muted drag-handle" style="cursor: grab;"></i>
+                                    Cliente: ${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})
+                                    <small class="text-muted fw-normal">
+                                        - Total Caixas: <span id="total-caixas-${pedido.oep_id}">0</span>
+                                        - Total Quilos: <span id="total-quilos-${pedido.oep_id}">0,000kg</span>
+                                    </small>
+                                </h5>
+                                <div>
+                                    <button class="btn btn-info btn-sm btn-adicionar-produto" data-oep-id="${pedido.oep_id}">Adicionar Produto</button>
+                                    <button class="btn btn-danger btn-sm btn-remover-pedido" data-oep-id="${pedido.oep_id}">Remover Pedido</button>
+                                </div>
+                            </div>
+                            <table class="table table-sm table-bordered table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center align-middle font-small" style="width: 5%;">Código</th>
+                                        <th class="text-center align-middle font-small" style="width: 18%;">Produto</th>
+                                        <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Emb. Prim.</th>
+                                        <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Emb. Sec.</th>
+                                        <th class="text-center align-middle font-small" style="width: 7%;">Indústria</th>
+                                        <th class="text-center align-middle font-small" style="width: 10%;">Fazenda</th>
+                                        <th class="text-center align-middle font-small" style="width: 10%;">Lote</th>
+                                        <th class="text-center align-middle font-small" style="width: 10%;">Endereço</th>
+                                        <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Qtd Caixas</th>
+                                        <th class="text-center align-middle font-small" style="width: 5%;" class="text-end">Qtd Quilos</th>
+                                        <th class="text-center align-middle font-small" style="width: 12%;">Obs.</th>
+                                        <th class="text-center align-middle font-small" style="width: 8%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${itensHtml}</tbody>
+                            </table>
+                        </div>`;
                 $pedidosContainer.append(pedidoHtml);
             });
         }
@@ -179,6 +180,42 @@ $(document).ready(function () {
             },
             error: function () {
                 notificacaoErro('Erro de Conexão', 'Não foi possível carregar os detalhes da ordem.');
+            }
+        });
+    }
+
+    // ### INICIALIZAÇÃO DO DRAG AND DROP ###
+    const pedidosContainerEl = document.getElementById('pedidos-container');
+    if (pedidosContainerEl) {
+        new Sortable(pedidosContainerEl, {
+            animation: 150,
+            handle: '.drag-handle',
+            onEnd: function () {
+                const cards = pedidosContainerEl.querySelectorAll('.pedido-group');
+                const novaOrdemIds = Array.from(cards).map(card => card.dataset.oepId);
+
+                $.ajax({
+                    url: 'ajax_router.php?action=salvarOrdemClientes',
+                    type: 'POST',
+                    data: {
+                        ordem: novaOrdemIds,
+                        csrf_token: csrfToken
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            // Sucesso silencioso - não fazemos nada, como você sugeriu.
+                            /* notificacaoSucesso('Sucesso!', response.message); */
+                        } else {
+                            // ERRO ALTO - Avisamos o usuário que algo deu errado.
+                            notificacaoErro('Erro ao Salvar Ordem!', response.message);
+                        }
+                    },
+                    error: function () {
+                        // Erro de conexão também é importante avisar.
+                        notificacaoErro('Erro de Conexão!', 'Não foi possível salvar a nova ordem.');
+                    }
+                });
             }
         });
     }
@@ -270,7 +307,17 @@ $(document).ready(function () {
     });
 
     $formPedido.on('submit', function (e) {
-        e.preventDefault(); $.ajax({
+        e.preventDefault();
+
+        // --- VALIDAÇÃO PARA CAMPO DE PEDIDO OBRIGATÓRIO ---
+        const numPedido = $('#oep_numero_pedido').val().trim();
+        if (!numPedido) {
+            notificacaoErro('Campo Obrigatório', 'Por favor, informe o Número do Pedido do Cliente.');
+            return; // Impede o envio do formulário
+        }
+        // --- FIM DA VALIDAÇÃO ---
+
+        $.ajax({
             url: 'ajax_router.php?action=addPedidoClienteOrdem',
             type: 'POST',
             data: $(this).serialize(),

@@ -220,7 +220,7 @@ $(document).ready(function () {
                                 <tr class="endereco-${enderecoId}" style="display: none;">
                                     <td colspan="7">
                                         <div class="ps-5 p-3 border rounded shadow-sm bg-white">
-                                            <table class="table table-sm table-bordered mb-0">
+                                            <table class="table table-sm table-bordered table-hover mb-0">
                                                 <thead class="table-light">
                                                     <tr>
                                                         <th class="text-center align-middle">Produto</th>

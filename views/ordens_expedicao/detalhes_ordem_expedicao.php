@@ -18,7 +18,7 @@
             <div class="row">
                 <div class="col-md-3 mb-3">
                     <label for="oe_numero" class="form-label">Nº da Ordem de Expedição</label>
-                    <input type="text" class="form-control" id="oe_numero" name="oe_numero" readonly>
+                    <input type="text" class="form-control" id="oe_numero" name="oe_numero">
                 </div>
                 <div class="col-md-2 mb-3">
                     <label for="oe_data" class="form-label">Data</label>
@@ -80,8 +80,8 @@
                             required></select>
                     </div>
                     <div class="mb-3">
-                        <label for="oep_numero_pedido" class="form-label">Nº do Pedido do Cliente</label>
-                        <input type="text" class="form-control" id="oep_numero_pedido" name="oep_numero_pedido">
+                        <label for="oep_numero_pedido" class="form-label">Nº do Pedido do Cliente *</label>
+                        <input type="text" class="form-control" id="oep_numero_pedido" name="oep_numero_pedido" required>
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -25,7 +25,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered" id="tabela-usuarios" width="100%" cellspacing="0">
+            <table class="table table-bordered table-hover" id="tabela-usuarios" width="100%" cellspacing="0">
                 <thead>
                     <tr>
                         <th class="text-center align-middle">Situação</th>

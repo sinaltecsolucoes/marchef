@@ -158,6 +158,19 @@ class OrdemExpedicaoRepository
         }
 
         // 2. Busca os pedidos/clientes
+        /*  $stmtPedidos = $this->pdo->prepare(
+              "SELECT p.*, COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS ent_razao_social, end.end_uf
+            FROM tbl_ordens_expedicao_pedidos p
+            JOIN tbl_entidades e ON p.oep_cliente_id = e.ent_codigo
+            LEFT JOIN tbl_enderecos end ON e.ent_codigo = end.end_entidade_id AND end.end_tipo_endereco = 'Principal'
+            WHERE p.oep_ordem_id = :id 
+            GROUP BY p.oep_id
+            ORDER BY p.oep_id"
+          );
+          $stmtPedidos->execute([':id' => $id]);
+          $ordem['pedidos'] = $stmtPedidos->fetchAll(PDO::FETCH_ASSOC); */
+
+        // 2. Busca os pedidos/clientes
         $stmtPedidos = $this->pdo->prepare(
             "SELECT p.*, COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS ent_razao_social, end.end_uf
           FROM tbl_ordens_expedicao_pedidos p
@@ -165,7 +178,7 @@ class OrdemExpedicaoRepository
           LEFT JOIN tbl_enderecos end ON e.ent_codigo = end.end_entidade_id AND end.end_tipo_endereco = 'Principal'
           WHERE p.oep_ordem_id = :id 
           GROUP BY p.oep_id
-          ORDER BY p.oep_id"
+          ORDER BY p.oep_ordem_carregamento ASC, p.oep_id ASC"
         );
         $stmtPedidos->execute([':id' => $id]);
         $ordem['pedidos'] = $stmtPedidos->fetchAll(PDO::FETCH_ASSOC);
@@ -559,6 +572,45 @@ class OrdemExpedicaoRepository
         $this->auditLogger->log('UPDATE', $oeiId, 'tbl_ordens_expedicao_itens', $itemAtual, $data);
 
         return $success;
+    }
+
+    /**
+     * Salva a nova sequência de carregamento dos pedidos/clientes.
+     * @param array $ordemIds Array de oep_id na nova ordem.
+     */
+    public function salvarOrdemClientes(array $ordemIds): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $sql = "UPDATE tbl_ordens_expedicao_pedidos SET oep_ordem_carregamento = :ordem WHERE oep_id = :id";
+            $stmt = $this->pdo->prepare($sql);
+
+            foreach ($ordemIds as $index => $id) {
+                $stmt->execute([
+                    ':ordem' => $index, // Salva a posição (0, 1, 2...)
+                    ':id' => (int) $id
+                ]);
+            }
+            $this->pdo->commit();
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Retorna uma lista de Ordens de Expedição para serem usadas em um Select2.
+     * @return array
+     */
+    public function findForSelect(): array
+    {
+        // Por enquanto, vamos listar todas. No futuro, podemos filtrar por status.
+        $sql = "SELECT oe_id AS id, oe_numero AS text 
+                FROM tbl_ordens_expedicao_header 
+                WHERE oe_status = 'EM ELABORAÇÃO'
+                ORDER BY oe_data DESC, oe_id DESC";
+
+        return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
 }

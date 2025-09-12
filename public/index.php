@@ -123,8 +123,6 @@ try {
         'clientes' => 'entidades/lista_entidades.php',
         'fornecedores' => 'entidades/lista_entidades.php',
         'produtos' => 'produtos/lista_produtos.php',
-        //'lotes' => 'lotes/lista_lotes.php',
-        //'lotes' => 'lotes_novo/lista_lotes_novo.php',
         'lotes_producao' => 'lotes_novo/lista_lotes_producao.php',
         'lotes_embalagem' => 'lotes_novo/lista_lotes_embalagem.php',
         'permissoes' => 'permissoes/gerenciar.php',
@@ -140,6 +138,8 @@ try {
         'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php',
         'ordens_expedicao' => 'ordens_expedicao/lista_ordens_expedicao.php',
         'ordem_expedicao_detalhes' => 'ordens_expedicao/detalhes_ordem_expedicao.php',
+        'faturamentos_listar' => 'faturamento/lista_faturamentos.php',
+        'faturamento_gerar' => 'faturamento/gerar_resumo.php',
     ];
 
     $pageType = '';
