@@ -1,9 +1,23 @@
-// /public/js/app_config.js (Versão Aprimorada)
+// /public/js/app_config.js 
+
+// ### FUNÇÃO PARA FORMATAR NÚMEROS ###
+function formatarNumeroBrasileiro(numero) {
+    const num = parseFloat(numero);
+    if (isNaN(num)) {
+        return "0,000";
+    }
+    // Se o número for inteiro, retorna sem casas decimais
+    if (num % 1 === 0) {
+        return num.toString();
+    }
+    // Se tiver decimais, formata para 3 casas e troca ponto por vírgula
+    return num.toFixed(3).replace('.', ',');
+}
 
 $(document).ready(function () {
     /**
-     * Tratador de Erros Global para chamadas AJAX.
-     */
+      * Tratador de Erros Global para chamadas AJAX.
+      */
     $(document).ajaxError(function (event, jqXHR, ajaxSettings, thrownError) {
 
         // Condição para IGNORAR erros de tradução do DataTables, que não são críticos.

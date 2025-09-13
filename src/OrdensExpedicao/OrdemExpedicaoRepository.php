@@ -52,7 +52,6 @@ class OrdemExpedicaoRepository
 
     public function getNextOrderNumber(): string
     {
-        // CORREÇÃO: A consulta agora busca o número máximo na própria tabela de ordens de expedição.
         $stmt = $this->pdo->query("SELECT MAX(CAST(SUBSTRING_INDEX(oe_numero, '.', 1) AS UNSIGNED)) FROM tbl_ordens_expedicao_header");
         $lastNum = ($stmt->fetchColumn() ?: 0) + 1;
         $sequence = str_pad($lastNum, 4, '0', STR_PAD_LEFT);
@@ -76,75 +75,6 @@ class OrdemExpedicaoRepository
         return $newId;
     }
 
-    /*    public function findOrdemCompleta(int $id): ?array
-     {
-         $ordem = [];
-         // 1. Busca o cabeçalho (sem alterações)
-         $stmtHeader = $this->pdo->prepare("SELECT * FROM tbl_ordens_expedicao_header WHERE oe_id = :id");
-         $stmtHeader->execute([':id' => $id]);
-         $ordem['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-
-         if (!$ordem['header']) {
-             return null;
-         }
-
-         // 2. Busca os pedidos/clientes (sem alterações)
-         $stmtPedidos = $this->pdo->prepare(
-             "SELECT p.*, e.ent_razao_social, end.end_uf
-          FROM tbl_ordens_expedicao_pedidos p
-          JOIN tbl_entidades e ON p.oep_cliente_id = e.ent_codigo
-          LEFT JOIN tbl_enderecos end ON e.ent_codigo = end.end_entidade_id AND end.end_tipo_endereco = 'Principal'
-          WHERE p.oep_ordem_id = :id 
-          GROUP BY p.oep_id
-          ORDER BY p.oep_id"
-         );
-         $stmtPedidos->execute([':id' => $id]);
-         $ordem['pedidos'] = $stmtPedidos->fetchAll(PDO::FETCH_ASSOC);
-
-         // 3. Para cada pedido, busca os itens (CONSULTA TOTALMENTE REFEITA PARA BUSCAR TUDO)
-         foreach ($ordem['pedidos'] as $key => $pedido) {
-             $stmtItens = $this->pdo->prepare(
-                 "SELECT 
-                 i.oei_id,
-                 i.oei_quantidade,
-                 i.oei_observacao,
-                 p_sec.prod_codigo_interno,
-                 p_sec.prod_descricao,
-                 p_prim.prod_peso_embalagem AS peso_primario,
-                 p_sec.prod_peso_embalagem AS peso_secundario,
-                 cam.camara_industria AS industria,
-                 COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social) AS cliente_lote_nome,
-                 lnh.lote_completo_calculado
-             FROM tbl_ordens_expedicao_itens i
-
-             -- Joins para pegar os dados do item/produto
-             JOIN tbl_estoque_alocacoes ea ON i.oei_alocacao_id = ea.alocacao_id
-             JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
-             JOIN tbl_produtos p_sec ON lne.item_emb_prod_sec_id = p_sec.prod_codigo
-
-             -- Join para pegar o peso primário
-             JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
-             JOIN tbl_produtos p_prim ON lnp.item_prod_produto_id = p_prim.prod_codigo
-
-             -- Joins para pegar os dados do lote
-             JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-             LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo
-
-             -- Joins para pegar a indústria da câmara
-             JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
-             JOIN tbl_estoque_camaras cam ON ee.endereco_camara_id = cam.camara_id
-
-             WHERE i.oei_pedido_id = :pedido_id
-             ORDER BY i.oei_id"
-             );
-
-             $stmtItens->execute([':pedido_id' => $pedido['oep_id']]);
-             $ordem['pedidos'][$key]['itens'] = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-         }
-
-         return $ordem;
-     } */
-
     public function findOrdemCompleta(int $id): ?array
     {
         $ordem = [];
@@ -156,19 +86,6 @@ class OrdemExpedicaoRepository
         if (!$ordem['header']) {
             return null;
         }
-
-        // 2. Busca os pedidos/clientes
-        /*  $stmtPedidos = $this->pdo->prepare(
-              "SELECT p.*, COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS ent_razao_social, end.end_uf
-            FROM tbl_ordens_expedicao_pedidos p
-            JOIN tbl_entidades e ON p.oep_cliente_id = e.ent_codigo
-            LEFT JOIN tbl_enderecos end ON e.ent_codigo = end.end_entidade_id AND end.end_tipo_endereco = 'Principal'
-            WHERE p.oep_ordem_id = :id 
-            GROUP BY p.oep_id
-            ORDER BY p.oep_id"
-          );
-          $stmtPedidos->execute([':id' => $id]);
-          $ordem['pedidos'] = $stmtPedidos->fetchAll(PDO::FETCH_ASSOC); */
 
         // 2. Busca os pedidos/clientes
         $stmtPedidos = $this->pdo->prepare(
@@ -599,16 +516,16 @@ class OrdemExpedicaoRepository
     }
 
     /**
-     * Retorna uma lista de Ordens de Expedição para serem usadas em um Select2.
+     * Retorna uma lista de Ordens de Expedição que AINDA NÃO têm um resumo de faturamento.
      * @return array
      */
     public function findForSelect(): array
     {
-        // Por enquanto, vamos listar todas. No futuro, podemos filtrar por status.
-        $sql = "SELECT oe_id AS id, oe_numero AS text 
-                FROM tbl_ordens_expedicao_header 
-                WHERE oe_status = 'EM ELABORAÇÃO'
-                ORDER BY oe_data DESC, oe_id DESC";
+        $sql = "SELECT oe.oe_id AS id, oe.oe_numero AS text 
+                FROM tbl_ordens_expedicao_header oe
+                LEFT JOIN tbl_faturamento_resumos fr ON oe.oe_id = fr.fat_ordem_expedicao_id
+                WHERE oe.oe_status = 'EM ELABORAÇÃO' AND fr.fat_id IS NULL
+                ORDER BY oe.oe_data DESC, oe.oe_id DESC";
 
         return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }

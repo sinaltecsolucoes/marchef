@@ -26,8 +26,7 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center",
                 "render": function (data) {
-                    // Futuramente, o link de edição levará para a tela de detalhes
-                    return `<a href="#" class="btn btn-warning btn-sm">Detalhes</a>`;
+                    return `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-warning btn-sm">Detalhes</a>`;
                 }
             }
         ],

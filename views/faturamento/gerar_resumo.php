@@ -1,10 +1,22 @@
-<?php // /views/faturamento/gerar_resumo.php ?>
+<?php
+// /views/faturamento/gerar_resumo.php 
+
+// Verificamos se um ID de resumo foi passado pela URL. Isso define o modo da página.
+$modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
+?>
 
 <h4 class="fw-bold mb-3">Gerar Resumo para Faturamento</h4>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <h6 class="m-0 font-weight-bold text-primary">1. Selecionar Ordem de Expedição</h6>
+
+        <?php if (!$modoEdicao): // Só mostra este botão se NÃO estiver em modo de edição (modo criação) ?>
+            <a href="index.php?page=faturamentos_listar" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar para a Lista
+            </a>
+        <?php endif; ?>
+
     </div>
     <div class="card-body">
         <div class="row">
@@ -23,8 +35,22 @@
 </div>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">2. Resumo Agrupado</h6>
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="m-0 font-weight-bold text-primary">2. Resumo Agrupado</h6>
+            <span id="ordem-origem-display" class="text-muted small" style="display: none;"></span>
+        </div>
+
+        <div>
+            <?php if ($modoEdicao): ?>
+                <button id="btn-gerar-relatorio" class="btn btn-info btn-sm">
+                    <i class="fas fa-file-pdf"></i> Gerar Relatório
+                </button>
+                <a href="index.php?page=faturamentos_listar" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar para a Lista
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="card-body">
         <div id="faturamento-resultado-container">
@@ -49,7 +75,8 @@
 
                     <p class="text-muted"><strong>Produto:</strong> <span id="display-produto" class="text-dark"></span>
                     </p>
-                    <p class="text-muted"><strong>Lote:</strong> <span id="display-lote" class="text-dark"></span></p>
+                    <p class="text-muted"><strong>Lote:</strong> <span id="display-lote" class="text-dark"></span>
+                    </p>
                     <hr>
                     <div class="row">
                         <div class="col-md-6 mb-3">

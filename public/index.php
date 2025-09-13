@@ -140,6 +140,7 @@ try {
         'ordem_expedicao_detalhes' => 'ordens_expedicao/detalhes_ordem_expedicao.php',
         'faturamentos_listar' => 'faturamento/lista_faturamentos.php',
         'faturamento_gerar' => 'faturamento/gerar_resumo.php',
+        'relatorio_faturamento' => 'faturamento/relatorio_faturamento.php',
     ];
 
     $pageType = '';
@@ -205,7 +206,23 @@ try {
     $viewParaIncluir = __DIR__ . '/../views/' . $arquivoView;
 
     // Renderiza o Layout Principal
-    require_once __DIR__ . '/../views/layouts/main.php';
+    // require_once __DIR__ . '/../views/layouts/main.php';
+
+    // ### LÓGICA DE RENDERIZAÇÃO ###
+    // Define quais páginas devem ser carregadas SEM o layout principal (menu, navbar, etc.)
+    $paginasSemLayout = [
+        'relatorio_faturamento'
+        // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
+    ];
+
+    if (in_array($paginaAtual, $paginasSemLayout)) {
+        // Se a página está na lista, inclui SÓ a view (sem layout)
+        require_once($viewParaIncluir);
+    } else {
+        // Senão, carrega o layout principal (com menu, navbar, etc.)
+        require_once __DIR__ . '/../views/layouts/main.php';
+    }
+
 } catch (PDOException $e) {
     error_log("Erro no Front Controller: " . $e->getMessage());
     die("Ocorreu um erro crítico na aplicação. Verifique os logs do servidor.");

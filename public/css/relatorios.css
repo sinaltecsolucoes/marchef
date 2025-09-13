@@ -1,0 +1,128 @@
+/* /public/css/relatorios.css */
+/* Estilo principal para todos os relatórios de impressão */
+
+@page {
+    size: A4 landscape; /* Define a impressão para A4 Paisagem */
+    margin: 1cm;      /* Define a margem geral (você pode ajustar) */
+
+    /* ISSO DESLIGA OS CABEÇALHOS PADRÃO DO NAVEGADOR (TÍTULO E DATA) */
+    @top-left   { content: ""; }
+    @top-center { content: ""; }
+    @top-right  { content: ""; }
+
+    /* ISSO DESLIGA OS RODAPÉS PADRÃO (A URL) E COLOCA O NÚMERO DA PÁGINA */
+    @bottom-left   { content: ""; } /* Remove a URL */
+    @bottom-center  { content: ""; }
+    @bottom-right { 
+        content: "Página " counter(page) " de " counter(pages); /* Adiciona um contador de página útil */
+        font-family: Arial, sans-serif;
+        font-size: 8pt;
+        color: #888;
+    }
+}
+
+body {
+    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    /* Tamanho da Fonte Principal */
+}
+
+.container {
+    /* max-width: 210mm;*/
+    /* Largura A4 RETRATO*/
+    max-width: 297mm;
+    /* Largura A4 PAISAGEM */
+    background-color: #fff;
+    padding: 0.75cm;
+    /* AJUSTE AQUI: Margens do Relatório */
+    margin: 20px auto;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.report-header {
+    text-align: center;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.report-header img {
+    max-width: 150px;
+}
+
+.section-title {
+    background-color: #e9ecef;
+    padding: 8px;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.client-info {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    background: #fdfdfd;
+    margin-bottom: 10px;
+}
+
+.invoice-panel {
+    /*container que agrupa os dados dos clientes e seus pedidos */
+    border: 1px solid #adb5bd;
+    /* Borda um pouco mais escura */
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden; /* Garante que os cantos arredondados funcionem */
+    page-break-inside: avoid;
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.item-table th,
+.item-table td {
+    border: 1px solid #ccc;
+    padding: 5px;
+}
+
+.item-table th {
+    background-color: #f1f1f1;
+}
+
+.text-end {
+    text-align: right;
+}
+
+.text-start {
+    text-align: left;
+}
+
+.total-row {
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+/* Estilos de Impressão */
+@media print {
+    body {
+        background-color: #fff;
+        font-size: 9pt;
+        /* Tamanho da Fonte (para Impressão) */
+    }
+
+    .container {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+    }
+
+    .no-print {
+        display: none;
+    }
+
+    .page-break {
+        page-break-after: always;
+    }
+}

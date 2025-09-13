@@ -220,20 +220,6 @@ $(document).ready(function () {
         });
     }
 
-    // ### FUNÇÃO PARA FORMATAR NÚMEROS ###
-    function formatarNumeroBrasileiro(numero) {
-        const num = parseFloat(numero);
-        if (isNaN(num)) {
-            return "0,000";
-        }
-        // Se o número for inteiro, retorna sem casas decimais
-        if (num % 1 === 0) {
-            return num.toString();
-        }
-        // Se tiver decimais, formata para 3 casas e troca ponto por vírgula
-        return num.toFixed(3).replace('.', ',');
-    }
-
     // --- Lógica inicial da página ---
     if (ordemId) {
         carregarOrdemCompleta(ordemId);

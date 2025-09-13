@@ -1485,7 +1485,6 @@ function getTemplateOptions(RegraRepository $repo)
 }
 
 // --- FUNÇÕES DE CONTROLE PARA AUDITORIA ---
-
 function listarLogs(AuditLogRepository $repo)
 {
     try {
@@ -2081,29 +2080,6 @@ function excluirEnderecoCamaras(EnderecoRepository $repo)
     }
 }
 
-/* function alocarItemEndereco(EnderecoRepository $repo)
-{
-    try {
-        // Recebe os IDs do aplicativo Android (ou do nosso modal de teste)
-        $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
-        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
-        $usuarioId = $_SESSION['codUsuario'] ?? null; // Pega o usuário da sessão
-
-        if (!$enderecoId || !$loteItemId || !$usuarioId) {
-            throw new Exception("Dados insuficientes para alocação (endereço, item e usuário são obrigatórios).");
-        }
-
-        if ($repo->alocarItem($enderecoId, $loteItemId, $usuarioId)) {
-            echo json_encode(['success' => true, 'message' => 'Item alocado com sucesso!']);
-        } else {
-            throw new Exception('Não foi possível alocar o item.');
-        }
-
-    } catch (Exception $e) {
-        // Captura erros de negócio (ex: "Endereço já ocupado") e envia para o app.
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
 
 function alocarItemEndereco(EnderecoRepository $repo)
 {
@@ -2231,6 +2207,7 @@ function getProdutosComEstoqueDisponivel(OrdemExpedicaoRepository $repo)
 {
     echo json_encode(['results' => $repo->getProdutosDisponiveisParaSelecao()]);
 }
+
 function getLotesDisponiveisPorProduto(OrdemExpedicaoRepository $repo)
 {
     $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
