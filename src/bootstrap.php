@@ -53,7 +53,7 @@ header("Content-Security-Policy: default-src 'self'; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://cdnjs.cloudflare.com; " .
     "img-src 'self' data: https://cdn.jsdelivr.net; " .
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " .
-    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br; " .
+    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br https://cdn.jsdelivr.net; " .
     "form-action 'self';");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: camera=(), geolocation=(), microphone=(), usb=(), payment=()");

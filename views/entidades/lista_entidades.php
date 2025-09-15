@@ -1,11 +1,28 @@
 <?php
 // /views/entidades/lista_entidades.php
-// View unificada para gestão de Clientes e Fornecedores
 
-// O controlador (index.php) define as variáveis $pageType e $csrf_token.
-$is_cliente = ($pageType === 'cliente');
-$titulo = $is_cliente ? 'Clientes' : 'Fornecedores';
-$singular = $is_cliente ? 'Cliente' : 'Fornecedor';
+// Lógica de Título/Variável ATUALIZADA para 3 tipos
+$titulos = [
+    'cliente' => 'Clientes',
+    'fornecedor' => 'Fornecedores',
+    'transportadora' => 'Transportadoras'
+];
+$singulares = [
+    'cliente' => 'Cliente',
+    'fornecedor' => 'Fornecedor',
+    'transportadora' => 'Transportadora'
+];
+
+$titulo = $titulos[$pageType] ?? 'Entidades';
+$singular = $singulares[$pageType] ?? 'Entidade'; // VARIÁVEL $singular AGORA EXISTE
+
+$subtitulo = [
+    'cliente' => 'Gerencie todos os clientes.',
+    'fornecedor' => 'Gerencie todos os fornecedores.',
+    'transportadora' => 'Gerencie todas as transportadoras cadastradas.'
+];
+$descricaoSubtitulo = $subtitulo[$pageType] ?? '';
+
 ?>
 
 <h4 class="fw-bold mb-3">Gestão de <?php echo $titulo; ?></h4>
@@ -16,6 +33,7 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
     </div>
     <div class="card-body">
         <div class="row align-items-center">
+            <p><?php echo $descricaoSubtitulo; ?></p>
 
             <!-- Botão Adicionar -->
             <div class="col-12 col-md-3 mb-3 mb-md-0 w-25">
@@ -29,16 +47,20 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
 
             <!-- Filtro por Tipo Específico -->
             <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center w-25">
-                <label for="filtro-tipo-entidade" class="form-label me-2 text-nowrap">Filtrar por Tipo:</label>
-                <select class="form-select flex-grow-1" id="filtro-tipo-entidade">
-                    <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
-                    <?php if ($pageType === 'cliente'): ?>
-                        <option value="Cliente">Apenas Clientes</option>
-                    <?php else: ?>
-                        <option value="Fornecedor">Apenas Fornecedores</option>
-                    <?php endif; ?>
-                    <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
-                </select>
+                <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora ?>
+                    <label for="filtro-tipo-entidade" class="form-label me-2 text-nowrap">Filtrar por Tipo:</label>
+                    <select class="form-select flex-grow-1" id="filtro-tipo-entidade">
+                        <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
+
+                        <?php if ($pageType === 'cliente'): ?>
+                            <option value="Cliente">Apenas Clientes</option>
+                        <?php else: // Estamos na página de fornecedores ?>
+                            <option value="Fornecedor">Apenas Fornecedores</option>
+                        <?php endif; ?>
+
+                        <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
+                    </select>
+                <?php endif; // Se for transportadora, este bloco inteiro fica vazio ?>
             </div>
 
             <!-- Filtro por Situação -->
@@ -122,28 +144,49 @@ $singular = $is_cliente ? 'Cliente' : 'Fornecedor';
                             <div id="mensagem-entidade" class="mb-3"></div>
 
                             <div class="row">
+
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Tipo de Entidade</label><br>
-                                    <?php if ($pageType === 'cliente'): ?>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                                id="tipo-entidade-cliente" value="Cliente" checked>
-                                            <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                                id="tipo-entidade-fornecedor" value="Fornecedor" checked>
-                                            <label class="form-check-label"
-                                                for="tipo-entidade-fornecedor">Fornecedor</label>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="form-check form-check-inline">
+
+                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'cliente')
+                                        echo 'style="display:none;"'; ?>>
+                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                            id="tipo-entidade-cliente" value="Cliente" <?php if ($pageType === 'cliente')
+                                                echo 'checked'; ?>>
+                                        <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
+                                    </div>
+
+                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'fornecedor')
+                                        echo 'style="display:none;"'; ?>>
+                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                            id="tipo-entidade-fornecedor" value="Fornecedor" <?php if ($pageType === 'fornecedor')
+                                                echo 'checked'; ?>>
+                                        <label class="form-check-label"
+                                            for="tipo-entidade-fornecedor">Fornecedor</label>
+                                    </div>
+
+                                    <div class="form-check form-check-inline" <?php if ($pageType === 'transportadora')
+                                        echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-ambos" value="Cliente e Fornecedor">
-                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos</label>
+                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos (Cliente e
+                                            Fornecedor)</label>
+                                    </div>
+
+                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'transportadora')
+                                        echo 'style="display:none;"'; ?>>
+                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                            id="tipo-entidade-transportadora" value="Transportadora" <?php if ($pageType === 'transportadora')
+                                                echo 'checked'; ?>>
+                                        <label class="form-check-label"
+                                            for="tipo-entidade-transportadora">Transportadora</label>
                                     </div>
                                 </div>
+
+
+
+
+
                                 <div class="col-md-6 mb-3" id="div-situacao-entidade">
                                     <label class="form-label" for="situacao-entidade">Situação</label>
                                     <div class="form-check form-switch">

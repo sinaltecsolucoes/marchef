@@ -32,6 +32,8 @@ $paginas_e_acoes_disponiveis = [
     'ordem_expedicao_detalhes' => 'Gerenciar Detalhes de Ordens de Expedição',
     'faturamento_listar' => 'Gerenciar Faturamento',
     'faturamento_gerar' => 'Gerenciar Detalhes Faturamento',
+    'condicoes_pagamento' => 'Gerenciar Condições de Pagamentos',
+    
 ];
 
 // Perfis de usuário que podem ter permissões configuradas

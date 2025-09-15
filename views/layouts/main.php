@@ -65,10 +65,16 @@
                             unset($paginasParaCadastro['visao_estoque_enderecos']);
                             unset($paginasParaCadastro['faturamento_gerar']);
                             unset($paginasParaCadastro['faturamentos_listar']);
+                            unset($paginasParaCadastro['condicoes_pagamento']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
                             ?>
+
+                            <?php if (in_array('condicoes_pagamento', $paginasPermitidasUsuario)): ?>
+                                <li><a class="dropdown-item" href="index.php?page=condicoes_pagamento">Condições de
+                                        Pagamento</a></li>
+                            <?php endif; ?>
 
                             <?php // --- SUBMENU DE ESTOQUE ---
                             $paginasEstoque = ['estoque_camaras', 'estoque_enderecos'];
@@ -289,9 +295,11 @@
     <?php if ($paginaAtual === 'produtos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
     <?php endif; ?>
-    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor'): ?>
+
+    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor' || $pageType === 'transportadora'): ?>
         <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
     <?php endif; ?>
+
     <?php if ($paginaAtual === 'lotes_producao' || $paginaAtual === 'lotes_embalagem'): ?>
         <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
     <?php endif; ?>
@@ -327,6 +335,10 @@
 
     <?php if ($paginaAtual === 'visao_estoque_enderecos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/visao_estoque_enderecos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'condicoes_pagamento'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/condicoes_pagamento.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'ordens_expedicao'): ?>

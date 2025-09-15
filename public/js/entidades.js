@@ -219,8 +219,8 @@ $(document).ready(function () {
             },
             { "data": "ent_tipo_entidade", "className": "text-center font-small", "width": "7%" },
             { "data": "ent_codigo_interno", "className": "text-center font-small", "width": "3%" },
-            { "data": "ent_razao_social", "className":"font-small","width": "20%" },
-            { "data": "ent_nome_fantasia", "className": "font-small","width": "15%" },
+            { "data": "ent_razao_social", "className": "font-small", "width": "20%" },
+            { "data": "ent_nome_fantasia", "className": "font-small", "width": "15%" },
             {
                 "data": null,
                 "className": "text-center font-small",
@@ -233,7 +233,7 @@ $(document).ready(function () {
                     }
                 }
             },
-            { "data": "end_logradouro", "className":"font-small","width": "10%", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
+            { "data": "end_logradouro", "className": "font-small", "width": "10%", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
             {
                 "data": "ent_codigo", "orderable": false, "className": "text-center", "width": "8%", "render": (data, type, row) =>
                     `<a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}">Editar</a>` +
@@ -292,21 +292,53 @@ $(document).ready(function () {
     });
 
     // Limpa o modal ao clicar em "Adicionar"
+    /*   $modalEntidade.on('show.bs.modal', function (event) {
+           if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
+               const singular = pageType === 'cliente' ? 'Cliente' : 'Fornecedor';
+               $formEntidade[0].reset();
+               $('#ent-codigo').val('');
+               $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
+   
+               // Seleciona o radio button de tipo de entidade apropriado
+               $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
+   
+               // Define Pessoa Física como padrão
+               $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
+               $('#enderecos-tab').addClass('disabled');
+   
+               updatePessoaFields();
+           }
+       }); */
+
+
     $modalEntidade.on('show.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
-            const singular = pageType === 'cliente' ? 'Cliente' : 'Fornecedor';
+            // LÓGICA CORRIGIDA PARA 3 TIPOS
+            let singular = 'Entidade';
+            switch (pageType) {
+                case 'cliente':
+                    singular = 'Cliente';
+                    break;
+                case 'fornecedor':
+                    singular = 'Fornecedor';
+                    break;
+                case 'transportadora':
+                    singular = 'Transportadora';
+                    break;
+            }
+
             $formEntidade[0].reset();
             $('#ent-codigo').val('');
             $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
 
-            // Seleciona o radio button de tipo de entidade apropriado
+            // Seleciona o radio button correto (o HTML agora também tem o valor 'Transportadora')
             $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
 
             // Define Pessoa Física como padrão
             $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
             $('#enderecos-tab').addClass('disabled');
 
-            updatePessoaFields();
+            updatePessoaFields('F', true); // Força a UI de Pessoa Física e limpa o campo
         }
     });
 
@@ -323,7 +355,7 @@ $(document).ready(function () {
         const id = $('#ent-codigo').val();
         const url = `ajax_router.php?action=salvarEntidade`;
         const formData = new FormData(this);
-        
+
         $.ajax({
             url: url,
             type: 'POST',
@@ -354,7 +386,7 @@ $(document).ready(function () {
         }
         const formData = new FormData(this);
         formData.append('end_entidade_id', entidadeId);
-        
+
         $.ajax({
             url: 'ajax_router.php?action=salvarEndereco',
             type: 'POST',

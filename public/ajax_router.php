@@ -37,6 +37,7 @@ use App\Estoque\CamaraRepository;
 use App\Estoque\EnderecoRepository;
 use App\OrdensExpedicao\OrdemExpedicaoRepository;
 use App\Faturamento\FaturamentoRepository;
+use App\CondicaoPagamento\CondicaoPagamentoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -73,6 +74,7 @@ try {
     $enderecoRepo = new EnderecoRepository($pdo);// Cria a instância do repositório para Endereçamento das Câmaras
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
     $faturamentoRepo = new FaturamentoRepository($pdo);//Cria a instância do repositorio para Faturamento
+    $condPagRepo = new CondicaoPagamentoRepository($pdo);//Cria a instância do repositorio para Condições de Pagamento
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -135,6 +137,9 @@ switch ($action) {
         break;
     case 'excluirEndereco':
         excluirEndereco($entidadeRepo);
+        break;
+    case 'getTransportadoraOptions':
+        getTransportadoraOptions($entidadeRepo);
         break;
 
     // --- ROTAS DE USUÁRIOS ---
@@ -542,6 +547,32 @@ switch ($action) {
     case 'listarFaturamentos':
         listarFaturamentos($faturamentoRepo);
         break;
+    case 'getCondicoesPagamentoOptions':
+        getCondicoesPagamentoOptions($faturamentoRepo);
+        break;
+    case 'getNotaGrupoDetalhes':
+        getNotaGrupoDetalhes($faturamentoRepo);
+        break;
+    case 'salvarNotaGrupo':
+        salvarNotaGrupo($faturamentoRepo);
+        break;
+    case 'salvarDadosTransporte':
+        salvarDadosTransporte($faturamentoRepo);
+        break;
+
+    // --- ROTAS DE CADASTRO - CONDIÇÕES DE PAGAMENTO ---
+    case 'listarCondicoesPagamento':
+        listarCondicoesPagamento($condPagRepo);
+        break;
+    case 'getCondicaoPagamento':
+        getCondicaoPagamento($condPagRepo);
+        break;
+    case 'salvarCondicaoPagamento':
+        salvarCondicaoPagamento($condPagRepo);
+        break;
+    case 'excluirCondicaoPagamento':
+        excluirCondicaoPagamento($condPagRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -774,6 +805,11 @@ function getFornecedorOptions(EntidadeRepository $repo)
 function getClienteOptions(EntidadeRepository $repo)
 {
     echo json_encode(['success' => true, 'data' => $repo->getClienteOptions()]);
+}
+
+function getTransportadoraOptions(EntidadeRepository $repo)
+{
+    echo json_encode(['results' => $repo->getTransportadoraOptions()]);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA USUARIOS ---
@@ -2394,4 +2430,93 @@ function getResumoSalvo(FaturamentoRepository $repo)
 function listarFaturamentos(FaturamentoRepository $repo)
 {
     echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getCondicoesPagamentoOptions(FaturamentoRepository $repo)
+{
+    // O Select2 espera os dados dentro de uma chave 'results'
+    echo json_encode(['results' => $repo->getCondicoesPagamentoOptions()]);
+}
+
+function getNotaGrupoDetalhes(FaturamentoRepository $repo)
+{
+    $fatnId = filter_input(INPUT_POST, 'fatn_id', FILTER_VALIDATE_INT);
+    if (!$fatnId) {
+        echo json_encode(['success' => false, 'message' => 'ID do grupo de nota inválido.']);
+        return;
+    }
+    $detalhes = $repo->getNotaGrupoDetalhes($fatnId);
+    echo json_encode(['success' => true, 'data' => $detalhes]);
+}
+
+function salvarNotaGrupo(FaturamentoRepository $repo)
+{
+    try {
+        $fatnId = filter_input(INPUT_POST, 'fatn_id', FILTER_VALIDATE_INT);
+        if (!$fatnId) {
+            throw new Exception("ID do grupo de nota não fornecido.");
+        }
+        $repo->updateNotaGrupo($fatnId, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Grupo de Pedido atualizado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function salvarDadosTransporte(FaturamentoRepository $repo)
+{
+    try {
+        $resumoId = filter_input(INPUT_POST, 'fat_resumo_id', FILTER_VALIDATE_INT);
+        if (!$resumoId) {
+            throw new Exception("ID do Resumo não fornecido.");
+        }
+        $repo->salvarDadosTransporte($resumoId, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Dados de transporte salvos!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA CONDIÇÕES DE PAGAMENTO ---
+
+function listarCondicoesPagamento(CondicaoPagamentoRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getCondicaoPagamento(CondicaoPagamentoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'cond_id', FILTER_VALIDATE_INT);
+    $data = $id ? $repo->find($id) : null;
+    echo json_encode(['success' => !!$data, 'data' => $data]);
+}
+
+function salvarCondicaoPagamento(CondicaoPagamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'cond_id', FILTER_VALIDATE_INT);
+        if ($id) {
+            $repo->update($id, $_POST);
+            $message = 'Condição atualizada com sucesso!';
+        } else {
+            $repo->create($_POST);
+            $message = 'Condição cadastrada com sucesso!';
+        }
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirCondicaoPagamento(CondicaoPagamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'cond_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+        $repo->delete($id);
+        echo json_encode(['success' => true, 'message' => 'Condição excluída com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }

@@ -34,15 +34,14 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
     </div>
 </div>
 
-<div class="card shadow mb-4 card-custom">
+<div id="card-transporte" class="card shadow mb-4 card-custom" style="display: none;">
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <div>
-            <h6 class="m-0 font-weight-bold text-primary">2. Resumo Agrupado</h6>
-            <span id="ordem-origem-display" class="text-muted small" style="display: none;"></span>
-        </div>
-
+        <h6 class="m-0 font-weight-bold text-primary">Dados de Transporte</h6>
         <div>
             <?php if ($modoEdicao): ?>
+                <button id="btn-exportar-excel" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
                 <button id="btn-gerar-relatorio" class="btn btn-info btn-sm">
                     <i class="fas fa-file-pdf"></i> Gerar Relatório
                 </button>
@@ -51,6 +50,50 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
                 </a>
             <?php endif; ?>
         </div>
+    </div>
+
+
+    <div class="card-body">
+        <form id="form-transporte">
+            <input type="hidden" name="fat_resumo_id" id="fat_resumo_id_transporte">
+            <input type="hidden" name="csrf_token"
+                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="select-transportadora" class="form-label">Transportadora</label>
+                    <select id="select-transportadora" name="fat_transportadora_id" class="form-select"
+                        style="width: 100%;"></select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="fat_motorista_nome" class="form-label">Nome do Motorista</label>
+                    <input type="text" class="form-control" id="fat_motorista_nome" name="fat_motorista_nome">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="fat_motorista_cpf" class="form-label">CPF do Motorista</label>
+                    <input type="text" class="form-control" id="fat_motorista_cpf" name="fat_motorista_cpf">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="fat_veiculo_placa" class="form-label">Placa do Veículo</label>
+                    <input type="text" class="form-control" id="fat_veiculo_placa" name="fat_veiculo_placa">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Dados de Transporte</button>
+        </form>
+    </div>
+    <div class="card-body">
+    </div>
+</div>
+
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="m-0 font-weight-bold text-primary">2. Resumo Agrupado</h6>
+            <span id="ordem-origem-display" class="text-muted small" style="display: none;"></span>
+        </div>
+
     </div>
     <div class="card-body">
         <div id="faturamento-resultado-container">
@@ -93,15 +136,56 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
                             </select>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_fati_observacao" class="form-label">Observação do Faturamento</label>
-                        <textarea class="form-control" id="edit_fati_observacao" name="fati_observacao"
-                            rows="3"></textarea>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-editar-nota-grupo" tabindex="-1" aria-labelledby="modal-editar-nota-label"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-editar-nota-label">Editar Dados do Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form id="form-editar-nota-grupo">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_fatn_id" name="fatn_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Cliente:</label>
+                            <p id="display-nota-cliente" class="form-control-plaintext bg-light p-2 rounded"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nº Pedido Cliente:</label>
+                            <p id="display-nota-pedido" class="form-control-plaintext bg-light p-2 rounded"></p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label for="edit_fatn_condicao_pag_id" class="form-label">Condição de Pagamento</label>
+                        <select class="form-select" id="edit_fatn_condicao_pag_id" name="fatn_condicao_pag_id"
+                            style="width: 100%;"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_fatn_observacao" class="form-label">Observação (para esta Nota/Pedido)</label>
+                        <textarea class="form-control" id="edit_fatn_observacao" name="fatn_observacao"
+                            rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações da Nota</button>
                 </div>
             </form>
         </div>

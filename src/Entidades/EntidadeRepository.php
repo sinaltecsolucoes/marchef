@@ -36,7 +36,7 @@ class EntidadeRepository
         $columns = ['ent_situacao', 'ent_tipo_entidade', 'ent_codigo_interno', 'ent_razao_social', 'ent_nome_fantasia', 'ent_cpf', 'end_logradouro'];
         $orderColumn = $columns[$orderColumnIndex] ?? 'ent_razao_social';
 
-        $searchableColumns = ['ent_razao_social', 'ent_nome_fantasia','ent_cpf', 'ent_cnpj', 'ent_codigo_interno'];
+        $searchableColumns = ['ent_razao_social', 'ent_nome_fantasia', 'ent_cpf', 'ent_cnpj', 'ent_codigo_interno'];
 
         $sqlBase = "FROM tbl_entidades ent LEFT JOIN (SELECT end_entidade_id, end_logradouro, end_numero, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 WHEN 'Comercial' THEN 2 ELSE 3 END, end_codigo ASC) as rn FROM tbl_enderecos) end ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1";
 
@@ -47,10 +47,18 @@ class EntidadeRepository
             $conditions[] = "ent.ent_tipo_entidade = :filtro_tipo_entidade";
             $queryParams[':filtro_tipo_entidade'] = $filtroTipoEntidade;
         } else {
-            if (strtolower($pageType) === 'cliente') {
-                $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
-            } elseif (strtolower($pageType) === 'fornecedor') {
-                $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+            switch (strtolower($pageType)) {
+                case 'cliente':
+                    $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                    break;
+                case 'fornecedor':
+                    $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                    break;
+                case 'transportadora':
+                    $conditions[] = "ent.ent_tipo_entidade = 'Transportadora'";
+                    break;
+                default:
+                    $conditions[] = "1=0"; // Não retorna nada se o tipo for desconhecido
             }
         }
 
@@ -465,6 +473,23 @@ class EntidadeRepository
                 AND ent_situacao = 'A' 
                 ORDER BY nome_display ASC";
 
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca todas as Entidades do tipo Transportadora para um Select.
+     * @return array
+     */
+    public function getTransportadoraOptions(): array
+    {
+        $sql = "SELECT 
+                    ent_codigo AS id, 
+                    COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS text
+                FROM tbl_entidades 
+                WHERE ent_tipo_entidade = 'Transportadora' AND ent_situacao = 'A' 
+                ORDER BY text ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
