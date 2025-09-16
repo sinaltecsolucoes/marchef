@@ -24,7 +24,7 @@
 body {
     background-color: #f8f9fa;
     font-family: Arial, sans-serif;
-    font-size: 9pt;
+    font-size: 8pt;
     /* Tamanho da Fonte Principal */
 }
 
@@ -43,8 +43,8 @@ body {
 .report-header {
     text-align: center;
     border-bottom: 2px solid #dee2e6;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
+    padding-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .report-header img {
@@ -55,14 +55,14 @@ body {
     background-color: #e9ecef;
     padding: 8px;
     font-weight: bold;
-    margin-top: 15px;
+    margin-top: 10px;
 }
 
 .client-info {
     padding: 10px;
     border: 1px solid #dee2e6;
     background: #fdfdfd;
-    margin-bottom: 10px;
+    margin-bottom: 3px;
 }
 
 .invoice-panel {
@@ -70,7 +70,7 @@ body {
     border: 1px solid #adb5bd;
     /* Borda um pouco mais escura */
     border-radius: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     overflow: hidden; /* Garante que os cantos arredondados funcionem */
     page-break-inside: avoid;
 }
@@ -107,7 +107,7 @@ body {
 @media print {
     body {
         background-color: #fff;
-        font-size: 9pt;
+        font-size: 8.5pt;
         /* Tamanho da Fonte (para Impressão) */
     }
 

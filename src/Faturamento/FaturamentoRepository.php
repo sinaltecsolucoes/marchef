@@ -232,61 +232,6 @@ class FaturamentoRepository
     }
 
     /**
-     * Busca um resumo de faturamento salvo completo (header e itens) para exibição na tela de detalhes/edição.
-     * @param int $resumoId
-     * @return array
-     */
-    /* public function getResumoSalvo(int $resumoId): array
-     {
-         $dados = [
-             'header' => null,
-             'items' => []
-         ];
-
-         // 1. Busca o cabeçalho do resumo e o número da Ordem de Expedição de origem
-         $sqlHeader = "SELECT 
-                         fr.*, 
-                         oeh.oe_numero AS ordem_expedicao_numero
-                     FROM tbl_faturamento_resumos fr
-                     JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
-                     WHERE fr.fat_id = :resumo_id";
-         $stmtHeader = $this->pdo->prepare($sqlHeader);
-         $stmtHeader->execute([':resumo_id' => $resumoId]);
-         $dados['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-
-         if (!$dados['header']) {
-             throw new \Exception("Resumo de faturamento não encontrado.");
-         }
-
-         // 2. Busca os itens detalhados (como antes, mas agora parte do pacote de dados)
-         $sqlItems = "
-             SELECT
-                 f.*, 
-                 fazenda.ent_nome_fantasia AS fazenda_nome,
-                 cliente.ent_nome_fantasia AS cliente_nome,
-                 f.fati_numero_pedido, -- Usando o número salvo na tabela de itens
-                 p.prod_descricao AS produto_descricao,
-                 lnh.lote_completo_calculado
-             FROM tbl_faturamento_itens f
-             JOIN tbl_entidades fazenda ON f.fati_fazenda_id = fazenda.ent_codigo
-             JOIN tbl_entidades cliente ON f.fati_cliente_id = cliente.ent_codigo
-             JOIN tbl_produtos p ON f.fati_produto_id = p.prod_codigo
-             JOIN tbl_lotes_novo_header lnh ON f.fati_lote_id = lnh.lote_id
-             WHERE f.fati_resumo_id = :resumo_id
-             ORDER BY
-                 fazenda_nome,
-                 cliente_nome,
-                 f.fati_numero_pedido,
-                 produto_descricao
-         ";
-         $stmtItems = $this->pdo->prepare($sqlItems);
-         $stmtItems->execute([':resumo_id' => $resumoId]);
-         $dados['items'] = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
-
-         return $dados;
-     } */
-
-    /**
      * GERA E SALVA um novo resumo de faturamento NA NOVA ESTRUTURA DE 3 TABELAS.
      * @param int $ordemId
      * @param int $usuarioId
@@ -519,94 +464,145 @@ class FaturamentoRepository
      * * @param int $resumoId
      * @return array
      */
+    /* public function getDadosCompletosParaRelatorio(int $resumoId): array
+     {
+         $sql = "
+             SELECT
+                 f.*, 
+                 fazenda.ent_razao_social AS fazenda_razao_social,
+                 fazenda.ent_nome_fantasia AS fazenda_nome,
+
+                 -- Dados completos do Cliente Final (para a Nota Fiscal)
+                 cliente.ent_razao_social AS cliente_razao_social,
+                 cliente.ent_nome_fantasia AS cliente_nome,
+                 cliente.ent_cnpj,
+                 cliente.ent_inscricao_estadual,
+                 endr.end_logradouro,
+                 endr.end_numero,
+                 endr.end_bairro,
+                 endr.end_cidade,
+                 endr.end_uf,
+                 endr.end_cep,
+
+                 f.fati_numero_pedido,
+                 p.prod_descricao AS produto_descricao,
+                 lnh.lote_completo_calculado
+             FROM tbl_faturamento_itens f
+
+             -- Joins para Fazenda e Produto/Lote
+             JOIN tbl_entidades fazenda ON f.fati_fazenda_id = fazenda.ent_codigo
+             JOIN tbl_produtos p ON f.fati_produto_id = p.prod_codigo
+             JOIN tbl_lotes_novo_header lnh ON f.fati_lote_id = lnh.lote_id
+
+             -- Joins para Cliente Final e seu Endereço Principal
+             JOIN tbl_entidades cliente ON f.fati_cliente_id = cliente.ent_codigo
+             LEFT JOIN tbl_enderecos endr ON cliente.ent_codigo = endr.end_entidade_id AND endr.end_tipo_endereco = 'Principal'
+
+             WHERE f.fati_resumo_id = :resumo_id
+
+             -- Ordenação crucial para o relatório
+             ORDER BY
+                 fazenda_nome,
+                 cliente_nome,
+                 f.fati_numero_pedido,
+                 produto_descricao
+         ";
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute([':resumo_id' => $resumoId]);
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     } */
+
+    /**
+     * FUNÇÃO PÚBLICA DE DADOS (CORRIGIDA)
+     * Busca todos os dados de um resumo, enriquecidos com dados cadastrais completos 
+     * dos clientes para a geração de relatórios.
+     * * @param int $resumoId
+     * @return array
+     */
     public function getDadosCompletosParaRelatorio(int $resumoId): array
     {
+        // SQL CORRIGIDO PARA A ESTRUTURA DE 3 TABELAS
         $sql = "
             SELECT
-                f.*, 
+                -- Nível 3 (Item)
+                item.fati_id,
+                item.fati_qtd_caixas,
+                item.fati_qtd_quilos,
+                item.fati_preco_unitario,
+                item.fati_preco_unidade_medida,
+                
+                -- Nível 2 (Nota/Pedido)
+                nota.fatn_numero_pedido,
+                nota.fatn_observacao,
+                cond.cond_descricao AS condicao_pag_descricao,
+                
+                -- Dados da Fazenda (do Item)
                 fazenda.ent_razao_social AS fazenda_razao_social,
                 fazenda.ent_nome_fantasia AS fazenda_nome,
                 
-                -- Dados completos do Cliente Final (para a Nota Fiscal)
+                -- Dados do Produto/Lote (do Item)
+                prod.prod_descricao AS produto_descricao,
+                lote.lote_completo_calculado,
+                
+                -- Dados completos do Cliente (da Nota)
                 cliente.ent_razao_social AS cliente_razao_social,
                 cliente.ent_nome_fantasia AS cliente_nome,
                 cliente.ent_cnpj,
                 cliente.ent_inscricao_estadual,
+                
+                -- Dados do Endereço (do Cliente)
                 endr.end_logradouro,
                 endr.end_numero,
                 endr.end_bairro,
                 endr.end_cidade,
                 endr.end_uf,
-                endr.end_cep,
+                endr.end_cep
                 
-                f.fati_numero_pedido,
-                p.prod_descricao AS produto_descricao,
-                lnh.lote_completo_calculado
-            FROM tbl_faturamento_itens f
+            FROM tbl_faturamento_notas_grupo nota -- COMEÇA PELA TABELA DO MEIO
             
-            -- Joins para Fazenda e Produto/Lote
-            JOIN tbl_entidades fazenda ON f.fati_fazenda_id = fazenda.ent_codigo
-            JOIN tbl_produtos p ON f.fati_produto_id = p.prod_codigo
-            JOIN tbl_lotes_novo_header lnh ON f.fati_lote_id = lnh.lote_id
+            -- Joins para baixo (itens) e seus dados
+            JOIN tbl_faturamento_itens item ON nota.fatn_id = item.fati_nota_id
+            JOIN tbl_entidades fazenda ON item.fati_fazenda_id = fazenda.ent_codigo
+            JOIN tbl_produtos prod ON item.fati_produto_id = prod.prod_codigo
+            JOIN tbl_lotes_novo_header lote ON item.fati_lote_id = lote.lote_id
             
-            -- Joins para Cliente Final e seu Endereço Principal
-            JOIN tbl_entidades cliente ON f.fati_cliente_id = cliente.ent_codigo
+            -- Joins para cima (cliente) e seus dados
+            JOIN tbl_entidades cliente ON nota.fatn_cliente_id = cliente.ent_codigo
+            LEFT JOIN tbl_condicoes_pagamento cond ON nota.fatn_condicao_pag_id = cond.cond_id
             LEFT JOIN tbl_enderecos endr ON cliente.ent_codigo = endr.end_entidade_id AND endr.end_tipo_endereco = 'Principal'
-
-            WHERE f.fati_resumo_id = :resumo_id
+            
+            WHERE nota.fatn_resumo_id = :resumo_id -- Filtra pelo ID do Resumo na tabela 'nota'
             
             -- Ordenação crucial para o relatório
             ORDER BY
                 fazenda_nome,
                 cliente_nome,
-                f.fati_numero_pedido,
-                produto_descricao
+                nota.fatn_numero_pedido,
+                prod.prod_descricao
         ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':resumo_id' => $resumoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Busca os dados de cabeçalho de um resumo e sua ordem de origem.
-     * @param int $resumoId
-     * @return array|null
-     */
     /* public function findResumoHeaderInfo(int $resumoId): ?array
      {
          $sql = "SELECT 
-                     fr.fat_id, 
-                     fr.fat_data_geracao,
+                     fr.*,  -- Pega todos os campos do resumo, incluindo os novos de transporte
                      oeh.oe_numero AS ordem_expedicao_numero,
+                     t.ent_nome_fantasia AS transportadora_nome,
+                     t.ent_razao_social AS transportadora_razao,
                      u.usu_nome AS usuario_nome
                  FROM tbl_faturamento_resumos fr
                  JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
                  JOIN tbl_usuarios u ON fr.fat_usuario_id = u.usu_codigo
+                 LEFT JOIN tbl_entidades t ON fr.fat_transportadora_id = t.ent_codigo
                  WHERE fr.fat_id = :resumo_id";
 
          $stmt = $this->pdo->prepare($sql);
          $stmt->execute([':resumo_id' => $resumoId]);
          return $stmt->fetch(PDO::FETCH_ASSOC);
      } */
-
-    public function findResumoHeaderInfo(int $resumoId): ?array
-    {
-        $sql = "SELECT 
-                    fr.*,  -- Pega todos os campos do resumo, incluindo os novos de transporte
-                    oeh.oe_numero AS ordem_expedicao_numero,
-                    t.ent_nome_fantasia AS transportadora_nome,
-                    t.ent_razao_social AS transportadora_razao,
-                    u.usu_nome AS usuario_nome
-                FROM tbl_faturamento_resumos fr
-                JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
-                JOIN tbl_usuarios u ON fr.fat_usuario_id = u.usu_codigo
-                LEFT JOIN tbl_entidades t ON fr.fat_transportadora_id = t.ent_codigo
-                WHERE fr.fat_id = :resumo_id";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':resumo_id' => $resumoId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
 
     /**
      * Busca todas as Condições de Pagamento ativas para um dropdown (Select2).
@@ -615,10 +611,51 @@ class FaturamentoRepository
     public function getCondicoesPagamentoOptions(): array
     {
         $sql = "SELECT cond_id AS id, CONCAT(cond_descricao, ' (Cód: ', cond_codigo, ')') AS text 
-                FROM tbl_condicoes_pagamento 
-                WHERE cond_ativo = 1 
-                ORDER BY cond_descricao";
+                 FROM tbl_condicoes_pagamento 
+                 WHERE cond_ativo = 1 
+                 ORDER BY cond_descricao";
         return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca os dados de cabeçalho de um resumo e sua ordem de origem.
+     * (ATUALIZADA PARA INCLUIR DADOS CADASTRAIS DA TRANSPORTADORA)
+     * @param int $resumoId
+     * @return array|null
+     */
+    public function findResumoHeaderInfo(int $resumoId): ?array
+    {
+        $sql = "SELECT 
+                    fr.*,
+                    oeh.oe_numero AS ordem_expedicao_numero,
+                    u.usu_nome AS usuario_nome,
+                    
+                    -- Dados completos da Transportadora
+                    t.ent_razao_social AS transportadora_razao,
+                    t.ent_nome_fantasia AS transportadora_nome,
+                    t.ent_cnpj AS transportadora_cnpj,
+                    t.ent_inscricao_estadual AS transportadora_ie,
+                    tend.end_logradouro AS transportadora_end_logradouro,
+                    tend.end_numero AS transportadora_end_numero,
+                    tend.end_bairro AS transportadora_end_bairro,
+                    tend.end_cidade AS transportadora_end_cidade,
+                    tend.end_uf AS transportadora_end_uf,
+                    tend.end_cep AS transportadora_end_cep
+                    
+                FROM tbl_faturamento_resumos fr
+                JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
+                JOIN tbl_usuarios u ON fr.fat_usuario_id = u.usu_codigo
+                
+                -- Join para Transportadora (entidade)
+                LEFT JOIN tbl_entidades t ON fr.fat_transportadora_id = t.ent_codigo
+                -- Join para Endereço da Transportadora (usando alias 'tend' para diferenciar)
+                LEFT JOIN tbl_enderecos tend ON t.ent_codigo = tend.end_entidade_id AND tend.end_tipo_endereco = 'Principal'
+                
+                WHERE fr.fat_id = :resumo_id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':resumo_id' => $resumoId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**

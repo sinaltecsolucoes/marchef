@@ -95,53 +95,6 @@ $(document).ready(function () {
         });
     }
 
-    /* function carregarResumoSalvo(resumoId) {
-         $container.html('<p class="text-center">Carregando Resumo Salvo...</p>');
- 
-         $.ajax({
-             url: 'ajax_router.php?action=getResumoSalvo',
-             type: 'POST',
-             data: { resumo_id: resumoId, csrf_token: csrfToken },
-             dataType: 'json',
-             success: function (response) {
-                 if (response.success) {
-                     const header = response.data.header;
-                     const gruposFazenda = response.data.grupos_fazenda;
- 
-                     // 1. Preenche o subtítulo (como antes)
-                     if (header && header.ordem_expedicao_numero) {
-                         $('#ordem-origem-display')
-                             .html(`Origem: <strong class="text-dark">Ordem Nº ${header.ordem_expedicao_numero}</strong>`)
-                             .show();
-                     }
- 
-                     // 2. ### NOVA LÓGICA: MOSTRA E PREENCHE O CARD DE TRANSPORTE ###
-                     $('#card-transporte').show(); // Mostra o card
-                     $('#fat_resumo_id_transporte').val(header.fat_id); // Define o ID para o formulário
-                     $('#fat_motorista_nome').val(header.fat_motorista_nome);
-                     $('#fat_motorista_cpf').val(header.fat_motorista_cpf).trigger('input'); // Trigger para a máscara
-                     $('#fat_veiculo_placa').val(header.fat_veiculo_placa);
- 
-                     // Preenche o Select2 da transportadora (se existir)
-                     if (header.fat_transportadora_id) {
-                         // O texto é uma combinação que o backend não nos envia, então pegamos do repo
-                         // Para simplificar, vamos usar o Nome Fantasia que já vem
-                         const transpNome = header.transportadora_nome || header.transportadora_razao || 'Carregando...';
-                         const option = new Option(transpNome, header.fat_transportadora_id, true, true);
-                         $('#select-transportadora').append(option).trigger('change');
-                     } else {
-                         $('#select-transportadora').val(null).trigger('change');
-                     }
- 
-                     // 3. Constrói a tabela principal (como antes)
-                     construirTabelaFaturamentoEdicao(gruposFazenda);
-                 } else {
-                     $container.html(`<div class="alert alert-danger">${response.message}</div>`);
-                 }
-             }
-         });
-     } */
-
     function carregarResumoSalvo(resumoId) {
         $container.html('<p class="text-center">Carregando Resumo Salvo...</p>');
 
@@ -236,293 +189,6 @@ $(document).ready(function () {
         html += `</tbody></table>`;
         $container.html(html);
     }
-
-    // Função 2: Para o MODO EDIÇÃO 
-    /*  function construirTabelaFaturamentoEdicao(gruposFazenda) {
-          if (!gruposFazenda || Object.keys(gruposFazenda).length === 0) {
-              $container.html('<p class="text-muted text-center">Nenhum item encontrado neste resumo.</p>');
-              return;
-          }
-  
-          let html = '';
-          let granTotalCaixas = 0;
-          let granTotalQuilos = 0;
-          let granTotalValor = 0;
-  
-          // Loop Nível 1: FAZENDAS
-          for (const nomeFazenda in gruposFazenda) {
-              const notasDaFazenda = gruposFazenda[nomeFazenda];
-              let subTotalFazendaCaixas = 0;
-              let subTotalFazendaQuilos = 0;
-              let subTotalFazendaValor = 0;
-  
-              // Cabeçalho da Fazenda
-              html += `<div class="fazenda-group border rounded shadow-sm mb-4">
-                          <div class="fazenda-header bg-light-subtle p-2 fw-bold border-bottom">
-                              <i class="fas fa-tractor me-2"></i> FAZENDA: ${nomeFazenda}
-                          </div>
-                       <div class="fazenda-body p-2">`;
-  
-              // Loop Nível 2: NOTAS (Cliente/Pedido)
-              notasDaFazenda.forEach(nota => {
-                  let subTotalNotaCaixas = 0;
-                  let subTotalNotaQuilos = 0;
-                  let subTotalNotaValor = 0;
-  
-                  const condPagHtml = nota.condicao_pagamento ? `<span class="badge bg-info">${nota.condicao_pagamento}</span>` : '<span class="badge bg-warning">A definir</span>';
-                  const obsHtml = nota.observacao ? `<small class="d-block text-muted fst-italic">Obs: ${nota.observacao}</small>` : '';
-  
-  
-                  html += `<table class="table table-sm table-bordered table-hover mb-3">
-                              <thead class="table-light">
-                                  <tr>
-                                      <th colspan="6">
-                                          Cliente: <strong class="text-primary">${nota.cliente_nome}</strong> 
-                                          (Pedido: ${nota.numero_pedido})
-                                          <div>${condPagHtml} ${obsHtml}</div>
-                                      </th>
-                                      <th colspan="3" class="text-end align-middle">
-                                          <button class="btn btn-secondary btn-xs btn-editar-nota" data-fatn-id="${nota.fatn_id}">
-                                              <i class="fas fa-cog me-1"></i> Editar Pedido (Cond/Obs)
-                                          </button>
-                                      </th>
-                                  </tr>
-                                  <tr>
-                                      <th style="width: 25%;">Produto</th>
-                                      <th style="width: 12%;">Lote</th>
-                                      <th class="text-end" style="width: 7%;">Qtd. Caixas</th>
-                                      <th class="text-end" style="width: 7%;">Qtd. Quilos</th>
-                                      <th class="text-end" style="width: 10%;">Preço Unit.</th>
-                                      <th class="text-end" style="width: 10%;">Valor Total</th>
-                                      <th style="width: 19%;">Observação (Item)</th>
-                                      <th class="text-center" style="width: 5%;">Preço</th>
-                                  </tr>
-                              </thead>
-                              <tbody>`;
-  
-                  // Loop Nível 3: ITENS
-                  nota.itens.forEach(item => {
-                      const qtdCaixas = parseFloat(item.fati_qtd_caixas) || 0;
-                      const qtdQuilos = parseFloat(item.fati_qtd_quilos) || 0;
-                      const preco = parseFloat(item.fati_preco_unitario) || 0;
-                      let valorTotalItem = 0;
-                      if (item.fati_preco_unidade_medida === 'CX') {
-                          valorTotalItem = preco * qtdCaixas;
-                      } else {
-                          valorTotalItem = preco * qtdQuilos;
-                      }
-  
-                      // Acumula totais da NOTA
-                      subTotalNotaCaixas += qtdCaixas;
-                      subTotalNotaQuilos += qtdQuilos;
-                      subTotalNotaValor += valorTotalItem;
-  
-                      const precoFormatado = item.fati_preco_unitario ? formatCurrency(preco) + ` /${item.fati_preco_unidade_medida}` : '-';
-                      const valorTotalFormatado = valorTotalItem > 0 ? formatCurrency(valorTotalItem) : '-';
-  
-                      html += `<tr>
-                                  <td>${item.produto_descricao}</td>
-                                  <td>${item.lote_completo_calculado}</td>
-                                  <td class="text-end">${formatarNumeroBrasileiro(qtdCaixas)}</td>
-                                  <td class="text-end">${formatarNumeroBrasileiro(qtdQuilos)}</td>
-                                  <td class="text-end">${precoFormatado}</td>
-                                  <td class="text-end">${valorTotalFormatado}</td>
-                                  <td>${item.fati_observacao || ''}</td>
-                                  <td class="text-center">
-                                      <button class="btn btn-warning btn-xs btn-editar-item-faturamento" data-fati-id="${item.fati_id}">
-                                          <i class="fas fa-pencil-alt"></i>
-                                      </button>
-                                  </td>
-                              </tr>`;
-                  });
-  
-                  // Rodapé com Subtotal da NOTA
-                  html += `<tr class="table-light fw-bold" style="font-style: italic;">
-                              <td colspan="2" class="text-end">Subtotal (Nota):</td>
-                              <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaCaixas)}</td>
-                              <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaQuilos)}</td>
-                              <td></td>
-                              <td class="text-end">${formatCurrency(subTotalNotaValor)}</td>
-                              <td colspan="2"></td>
-                           </tr></tbody></table>`;
-  
-                  // Acumula totais da FAZENDA
-                  subTotalFazendaCaixas += subTotalNotaCaixas;
-                  subTotalFazendaQuilos += subTotalNotaQuilos;
-                  subTotalFazendaValor += subTotalNotaValor;
-              });
-  
-              // Rodapé com Total da FAZENDA
-              html += `<table class="table table-sm table-bordered mt-2">
-                          <tr class="table-dark fw-bold">
-                              <td class="text-end" style="width: 49%;">TOTAL FAZENDA (${nomeFazenda}):</td>
-                              <td class="text-end" style="width: 7%;">${formatarNumeroBrasileiro(subTotalFazendaCaixas)}</td>
-                              <td class="text-end" style="width: 7%;">${formatarNumeroBrasileiro(subTotalFazendaQuilos)}</td>
-                              <td style="width: 10%;"></td>
-                              <td class="text-end" style="width: 10%;">${formatCurrency(subTotalFazendaValor)}</td>
-                              <td colspan="2"></td>
-                          </tr>
-                       </table></div></div>`; // Fecha .fazenda-body e .fazenda-group
-  
-              // Acumula TOTAIS GERAIS
-              granTotalCaixas += subTotalFazendaCaixas;
-              granTotalQuilos += subTotalFazendaQuilos;
-              granTotalValor += subTotalFazendaValor;
-          }
-  
-          // Tabela de TOTAL GERAL
-          html += `<table class="table table-bordered mt-4">
-                      <tr class="table-primary fw-bolder">
-                          <td class="text-end" style="width: 49%;">TOTAL GERAL DO RESUMO:</td>
-                          <td class="text-end" style="width: 7%;">${formatarNumeroBrasileiro(granTotalCaixas)}</td>
-                          <td class="text-end" style="width: 7%;">${formatarNumeroBrasileiro(granTotalQuilos)}</td>
-                          <td style="width: 10%;"></td>
-                          <td class="text-end" style="width: 10%;">${formatCurrency(granTotalValor)}</td>
-                          <td colspan="2"></td>
-                      </tr>
-                   </table>`;
-  
-          $container.html(html);
-      } */
-
-
-    // Função 2: Para o MODO EDIÇÃO (VERSÃO FINAL SEM COLUNA DE OBSERVAÇÃO DE ITEM)
-    /* function construirTabelaFaturamentoEdicao(gruposFazenda) {
-         if (!gruposFazenda || Object.keys(gruposFazenda).length === 0) {
-             $container.html('<p class="text-muted text-center">Nenhum item encontrado neste resumo.</p>');
-             return;
-         }
- 
-         let html = '';
-         let granTotalCaixas = 0, granTotalQuilos = 0, granTotalValor = 0;
- 
-         // Loop Nível 1: FAZENDAS
-         for (const nomeFazenda in gruposFazenda) {
-             const notasDaFazenda = gruposFazenda[nomeFazenda];
-             let subTotalFazendaCaixas = 0, subTotalFazendaQuilos = 0, subTotalFazendaValor = 0;
- 
-             // Cabeçalho da Fazenda
-             html += `<div class="fazenda-group border rounded shadow-sm mb-4">
-                         <div class="fazenda-header bg-light-subtle p-2 fw-bold border-bottom">
-                             <i class="fas fa-tractor me-2"></i> FAZENDA: ${nomeFazenda}
-                         </div>
-                      <div class="fazenda-body p-2">`;
- 
-             // Loop Nível 2: NOTAS (Cliente/Pedido)
-             notasDaFazenda.forEach(nota => {
-                 let subTotalNotaCaixas = 0, subTotalNotaQuilos = 0, subTotalNotaValor = 0;
- 
-                 const condPagHtml = nota.condicao_pagamento ? `<span class="badge bg-info">${nota.condicao_pagamento}</span>` : '<span class="badge bg-warning text-dark">Cond. Pagto. a definir</span>';
-                 const obsHtml = nota.observacao ? `<small class="d-block text-muted fst-italic">Obs: ${nota.observacao}</small>` : '';
- 
-                 // CABEÇALHO DA TABELA DE ITENS ATUALIZADO (8 COLUNAS)
-                 html += `<table class="table table-sm table-bordered table-hover mb-3">
-                             <thead class="table-light">
-                                 <tr>
-                                     <th colspan="5" class="align-middle">
-                                         Cliente: <strong class="text-primary">${nota.cliente_nome}</strong> 
-                                         (Pedido: ${nota.numero_pedido})
-                                         <div class="mt-1">${condPagHtml}</div>
-                                         ${obsHtml}
-                                     </th>
-                                     <th colspan="3" class="text-end align-middle">
-                                         <button class="btn btn-secondary btn-xs btn-editar-nota" data-fatn-id="${nota.fatn_id}">
-                                             <i class="fas fa-cog me-1"></i> Editar Pedido (Cond/Obs)
-                                         </button>
-                                     </th>
-                                 </tr>
-                                 <tr>
-                                     <th style="width: 25%;">Produto</th>
-                                     <th style="width: 15%;">Lote</th>
-                                     <th class="text-end" style="width: 10%;">Qtd. Caixas</th>
-                                     <th class="text-end" style="width: 10%;">Qtd. Quilos</th>
-                                     <th class="text-end" style="width: 15%;">Preço Unit.</th>
-                                     <th class="text-end" style="width: 15%;">Valor Total</th>
-                                     <th class="text-center" style="width: 10%;">Ação (Preço)</th>
-                                 </tr>
-                             </thead>
-                             <tbody>`;
- 
-                 // Loop Nível 3: ITENS (COLUNA DE OBS REMOVIDA)
-                 nota.itens.forEach(item => {
-                     const qtdCaixas = parseFloat(item.fati_qtd_caixas) || 0;
-                     const qtdQuilos = parseFloat(item.fati_qtd_quilos) || 0;
-                     const preco = parseFloat(item.fati_preco_unitário) || 0;
-                     let valorTotalItem = 0;
-                     if (item.fati_preco_unidade_medida === 'CX') {
-                         valorTotalItem = preco * qtdCaixas;
-                     } else {
-                         valorTotalItem = preco * qtdQuilos;
-                     }
- 
-                     subTotalNotaCaixas += qtdCaixas;
-                     subTotalNotaQuilos += qtdQuilos;
-                     subTotalNotaValor += valorTotalItem;
- 
-                     const precoFormatado = item.fati_preco_unitario ? formatCurrency(preco) + ` /${item.fati_preco_unidade_medida}` : '-';
-                     const valorTotalFormatado = valorTotalItem > 0 ? formatCurrency(valorTotalItem) : '-';
- 
-                     html += `<tr>
-                                 <td>${item.produto_descricao}</td>
-                                 <td>${item.lote_completo_calculado}</td>
-                                 <td class="text-end">${formatarNumeroBrasileiro(qtdCaixas)}</td>
-                                 <td class="text-end">${formatarNumeroBrasileiro(qtdQuilos)}</td>
-                                 <td class="text-end">${precoFormatado}</td>
-                                 <td class="text-end">${valorTotalFormatado}</td>
-                                 <td class="text-center">
-                                     <button class="btn btn-warning btn-xs btn-editar-item-faturamento" data-fati-id="${item.fati_id}">
-                                         <i class="fas fa-pencil-alt"></i>
-                                     </button>
-                                 </td>
-                             </tr>`;
-                 });
- 
-                 // RODAPÉ DA NOTA (COLSPANS AJUSTADOS)
-                 html += `<tr class="table-light fw-bold" style="font-style: italic;">
-                             <td colspan="2" class="text-end">Subtotal (Nota):</td>
-                             <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaCaixas)}</td>
-                             <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaQuilos)}</td>
-                             <td></td>
-                             <td class="text-end">${formatCurrency(subTotalNotaValor)}</td>
-                             <td></td>
-                          </tr></tbody></table>`;
- 
-                 subTotalFazendaCaixas += subTotalNotaCaixas;
-                 subTotalFazendaQuilos += subTotalNotaQuilos;
-                 subTotalFazendaValor += subTotalNotaValor;
-             });
- 
-             // RODAPÉ DA FAZENDA (COLSPANS AJUSTADOS)
-             html += `<table class="table table-sm table-bordered mt-2">
-                         <tr class="table-dark fw-bold">
-                             <td class="text-end" style="width: 37%;">TOTAL FAZENDA (${nomeFazenda}):</td>
-                             <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaCaixas)}</td>
-                             <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaQuilos)}</td>
-                             <td style="width: 15%;"></td>
-                             <td class="text-end" style="width: 18%;">${formatCurrency(subTotalFazendaValor)}</td>
-                             <td></td>
-                         </tr>
-                      </table></div></div>`;
- 
-             granTotalCaixas += subTotalFazendaCaixas;
-             granTotalQuilos += subTotalFazendaQuilos;
-             granTotalValor += subTotalFazendaValor;
-         }
- 
-         // TOTAL GERAL (COLSPANS AJUSTADOS)
-         html += `<table class="table table-bordered mt-4">
-                     <tr class="table-primary fw-bolder">
-                         <td class="text-end" style="width: 37%;">TOTAL GERAL DO RESUMO:</td>
-                         <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(granTotalCaixas)}</td>
-                         <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(granTotalQuilos)}</td>
-                         <td style="width: 15%;"></td>
-                         <td class="text-end" style="width: 18%;">${formatCurrency(granTotalValor)}</td>
-                         <td></td>
-                     </tr>
-                  </table>`;
- 
-         $container.html(html);
-     } */
 
     function construirTabelaFaturamentoEdicao(gruposFazenda) {
         if (!gruposFazenda || Object.keys(gruposFazenda).length === 0) {
@@ -711,6 +377,7 @@ $(document).ready(function () {
 
     // 1. Inicializa o Select2 para Condições de Pagamento (usando AJAX)
     const $selectCondPag = $('#edit_fatn_condicao_pag_id');
+
     $selectCondPag.select2({
         placeholder: "Selecione uma condição...",
         theme: "bootstrap-5",
@@ -822,6 +489,70 @@ $(document).ready(function () {
         });
     });
 
+    // --- EVENTOS DOS BOTÕES DE RELATÓRIO (Passos 2 e 3) ---
+
+    /**
+     * Passo 2: Ativa o botão de Gerar Relatório (PDF)
+     */
+    $('#btn-gerar-relatorio').on('click', function () {
+        if (resumoIdParaCarregar) {
+
+            // !! JÁ APLIQUE A CORREÇÃO DA URL QUE DISCUTIMOS !!
+            const urlRelatorio = `index.php?page=relatorio_faturamento&id=${resumoIdParaCarregar}`;
+
+            window.open(urlRelatorio, '_blank');
+        } else {
+            notificacaoErro('Erro', 'Não foi possível identificar o ID do resumo.');
+        }
+    });
+
+    /**
+     * Passo 3: Ativa o botão de Exportar Excel
+     */
+    $('#btn-exportar-excel').on('click', function () {
+        // $container é a variável que definimos no topo do arquivo: $('#faturamento-resultado-container')
+        const $tabelaHtml = $container.html();
+
+        if (!$tabelaHtml.includes('<table')) {
+            notificacaoErro('Erro', 'Não há dados na tabela para exportar.');
+            return;
+        }
+
+        // Tenta pegar o número da ordem para montar um nome de arquivo amigável
+        const ordemNumText = $('#ordem-origem-display strong').text(); // "Origem: Ordem Nº XXXXX"
+        const ordemNum = ordemNumText.replace('Ordem Nº ', '').trim();
+        const nomeArquivo = `Faturamento_OE_${ordemNum}_Resumo_${resumoIdParaCarregar}.xls`;
+
+        // Monta o template HTML com o encoding correto para Excel
+        const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                                xmlns:x="urn:schemas-microsoft-com:office:excel" 
+                                xmlns="http://www.w3.org/TR/REC-html40">
+                          <head><meta charset="UTF-8"></head>
+                          <body>${$tabelaHtml}</body>
+                          </html>`;
+
+        // Cria um 'Blob' (Binary Large Object) com o HTML
+        // Isso é mais robusto que usar data:uri para encoding e acentuação
+        const data = new Blob([template], {
+            type: 'application/vnd.ms-excel'
+        });
+
+        // Cria uma URL temporária para o Blob
+        const url = window.URL.createObjectURL(data);
+
+        // Cria um link <a> invisível para forçar o download
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = nomeArquivo; // Define o nome do arquivo
+
+        document.body.appendChild(link);
+        link.click(); // Simula o clique no link
+
+        // Limpa a URL e remove o link
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    });
+
     // Aplica máscara no campo CPF do motorista (requer a biblioteca jquery.mask)
     $('#fat_motorista_cpf').mask('000.000.000-00');
 
@@ -855,4 +586,5 @@ $(document).ready(function () {
         // Se o usuário digitar só 7 chars (uma placa), não apague o campo.
         clearIfNotMatch: true
     });
+
 });

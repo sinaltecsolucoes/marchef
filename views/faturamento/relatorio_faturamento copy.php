@@ -78,32 +78,10 @@ function renderReportHeader($header)
 
 <body>
     <div class="container">
-        <div class="report-header">
-            <img src="img/logo_marchef.png" alt="Logo Marchef">
-            <h3 class="mt-3">Resumo para Faturamento</h3>
-            <p class="mb-0"><strong>Ordem de Expedição de Origem:</strong>
-                <?php echo htmlspecialchars($header['ordem_expedicao_numero']); ?></p>
-            <p class="mb-0"><strong>Data de Geração:</strong>
-                <?php echo (new DateTime($header['fat_data_geracao']))->format('d/m/Y H:i:s'); ?></p>
-            <p class="mb-0"><strong>Gerado por:</strong> <?php echo htmlspecialchars($header['usuario_nome']); ?></p>
-            <button class="btn btn-primary mt-3 no-print" onclick="window.print()">
-                <i class="fas fa-print"></i> Imprimir / Salvar PDF
-            </button>
-        </div>
-
         <?php
-        // Lógica de Agrupamento
         $currentFazenda = '';
-        $currentCliente = '';
-        $currentPedido = '';
-
-        $totalFazendaCaixas = 0;
-        $totalFazendaQuilos = 0;
-        $totalFazendaValor = 0;
-        $totalClientePedidoCaixas = 0;
-        $totalClientePedidoQuilos = 0;
-        $totalClientePedidoValor = 0;
-
+        $firstFazenda = true; // Flag para controlar o primeiro cabeçalho
+        
         foreach ($itens as $index => $item):
 
             $qtdCaixas = (float) ($item['fati_qtd_caixas'] ?? 0);
@@ -118,7 +96,8 @@ function renderReportHeader($header)
 
             // 1. Mudança de Fazenda
             if ($item['fazenda_nome'] !== $currentFazenda):
-                if ($index > 0): // Se não for o primeiro, fecha os painéis anteriores
+                if (!$firstFazenda): // Se não for a primeira fazenda, fecha os totais e painéis anteriores
+        
                     // Fechar o subtotal do Cliente/Pedido anterior
                     echo "<tr>
                             <td colspan='4' class='text-end total-row'>Subtotal Pedido:</td>
@@ -137,15 +116,22 @@ function renderReportHeader($header)
                                 <td class='text-center align-middle '>" . formatCurrency($totalFazendaValor) . "</td>
                              </tr>
                             </table>
-                          </div><div class='page-break'></div>";
+                          </div>";
+
+                    echo "<div class='page-break'></div>"; // FORÇA QUEBRA DE PÁGINA
                 endif;
 
+                $firstFazenda = false; // Desmarca a flag
+        
                 $currentFazenda = $item['fazenda_nome'];
                 $totalFazendaCaixas = 0;
                 $totalFazendaQuilos = 0;
                 $totalFazendaValor = 0;
                 $currentCliente = '';
                 $currentPedido = '';
+
+                // ### CHAMA O CABEÇALHO DO RELATÓRIO AQUI ###
+                renderReportHeader($header);
 
                 echo "<h4 class='section-title'>FAZENDA: " . htmlspecialchars($currentFazenda) . "</h4>";
             endif;
