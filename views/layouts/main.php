@@ -66,6 +66,7 @@
                             unset($paginasParaCadastro['faturamento_gerar']);
                             unset($paginasParaCadastro['faturamentos_listar']);
                             unset($paginasParaCadastro['condicoes_pagamento']);
+                            unset($paginasParaCadastro['gestao_caixas_mistas']);
 
                             // Chama a função de renderização do menu apenas com a lista filtrada
                             echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
@@ -116,6 +117,14 @@
                                 <?php if (in_array('lotes_embalagem', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=lotes_embalagem">Gestão de Lotes
                                             (Embalagem)</a></li>
+                                <?php endif; ?>
+                                <?php
+                                if (in_array('gestao_caixas_mistas', $paginasPermitidasUsuario)): ?>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="index.php?page=gestao_caixas_mistas">Gestão de Caixas
+                                            Mistas (Sobras)</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -355,6 +364,10 @@
 
     <?php if ($paginaAtual === 'faturamentos_listar'): ?>
         <script src="<?php echo BASE_URL; ?>/js/lista_faturamentos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'gestao_caixas_mistas'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/gestao_caixas_mistas.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'home'): ?>

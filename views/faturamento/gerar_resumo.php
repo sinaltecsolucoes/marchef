@@ -39,9 +39,10 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
         <h6 class="m-0 font-weight-bold text-primary">Dados de Transporte</h6>
         <div>
             <?php if ($modoEdicao): ?>
-                <button id="btn-exportar-excel" class="btn btn-success btn-sm">
+                    <a href="index.php?page=relatorio_faturamento_excel&id=<?php echo htmlspecialchars($_GET['resumo_id']); ?>"
+                    id="btn-exportar-excel-link" class="btn btn-success btn-sm" target="_blank">
                     <i class="fas fa-file-excel"></i> Exportar Excel
-                </button>
+                </a>
                 <button id="btn-gerar-relatorio" class="btn btn-info btn-sm">
                     <i class="fas fa-file-pdf"></i> Gerar Relatório
                 </button>

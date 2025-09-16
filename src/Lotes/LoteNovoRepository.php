@@ -717,14 +717,20 @@ class LoteNovoRepository
             $itensAindaAbertos = $this->getItensParaFinalizar($loteId);
             $novoStatus = (empty($itensAindaAbertos)) ? 'FINALIZADO' : 'PARCIALMENTE FINALIZADO';
 
-            // Prepara a base da query de atualização
-            $sql_update_header = "UPDATE tbl_lotes_novo_header SET lote_status = :status";
-            $params_update_header = [':status' => $novoStatus, ':id' => $loteId];
+            // Prepara as partes da query
+            $setClauses = ["lote_status = :status"];
+            $params_update_header = [
+                ':status' => $novoStatus,
+                ':id' => $loteId
+            ];
 
             // APENAS adiciona a data de finalização se o status for 'FINALIZADO'
             if ($novoStatus === 'FINALIZADO') {
-                $sql_update_header .= ", lote_data_finalizacao = NOW()";
+                $setClauses[] = "lote_data_finalizacao = NOW()";
             }
+
+            // Monta a query final garantindo que o WHERE venha por último
+            $sql_update_header = "UPDATE tbl_lotes_novo_header SET " . implode(", ", $setClauses) . " WHERE lote_id = :id";
 
             $stmt_update_header = $this->pdo->prepare($sql_update_header);
             $stmt_update_header->execute($params_update_header);
@@ -856,13 +862,6 @@ class LoteNovoRepository
      * Calcula o próximo número sequencial para um novo lote.
      * @return string O próximo número formatado com 4 dígitos.
      */
-    /*  public function getNextNumero(): string
-      {
-          $stmt = $this->pdo->query("SELECT MAX(lote_numero) FROM tbl_lotes_novo_header");
-          $proximo_numero = ($stmt->fetchColumn() ?: 0) + 1;
-          return str_pad($proximo_numero, 4, '0', STR_PAD_LEFT);
-      }*/
-
     public function getNextNumero(): string
     {
         $stmt = $this->pdo->query("SELECT MAX(CAST(lote_numero AS UNSIGNED)) FROM tbl_lotes_novo_header");
@@ -997,7 +996,6 @@ class LoteNovoRepository
         ];
     }
 
-
     /**
      * Busca os detalhes completos de um único item de lote do novo sistema.
      * @param int $loteItemId ID do item da tabela tbl_lotes_novo_embalagem
@@ -1116,5 +1114,175 @@ class LoteNovoRepository
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca todos os saldos de produção restantes de lotes já finalizados.
+     * Este é o nosso "Estoque de Sobras" para as Caixas Mistas.
+     *
+     * @return array
+     */
+    public function findSaldosDeProducaoFinalizados(): array
+    {
+        $sql = "SELECT 
+                lnp.item_prod_id, 
+                p.prod_descricao,
+                p.prod_codigo as produto_id, 
+                lnh.lote_completo_calculado, 
+                lnh.lote_id,
+                lnp.item_prod_saldo,
+                COALESCE(f.ent_razao_social, f.ent_nome_fantasia) AS fornecedor_nome,
+                lnh.lote_data_fabricacao
+            FROM tbl_lotes_novo_producao lnp
+            JOIN tbl_lotes_novo_header lnh ON lnp.item_prod_lote_id = lnh.lote_id
+            JOIN tbl_produtos p ON lnp.item_prod_produto_id = p.prod_codigo
+            LEFT JOIN tbl_entidades f ON lnh.lote_fornecedor_id = f.ent_codigo
+            WHERE 
+                lnh.lote_status = 'FINALIZADO' 
+                AND lnp.item_prod_saldo > 0.001
+            ORDER BY lnh.lote_completo_calculado, p.prod_descricao";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca lotes que estão "EM ANDAMENTO" para serem usados como destino de caixas mistas.
+     * Formatado para o Select2.
+     *
+     * @return array
+     */
+    public function findOpenLotsForSelect(): array
+    {
+        $sql = "SELECT 
+                lote_id AS id,
+                CONCAT(lote_completo_calculado, ' (Data: ', DATE_FORMAT(lote_data_fabricacao, '%d/%m/%Y'), ')') AS text
+            FROM tbl_lotes_novo_header
+            WHERE lote_status = 'EM ANDAMENTO'
+            ORDER BY lote_data_cadastro DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Cria uma nova Caixa Mista.
+     * Esta é uma transação complexa que:
+     * 1. Valida o saldo de todas as sobras selecionadas (itens de produção).
+     * 2. Cria o cabeçalho da Caixa Mista (tbl_caixas_mistas_header).
+     * 3. Consome (baixa) o saldo das sobras (UPDATE tbl_lotes_novo_producao).
+     * 4. Registra os itens consumidos na "receita" (INSERT tbl_caixas_mistas_itens).
+     * 5. Cria o novo item de embalagem (INSERT tbl_lotes_novo_embalagem) no Lote de Destino.
+     * 6. Vincula o novo item de embalagem ao cabeçalho da caixa mista.
+     *
+     * @param array $data Dados do formulário (produto_final_id, lote_destino_id, e o array de itens)
+     * @param int $usuarioId ID do usuário logado
+     * @return int O ID do NOVO item de embalagem (item_emb_id) gerado, para impressão da etiqueta.
+     * @throws Exception
+     */
+    public function criarCaixaMista(array $data, int $usuarioId): int
+    {
+        // 1. Validação de dados de entrada
+        $produtoFinalId = filter_var($data['mista_produto_final_id'], FILTER_VALIDATE_INT);
+        $loteDestinoId = filter_var($data['mista_lote_destino_id'], FILTER_VALIDATE_INT);
+        $itensConsumo = $data['itens'] ?? [];
+
+        if (!$produtoFinalId || !$loteDestinoId || empty($itensConsumo)) {
+            throw new Exception("Dados insuficientes. Produto Final, Lote de Destino e Itens são obrigatórios.");
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // 2. Loop de Validação (Lock e Verificação de Saldo)
+            // Prepara a query de validação uma vez
+            $stmtCheckSaldo = $this->pdo->prepare(
+                "SELECT item_prod_saldo FROM tbl_lotes_novo_producao WHERE item_prod_id = :id FOR UPDATE"
+            );
+
+            foreach ($itensConsumo as $item) {
+                $itemIdSobra = filter_var($item['item_id'], FILTER_VALIDATE_INT);
+                $qtdConsumir = (float) $item['quantidade'];
+
+                $stmtCheckSaldo->execute([':id' => $itemIdSobra]);
+                $saldoDisponivel = (float) $stmtCheckSaldo->fetchColumn();
+
+                if ($qtdConsumir > $saldoDisponivel) {
+                    throw new Exception("Saldo insuficiente para o item ID {$itemIdSobra}. Disponível: {$saldoDisponivel}, Solicitado: {$qtdConsumir}.");
+                }
+            }
+
+            // 3. Cria o Cabeçalho da Caixa Mista (Tabela 1)
+            $stmtHeader = $this->pdo->prepare(
+                "INSERT INTO tbl_caixas_mistas_header 
+                (mista_produto_final_id, mista_lote_destino_id, mista_usuario_id) 
+             VALUES (:prod_final_id, :lote_destino_id, :user_id)"
+            );
+            $stmtHeader->execute([
+                ':prod_final_id' => $produtoFinalId,
+                ':lote_destino_id' => $loteDestinoId,
+                ':user_id' => $usuarioId
+            ]);
+            $novoMistaHeaderId = (int) $this->pdo->lastInsertId();
+
+            // Prepara queries para o Loop 2
+            $stmtConsumirSobra = $this->pdo->prepare(
+                "UPDATE tbl_lotes_novo_producao SET item_prod_saldo = item_prod_saldo - :qtd WHERE item_prod_id = :id"
+            );
+            $stmtRegistrarItemMisto = $this->pdo->prepare(
+                "INSERT INTO tbl_caixas_mistas_itens (item_mista_header_id, item_prod_origem_id, item_mista_qtd_consumida)
+             VALUES (:header_id, :origem_id, :qtd)"
+            );
+
+            // 4. Loop de Execução (Consumo e Registro)
+            foreach ($itensConsumo as $item) {
+                $itemIdSobra = $item['item_id'];
+                $qtdConsumir = (float) $item['quantidade'];
+
+                // 4a. Consome o saldo da sobra
+                $stmtConsumirSobra->execute([':qtd' => $qtdConsumir, ':id' => $itemIdSobra]);
+
+                // 4b. Registra na "receita"
+                $stmtRegistrarItemMisto->execute([
+                    ':header_id' => $novoMistaHeaderId,
+                    ':origem_id' => $itemIdSobra,
+                    ':qtd' => $qtdConsumir
+                ]);
+            }
+
+            // 5. Cria o novo item de Embalagem (a Caixa Mista física para o estoque)
+            $stmtCriarPacote = $this->pdo->prepare(
+                "INSERT INTO tbl_lotes_novo_embalagem 
+                (item_emb_lote_id, item_emb_prod_sec_id, item_emb_qtd_sec, item_emb_prod_prim_id) 
+             VALUES (:lote_destino, :prod_sec_id, 1, NULL)"
+            );
+            $stmtCriarPacote->execute([
+                ':lote_destino' => $loteDestinoId,
+                ':prod_sec_id' => $produtoFinalId
+            ]);
+            $novoItemEmbIdGerado = (int) $this->pdo->lastInsertId(); // Este é o ID da etiqueta!
+
+            // 6. Vincula o novo item de embalagem ao cabeçalho da caixa mista
+            $stmtLink = $this->pdo->prepare(
+                "UPDATE tbl_caixas_mistas_header SET mista_item_embalagem_id_gerado = :item_emb_id WHERE mista_id = :mista_id"
+            );
+            $stmtLink->execute([
+                ':item_emb_id' => $novoItemEmbIdGerado,
+                ':mista_id' => $novoMistaHeaderId
+            ]);
+
+            // 7. Auditoria
+            $this->auditLogger->log('CREATE', $novoMistaHeaderId, 'tbl_caixas_mistas_header', null, $data, 'Criação de Caixa Mista');
+
+            $this->pdo->commit();
+
+            // 8. Retorna o ID da etiqueta
+            return $novoItemEmbIdGerado;
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e; // Lança o erro para o Controller (AJAX Router)
+        }
     }
 }

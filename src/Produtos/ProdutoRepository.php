@@ -238,33 +238,15 @@ class ProdutoRepository
         return $result ?: null;
     }
 
-    /* public function getProdutoOptions(string $tipoEmbalagem): array
-     {
-         $sql = "SELECT 
-                     prod_codigo, 
-                     prod_descricao, 
-                     prod_validade_meses, 
-                     prod_peso_embalagem, 
-                     prod_codigo_interno 
-                 FROM tbl_produtos 
-                 WHERE prod_situacao = 'A'";
-         $params = [];
-         if ($tipoEmbalagem !== 'Todos') {
-             $sql .= " AND prod_tipo_embalagem = :tipo";
-             $params[':tipo'] = $tipoEmbalagem;
-         }
-         $sql .= " ORDER BY prod_descricao ASC";
-         $stmt = $this->pdo->prepare($sql);
-         $stmt->execute($params);
-         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-     }*/
-
-    public function getProdutoOptions(string $tipoEmbalagem): array
+    //public function getProdutoOptions(string $tipoEmbalagem): array
+    public function getProdutoOptions(string $tipoEmbalagem, string $term = ''): array
     {
         $params = [];
         $sql = "SELECT 
                 p_sec.prod_codigo, 
-                p_sec.prod_descricao, 
+                p_sec.prod_codigo AS id, 
+                p_sec.prod_descricao,
+                p_sec.prod_descricao AS text,  
                 p_sec.prod_validade_meses, 
                 p_sec.prod_peso_embalagem, 
                 p_sec.prod_codigo_interno,
@@ -276,6 +258,12 @@ class ProdutoRepository
         if ($tipoEmbalagem !== 'Todos') {
             $sql .= " AND p_sec.prod_tipo_embalagem = :tipo";
             $params[':tipo'] = $tipoEmbalagem;
+        }
+
+        if (!empty($term)) {
+            // Busca pela descrição OU pelo código interno
+            $sql .= " AND (p_sec.prod_descricao LIKE :term OR p_sec.prod_codigo_interno LIKE :term)";
+            $params[':term'] = '%' . $term . '%';
         }
 
         $sql .= " ORDER BY p_sec.prod_descricao ASC";

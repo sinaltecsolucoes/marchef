@@ -2,19 +2,37 @@
 /* Estilo principal para todos os relatórios de impressão */
 
 @page {
-    size: A4 landscape; /* Define a impressão para A4 Paisagem */
-    margin: 1cm;      /* Define a margem geral (você pode ajustar) */
+    size: A4 landscape;
+    /* Define a impressão para A4 Paisagem */
+    margin: 1cm;
+    /* Define a margem geral (você pode ajustar) */
 
     /* ISSO DESLIGA OS CABEÇALHOS PADRÃO DO NAVEGADOR (TÍTULO E DATA) */
-    @top-left   { content: ""; }
-    @top-center { content: ""; }
-    @top-right  { content: ""; }
+    @top-left {
+        content: "";
+    }
+
+    @top-center {
+        content: "";
+    }
+
+    @top-right {
+        content: "";
+    }
 
     /* ISSO DESLIGA OS RODAPÉS PADRÃO (A URL) E COLOCA O NÚMERO DA PÁGINA */
-    @bottom-left   { content: ""; } /* Remove a URL */
-    @bottom-center  { content: ""; }
-    @bottom-right { 
-        content: "Página " counter(page) " de " counter(pages); /* Adiciona um contador de página útil */
+    @bottom-left {
+        content: "";
+    }
+
+    /* Remove a URL */
+    @bottom-center {
+        content: "";
+    }
+
+    @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        /* Adiciona um contador de página útil */
         font-family: Arial, sans-serif;
         font-size: 8pt;
         color: #888;
@@ -71,7 +89,8 @@ body {
     /* Borda um pouco mais escura */
     border-radius: 8px;
     margin-bottom: 10px;
-    overflow: hidden; /* Garante que os cantos arredondados funcionem */
+    overflow: hidden;
+    /* Garante que os cantos arredondados funcionem */
     page-break-inside: avoid;
 }
 
@@ -88,6 +107,15 @@ body {
 
 .item-table th {
     background-color: #f1f1f1;
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    /* Força larguras de coluna consistentes */
+    word-wrap: break-word;
+    /* Quebra palavras longas se necessário */
 }
 
 .text-end {
@@ -107,7 +135,7 @@ body {
 @media print {
     body {
         background-color: #fff;
-        font-size: 8.5pt;
+        font-size: 8pt;
         /* Tamanho da Fonte (para Impressão) */
     }
 
@@ -125,4 +153,48 @@ body {
     .page-break {
         page-break-after: always;
     }
+}
+
+/* Definindo a largura de cada coluna da .item-table */
+
+/* Produto */
+.item-table th:nth-child(1),
+.item-table td:nth-child(1) {
+    width: 47%;
+}
+
+/* Lote */
+.item-table th:nth-child(2),
+.item-table td:nth-child(2) {
+    width: 12%;
+}
+
+/* Preço Unit. */
+.item-table th:nth-child(3),
+.item-table td:nth-child(3) {
+    width: 8%;
+}
+
+/* Qtd. Caixas */
+.item-table th:nth-child(4),
+.item-table td:nth-child(4) {
+    width: 8%;
+}
+
+/* Qtd. Quilos */
+.item-table th:nth-child(5),
+.item-table td:nth-child(5) {
+    width: 8%;
+}
+
+/* UN */
+.item-table th:nth-child(6),
+.item-table td:nth-child(6) {
+    width: 5%;
+}
+
+/* Valor Total */
+.item-table th:nth-child(7),
+.item-table td:nth-child(7) {
+    width: 10%;
 }

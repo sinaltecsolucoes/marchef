@@ -143,6 +143,8 @@ try {
         'faturamentos_listar' => 'faturamento/lista_faturamentos.php',
         'faturamento_gerar' => 'faturamento/gerar_resumo.php',
         'relatorio_faturamento' => 'faturamento/relatorio_faturamento.php',
+        'relatorio_faturamento_excel' => 'faturamento/relatorio_faturamento_excel.php',
+        'gestao_caixas_mistas' => 'lotes_novo/gestao_caixas_mistas.php',
     ];
 
     $pageType = '';
@@ -215,7 +217,8 @@ try {
     // ### LÓGICA DE RENDERIZAÇÃO ###
     // Define quais páginas devem ser carregadas SEM o layout principal (menu, navbar, etc.)
     $paginasSemLayout = [
-        'relatorio_faturamento'
+        'relatorio_faturamento',
+        'relatorio_faturamento_excel',
         // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
     ];
 

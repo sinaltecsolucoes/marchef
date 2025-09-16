@@ -12,6 +12,7 @@ $(document).ready(function () {
     const $selectClienteParaFila = $('#select-cliente-para-fila');
     const $containerClientesNoModal = $('#clientes-e-produtos-container-modal');
     const $tabelaComposicaoBody = $('#tbody-composicao-carregamento');
+    const car_ordem_expedicao_id = carregamentoData.header.car_ordem_expedicao_id;
     let modoModal = 'inclusao'; // Controle explícito: 'inclusao' ou 'edicao'
     let filaIdParaEditar = null; // Armazena o ID da fila para edição
 
@@ -249,6 +250,83 @@ $(document).ready(function () {
             $('.coluna-acoes').show();
             $('#btn-abrir-conferencia').closest('.card').show();
         }
+    }
+
+    /**
+    * Busca os dados completos da Ordem de Expedição (o "Pool").
+    * Esta função reutiliza a rota AJAX que o módulo de OE já usa.
+    */
+    function carregarPoolDaOrdem(oeId) {
+        if (!oeId) {
+            console.error("ID da Ordem de Expedição não encontrado no carregamento.");
+            $('#tbody-pool-carregamento').html('<tr><td colspan="5" class="text-center text-danger">Erro: Este carregamento não está vinculado a nenhuma Ordem de Expedição.</td></tr>');
+            return;
+        }
+
+        $.ajax({
+            url: 'ajax_router.php?action=getOrdemExpedicaoCompleta',
+            type: 'POST',
+            data: {
+                oe_id: oeId,
+                csrf_token: csrfToken // reutiliza o token global
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.success && response.data) {
+                    // Passa os dados para a função de renderização
+                    renderizarPool(response.data);
+                } else {
+                    $('#tbody-pool-carregamento').html(`<tr><td colspan="5" class="text-center text-danger">Erro ao carregar o pool: ${response.message}</td></tr>`);
+                }
+            },
+            error: function () {
+                $('#tbody-pool-carregamento').html('<tr><td colspan="5" class="text-center text-danger">Erro de comunicação ao buscar dados da OE.</td></tr>');
+            }
+        });
+    }
+
+    /**
+     * Renderiza os dados da OE na tabela "Pool de Itens Pendentes".
+     * Por enquanto, apenas exibe o total. No Passo 3, faremos o cálculo de "pendente".
+     */
+    function renderizarPool(ordem) {
+        const $tbody = $('#tbody-pool-carregamento');
+        $tbody.empty(); // Limpa o "Carregando..."
+
+        if (!ordem.pedidos || ordem.pedidos.length === 0) {
+            $tbody.html('<tr><td colspan="5" class="text-center text-muted">A Ordem de Expedição vinculada não possui itens.</td></tr>');
+            return;
+        }
+
+        // Itera sobre cada pedido/cliente na OE
+        ordem.pedidos.forEach(pedido => {
+            const nomeCliente = `${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})`;
+
+            if (pedido.itens && pedido.itens.length > 0) {
+                // Itera sobre cada item dentro do pedido
+                pedido.itens.forEach((item, index) => {
+                    const $linha = $('<tr>', {
+                        'data-oei-id': item.oei_id, // ID do item da OE
+                        'data-alocacao-id': item.oei_alocacao_id // ID da alocação (do estoque)
+                    });
+
+                    // Coluna Cliente/Pedido (só aparece na primeira linha do grupo)
+                    if (index === 0) {
+                        $linha.append(`<td class="align-middle" rowspan="${pedido.itens.length}">${nomeCliente}</td>`);
+                    }
+
+                    // Colunas do Item
+                    $linha.append(`<td class="align-middle">${item.prod_descricao || 'N/A'}</td>`);
+                    $linha.append(`<td class="align-middle">${item.lote_completo_calculado || 'N/A'}</td>`);
+                    $linha.append(`<td class="align-middle">${item.endereco_completo || 'N/A'}</td>`);
+
+                    // Coluna Quantidade (no futuro, será Qtd_Total - Qtd_Alocada_nas_Filas)
+                    $linha.append(`<td class="text-center align-middle fw-bold" data-qtd-total-oe="${item.oei_quantidade}">${formatarNumeroBrasileiro(item.oei_quantidade, 0)}</td>`);
+
+                    $tbody.append($linha);
+                });
+            }
+        });
     }
 
     // --- EVENT HANDLERS ---
@@ -888,4 +966,5 @@ $(document).ready(function () {
     preencherCabecalho();
     inicializarSelectClienteModal();
     recarregarETabelaPrincipal();
+    carregarPoolDaOrdem(car_ordem_expedicao_id);
 });

@@ -66,60 +66,6 @@ $(document).ready(function () {
                 "data": "lote_id",
                 "orderable": false,
                 "className": "text-center align-middle",
-                /*   "render": function (data, type, row) {
-                        const status = row.lote_status;
-                        const loteId = row.lote_id;
-                        const loteNome = row.lote_completo_calculado;
-                        let acoesHtml = '';
-                        let menuItens = '';
-    
-                        // MODIFICAÇÃO: Captura o pageType no início para ser usado em toda a função
-                        const pageType = $('body').data('page-type');
-    
-                        // Define os botões principais com base no status
-                        if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                            acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote">Editar</button>`;
-    
-                            if (pageType === 'lotes_embalagem') {
-                                acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote">Finalizar</button>`;
-                            }
-    
-                            // MODIFICAÇÃO: Apenas adiciona o item "Cancelar" na tela de Produção
-                            if (pageType === 'lotes_producao') {
-                                menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
-                            }
-    
-                        } else if (status === 'FINALIZADO') {
-                            acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-                            menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
-    
-                        } else if (status === 'CANCELADO') {
-                            acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-                            menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
-                        }
-    
-                        // MODIFICAÇÃO: Apenas adiciona o item "Excluir" na tela de Produção
-                        if (pageType === 'lotes_producao') {
-                            if (menuItens !== '') {
-                                menuItens += `<li><hr class="dropdown-divider"></li>`;
-                            }
-                            menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
-                        }
-    
-                        // Constrói o menu dropdown APENAS se houver itens nele
-                        if (menuItens) {
-                            acoesHtml += `
-                        <div class="btn-group d-inline-block">
-                            <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                Mais
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                ${menuItens}
-                            </ul>
-                        </div>`;
-                        }
-                        return acoesHtml;
-                    }*/
 
                 "render": function (data, type, row) {
                     const status = row.lote_status;
@@ -146,7 +92,12 @@ $(document).ready(function () {
 
                     } else if (status === 'FINALIZADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;
-                        menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+
+                        // menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+                        if (pageType === 'lotes_embalagem') {
+                            menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+                        }
+
 
                     } else if (status === 'CANCELADO') {
                         acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote">Visualizar</button>`;

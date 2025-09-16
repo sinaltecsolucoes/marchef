@@ -245,7 +245,6 @@ switch ($action) {
         getItensParaFinalizar($loteNovoRepo);
         break;
     case 'finalizarLoteParcialmenteNovo':
-        error_log(print_r($_POST, true));
         finalizarLoteParcialmenteNovo($loteNovoRepo);
         break;
     case 'cancelarLoteNovo':
@@ -263,6 +262,16 @@ switch ($action) {
     case 'getDadosDoLoteItemNovo':
         getDadosDoLoteItemNovo($loteNovoRepo);
         break;
+    case 'getEstoqueDeSobras':
+        getEstoqueDeSobras($loteNovoRepo);
+        break;
+    case 'getOpenLotsForSelect':
+        getOpenLotsSelect($loteNovoRepo);
+        break;
+    case 'salvarCaixaMista':
+        salvarCaixaMista($loteNovoRepo, $_SESSION['codUsuario']);
+        break;
+
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -649,7 +658,9 @@ function listarProdutosPrimarios(ProdutoRepository $repo)
 function getProdutoOptions(ProdutoRepository $repo)
 {
     $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
-    echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
+    $term = $_GET['term'] ?? '';
+   // echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
+    echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo, $term)]);
 }
 
 function getSecundariosPorPrimario(ProdutoRepository $repo)
@@ -1336,6 +1347,44 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
     echo json_encode(['success' => !!$data, 'data' => $data]);
 }
 
+/**
+ * Controller para Salvar a Caixa Mista (recebe os dados e chama o Repositório).
+ */
+function salvarCaixaMista(LoteNovoRepository $repo, int $usuarioId)
+{
+    // O JavaScript enviará os dados serializados do formulário, que o PHP
+    // interpreta automaticamente como um array no $_POST.
+    try {
+        // A função do Repo fará todo o trabalho pesado e a transação
+        $novoItemEmbId = $repo->criarCaixaMista($_POST, $usuarioId);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Caixa Mista criada com sucesso! Novo item de embalagem gerado.',
+            'novo_item_emb_id' => $novoItemEmbId // Retorna o ID para a impressão da etiqueta
+        ]);
+
+    } catch (Exception $e) {
+        // Se o Repo falhar (ex: saldo insuficiente), ele envia a exceção
+        http_response_code(400); // 400 Bad Request
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Controller para buscar os lotes abertos para o Select2.
+ */
+function getOpenLotsSelect(LoteNovoRepository $repo)
+{
+    try {
+        $lotes = $repo->findOpenLotsForSelect();
+        // O Select2 espera os dados dentro de uma chave 'results'
+        echo json_encode(['results' => $lotes]);
+    } catch (Exception $e) {
+        echo json_encode(['results' => [], 'error' => $e->getMessage()]);
+    }
+}
+
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 
 /**
@@ -2008,6 +2057,22 @@ function getPainelProducaoLotesFinalizados(LoteNovoRepository $repo)
         echo json_encode(['success' => true, 'data' => $lotes]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Controller para buscar o estoque de sobras e formatar para o frontend.
+ */
+function getEstoqueDeSobras(LoteNovoRepository $repo)
+{
+    try {
+        $sobras = $repo->findSaldosDeProducaoFinalizados();
+
+        // Retorna no formato {data: [...]} que o DataTables espera
+        echo json_encode(['data' => $sobras]);
+
+    } catch (Exception $e) {
+        echo json_encode(['data' => [], 'error' => $e->getMessage()]);
     }
 }
 

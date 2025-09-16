@@ -66,192 +66,8 @@ function formatCnpjCpf($value)
 }
 
 /**
- * FUNÇÃO PARA DESENHAR O CABEÇALHO (REFINADA)
- */
-/* function renderReportHeader($header)
-{
-    // Prepara dados da OE
-    $oe_numero = htmlspecialchars($header['ordem_expedicao_numero']);
-    $data_geracao = (new DateTime($header['fat_data_geracao']))->format('d/m/Y H:i:s');
-    $usuario = htmlspecialchars($header['usuario_nome']);
-
-    // Prepara dados da Transportadora
-    $transp_nome = htmlspecialchars($header['transportadora_razao'] ?: $header['transportadora_nome'] ?: 'N/A');
-   // $transp_cnpj = htmlspecialchars($header['transportadora_cnpj'] ?: 'N/A');
-    $transp_cnpj = formatCnpjCpf($header['transportadora_cnpj']);
-
-
-    $transp_ie = htmlspecialchars($header['transportadora_ie'] ?: 'N/A');
-
-    // Monta endereço da Transportadora
-    $transp_end = 'N/A';
-    if ($header['transportadora_end_logradouro']) {
-        $transp_end = htmlspecialchars($header['transportadora_end_logradouro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_numero']) . ' - ' .
-            htmlspecialchars($header['transportadora_end_bairro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_cidade']) . '/' .
-            htmlspecialchars($header['transportadora_end_uf']);
-    }
-
-    // Prepara dados do Motorista
-    $motorista = htmlspecialchars($header['fat_motorista_nome'] ?: 'N/A');
-    $cpf = htmlspecialchars($header['fat_motorista_cpf'] ?: 'N/A');
-    $placa = htmlspecialchars($header['fat_veiculo_placa'] ?: 'N/A');
-
-    echo '<div class="report-header">';
-    echo '  <div class="row g-3 align-items-top">'; // g-3 = gutter (espaçamento)
-
-    // Coluna 1: Logo
-    echo '    <div class="col-3 text-start">';
-    echo '      <img src="img/logo_marchef.png" alt="Logo Marchef" style="max-width: 150px;">';
-    echo '    </div>';
-
-    // Coluna 2: Dados da Geração
-    echo '    <div class="col-4">';
-    echo '      <h4 class="mb-3">Resumo para Faturamento</h4>';
-    echo "      <p class='mb-0'><strong>Ordem de Expedição:</strong> $oe_numero</p>";
-    echo "      <p class='mb-0'><strong>Data de Geração:</strong> $data_geracao</p>";
-    echo "      <p class='mb-0'><strong>Gerado por:</strong> $usuario</p>";
-    echo '    </div>';
-
-    // Coluna 3: Dados de Transporte (COMPLETO)
-    echo '    <div class="col-5 transport-details">';
-    echo "      <p class='mb-0'><strong>Transportadora:</strong> $transp_nome</p>";
-    echo "      <p class='mb-0'><strong>CNPJ:</strong> $transp_cnpj <strong>IE:</strong> $transp_ie</p>";
-    echo "      <p class='mb-0'><strong>Endereço:</strong> $transp_end</p>";
-    echo "      <p class='mb-1'>&nbsp;</p>"; // Pequeno espaço
-    echo "      <p class='mb-0'><strong>Motorista:</strong> $motorista</p>";
-    echo "      <p class='mb-0'><strong>CPF:</strong> $cpf <strong>Placa:</strong> $placa</p>";
-    echo '    </div>';
-
-    echo '  </div>'; // Fecha a .row
-    echo '  <button class="btn btn-primary mt-3 no-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>';
-    echo '</div>';
-} */
-
-/* function renderReportHeader($header)
-{
-    // 1. Prepara dados da OE
-    $oe_numero = htmlspecialchars($header['ordem_expedicao_numero']);
-    $data_geracao = (new DateTime($header['fat_data_geracao']))->format('d/m/Y H:i:s');
-    $usuario = htmlspecialchars($header['usuario_nome']);
-
-    // 2. Prepara dados da Transportadora
-    $transp_nome = htmlspecialchars($header['transportadora_razao'] ?: $header['transportadora_nome'] ?: 'N/A');
-    $transp_cnpj = formatCnpjCpf($header['transportadora_cnpj']); // Usa a função que criamos
-    $transp_ie = htmlspecialchars($header['transportadora_ie'] ?: 'N/A');
-
-    $transp_end = 'N/A';
-    if ($header['transportadora_end_logradouro']) {
-        $transp_end = htmlspecialchars($header['transportadora_end_logradouro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_numero']) . ' - ' .
-            htmlspecialchars($header['transportadora_end_bairro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_cidade']) . '/' .
-            htmlspecialchars($header['transportadora_end_uf']);
-    }
-
-    // 3. Prepara dados do Motorista (layout da imagem)
-    $motorista = htmlspecialchars($header['fat_motorista_nome'] ?: 'N/A');
-    $cpf = formatCnpjCpf($header['fat_motorista_cpf']); // Usa a função que criamos
-    $placa = htmlspecialchars($header['fat_veiculo_placa'] ?: 'N/A');
-
-    // 4. Renderiza o HTML (usando Bootstrap row/col)
-    echo '<div class="report-header">';
-    // g-3 = gutter (espaçamento entre colunas)
-    // align-items-top = alinha o topo das colunas
-    echo '  <div class="row g-3 align-items-top">';
-
-    // Coluna 1: Logo
-    echo '    <div class="col-3 text-start">';
-    echo '      <img src="img/logo_marchef.png" alt="Logo Marchef" style="max-width: 150px;">';
-    echo '    </div>';
-
-    // Coluna 2: Dados da Geração
-    echo '    <div class="col-4">';
-    echo '      <h5 class="mb-2">Resumo para Faturamento</h5>';
-    echo "      <p class='mb-0'><strong>Ordem de Expedição:</strong> $oe_numero</p>";
-    echo "      <p class='mb-0'><strong>Data de Geração:</strong> $data_geracao</p>";
-    echo "      <p class='mb-0'><strong>Gerado por:</strong> $usuario</p>";
-    echo '    </div>';
-
-    // Coluna 3: Dados de Transporte (layout da imagem)
-    echo '    <div class="col-5 transport-details">';
-    echo "      <p class='mb-0'><strong>Transportadora:</strong> $transp_nome</p>";
-    echo "      <p class='mb-0'><strong>CNPJ:</strong> $transp_cnpj <strong>IE:</strong> $transp_ie</p>";
-    echo "      <p class='mb-0'><strong>Endereço:</strong> $transp_end</p>";
-    echo "      <p class='mb-0'><strong>Motorista:</strong> $motorista <strong>CPF:</strong> $cpf</p>";
-    echo "      <p class='mb-0'><strong>Placa Veículo:</strong> $placa</p>";
-    echo '    </div>';
-
-    echo '  </div>'; // Fecha a .row
-    echo '  <button class="btn btn-primary mt-3 no-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>';
-    echo '</div>';
-} */
-
-/**
  * FUNÇÃO PARA DESENHAR O CABEÇALHO
- * (Refinada com alinhamento vertical forçado ao topo)
  */
-/* function renderReportHeader($header)
-{
-    // 1. Prepara dados da OE
-    $oe_numero = htmlspecialchars($header['ordem_expedicao_numero']);
-    $data_geracao = (new DateTime($header['fat_data_geracao']))->format('d/m/Y H:i:s');
-    $usuario = htmlspecialchars($header['usuario_nome']);
-
-    // 2. Prepara dados da Transportadora
-    $transp_nome = htmlspecialchars($header['transportadora_razao'] ?: $header['transportadora_nome'] ?: 'N/A');
-    $transp_cnpj = formatCnpjCpf($header['transportadora_cnpj']); // Usa a função que criamos
-    $transp_ie = htmlspecialchars($header['transportadora_ie'] ?: 'N/A');
-
-    $transp_end = 'N/A';
-    if ($header['transportadora_end_logradouro']) {
-        $transp_end = htmlspecialchars($header['transportadora_end_logradouro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_numero']) . ' - ' .
-            htmlspecialchars($header['transportadora_end_bairro']) . ', ' .
-            htmlspecialchars($header['transportadora_end_cidade']) . '/' .
-            htmlspecialchars($header['transportadora_end_uf']);
-    }
-
-    // 3. Prepara dados do Motorista
-    $motorista = htmlspecialchars($header['fat_motorista_nome'] ?: 'N/A');
-    $cpf = formatCnpjCpf($header['fat_motorista_cpf']); // Usa a função que criamos
-    $placa = htmlspecialchars($header['fat_veiculo_placa'] ?: 'N/A');
-
-    // 4. Renderiza o HTML
-    echo '<div class="report-header">';
-    // A classe 'align-items-top' força o alinhamento vertical de todas as colunas ao topo
-    echo '  <div class="row g-3 align-items-top">';
-
-    // Coluna 1: Logo
-    echo '    <div class="col-3 text-start">';
-    echo '      <img src="img/logo_marchef.png" alt="Logo Marchef" style="max-width: 150px;">';
-    echo '    </div>';
-
-    // Coluna 2: Dados da Geração
-    echo '    <div class="col-4">';
-    // Adicionado 'mt-0' para remover a margem superior padrão do <h5>
-    echo '      <h5 class="mb-2 mt-0">Resumo para Faturamento</h5>';
-    echo "      <p class='mb-0'><strong>Ordem de Expedição:</strong> $oe_numero</p>";
-    echo "      <p class='mb-0'><strong>Data de Geração:</strong> $data_geracao</p>";
-    echo "      <p class='mb-0'><strong>Gerado por:</strong> $usuario</p>";
-    echo '    </div>';
-
-    // Coluna 3: Dados de Transporte
-    echo '    <div class="col-5 transport-details">';
-    // Adicionado 'mt-0' para remover a margem superior padrão do <p>
-    echo "      <p class='mb-0 mt-0'><strong>Transportadora:</strong> $transp_nome</p>";
-    echo "      <p class='mb-0'><strong>CNPJ:</strong> $transp_cnpj <strong>IE:</strong> $transp_ie</p>";
-    echo "      <p class='mb-0'><strong>Endereço:</strong> $transp_end</p>";
-    echo "      <p class='mb-0'><strong>Motorista:</strong> $motorista <strong>CPF:</strong> $cpf</p>";
-    echo "      <p class='mb-0'><strong>Placa Veículo:</strong> $placa</p>";
-    echo '    </div>';
-
-    echo '  </div>'; // Fecha a .row
-    echo '  <button class="btn btn-primary mt-3 no-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>';
-    echo '</div>';
-} */
-
 function renderReportHeader($header)
 {
     // 1. Prepara dados da OE
@@ -280,7 +96,7 @@ function renderReportHeader($header)
 
     // 4. Renderiza o HTML
     echo '<div class="report-header">';
-    echo '  <div class="row g-0 align-items-start">'; // g-0 remove o gutter, align-items-start para alinhamento no topo
+    echo '  <div class="row g-0 align-items-center">'; // g-0 remove o gutter, align-items-start para alinhamento no topo
 
     // Coluna 1: Logo
     echo '    <div class="col-3 text-start">';
@@ -351,20 +167,18 @@ function renderReportHeader($header)
                             <td class='text-center align-middle total-row'></td> 
                             <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
                           </tr>";
+
+                    // Fechar o total da Fazenda anterior
+                    echo "<tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
+                            <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$currentFazenda}):</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($totalFazendaCaixas) . " (CX)</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($totalFazendaQuilos) . " (KG)</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'></td> 
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatCurrency($totalFazendaValor) . "</td>
+                        </tr>";
+
                     echo "</tbody></table></div></div>"; // Fecha a tabela, client-info e o INVOICE-PANEL
         
-                    // Fechar o total da Fazenda anterior
-                    echo "<div class='d-flex justify-content-end'>
-                            <table class='table table-sm table-bordered' style='width: 60%;'>
-                             <tr class='text-end align-middle total-row'>
-                                <td colspan='2'>Total da Fazenda ({$currentFazenda}):</td>
-                                <td class='text-center align-middle '>" . formatCaixa($totalFazendaCaixas) . " (CX)</td>
-                                <td class='text-center align-middle '>" . formatQuilo($totalFazendaQuilos) . " (KG)</td>
-                                <td class='text-center align-middle '>" . formatCurrency($totalFazendaValor) . "</td>
-                             </tr>
-                            </table>
-                          </div>";
-
                     echo "<div class='page-break'></div>"; // FORÇA QUEBRA DE PÁGINA
                 endif;
 
@@ -405,7 +219,7 @@ function renderReportHeader($header)
                 $totalClientePedidoQuilos = 0;
                 $totalClientePedidoValor = 0;
 
-                // INICIA O CONTAINER MAIOR (O SEU PAINEL)
+                // INICIA O CONTAINER MAIOR
                 echo "<div class='invoice-panel'>";
 
                 // Exibe os dados cadastrais do cliente
@@ -457,7 +271,7 @@ function renderReportHeader($header)
             // 3. Exibe a linha do item
             echo "<tr>
                     <td>" . htmlspecialchars($item['produto_descricao']) . "</td>
-                    <td>" . htmlspecialchars($item['lote_completo_calculado']) . "</td>
+                    <td class='text-center align-middle'    >" . htmlspecialchars($item['lote_completo_calculado']) . "</td>
                     <td class='text-center align-middle'>" . formatCurrency($precoUnit) . "</td>
                     <td class='text-center align-middle'>" . formatCaixa($qtdCaixas) . "</td>
                     <td class='text-center align-middle'>" . formatQuilo($qtdQuilos) . "</td>
@@ -475,19 +289,18 @@ function renderReportHeader($header)
                <td class='text-center align-middle total-row'></td> 
                <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
             </tr>";
+
+        echo "<tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
+         <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$currentFazenda}):</td>
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($totalFazendaCaixas) . " (CX)</td>
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($totalFazendaQuilos) . " (KG)</td>
+        <td class='text-center align-middle' style='font-weight: bold;'></td> 
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCurrency($totalFazendaValor) . "</td>
+      </tr>";
         echo "</tbody></table></div></div>"; // Fecha table, p-2, client-info e invoice-panel
         
         // Total da Fazenda com todos os campos
-        echo "<table class='table table-sm table-bordered mt-2 total-fazenda-table'>
-        <tbody>
-            <tr class='table-dark total-row'>
-                <td colspan='3' class='text-end'><strong>Total da Fazenda ({$currentFazenda}):</strong></td>
-                <td class='text-center align-middle'><strong>" . formatCaixa($totalFazendaCaixas) . " (CX)</strong></td>
-                <td class='text-center align-middle'><strong>" . formatQuilo($totalFazendaQuilos) . " (KG)</strong></td>
-                <td class='text-center align-middle'>&nbsp;</td> <td class='text-center align-middle'><strong>" . formatCurrency($totalFazendaValor) . "</strong></td>
-            </tr>
-        </tbody>
-      </table>";
+        
         ?>
     </div>
 

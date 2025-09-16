@@ -147,6 +147,22 @@ $(document).ready(function () {
             }
         });
 
+        // Para inicializar o novo select da OE
+        $('#car_ordem_expedicao_id').val(null).trigger('change'); // Limpa o select
+        $('#car_ordem_expedicao_id').select2({
+            placeholder: 'Selecione uma OE aberta...',
+            dropdownParent: $modalCarregamento,
+            theme: "bootstrap-5",
+            language: "pt-BR",
+            ajax: {
+                url: 'ajax_router.php?action=getOrdensParaFaturamentoSelect', // Rota que já existe e busca OEs!
+                dataType: 'json',
+                processResults: function (data) {
+                    return data; // A rota já retorna {results: [...]}
+                }
+            }
+        });
+
         // Abre o modal
         $modalCarregamento.modal('show');
     });
@@ -342,21 +358,21 @@ $(document).ready(function () {
     /**
      * Atualiza o campo "Ordem de Expedição" com base no número e data.
     */
-    function atualizarOrdemExpedicao() {
-        const numero = $('#car_numero').val();
-        const dataStr = $('#car_data').val(); // Formato YYYY-MM-DD
-
-        if (numero && dataStr) {
-            const data = new Date(dataStr + 'T00:00:00');
-            const mes = String(data.getMonth() + 1).padStart(2, '0'); // +1 porque getMonth() é base 0
-            const ano = data.getFullYear();
-
-            const ordemExpedicao = `${numero}.${mes}.${ano}`;
-            $('#car_ordem_expedicao').val(ordemExpedicao);
-        } else {
-            $('#car_ordem_expedicao').val(''); // Limpa se os campos não estiverem preenchidos
-        }
-    }
+    /* function atualizarOrdemExpedicao() {
+         const numero = $('#car_numero').val();
+         const dataStr = $('#car_data').val(); // Formato YYYY-MM-DD
+ 
+         if (numero && dataStr) {
+             const data = new Date(dataStr + 'T00:00:00');
+             const mes = String(data.getMonth() + 1).padStart(2, '0'); // +1 porque getMonth() é base 0
+             const ano = data.getFullYear();
+ 
+             const ordemExpedicao = `${numero}.${mes}.${ano}`;
+             $('#car_ordem_expedicao').val(ordemExpedicao);
+         } else {
+             $('#car_ordem_expedicao').val(''); // Limpa se os campos não estiverem preenchidos
+         }
+     } */
 
     $('#form-carregamento').on('change keyup', '#car_numero, #car_data', function () {
         atualizarOrdemExpedicao();

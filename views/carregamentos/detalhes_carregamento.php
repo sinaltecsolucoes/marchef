@@ -28,6 +28,36 @@
     </div>
 </div>
 
+<div class="card shadow mb-4 card-custom" id="card-pool-oe">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Itens Pendentes da Ordem de Expedição (Pool)</h6>
+    </div>
+    <div class="card-body">
+        <p>Abaixo estão todos os itens da Ordem de Expedição vinculada que precisam ser alocados nas filas.</p>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-sm" id="tabela-pool-carregamento">
+                <thead class="table-light">
+                    <tr>
+                        <th class="align-middle">Cliente / Pedido</th>
+                        <th class="align-middle">Produto</th>
+                        <th class="align-middle">Lote</th>
+                        <th class="align-middle">Endereço (Origem)</th>
+                        <th class="text-center align-middle">Qtd. Pendente</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-pool-carregamento">
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            <i class="fas fa-spinner fa-spin"></i> Carregando itens da Ordem de Expedição...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Composição do Carregamento</h6>

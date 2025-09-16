@@ -92,8 +92,10 @@
                             <input type="text" class="form-control" id="car_lacre" name="car_lacre">
                         </div>
                         <div class="col-md-4">
-                            <label for="car_ordem_expedicao" class="form-label">Ordem de Expedição</label>
-                            <input type="text" class="form-control" id="car_ordem_expedicao" name="car_ordem_expedicao">
+                            <label for="car_ordem_expedicao_id" class="form-label">Ordem de Expedição (OE) <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="car_ordem_expedicao_id" name="car_ordem_expedicao_id"
+                                required style="width: 100%;"></select>
                         </div>
                     </div>
                 </div>

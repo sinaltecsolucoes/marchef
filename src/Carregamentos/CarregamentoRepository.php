@@ -34,10 +34,10 @@ class CarregamentoRepository
     {
         $sql = "INSERT INTO tbl_carregamentos (
                 car_numero, car_data, car_entidade_id_organizador, car_lacre,
-                car_placa_veiculo, car_hora_inicio, car_ordem_expedicao, car_usuario_id_responsavel
+                car_placa_veiculo, car_hora_inicio, car_ordem_expedicao_id, car_usuario_id_responsavel
             ) VALUES (
                 :numero, :data, :clienteOrganizadorId, :lacre,
-                :placa, :hora_inicio, :ordem_expedicao, :user_id
+                :placa, :hora_inicio, :ordem_expedicao_id, :user_id
             )";
 
         $stmt = $this->pdo->prepare($sql);
@@ -49,7 +49,7 @@ class CarregamentoRepository
             ':lacre' => $data['lacre'] ?? $data['car_lacre'] ?? null,
             ':placa' => $data['placa'] ?? $data['car_placa_veiculo'] ?? null,
             ':hora_inicio' => $data['hora_inicio'] ?? $data['car_hora_inicio'] ?? null,
-            ':ordem_expedicao' => $data['ordem_expedicao'] ?? $data['car_ordem_expedicao'] ?? null,
+            ':ordem_expedicao_id' => $data['car_ordem_expedicao_id'] ?? null,
             ':user_id' => $userId
         ];
 
@@ -660,30 +660,6 @@ class CarregamentoRepository
     }
 
     /**
-     * Atualiza o caminho da foto para uma fila específica.
-     */
-    /*   public function updateFilaPhotoPath(int $filaId, string $filePath): bool
-    {
-        // PASSO 1: Buscar dados antigos ANTES de atualizar
-        $stmtAntigo = $this->pdo->prepare("SELECT * FROM tbl_carregamento_filas WHERE fila_id = :id");
-        $stmtAntigo->execute([':id' => $filaId]);
-        $dadosAntigos = $stmtAntigo->fetch(PDO::FETCH_ASSOC);
-
-        $sql = "UPDATE tbl_carregamento_filas SET fila_foto_path = :path WHERE fila_id = :id";
-        $stmt = $this->pdo->prepare($sql);
-        $success = $stmt->execute([':path' => $filePath, ':id' => $filaId]);
-
-        // PASSO 2: Se a atualização foi bem-sucedida, registar o log
-        if ($success && $dadosAntigos) {
-            $dadosNovos = $dadosAntigos;
-            $dadosNovos['fila_foto_path'] = $filePath; // Atualiza o campo modificado
-            $this->auditLogger->log('UPDATE', $filaId, 'tbl_carregamento_filas', $dadosAntigos, $dadosNovos);
-        }
-
-        return $success;
-    }*/
-
-    /**
      * Altera o status de um carregamento para 'CANCELADO'.
      * Se o carregamento já estiver 'FINALIZADO', reverte os movimentos de estoque.
      * @param int $carregamentoId
@@ -955,71 +931,9 @@ class CarregamentoRepository
         }
     }
 
-    /* public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
-     {
-         $this->pdo->beginTransaction();
-         try {
-             $dadosAntigos = $this->pdo->prepare("SELECT * FROM tbl_carregamentos WHERE car_id = :id");
-             $dadosAntigos->execute([':id' => $carregamentoId]);
-             $dadosAntigos = $dadosAntigos->fetch(PDO::FETCH_ASSOC);
-
-             if (!$dadosAntigos || $dadosAntigos['car_status'] !== 'EM ANDAMENTO') {
-                 throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser enviados para conferência.");
-             }
-
-             // --- INÍCIO DA VALIDAÇÃO MELHORADA ---
-             // Busca a PRIMEIRA fila sem foto, ordenada pela sequência.
-             $stmtCheckFotos = $this->pdo->prepare(
-                 "SELECT fila_id, fila_numero_sequencial FROM tbl_carregamento_filas 
-              WHERE fila_carregamento_id = :carregamento_id 
-              AND (fila_foto_path IS NULL OR fila_foto_path = '')
-              ORDER BY fila_numero_sequencial ASC 
-              LIMIT 1"
-             );
-             $stmtCheckFotos->execute([':carregamento_id' => $carregamentoId]);
-             $filaPendente = $stmtCheckFotos->fetch(PDO::FETCH_ASSOC);
-
-             // Se encontrou uma fila pendente, lança uma exceção com dados estruturados.
-             if ($filaPendente) {
-                 // Criamos uma "exceção estruturada" para o app poder ler os dados.
-                 $errorData = json_encode([
-                     'error_code' => 'FILA_SEM_FOTO',
-                     'message' => "A Fila nº {$filaPendente['fila_numero_sequencial']} está sem foto.",
-                     'data' => [
-                         'filaId' => $filaPendente['fila_id'],
-                         'filaNumero' => $filaPendente['fila_numero_sequencial']
-                     ]
-                 ]);
-                 throw new Exception($errorData);
-             }
-             // --- FIM DA VALIDAÇÃO MELHORADA ---
-
-             $stmt = $this->pdo->prepare(
-                 "UPDATE tbl_carregamentos SET car_status = 'AGUARDANDO CONFERENCIA' WHERE car_id = :id"
-             );
-             $stmt->execute([':id' => $carregamentoId]);
-
-             $rowCount = $stmt->rowCount();
-
-             if ($rowCount > 0) {
-                 $dadosNovos = $dadosAntigos;
-                 $dadosNovos['car_status'] = 'AGUARDANDO CONFERENCIA';
-                 $this->auditLogger->log('STATUS_CHANGE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $dadosNovos, "Enviado para conferência pelo App (Usuário ID: {$userId})");
-             }
-
-             $this->pdo->commit();
-             return $rowCount > 0;
-         } catch (Exception $e) {
-             $this->pdo->rollBack();
-             throw $e;
-         }
-     }*/
-
     /**
      * Busca os últimos carregamentos com status 'EM ANDAMENTO'.
      */
-
-    // /src/Carregamentos/CarregamentoRepository.php
 
     public function marcarComoAguardandoConferencia(int $carregamentoId, int $userId): bool
     {
@@ -1129,32 +1043,6 @@ class CarregamentoRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /**
-     * Busca todas as filas de um carregamento específico com contagem de clientes e itens.
-     */
-    /*    public function findFilasByCarregamentoId(int $carregamentoId): array
-    {
-        // Esta query é um exemplo. Pode ser que a sua tabela de itens
-        // não se chame tbl_carregamento_itens. Ajustaremos se necessário.
-        $sql = "SELECT 
-                    f.fila_id, 
-                    f.fila_numero_sequencial,
-                    f.fila_foto_path,
-                    (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
-                     FROM tbl_carregamento_itens ci 
-                     WHERE ci.car_item_fila_id = f.fila_id) as total_clientes,
-                    (SELECT SUM(ci.car_item_quantidade) 
-                     FROM tbl_carregamento_itens ci 
-                     WHERE ci.car_item_fila_id = f.fila_id) as total_quantidade
-                FROM tbl_carregamento_filas f
-                WHERE f.fila_carregamento_id = :carregamento_id
-                ORDER BY f.fila_numero_sequencial ASC";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':carregamento_id' => $carregamentoId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }*/
 
     /**
      * Atualiza os dados do cabeçalho de um carregamento existente.
@@ -1328,39 +1216,6 @@ class CarregamentoRepository
 
         return $result ?: null;
     }
-
-    /**
-     * Remove a foto associada a uma fila.
-     * @param int $filaId
-     * @return bool
-     * @throws Exception
-     */
-    /*  public function deleteFilaPhoto(int $filaId): bool
-    {
-        // Primeiro, busca o caminho do arquivo para podermos deletá-lo do disco.
-        $stmt = $this->pdo->prepare("SELECT fila_foto_path FROM tbl_carregamento_filas WHERE fila_id = :id");
-        $stmt->execute([':id' => $filaId]);
-        $filePath = $stmt->fetchColumn();
-
-        if ($filePath) {
-            $fullPath = __DIR__ . '/../../public/' . $filePath; // Constrói o caminho completo no servidor
-            if (file_exists($fullPath)) {
-                unlink($fullPath); // Deleta o arquivo físico
-            }
-        }
-
-        // Depois, atualiza o banco de dados para remover a referência ao arquivo.
-        $stmtUpdate = $this->pdo->prepare(
-            "UPDATE tbl_carregamento_filas SET fila_foto_path = NULL WHERE fila_id = :id"
-        );
-        $success = $stmtUpdate->execute([':id' => $filaId]);
-
-        if ($success) {
-            $this->auditLogger->log('UPDATE', $filaId, 'tbl_carregamento_filas', ['fila_foto_path' => $filePath], ['fila_foto_path' => null], 'Foto da fila removida.');
-        }
-
-        return $success;
-    }*/
 
     /**
      * Adiciona o caminho de uma nova foto a uma fila.
