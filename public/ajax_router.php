@@ -815,7 +815,13 @@ function getFornecedorOptions(EntidadeRepository $repo)
 
 function getClienteOptions(EntidadeRepository $repo)
 {
-    echo json_encode(['success' => true, 'data' => $repo->getClienteOptions()]);
+    // echo json_encode(['success' => true, 'data' => $repo->getClienteOptions()]);
+
+    $term = $_GET['term'] ?? ''; // <-- ADICIONADO: Lê o termo de busca
+    // Retorna direto o array {data: [...]} (precisamos do 'success'?)
+    // O Select2 espera {results: [...]}. Vamos formatar corretamente.
+    $data = $repo->getClienteOptions($term); // <-- ADICIONADO: Passa o termo
+    echo json_encode(['data' => $data]); // JS está esperando data.data
 }
 
 function getTransportadoraOptions(EntidadeRepository $repo)
@@ -2307,7 +2313,8 @@ function addItemPedidoOrdem(OrdemExpedicaoRepository $repo)
 
 function getProdutosComEstoqueDisponivel(OrdemExpedicaoRepository $repo)
 {
-    echo json_encode(['results' => $repo->getProdutosDisponiveisParaSelecao()]);
+    $term = $_GET['term'] ?? ''; 
+    echo json_encode(['results' => $repo->getProdutosComEstoqueDisponivel($term)]);
 }
 
 function getLotesDisponiveisPorProduto(OrdemExpedicaoRepository $repo)

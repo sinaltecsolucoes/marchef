@@ -1,3 +1,4 @@
+
 $(document).ready(function () {
     // --- Variáveis e Modais (sem alterações) ---
     const csrfToken = $('input[name="csrf_token"]').val();
@@ -281,12 +282,21 @@ $(document).ready(function () {
         ajax: {
             url: 'ajax_router.php?action=getClienteOptions',
             dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    term: params.term // Envia o termo de busca para o servidor
+                };
+            },
+
             processResults: function (data) {
                 return {
-                    results: data.data.map(item => ({
-                        id: item.ent_codigo,
-                        text: `${item.nome_display} (Cód: ${item.ent_codigo_interno})`
-                    }))
+                    /* results: data.data.map(item => ({
+                         id: item.ent_codigo,
+                         text: `${item.nome_display} (Cód: ${item.ent_codigo_interno})`
+                     }))*/
+                    results: data.data
+
                 };
             }
         }
@@ -335,12 +345,21 @@ $(document).ready(function () {
         ajax: {
             url: "ajax_router.php?action=getProdutosComEstoqueDisponivel",
             dataType: 'json',
-            delay: 250, processResults: function (data) {
+            delay: 250,
+
+            // ### A PARTE QUE ENVIA O TERMO DE BUSCA ###
+            data: function (params) {
+                return {
+                    term: params.term
+                };
+            },
+
+            processResults: function (data) {
                 return {
                     results: data.results
-
                 };
-            }, cache: true
+            },
+            cache: true
         }
     });
 
@@ -428,7 +447,31 @@ $(document).ready(function () {
     });
 
     $btnAddItem.on('click', function () {
-        const data = { oei_pedido_id: $('#hidden_oep_id').val(), oei_alocacao_id: $selectEndereco.val(), oei_quantidade: $inputQtd.val(), oei_observacao: $inputObs.val(), csrf_token: csrfToken }; if (!data.oei_alocacao_id || !data.oei_quantidade || data.oei_quantidade <= 0) { notificacaoErro('Atenção', 'Selecione um endereço e informe uma quantidade válida.'); return; } $.ajax({ url: 'ajax_router.php?action=addItemPedidoOrdem', type: 'POST', data: data, dataType: 'json', success: function (response) { if (response.success) { $modalEstoque.modal('hide'); notificacaoSucesso('Sucesso!', response.message); carregarOrdemCompleta(ordemId); } else { notificacaoErro('Erro', response.message); } } });
+        const data = {
+            oei_pedido_id: $('#hidden_oep_id').val(),
+            oei_alocacao_id: $selectEndereco.val(),
+            oei_quantidade: $inputQtd.val(),
+            oei_observacao: $inputObs.val(),
+            csrf_token: csrfToken
+        };
+        if (!data.oei_alocacao_id || !data.oei_quantidade || data.oei_quantidade <= 0) {
+            notificacaoErro('Atenção', 'Selecione um endereço e informe uma quantidade válida.');
+            return;
+        } $.ajax({
+            url: 'ajax_router.php?action=addItemPedidoOrdem',
+            type: 'POST',
+            data: data,
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    $modalEstoque.modal('hide');
+                    notificacaoSucesso('Sucesso!', response.message);
+                    carregarOrdemCompleta(ordemId);
+                } else {
+                    notificacaoErro('Erro', response.message);
+                }
+            }
+        });
     });
 
     $pedidosContainer.on('click', '.btn-adicionar-produto', function () {

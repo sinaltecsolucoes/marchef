@@ -461,20 +461,54 @@ class EntidadeRepository
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getClienteOptions(): array
+    // public function getClienteOptions(): array
+    /* public function getClienteOptions(string $term = ''): array
+     {
+         // ALTERAÇÃO: A mesma lógica é aplicada aqui.
+         $sql = "SELECT 
+                     ent_codigo, 
+                     ent_codigo_interno,
+                     COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS nome_display 
+                 FROM tbl_entidades 
+                 WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
+                 AND ent_situacao = 'A' 
+                 ORDER BY nome_display ASC";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute();
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     } */
+
+    public function getClienteOptions(string $term = ''): array
     {
-        // ALTERAÇÃO: A mesma lógica é aplicada aqui.
+        
         $sql = "SELECT 
-                    ent_codigo, 
+                    ent_codigo AS id,
+                    CONCAT(COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social), ' (Cód: ', COALESCE(ent_codigo_interno, 'N/A'), ')') AS text,
                     ent_codigo_interno,
-                    COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS nome_display 
+                    ent_nome_fantasia,
+                    ent_razao_social
                 FROM tbl_entidades 
                 WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
-                AND ent_situacao = 'A' 
-                ORDER BY nome_display ASC";
+                AND ent_situacao = 'A'
+            ";
+
+        $params = [];
+
+        // Adiciona o filtro dinâmico LIKE se um termo de busca foi fornecido
+        if (!empty($term)) {
+            $sql .= " AND (ent_razao_social LIKE :term_razao 
+                        OR ent_nome_fantasia LIKE :term_fantasia 
+                        OR ent_codigo_interno LIKE :term_cod)";
+            $params[':term_razao'] = '%' . $term . '%';
+            $params[':term_fantasia'] = '%' . $term . '%';
+            $params[':term_cod'] = '%' . $term . '%';
+        }
+
+        $sql .= " ORDER BY COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) ASC LIMIT 50";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

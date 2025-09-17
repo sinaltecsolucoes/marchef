@@ -530,4 +530,34 @@ class OrdemExpedicaoRepository
         return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getProdutosComEstoqueDisponivel(string $term = ''): array
+    {
+        $params = [];
+        $sqlWhereTerm = "";
+
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+
+        // Adiciona o filtro de busca (term) se ele foi enviado
+        if (!empty($term)) {
+            // Placeholders únicos para a busca
+            $sqlWhereTerm = " AND (p.prod_descricao LIKE :term_desc OR p.prod_codigo_interno LIKE :term_cod) ";
+            $params[':term_desc'] = '%' . $term . '%';
+            $params[':term_cod'] = '%' . $term . '%';
+        }
+
+        $sql = "SELECT DISTINCT
+                p.prod_codigo AS id,
+                CONCAT(p.prod_descricao, ' (Cód: ', COALESCE(p.prod_codigo_interno, 'N/A'), ')') AS text
+            FROM tbl_estoque_alocacoes ea
+            JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            WHERE ea.alocacao_quantidade > {$subQueryReservado}
+            {$sqlWhereTerm}  -- Filtro de busca injetado aqui
+            ORDER BY p.prod_descricao";
+
+        // Agora usamos prepare/execute para injetar os parâmetros de busca
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
