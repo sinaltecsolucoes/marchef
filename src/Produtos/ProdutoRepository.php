@@ -262,8 +262,12 @@ class ProdutoRepository
 
         if (!empty($term)) {
             // Busca pela descrição OU pelo código interno
-            $sql .= " AND (p_sec.prod_descricao LIKE :term OR p_sec.prod_codigo_interno LIKE :term)";
-            $params[':term'] = '%' . $term . '%';
+            //$sql .= " AND (p_sec.prod_descricao LIKE :term OR p_sec.prod_codigo_interno LIKE :term)";
+            $sql .= " AND (p_sec.prod_descricao LIKE :term_desc OR p_sec.prod_codigo_interno LIKE :term_cod)";
+
+            //$params[':term'] = '%' . $term . '%';
+            $params[':term_desc'] = '%' . $term . '%';
+            $params[':term_cod'] = '%' . $term . '%';
         }
 
         $sql .= " ORDER BY p_sec.prod_descricao ASC";

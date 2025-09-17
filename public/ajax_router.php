@@ -659,7 +659,7 @@ function getProdutoOptions(ProdutoRepository $repo)
 {
     $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
     $term = $_GET['term'] ?? '';
-   // echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
+    // echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
     echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo, $term)]);
 }
 
@@ -2225,7 +2225,8 @@ function desalocarItemEndereco(EnderecoRepository $repo)
 function getItensNaoAlocados(EnderecoRepository $repo)
 {
     try {
-        $itens = $repo->findItensNaoAlocadosParaSelect();
+        $term = $_GET['term'] ?? '';
+        $itens = $repo->findItensNaoAlocadosParaSelect($term);
         // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
         echo json_encode(['results' => $itens]);
     } catch (Exception $e) {

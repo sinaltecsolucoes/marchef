@@ -14,106 +14,17 @@ $(document).ready(function () {
             url: "ajax_router.php?action=getItensNaoAlocados",
             dataType: 'json',
             delay: 250,
+            data: function (params) {
+                return {
+                    term: params.term // Envia o termo de busca (o que o usuário digita)
+                };
+            },
             processResults: function (data) {
                 return { results: data.results };
             },
             cache: true
         }
     });
-
-    /* function construirArvore(data) {
-         $container.empty();
-         if (Object.keys(data).length === 0) {
-             $container.html('<p class="text-muted">Nenhuma câmara cadastrada.</p>');
-             return;
-         }
- 
-         let html = `
-             <table class="table table-hover">
-                 <thead class="table-light">
-                     <tr>
-                         <th style="width: 40px;"></th>
-                         <th>Descrição (Câmara / Endereço)</th>
-                         <th class="text-end" style="width: 150px;">Total Caixas</th>
-                         <th class="text-end" style="width: 150px;">Total Quilos (kg)</th>
-                         <th class="text-end" style="width: 150px;">Ação</th>
-                     </tr>
-                 </thead>
-                 <tbody>
-         `;
- 
-         $.each(data, function (camaraId, camara) {
-             html += `
-                 <tr class="table-primary">
-                     <td><i class="fas fa-plus-square toggle-btn" data-target=".camara-${camaraId}"></i></td>
-                     <td><strong>${camara.nome} (${camara.codigo})</strong></td>
-                     <td class="text-end"><strong>${parseFloat(camara.total_caixas).toFixed(3)}</strong></td>
-                     <td class="text-end"><strong>${parseFloat(camara.total_quilos).toFixed(3)}</strong></td>
-                     <td></td>
-                 </tr>
-             `;
- 
-             if (Object.keys(camara.enderecos).length > 0) {
-                 $.each(camara.enderecos, function (enderecoId, endereco) {
-                     const temItens = endereco.itens.length > 0;
-                     const iconClass = temItens ? 'fa-plus-square' : 'fa-square text-muted';
-                     const toggleClass = temItens ? 'toggle-btn' : '';
- 
-                     html += `
-                         <tr class="camara-${camaraId}" style="display: none;">
-                             <td></td>
-                             <td class="ps-4"><i class="fas ${iconClass} ${toggleClass}" data-target=".endereco-${enderecoId}"></i> ${endereco.nome}</td>
-                             <td class="text-end">${parseFloat(endereco.total_caixas).toFixed(3)}</td>
-                             <td class="text-end">${parseFloat(endereco.total_quilos).toFixed(3)}</td>
-                             <td class="text-end">
-                                 <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}">Alocar Item</button>
-                             </td>
-                         </tr>
-                     `;
-                     
-                     if (temItens) {
-                         // A linha da sub-tabela agora tem UMA CÉLULA que ocupa TODAS as 5 colunas
-                         html += `
-                             <tr class="endereco-${enderecoId}" style="display: none;">
-                                 <td colspan="5">
-                                     <div class="ps-5 pt-2 pb-2 border border-primary-subtle rounded shadow-sm">
-                                         <table class="table table-sm table-bordered mb-0">
-                                             <thead class="table-light">
-                                                 <tr>
-                                                     <th>Produto</th>
-                                                     <th>Lote</th>
-                                                     <th>Qtd.</th>
-                                                     <th class="text-center">Ação</th>
-                                                 </tr>
-                                             </thead>
-                                     <tbody>`;
-                         $.each(endereco.itens, function (i, item) {
-                             html += `<tr>
-                                         <td>${item.produto}</td>
-                                         <td>${item.lote}</td>
-                                         <td>${parseFloat(item.quantidade).toFixed(3)}</td>
-                                         <td class="text-center">
-                                             <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
-                                                 <i class="fas fa-times"></i>
-                                             </button>
-                                         </td>
-                                      </tr>`;
-                         });
-                         html += `</tbody></table>
-                                     </div>
-                                 </td>
-                             </tr>`;
-                     }
-                     
-                 });
-             } else {
-                 html += `<tr class="camara-${camaraId}" style="display: none;"><td colspan="5" class="text-muted ps-5">Nenhum endereço cadastrado nesta câmara.</td></tr>`;
-             }
-         });
- 
-         html += '</tbody></table>';
-         $container.html(html);
-     } */
 
     function construirArvore(data) {
         $container.empty();
@@ -175,45 +86,6 @@ $(document).ready(function () {
                         </td>
                     </tr>
                 `;
-
-                    /* if (temItens) {
-                         // 4. NOVA SUB-TABELA DE ITENS
-                         html += `
-                         <tr class="endereco-${enderecoId}" style="display: none;">
-                             <td colspan="7">
-                                 <div class="ps-5 p-3 border rounded shadow-sm bg-white">
-                                     <table class="table table-sm table-bordered mb-0">
-                                         <thead class="table-light">
-                                             <tr>
-                                                 <th class="text-center align-middle" style="width: 55%;">Produto</th>
-                                                 <th class="text-center align-middle" style="width: 10%;">Lote</th>
-                                                 <th class="text-center align-middle" style="width: 10%;">Qtd. Física</th>
-                                                 <th class="text-center align-middle" style="width: 10%;">Qtd. Reservada</th>
-                                                 <th class="text-center align-middle" style="width: 10%;">Qtd. Disponível</th>
-                                                 <th class="text-center align-middle" style="width: 5%;">Ação</th>
-                                             </tr>
-                                         </thead>
-                                         <tbody>`;
-                         $.each(endereco.itens, function (i, item) {
-                             const qtdDisponivel = item.quantidade_fisica - item.quantidade_reservada;
-                             html += `<tr>
-                                     <td class="align-middle">${item.produto}</td>
-                                     <td class="text-center align-middle">${item.lote}</td>
-                                     <td class="text-center align-middle">${parseFloat(item.quantidade_fisica).toFixed(3)}</td>
-                                     <td class="text-center align-middle text-danger">${parseFloat(item.quantidade_reservada).toFixed(3)}</td>
-                                     <td class="text-center align-middle  text-success fw-bolder">${parseFloat(qtdDisponivel).toFixed(3)}</td>
-                                     <td class="text-center">
-                                         <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
-                                             <i class="fas fa-trash"></i>
-                                         </button>
-                                     </td>
-                                     </tr>`;
-                         });
-                         html += `</tbody></table>
-                                 </div>
-                             </td>
-                         </tr>`;
-                     } */
 
                     if (temItens) {
                         html += `

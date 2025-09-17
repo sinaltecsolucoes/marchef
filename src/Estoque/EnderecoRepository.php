@@ -31,10 +31,22 @@ class EnderecoRepository
 
     /* public function findAllForDataTable(int $camaraId, array $params): array
      {
-         $totalRecords = $this->pdo->prepare("SELECT COUNT(endereco_id) FROM tbl_estoque_enderecos WHERE endereco_camara_id = ?");
-         $totalRecords->execute([$camaraId]);
+         $totalRecordsStmt = $this->pdo->prepare("SELECT COUNT(endereco_id) FROM tbl_estoque_enderecos WHERE endereco_camara_id = ?");
+         $totalRecordsStmt->execute([$camaraId]);
+         $totalRecords = $totalRecordsStmt->fetchColumn();
 
-         $sql = "SELECT * FROM tbl_estoque_enderecos WHERE endereco_camara_id = :camara_id ORDER BY endereco_completo ASC LIMIT :start, :length";
+         // --- QUERY SIMPLIFICADA ---
+         // Apenas busca os dados da própria tabela de endereços, sem os JOINs que removi.
+         $sql = "SELECT 
+                     *
+                 FROM 
+                     tbl_estoque_enderecos e
+                 WHERE 
+                     e.endereco_camara_id = :camara_id 
+                 ORDER BY 
+                     e.endereco_completo ASC 
+                 LIMIT :start, :length";
+
          $stmt = $this->pdo->prepare($sql);
          $stmt->bindValue(':camara_id', $camaraId, PDO::PARAM_INT);
          $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
@@ -44,80 +56,90 @@ class EnderecoRepository
 
          return [
              "draw" => intval($params['draw'] ?? 1),
-             "recordsTotal" => (int) $totalRecords->fetchColumn(),
-             "recordsFiltered" => (int) $totalRecords->fetchColumn(), // Simplificado
+             "recordsTotal" => (int) $totalRecords,
+             "recordsFiltered" => (int) $totalRecords, // Simplificado
              "data" => $data
          ];
-     }*/
-
-    /*  public function findAllForDataTable(int $camaraId, array $params): array
-      {
-          $totalRecordsStmt = $this->pdo->prepare("SELECT COUNT(endereco_id) FROM tbl_estoque_enderecos WHERE endereco_camara_id = ?");
-          $totalRecordsStmt->execute([$camaraId]);
-          $totalRecords = $totalRecordsStmt->fetchColumn();
-
-          $sql = "SELECT 
-                      e.*,
-                      p.prod_descricao,
-                      lnh.lote_completo_calculado
-                  FROM 
-                      tbl_estoque_enderecos e
-                  LEFT JOIN 
-                      tbl_produtos p ON e.produto_id_alocado = p.prod_codigo
-                  LEFT JOIN 
-                      tbl_lotes_novo_embalagem lne ON e.lote_item_id_alocado = lne.item_emb_id
-                  LEFT JOIN 
-                      tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                  WHERE 
-                      e.endereco_camara_id = :camara_id 
-                  ORDER BY 
-                      e.endereco_completo ASC 
-                  LIMIT :start, :length";
-
-          $stmt = $this->pdo->prepare($sql);
-          $stmt->bindValue(':camara_id', $camaraId, PDO::PARAM_INT);
-          $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-          $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
-          $stmt->execute();
-          $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-          return [
-              "draw" => intval($params['draw'] ?? 1),
-              "recordsTotal" => (int) $totalRecords,
-              "recordsFiltered" => (int) $totalRecords,
-              "data" => $data
-          ];
-      }*/
+     } */
 
     public function findAllForDataTable(int $camaraId, array $params): array
     {
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+
+        // Colunas que serão incluídas na pesquisa de texto
+        $searchableColumns = [
+            'e.endereco_completo',
+            'e.lado',
+            'e.nivel',
+            'e.fila',
+            'e.vaga',
+            'e.descricao_simples'
+        ];
+
+        // Contagem total (apenas da câmara selecionada, sem filtro de busca)
         $totalRecordsStmt = $this->pdo->prepare("SELECT COUNT(endereco_id) FROM tbl_estoque_enderecos WHERE endereco_camara_id = ?");
         $totalRecordsStmt->execute([$camaraId]);
         $totalRecords = $totalRecordsStmt->fetchColumn();
 
-        // --- QUERY SIMPLIFICADA ---
-        // Apenas busca os dados da própria tabela de endereços, sem os JOINs que removi.
-        $sql = "SELECT 
-                    *
-                FROM 
-                    tbl_estoque_enderecos e
-                WHERE 
-                    e.endereco_camara_id = :camara_id 
-                ORDER BY 
-                    e.endereco_completo ASC 
+        // --- Construção da Cláusula WHERE e Parâmetros ---
+        $whereConditions = [];
+        $queryParams = [];
+
+        // 1. Filtro OBRIGATÓRIO pela Câmara
+        $whereConditions[] = "e.endereco_camara_id = :camara_id";
+        $queryParams[':camara_id'] = $camaraId;
+
+        // 2. Filtro de Busca (SearchValue), se existir
+        if (!empty($searchValue)) {
+            $searchConditions = [];
+            $searchTerm = '%' . $searchValue . '%';
+
+            foreach ($searchableColumns as $index => $column) {
+                $placeholder = ':search' . $index; // Placeholders únicos (ex: :search0, :search1)
+                $searchConditions[] = "$column LIKE $placeholder";
+                $queryParams[$placeholder] = $searchTerm;
+            }
+            $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        // --- Contagem de Registros Filtrados ---
+        // Conta quantos registros correspondem a TODOS os filtros (Câmara + Busca)
+        $sqlFiltered = "SELECT COUNT(e.endereco_id) FROM tbl_estoque_enderecos e $whereClause";
+        $stmtFiltered = $this->pdo->prepare($sqlFiltered);
+        $stmtFiltered->execute($queryParams); // Executa com todos os parâmetros (camara_id + search)
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        // --- Busca dos Dados da Página Atual ---
+        $sqlData = "SELECT * FROM tbl_estoque_enderecos e
+                $whereClause 
+                ORDER BY e.endereco_completo ASC 
                 LIMIT :start, :length";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':camara_id', $camaraId, PDO::PARAM_INT);
-        $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
+        $stmt = $this->pdo->prepare($sqlData);
+
+        // Bind dos parâmetros da cláusula WHERE
+        foreach ($queryParams as $key => $value) {
+            // Define o tipo do parâmetro (o ID da câmara é INT, o resto é STR)
+            $paramType = ($key === ':camara_id') ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($key, $value, $paramType);
+        }
+
+        // Bind dos parâmetros do LIMIT
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
-            "draw" => intval($params['draw'] ?? 1),
+            "draw" => (int) $draw,
             "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalRecords, // Simplificado
+            "recordsFiltered" => (int) $totalFiltered, // Agora usamos a contagem filtrada correta
             "data" => $data
         ];
     }
@@ -138,7 +160,6 @@ class EnderecoRepository
         }
 
         $partes = [$camaraCodigo];
-        // CORREÇÃO: Usamos o operador '??' para cada campo opcional.
         if (!empty($data['lado'] ?? null))
             $partes[] = $data['lado'];
         if (!empty($data['nivel'] ?? null))
@@ -183,7 +204,6 @@ class EnderecoRepository
         ];
 
         if ($id) { // UPDATE
-            // (O resto da lógica de UPDATE continua igual)
             $dadosAntigos = $this->find($id);
             $sql = "UPDATE tbl_estoque_enderecos SET endereco_camara_id = :camara_id, lado = :lado, nivel = :nivel, fila = :fila, vaga = :vaga, descricao_simples = :descricao_simples, endereco_completo = :endereco_completo WHERE endereco_id = :id";
             $params[':id'] = $id;
@@ -192,7 +212,6 @@ class EnderecoRepository
             $this->auditLogger->log('UPDATE', $id, 'tbl_estoque_enderecos', $dadosAntigos, $data);
             return $id;
         } else { // CREATE
-            // (O resto da lógica de CREATE continua igual)
             $sql = "INSERT INTO tbl_estoque_enderecos (endereco_camara_id, lado, nivel, fila, vaga, descricao_simples, endereco_completo) VALUES (:camara_id, :lado, :nivel, :fila, :vaga, :descricao_simples, :endereco_completo)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -331,34 +350,84 @@ class EnderecoRepository
      * Busca todos os itens de lotes finalizados que ainda não foram alocados a nenhum endereço.
      * @return array
      */
-    public function findItensNaoAlocadosParaSelect(): array
-    {
-        $sql = "SELECT
-                    lne.item_emb_id as id,
-                    lne.item_emb_qtd_sec AS total_produzido,
-                    COALESCE(SUM(a.alocacao_quantidade), 0) AS ja_alocado,
-                    CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as text_base
-                FROM
-                    tbl_lotes_novo_embalagem lne
-                JOIN 
-                    tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                JOIN 
-                    tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                LEFT JOIN
-                    tbl_estoque_alocacoes a ON lne.item_emb_id = a.alocacao_lote_item_id
-                WHERE
-                    lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO')
-                GROUP BY
-                    lne.item_emb_id
-                HAVING
-                    total_produzido > ja_alocado
-                ORDER BY 
-                    lnh.lote_completo_calculado, p.prod_descricao";
+    /*  public function findItensNaoAlocadosParaSelect(): array
+      {
+          $sql = "SELECT
+                      lne.item_emb_id as id,
+                      lne.item_emb_qtd_sec AS total_produzido,
+                      COALESCE(SUM(a.alocacao_quantidade), 0) AS ja_alocado,
+                      CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as text_base
+                  FROM
+                      tbl_lotes_novo_embalagem lne
+                  JOIN 
+                      tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                  JOIN 
+                      tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                  LEFT JOIN
+                      tbl_estoque_alocacoes a ON lne.item_emb_id = a.alocacao_lote_item_id
+                  WHERE
+                      lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO')
+                  GROUP BY
+                      lne.item_emb_id
+                  HAVING
+                      total_produzido > ja_alocado
+                  ORDER BY 
+                      lnh.lote_completo_calculado, p.prod_descricao";
 
-        $stmt = $this->pdo->query($sql);
+          $stmt = $this->pdo->query($sql);
+          $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+          // Formata o texto para incluir o saldo
+          foreach ($results as &$row) {
+              $saldo = (float) $row['total_produzido'] - (float) $row['ja_alocado'];
+              $row['text'] = $row['text_base'] . " [SALDO: " . number_format($saldo, 3, ',', '.') . "]";
+          }
+
+          return $results;
+      } */
+
+    public function findItensNaoAlocadosParaSelect(string $term = ''): array
+    {
+        $params = [];
+        $sqlWhereTerm = "";
+
+        // Adiciona o filtro de busca (term) se ele foi enviado
+        if (!empty($term)) {
+            // Placeholders únicos para a busca
+            $sqlWhereTerm = " AND (p.prod_descricao LIKE :term_desc OR lnh.lote_completo_calculado LIKE :term_lote)";
+            $params[':term_desc'] = '%' . $term . '%';
+            $params[':term_lote'] = '%' . $term . '%';
+        }
+
+        $sql = "SELECT
+                lne.item_emb_id as id,
+                lne.item_emb_qtd_sec AS total_produzido,
+                COALESCE(SUM(a.alocacao_quantidade), 0) AS ja_alocado,
+                CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as text_base
+            FROM
+                tbl_lotes_novo_embalagem lne
+            JOIN 
+                tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            JOIN 
+                tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            LEFT JOIN
+                tbl_estoque_alocacoes a ON lne.item_emb_id = a.alocacao_lote_item_id
+            WHERE
+                lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO')
+                {$sqlWhereTerm} 
+            GROUP BY
+                lne.item_emb_id
+            HAVING
+                total_produzido > ja_alocado
+            ORDER BY 
+                lnh.lote_completo_calculado, p.prod_descricao";
+
+        // Agora usamos prepare/execute para injetar os parâmetros de busca
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Formata o texto para incluir o saldo
+        // Formata o texto para incluir o saldo (esta lógica permanece a mesma)
         foreach ($results as &$row) {
             $saldo = (float) $row['total_produzido'] - (float) $row['ja_alocado'];
             $row['text'] = $row['text_base'] . " [SALDO: " . number_format($saldo, 3, ',', '.') . "]";
@@ -366,94 +435,6 @@ class EnderecoRepository
 
         return $results;
     }
-
-    /**
-     * Busca e organiza todos os dados de estoque de forma hierárquica.
-     * @return array
-     */
-    /*  public function getVisaoHierarquicaEstoque(): array
-      {
-          // QUERY ATUALIZADA: Adicionamos p.prod_peso_embalagem para podermos calcular o peso total
-          $sql = "SELECT 
-                      c.camara_id, c.camara_codigo, c.camara_nome,
-                      e.endereco_id, e.endereco_completo,
-                      a.alocacao_id, a.alocacao_quantidade, a.alocacao_data,
-                      p.prod_descricao, p.prod_peso_embalagem,
-                      lnh.lote_completo_calculado
-                  FROM 
-                      tbl_estoque_camaras c
-                  LEFT JOIN 
-                      tbl_estoque_enderecos e ON c.camara_id = e.endereco_camara_id
-                  LEFT JOIN 
-                      tbl_estoque_alocacoes a ON e.endereco_id = a.alocacao_endereco_id
-                  LEFT JOIN 
-                      tbl_lotes_novo_embalagem lne ON a.alocacao_lote_item_id = lne.item_emb_id
-                  LEFT JOIN 
-                      tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                  LEFT JOIN 
-                      tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                  ORDER BY 
-                      c.camara_codigo, e.endereco_completo, lnh.lote_completo_calculado";
-
-          $stmt = $this->pdo->query($sql);
-          $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-          $tree = [];
-          foreach ($rows as $row) {
-              $camaraId = $row['camara_id'];
-              if (!isset($tree[$camaraId])) {
-                  $tree[$camaraId] = [
-                      'nome' => $row['camara_nome'],
-                      'codigo' => $row['camara_codigo'],
-                      'enderecos' => [],
-                      'total_caixas' => 0, // Inicializa os totalizadores da câmara
-                      'total_quilos' => 0
-                  ];
-              }
-
-              if ($row['endereco_id']) {
-                  $enderecoId = $row['endereco_id'];
-                  if (!isset($tree[$camaraId]['enderecos'][$enderecoId])) {
-                      $tree[$camaraId]['enderecos'][$enderecoId] = [
-                          'endereco_id' => (int) $row['endereco_id'],
-                          'nome' => $row['endereco_completo'],
-                          'itens' => [],
-                          'total_caixas' => 0, // Inicializa os totalizadores do endereço
-                          'total_quilos' => 0
-                      ];
-                  }
-
-                  if ($row['alocacao_id']) {
-                      $quantidade = (float) $row['alocacao_quantidade'];
-                      $peso_embalagem = (float) $row['prod_peso_embalagem'];
-                      $peso_item = $quantidade * $peso_embalagem;
-
-                      // Adiciona o item ao endereço
-                      $tree[$camaraId]['enderecos'][$enderecoId]['itens'][] = [
-                          'alocacao_id' => $row['alocacao_id'],
-                          'produto' => $row['prod_descricao'],
-                          'lote' => $row['lote_completo_calculado'],
-                          'quantidade' => $row['alocacao_quantidade'],
-                          'data' => $row['alocacao_data']
-                      ];
-                      // Soma os totais para o endereço
-                      $tree[$camaraId]['enderecos'][$enderecoId]['total_caixas'] += $quantidade;
-                      $tree[$camaraId]['enderecos'][$enderecoId]['total_quilos'] += $peso_item;
-                  }
-              }
-          }
-
-          // Loop final para somar os totais dos endereços para as câmaras
-          foreach ($tree as $camaraId => &$camara) { // O '&' é importante aqui
-              foreach ($camara['enderecos'] as $endereco) {
-                  $camara['total_caixas'] += $endereco['total_caixas'];
-                  $camara['total_quilos'] += $endereco['total_quilos'];
-              }
-          }
-
-          return $tree;
-      } */
-
 
     /**
      * Busca e estrutura todos os dados de câmaras, endereços e itens alocados,

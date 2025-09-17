@@ -766,8 +766,13 @@ class LoteNovoRepository
         $whereClause = "";
         $queryParams = [];
         if (!empty($searchValue)) {
-            $whereClause = " WHERE (l.lote_completo_calculado LIKE :search OR f.ent_razao_social LIKE :search)";
-            $queryParams[':search'] = '%' . $searchValue . '%';
+            $searchTerm = '%' . $searchValue . '%';
+            /*  $whereClause = " WHERE (l.lote_completo_calculado LIKE :search OR f.ent_razao_social LIKE :search)";
+               $queryParams[':search'] = '%' . $searchValue . '%';*/
+
+            $whereClause = " WHERE (l.lote_completo_calculado LIKE :search0 OR f.ent_razao_social LIKE :search1)";
+            $queryParams[':search0'] = $searchTerm;
+            $queryParams[':search1'] = $searchTerm;
         }
 
         $stmtFiltered = $this->pdo->prepare("SELECT COUNT(l.lote_id) $baseQuery $whereClause");
@@ -782,8 +787,14 @@ class LoteNovoRepository
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-        if (!empty($searchValue)) {
-            $stmt->bindValue(':search', $queryParams[':search']);
+        /* if (!empty($searchValue)) {
+           $stmt->bindValue(':search', $queryParams[':search']);
+       } */
+
+        if (!empty($queryParams)) {
+            foreach ($queryParams as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
         }
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
