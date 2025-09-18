@@ -255,7 +255,7 @@
         </div>
     </nav>
 
-    <div class="container-fluid mt-3 mx-4">
+    <div class="container-fluid mt-3 px-4">
         <?php
         // ### PONTO DE INCLUSÃO DINÂMICO ###
         // Lógica original de inclusão da página

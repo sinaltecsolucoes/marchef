@@ -133,7 +133,13 @@ $(document).ready(function () {
                 if (response.success) {
                     $produtoPrimarioSelect.empty().append('<option value="">Selecione...</option>');
                     response.data.forEach(function (produto) {
-                        $produtoPrimarioSelect.append(new Option(produto.prod_descricao + ' (' + produto.prod_peso_embalagem + ' kg)', produto.prod_codigo));
+                        // Lógica para adicionar o Cód. Interno APENAS se ele existir (não for nulo ou vazio)
+                        const codigoInternoTexto = produto.prod_codigo_interno ? ` (Cód: ${produto.prod_codigo_interno})` : '';
+
+                        // O texto final é apenas a descrição (que já tem o peso) + o código interno (se existir)
+                        const optionText = `${produto.prod_descricao}${codigoInternoTexto}`;
+
+                        $produtoPrimarioSelect.append(new Option(optionText, produto.prod_codigo));
                         produtoPrimarioCache[produto.prod_codigo] = produto;
                     });
                     $produtoPrimarioSelect.trigger('change.select2');
@@ -155,27 +161,55 @@ $(document).ready(function () {
         }
     }
 
+    // Controla o texto do switch Ativo/Inativo
+    $modalProduto.on('change', '#prod_situacao', function () {
+        const isChecked = $(this).is(':checked');
+        $('#label-prod-situacao').text(isChecked ? 'Ativo' : 'Inativo');
+    });
+
     const tableProdutos = $('#tabela-produtos').DataTable({
         "serverSide": true,
-        "ajax": { "url": "ajax_router.php?action=listarProdutos", "type": "POST", "data": function (d) { d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val(); } },
+        "ajax": {
+            "url": "ajax_router.php?action=listarProdutos",
+            "type": "POST",
+            "data": function (d) {
+                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
+            }
+        },
         "responsive": true,
         "columns": [
-            { "data": "prod_situacao", "className": "text-center", "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>' },
-            { "data": "prod_codigo_interno", "className": "text-center" },
+            {
+                "data": "prod_situacao",
+                "className": "text-center",
+                "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
+            },
+            {
+                "data": "prod_codigo_interno",
+                "className": "text-center"
+            },
             { "data": "prod_descricao" },
-            { "data": "prod_tipo", "className": "text-center" },
-            { "data": "prod_tipo_embalagem", "className": "text-center" },
-            { "data": "prod_peso_embalagem", "className": "text-center" },
+            {
+                "data": "prod_tipo",
+                "className": "text-center"
+            },
+            {
+                "data": "prod_tipo_embalagem",
+                "className": "text-center"
+            },
+            {
+                "data": "prod_peso_embalagem",
+                "className": "text-center"
+            },
             {
                 "data": "prod_codigo",
                 "orderable": false,
                 "className": "text-center ",
                 "render": (data) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a> 
+                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a>
+                     <a href="#" class="btn btn-info btn-sm btn-copiar-produto me-1" data-id="${data}" title="Copiar/Duplicar">Copiar</a> 
                      <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>`
             }
         ],
-        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
@@ -185,7 +219,19 @@ $(document).ready(function () {
 
     // Abrir modal para Adicionar
     $('#btn-adicionar-produto-main').on('click', function () {
+        // Este é o "Resetador" oficial para o modo ADICIONAR
         $formProduto[0].reset();
+        $('#prod_codigo').val(''); // Garante que o ID esteja limpo
+        $('#modal-adicionar-produto-label').text('Adicionar Produto');
+
+        // Força o reset dos campos que o .reset() pode não pegar:
+        $('#prod_situacao').prop('checked', true).trigger('change');
+
+        // Força o dropdown para "PRIMARIA" e dispara o evento 'change'
+        // O trigger('change') chama a função toggleEmbalagemFields(), 
+        // que esconde os blocos "Secundária" e mostra os blocos "Primária".
+        $tipoEmbalagemSelect.val('PRIMARIA').trigger('change');
+
         $modalProduto.modal('show');
     });
 
@@ -203,6 +249,8 @@ $(document).ready(function () {
             $('#prod_congelamento').val(produto.prod_congelamento);
             $('#prod_fator_producao').val(produto.prod_fator_producao);
             $('#prod_total_pecas').val(produto.prod_total_pecas);
+            $('#prod_categoria').val(produto.prod_categoria);
+            $('#prod_validade_meses').val(produto.prod_validade_meses);
             $('#peso_embalagem_secundaria').val('');
             $('#prod_dun14').val('');
             $('#prod_ean13').val('');
@@ -211,17 +259,9 @@ $(document).ready(function () {
         }
     });
 
-    $modalProduto.on('show.bs.modal', function (event) {
-        if ($(event.relatedTarget).is('#btn-adicionar-produto-main')) {
-            $('#modal-adicionar-produto-label').text('Adicionar Produto');
-            $formProduto[0].reset();
-            $('#prod_codigo').val('');
-            $tipoEmbalagemSelect.val('PRIMARIA').trigger('change');
-        }
-    });
-
     $formProduto.on('submit', function (e) {
         e.preventDefault();
+
         const id = $('#prod_codigo').val();
         const action = id ? 'editarProduto' : 'cadastrarProduto';
         const url = `ajax_router.php?action=${action}`;
@@ -278,6 +318,13 @@ $(document).ready(function () {
                 Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
                 atualizarClasseProduto();
 
+                // Setar o switch de Ativo/Inativo
+                const isAtivo = (produto.prod_situacao === 'A');
+                $('#prod_situacao')
+                    .val('A')
+                    .prop('checked', isAtivo)
+                    .trigger('change');
+
                 // Dispara a mudança de embalagem, o que também chama o loadProdutosPrimarios se for SECUNDARIA
                 $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
 
@@ -330,6 +377,65 @@ $(document).ready(function () {
                     notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.'); // << REATORADO
                 });
             }
+        });
+    });
+
+    // ### LISTENER PARA O BOTÃO COPIAR ###
+    $('#tabela-produtos').on('click', '.btn-copiar-produto', function (e) {
+        e.preventDefault();
+        const idProduto = $(this).data('id');
+
+        // 1. Usamos a mesma rota do "Editar" para buscar os dados completos do produto
+        $.ajax({
+            url: 'ajax_router.php?action=getProduto',
+            type: 'POST',
+            data: {
+                prod_codigo: idProduto,
+                csrf_token: csrfToken // Token global já definido no seu JS
+            },
+            dataType: 'json',
+        }).done(function (response) {
+            if (response.success) {
+                $formProduto[0].reset();
+                const produto = response.data;
+                Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
+
+                // 2. A MÁGICA: Limpamos o ID do produto.
+                // Isso garante que, ao salvar, o backend entenda como um INSERT (Criar), não um UPDATE (Editar).
+                $('#prod_codigo').val('');
+
+                // 3. UX: Forçamos o usuário a alterar os campos únicos
+                const descricaoAtual = $('#prod_descricao').val();
+                $('#prod_descricao').val(descricaoAtual + ' (CÓPIA)');
+                $('#prod_codigo_interno').val(''); // Limpa o código interno
+
+                // 4. Acionamos as funções de atualização do formulário (como o "Editar" faz)
+                atualizarClasseProduto();
+                $tipoEmbalagemSelect.val(produto.prod_tipo_embalagem).trigger('change');
+
+                $('#prod_situacao')
+                    .val('A') // Garante que o valor (value) seja "A" 
+                    .prop('checked', true) // Marca como checado
+                    .trigger('change'); // Atualiza o label (que dirá "Ativo")
+
+                if (produto.prod_tipo_embalagem === 'SECUNDARIA') {
+                    $('#peso_embalagem_secundaria').val(produto.prod_peso_embalagem);
+                    loadProdutosPrimarios().done(function () {
+                        $('#prod_primario_id').val(produto.prod_primario_id).trigger('change.select2');
+                        calcularUnidades();
+                    });
+                } else {
+                    $('#prod_peso_embalagem').val(produto.prod_peso_embalagem);
+                }
+
+                // 5. Mudamos o título do modal e o abrimos
+                $('#modal-adicionar-produto-label').text('Copiar Produto (Criando Novo)');
+                $modalProduto.modal('show');
+            } else {
+                notificacaoErro('Erro!', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto para cópia.');
         });
     });
 });

@@ -95,7 +95,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label for="prod_categoria" class="form-label">Categoria (IQF)</label>
                             <select class="form-select" id="prod_categoria" name="prod_categoria">
                                 <option value="">Nenhuma</option>
@@ -104,12 +104,23 @@
                                 <option value="A3">A3</option>
                             </select>
                         </div>
-                        <div class="col-md-8 mb-3">
+                        <div class="col-md-7 mb-3">
                             <label for="prod_classe" class="form-label">Classe (Descrição para Etiqueta)</label>
                             <input type="text" class="form-control" id="prod_classe" name="prod_classe"
                                 placeholder="Será calculado automaticamente...">
                         </div>
+                        <div class="col-md-2 mb-3">
+                            <label for="prod_situacao" class="form-label">Situação</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="prod_situacao"
+                                    name="prod_situacao" value="A" checked>
+                                <label class="form-check-label" for="prod_situacao"><span
+                                    id="label-prod-situacao">Ativo</span></label>
+                            </div>
+                        </div>
+
                     </div>
+
                     <div class="row">
                     </div>
 
@@ -117,14 +128,14 @@
 
                     <!-- Linha 1: Tipo de Embalagem e Descrição -->
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label for="prod_tipo_embalagem" class="form-label">Tipo de Embalagem</label>
                             <select class="form-select" id="prod_tipo_embalagem" name="prod_tipo_embalagem" required>
                                 <option value="PRIMARIA">Primária</option>
                                 <option value="SECUNDARIA">Secundária</option>
                             </select>
                         </div>
-                        <div class="col-md-8 mb-3">
+                        <div class="col-md-9 mb-3">
                             <label for="prod_descricao" class="form-label">Descrição do Produto</label>
                             <input type="text" class="form-control" id="prod_descricao" name="prod_descricao" required>
                         </div>
@@ -153,7 +164,6 @@
                     <!-- Linha 2: Código Interno, Tipo e Subtipo -->
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <!--<label for="prod_codigo_interno" class="form-label">Código Interno</label>-->
                             <label for="prod_codigo_interno" class="form-label">Código Interno <span class="text-danger"
                                     id="asterisco-codigo-interno" style="display: none;">*</span></label>
                             <input type="text" class="form-control" id="prod_codigo_interno" name="prod_codigo_interno">

@@ -109,20 +109,42 @@ class ProdutoRepository
     /**
      * Cria um novo produto.
      */
-    // /src/Produtos/ProdutoRepository.php
-
     public function create(array $data): bool
     {
+
+        // ### BLOCO DE VALIDAÇÃO ###
+        $descricao = $data['prod_descricao'] ?? '';
+        $codInterno = $data['prod_codigo_interno'] ?? null;
+
+        // Validação 1: Código Interno (só validamos se não for nulo ou vazio)
+        if ($codInterno !== null && $codInterno !== '') {
+            $stmtCheckCod = $this->pdo->prepare("SELECT COUNT(*) FROM tbl_produtos WHERE prod_codigo_interno = :cod");
+            $stmtCheckCod->execute([':cod' => $codInterno]);
+            if ($stmtCheckCod->fetchColumn() > 0) {
+                // Lança uma Exceção que será capturada pelo ajax_router
+                throw new Exception("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
+            }
+        }
+
+        // Validação 2: Descrição Exata
+        $stmtCheckDesc = $this->pdo->prepare("SELECT COUNT(*) FROM tbl_produtos WHERE prod_descricao = :desc");
+        $stmtCheckDesc->execute([':desc' => $descricao]);
+        if ($stmtCheckDesc->fetchColumn() > 0) {
+            throw new Exception("Validação falhou: A Descrição '{$descricao}' já está em uso por outro produto.");
+        }
+        // ### FIM DO BLOCO DE VALIDAÇÃO ###
+
         $sql = "INSERT INTO tbl_produtos (
                     prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo, prod_classificacao, 
                     prod_categoria, prod_classe, prod_especie, prod_origem, prod_conservacao, prod_congelamento, 
                     prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas, 
                     prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14) 
                 VALUES (
-                    :prod_codigo_interno, :prod_descricao, 'A', :prod_tipo, :prod_subtipo, :prod_classificacao, 
+                    :prod_codigo_interno, :prod_descricao, :prod_situacao, :prod_tipo, :prod_subtipo, :prod_classificacao, 
                     :prod_categoria, :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
                     :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, 
                     :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14
+ 
                 )";
         $stmt = $this->pdo->prepare($sql);
         $params = $this->prepareData($data);
@@ -156,7 +178,8 @@ class ProdutoRepository
                     prod_fator_producao = :prod_fator_producao, prod_tipo_embalagem = :prod_tipo_embalagem, 
                     prod_peso_embalagem = :prod_peso_embalagem, prod_total_pecas = :prod_total_pecas, 
                     prod_validade_meses = :prod_validade_meses, prod_primario_id = :prod_primario_id, 
-                    prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14 
+                    prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14, prod_situacao = :prod_situacao
+
                 WHERE prod_codigo = :prod_codigo";
 
         $stmt = $this->pdo->prepare($sql);
@@ -192,6 +215,7 @@ class ProdutoRepository
     // Método auxiliar privado para preparar os dados para INSERT/UPDATE
     private function prepareData(array $data): array
     {
+        $situacao = isset($data['prod_situacao']) && $data['prod_situacao'] === 'A' ? 'A' : 'I';
         $tipo_embalagem = $data['prod_tipo_embalagem'];
         $peso_embalagem = ($tipo_embalagem === 'SECUNDARIA')
             ? (!empty($data['prod_peso_embalagem_secundaria']) ? str_replace(',', '.', $data['prod_peso_embalagem_secundaria']) : null)
@@ -217,6 +241,7 @@ class ProdutoRepository
             ':prod_primario_id' => !empty($data['prod_primario_id']) ? $data['prod_primario_id'] : null,
             ':prod_ean13' => !empty($data['prod_ean13']) ? $data['prod_ean13'] : null,
             ':prod_dun14' => !empty($data['prod_dun14']) ? $data['prod_dun14'] : null,
+            ':prod_situacao' => $situacao,
             ':prod_codigo' => $data['prod_codigo'] ?? null,
         ];
     }
@@ -229,7 +254,7 @@ class ProdutoRepository
                                         prod_categoria, prod_classe, prod_especie, 
                                         prod_origem, prod_conservacao, prod_congelamento, 
                                         prod_fator_producao, prod_total_pecas, 
-                                        prod_codigo_interno 
+                                        prod_codigo_interno, prod_validade_meses  
                                     FROM tbl_produtos 
                                     WHERE prod_tipo_embalagem = 'PRIMARIA' 
                                     AND prod_situacao = 'A' 
@@ -238,7 +263,6 @@ class ProdutoRepository
         return $result ?: null;
     }
 
-    //public function getProdutoOptions(string $tipoEmbalagem): array
     public function getProdutoOptions(string $tipoEmbalagem, string $term = ''): array
     {
         $params = [];
@@ -262,10 +286,8 @@ class ProdutoRepository
 
         if (!empty($term)) {
             // Busca pela descrição OU pelo código interno
-            //$sql .= " AND (p_sec.prod_descricao LIKE :term OR p_sec.prod_codigo_interno LIKE :term)";
             $sql .= " AND (p_sec.prod_descricao LIKE :term_desc OR p_sec.prod_codigo_interno LIKE :term_cod)";
 
-            //$params[':term'] = '%' . $term . '%';
             $params[':term_desc'] = '%' . $term . '%';
             $params[':term_cod'] = '%' . $term . '%';
         }

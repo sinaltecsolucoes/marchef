@@ -2322,6 +2322,7 @@ function getLotesDisponiveisPorProduto(OrdemExpedicaoRepository $repo)
     $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
     echo json_encode(['results' => $repo->getLotesDisponiveisPorProduto($produtoId)]);
 }
+    
 function getEnderecosDisponiveisPorLoteItem(OrdemExpedicaoRepository $repo)
 {
     $loteItemId = filter_input(INPUT_GET, 'lote_item_id', FILTER_VALIDATE_INT);

@@ -55,6 +55,124 @@ $(document).ready(function () {
     /**
      * Busca dados de um CNPJ na BrasilAPI e preenche o formulário.
      */
+    /*  function buscarDadosCNPJ() {
+          const cnpj = $cpfCnpjInput.val().replace(/\D/g, ''); // Remove a formatação
+          if (cnpj.length !== 14) {
+              notificacaoErro('CNPJ Inválido', 'Por favor, digite um CNPJ válido com 14 dígitos.');
+              return;
+          }
+  
+          const feedback = $('#cnpj-feedback');
+          feedback.text('Buscando...').removeClass('text-danger text-success');
+          $btnBuscarCnpj.prop('disabled', true);
+  
+          fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+              .then(response => {
+                  if (!response.ok) {
+                      throw new Error('CNPJ não encontrado ou inválido.');
+                  }
+                  return response.json();
+              })
+              .then(data => {
+                  feedback.text('Dados carregados com sucesso!').addClass('text-success');
+                  // Preenche os campos do formulário
+                  $('#razao-social').val(data.razao_social);
+                  $('#nome-fantasia').val(data.nome_fantasia);
+                  $('#cep-endereco').val(data.cep.replace(/\D/g, ''));
+                  $('#logradouro-endereco').val(data.logradouro);
+                  $('#numero-endereco').val(data.numero);
+                  $('#complemento-endereco').val(data.complemento);
+                  $('#bairro-endereco').val(data.bairro);
+                  $('#cidade-endereco').val(data.municipio);
+                  $('#uf-endereco').val(data.uf);
+  
+              })
+              .catch(error => {
+                  feedback.text(error.message).addClass('text-danger');
+              })
+              .finally(() => {
+                  $btnBuscarCnpj.prop('disabled', false);
+              });
+      } */
+
+    /**
+    * Busca dados de um CNPJ na CNPJá API e preenche o formulário (inclui Inscrição Estadual).
+    */
+    /* function buscarDadosCNPJ() {
+         const cnpj = $cpfCnpjInput.val().replace(/\D/g, ''); // Remove a formatação
+         if (cnpj.length !== 14) {
+             notificacaoErro('CNPJ Inválido', 'Por favor, digite um CNPJ válido com 14 dígitos.');
+             return;
+         }
+ 
+         const feedback = $('#cnpj-feedback');
+         feedback.text('Buscando...').removeClass('text-danger text-success');
+         $btnBuscarCnpj.prop('disabled', true);
+ 
+         // Tenta CNPJá API com o endpoint correto da documentação
+         fetch(`https://open.cnpja.com/office/${cnpj}`)
+             .then(response => {
+                 if (!response.ok) {
+                     throw new Error('CNPJ não encontrado na CNPJá.');
+                 }
+                 return response.json();
+             })
+             .then(data => {
+                 // Verifica se há erro (CNPJá pode retornar { "status": "ERROR", "message": "..." })
+                 if (data.status === 'ERROR' || !data.taxId) {
+                     throw new Error(data.message || 'CNPJ não encontrado.');
+                 }
+ 
+                 // Mapeia os dados da resposta aninhada
+                 feedback.text('Dados carregados com sucesso (incluindo IE)!').addClass('text-success');
+                 $('#razao-social').val(data.company.name || '');
+                 $('#nome-fantasia').val(data.alias || '');
+                 $('#cep-endereco').val((data.address.zip || '').replace(/\D/g, ''));
+                 $('#logradouro-endereco').val(data.address.street || '');
+                 $('#numero-endereco').val(data.address.number || '');
+                 $('#complemento-endereco').val(data.address.details || '');
+                 $('#bairro-endereco').val(data.address.district || '');
+                 $('#cidade-endereco').val(data.address.city || '');
+                 $('#uf-endereco').val(data.address.state || '');
+                 $('#inscricao-estadual').val(data.registrations[0]?.number || ''); // IE vem no array registrations
+                 $('#cep-endereco').trigger('input');
+             })
+             .catch(error => {
+                 // Fallback para BrasilAPI
+                 feedback.text('Tentando API alternativa...');
+                 fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+                     .then(response => {
+                         if (!response.ok) {
+                             throw new Error('CNPJ não encontrado ou inválido.');
+                         }
+                         return response.json();
+                     })
+                     .then(data => {
+                         feedback.text('Dados carregados (sem IE).').addClass('text-success');
+                         $('#razao-social').val(data.razao_social || '');
+                         $('#nome-fantasia').val(data.nome_fantasia || '');
+                         $('#cep-endereco').val((data.cep || '').replace(/\D/g, ''));
+                         $('#logradouro-endereco').val(data.logradouro || '');
+                         $('#numero-endereco').val(data.numero || '');
+                         $('#complemento-endereco').val(data.complemento || '');
+                         $('#bairro-endereco').val(data.bairro || '');
+                         $('#cidade-endereco').val(data.municipio || '');
+                         $('#uf-endereco').val(data.uf || '');
+                         $('#inscricao-estadual').val(''); // BrasilAPI não tem IE
+                         $('#cep-endereco').trigger('input');
+                     })
+                     .catch(error => {
+                         feedback.text(error.message).addClass('text-danger');
+                     });
+             })
+             .finally(() => {
+                 $btnBuscarCnpj.prop('disabled', false);
+             });
+     } */
+
+    /**
+     * Busca dados de um CNPJ na CNPJá API e preenche o formulário (inclui Inscrição Estadual).
+     */
     function buscarDadosCNPJ() {
         const cnpj = $cpfCnpjInput.val().replace(/\D/g, ''); // Remove a formatação
         if (cnpj.length !== 14) {
@@ -66,29 +184,72 @@ $(document).ready(function () {
         feedback.text('Buscando...').removeClass('text-danger text-success');
         $btnBuscarCnpj.prop('disabled', true);
 
-        fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+        // Tenta CNPJá API com o endpoint correto da documentação
+        fetch(`https://open.cnpja.com/office/${cnpj}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('CNPJ não encontrado ou inválido.');
+                    throw new Error('CNPJ não encontrado na CNPJá.');
                 }
                 return response.json();
             })
             .then(data => {
-                feedback.text('Dados carregados com sucesso!').addClass('text-success');
-                // Preenche os campos do formulário
-                $('#razao-social').val(data.razao_social);
-                $('#nome-fantasia').val(data.nome_fantasia);
-                $('#cep-endereco').val(data.cep.replace(/\D/g, ''));
-                $('#logradouro-endereco').val(data.logradouro);
-                $('#numero-endereco').val(data.numero);
-                $('#complemento-endereco').val(data.complemento);
-                $('#bairro-endereco').val(data.bairro);
-                $('#cidade-endereco').val(data.municipio);
-                $('#uf-endereco').val(data.uf);
+                // Verifica se há erro (CNPJá pode retornar { "status": "ERROR", "message": "..." })
+                if (data.status === 'ERROR' || !data.taxId) {
+                    throw new Error(data.message || 'CNPJ não encontrado.');
+                }
 
+                // Mapeia os dados da resposta aninhada e converte para maiúsculas
+                const toUpper = str => (str || '').toUpperCase();
+                feedback.text('Dados carregados com sucesso (incluindo IE)!').addClass('text-success');
+                $('#razao-social').val(toUpper(data.company.name));
+                $('#nome-fantasia').val(toUpper(data.alias));
+                $('#cep-endereco').val(toUpper((data.address.zip || '').replace(/\D/g, '')));
+                $('#logradouro-endereco').val(toUpper(data.address.street));
+                $('#numero-endereco').val(toUpper(data.address.number));
+                $('#complemento-endereco').val(toUpper(data.address.details));
+                $('#bairro-endereco').val(toUpper(data.address.district));
+                $('#cidade-endereco').val(toUpper(data.address.city));
+                $('#uf-endereco').val(toUpper(data.address.state));
+                $('#inscricao-estadual').val(toUpper(data.registrations[0]?.number || ''));
+
+                // Aplica máscaras após preencher
+                $('#cep-endereco').mask('00000-000').trigger('input'); // Máscara de CEP
+                if ($('#cpf-cnpj').val() === cnpj) { // Só aplica máscara se o valor ainda for o CNPJ digitado
+                    $('#cpf-cnpj').mask('00.000.000/0000-00').trigger('input');
+                }
+                $('#cep-endereco').trigger('input'); // Garante que máscaras adicionais (se houver) sejam aplicadas
             })
             .catch(error => {
-                feedback.text(error.message).addClass('text-danger');
+                // Fallback para BrasilAPI
+                feedback.text('Tentando API alternativa...');
+                fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('CNPJ não encontrado ou inválido.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        feedback.text('Dados carregados (sem IE).').addClass('text-success');
+                        $('#razao-social').val(toUpper(data.razao_social || ''));
+                        $('#nome-fantasia').val(toUpper(data.nome_fantasia || ''));
+                        $('#cep-endereco').val(toUpper((data.cep || '').replace(/\D/g, '')));
+                        $('#logradouro-endereco').val(toUpper(data.logradouro || ''));
+                        $('#numero-endereco').val(toUpper(data.numero || ''));
+                        $('#complemento-endereco').val(toUpper(data.complemento || ''));
+                        $('#bairro-endereco').val(toUpper(data.bairro || ''));
+                        $('#cidade-endereco').val(toUpper(data.municipio || ''));
+                        $('#uf-endereco').val(toUpper(data.uf || ''));
+                        $('#inscricao-estadual').val(''); // BrasilAPI não tem IE
+                        $('#cep-endereco').mask('00000-000').trigger('input'); // Máscara de CEP
+                        if ($('#cpf-cnpj').val() === cnpj) {
+                            $('#cpf-cnpj').mask('00.000.000/0000-00').trigger('input');
+                        }
+                        $('#cep-endereco').trigger('input');
+                    })
+                    .catch(error => {
+                        feedback.text(error.message).addClass('text-danger');
+                    });
             })
             .finally(() => {
                 $btnBuscarCnpj.prop('disabled', false);
@@ -292,25 +453,6 @@ $(document).ready(function () {
     });
 
     // Limpa o modal ao clicar em "Adicionar"
-    /*   $modalEntidade.on('show.bs.modal', function (event) {
-           if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
-               const singular = pageType === 'cliente' ? 'Cliente' : 'Fornecedor';
-               $formEntidade[0].reset();
-               $('#ent-codigo').val('');
-               $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
-   
-               // Seleciona o radio button de tipo de entidade apropriado
-               $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
-   
-               // Define Pessoa Física como padrão
-               $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
-               $('#enderecos-tab').addClass('disabled');
-   
-               updatePessoaFields();
-           }
-       }); */
-
-
     $modalEntidade.on('show.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
             // LÓGICA CORRIGIDA PARA 3 TIPOS
