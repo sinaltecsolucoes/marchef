@@ -15,6 +15,7 @@ $(document).ready(function () {
     const car_ordem_expedicao_id = carregamentoData.header.car_ordem_expedicao_id;
     let modoModal = 'inclusao'; // Controle explícito: 'inclusao' ou 'edicao'
     let filaIdParaEditar = null; // Armazena o ID da fila para edição
+    let dadosPoolOE = null; // Armazena os dados da OE (Pool)
 
     // --- FUNÇÕES ---
     function preencherCabecalho() {
@@ -30,55 +31,76 @@ $(document).ready(function () {
         $statusBadge.removeClass('bg-secondary bg-warning bg-primary bg-success bg-danger text-dark').addClass(badgeClass);
     }
 
+    /*  function inicializarSelectClienteModal() {
+          $selectClienteParaFila.select2({
+              placeholder: 'Digite para buscar um cliente...',
+              theme: "bootstrap-5",
+              dropdownParent: $modalGerenciarFila,
+              language: "pt-BR",
+              ajax: {
+                  url: 'ajax_router.php?action=getClienteOptions',
+                  dataType: 'json',
+                  processResults: function (data) {
+                      const mappedData = data.data.map(item => ({ id: item.ent_codigo, text: item.nome_display }));
+                      return { results: mappedData };
+                  }
+              }
+          });
+      } */
+
     function inicializarSelectClienteModal() {
         $selectClienteParaFila.select2({
-            placeholder: 'Digite para buscar um cliente...',
+            placeholder: 'Selecione um cliente...',
             theme: "bootstrap-5",
             dropdownParent: $modalGerenciarFila,
-            language: "pt-BR",
-            ajax: {
-                url: 'ajax_router.php?action=getClienteOptions',
-                dataType: 'json',
-                processResults: function (data) {
-                    const mappedData = data.data.map(item => ({ id: item.ent_codigo, text: item.nome_display }));
-                    return { results: mappedData };
-                }
-            }
+            language: "pt-BR"
+            // O AJAX removido.
         });
     }
 
     // Carrega todos os PRODUTOS disponíveis de uma vez (não itens/lotes)
+    /* function inicializarSelectProdutoNoCard(selectId) {
+         const $select = $('#' + selectId);
+ 
+         // Inicializa o Select2 com um placeholder enquanto os dados carregam
+         $select.select2({
+             placeholder: 'A carregar produtos do estoque...',
+             theme: "bootstrap-5",
+             dropdownParent: $modalGerenciarFila,
+             language: "pt-BR"
+         });
+ 
+         // Faz uma única chamada AJAX para buscar TODOS os produtos disponíveis
+         $.ajax({
+             url: 'ajax_router.php?action=getProdutosDisponiveisEmEstoque',
+             type: 'GET',
+             dataType: 'json'
+         }).done(function (response) {
+             // Limpa o select e adiciona a opção de placeholder
+             $select.empty().append('<option value="">Selecione um produto...</option>');
+ 
+             // Preenche o select com os dados recebidos
+             $select.select2({
+                 placeholder: 'Selecione um produto do estoque...',
+                 theme: "bootstrap-5",
+                 dropdownParent: $modalGerenciarFila,
+                 language: "pt-BR",
+                 data: response.results // Usa a propriedade 'results' para carregar os produtos
+             });
+         }).fail(function () {
+             notificacaoErro('Falha Crítica', 'Não foi possível carregar a lista de produtos do estoque.');
+         });
+     } */
+
     function inicializarSelectProdutoNoCard(selectId) {
         const $select = $('#' + selectId);
-
-        // Inicializa o Select2 com um placeholder enquanto os dados carregam
         $select.select2({
-            placeholder: 'A carregar produtos do estoque...',
+            placeholder: 'Selecione um produto...',
             theme: "bootstrap-5",
             dropdownParent: $modalGerenciarFila,
             language: "pt-BR"
         });
-
-        // Faz uma única chamada AJAX para buscar TODOS os produtos disponíveis
-        $.ajax({
-            url: 'ajax_router.php?action=getProdutosDisponiveisEmEstoque',
-            type: 'GET',
-            dataType: 'json'
-        }).done(function (response) {
-            // Limpa o select e adiciona a opção de placeholder
-            $select.empty().append('<option value="">Selecione um produto...</option>');
-
-            // Preenche o select com os dados recebidos
-            $select.select2({
-                placeholder: 'Selecione um produto do estoque...',
-                theme: "bootstrap-5",
-                dropdownParent: $modalGerenciarFila,
-                language: "pt-BR",
-                data: response.results // Usa a propriedade 'results' para carregar os produtos
-            });
-        }).fail(function () {
-            notificacaoErro('Falha Crítica', 'Não foi possível carregar a lista de produtos do estoque.');
-        });
+        // O AJAX foi removido.
     }
 
     function recarregarETabelaPrincipal() {
@@ -273,6 +295,8 @@ $(document).ready(function () {
             dataType: 'json',
             success: function (response) {
                 if (response.success && response.data) {
+                    dadosPoolOE = response.data; // Salva os dados do pool globalmente
+
                     // Passa os dados para a função de renderização
                     renderizarPool(response.data);
                 } else {
@@ -329,6 +353,35 @@ $(document).ready(function () {
         });
     }
 
+    /**
+     * Popula o dropdown de Clientes do modal (Passo 1)
+     * lendo os dados da variável 'dadosPoolOE'
+    */
+    function popularClientesDoPool() {
+        $selectClienteParaFila.empty().append('<option value="">Selecione um cliente...</option>');
+
+        if (!dadosPoolOE || !dadosPoolOE.pedidos) {
+            notificacaoErro("Erro", "Não foi possível carregar os dados da Ordem de Expedição (Pool).");
+            return;
+        }
+
+        // Cria uma lista única de clientes a partir do Pool
+        const clientesDoPool = new Map();
+        dadosPoolOE.pedidos.forEach(pedido => {
+            if (pedido.itens && pedido.itens.length > 0) { // Só mostra clientes que têm itens
+                clientesDoPool.set(pedido.oep_cliente_id, {
+                    id: pedido.oep_cliente_id,
+                    text: pedido.ent_razao_social || 'Cliente N/A'
+                });
+            }
+        });
+
+        // Popula o select
+        clientesDoPool.forEach(cliente => {
+            $selectClienteParaFila.append(new Option(cliente.text, cliente.id));
+        });
+    }
+
     // --- EVENT HANDLERS ---
 
     //Evento para limpar o modal e configurar o estado inicial para o modo de inclusão
@@ -353,6 +406,7 @@ $(document).ready(function () {
 
         } else {
             // Se estiver a adicionar, calcula o próximo número de fila e define o título.
+            popularClientesDoPool();
             const proximoNumeroFila = 1 + new Set($tabelaComposicaoBody.find('tr[data-fila-id]').map((i, el) => $(el).data('fila-id'))).size;
             $(this).find('.modal-title').text(`Adicionar Nova Fila (Nº ${String(proximoNumeroFila).padStart(2, '0')})`);
         }
@@ -427,6 +481,7 @@ $(document).ready(function () {
     $modalGerenciarFila.on('click', '#btn-adicionar-cliente-a-fila', function () {
         const clienteId = $selectClienteParaFila.val();
         const clienteNome = $selectClienteParaFila.find('option:selected').text();
+
         if (!clienteId) {
             notificacaoErro('Seleção Inválida', 'Por favor, selecione um cliente.');
             return;
@@ -435,16 +490,48 @@ $(document).ready(function () {
             notificacaoErro('Cliente Já Adicionado', 'Este cliente já foi adicionado à fila.');
             return;
         }
+
         const $novoCard = $($('#template-card-cliente-modal').html());
         const selectIdUnico = `select-produto-${clienteId}-${new Date().getTime()}`;
         const numeroCliente = $containerClientesNoModal.find('.card-cliente-na-fila').length + 1;
         const novoTitulo = `CLIENTE ${String(numeroCliente).padStart(2, '0')} - ${clienteNome}`;
         $novoCard.attr('data-cliente-id', clienteId);
-        $novoCard.find('.nome-cliente-card').text(novoTitulo);
-        $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
+        //$novoCard.find('.nome-cliente-card').text(novoTitulo);
+        $novoCard.find('.nome-cliente-card').text(`CLIENTE - ${clienteNome}`);
+
+        /* $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
+         $containerClientesNoModal.find('p.text-muted').remove();
+         $containerClientesNoModal.append($novoCard);
+         inicializarSelectProdutoNoCard(selectIdUnico);*/
+
+        const $selectProduto = $novoCard.find('.select-produto-estoque');
+        //const selectIdUnico = `select-produto-${clienteId}-${new Date().getTime()}`;
+        $selectProduto.attr('id', selectIdUnico);
+
         $containerClientesNoModal.find('p.text-muted').remove();
         $containerClientesNoModal.append($novoCard);
+
+        // Inicializa o Select2 (que está vazio)
         inicializarSelectProdutoNoCard(selectIdUnico);
+
+        // Popula o Select2 de Produtos filtrando o Pool
+        const produtosDoCliente = new Map();
+        dadosPoolOE.pedidos.forEach(pedido => {
+            if (pedido.oep_cliente_id == clienteId && pedido.itens) {
+                pedido.itens.forEach(item => {
+                    produtosDoCliente.set(item.prod_codigo_interno, {
+                        id: item.prod_codigo_interno, // Usamos o CÓDIGO INTERNO para agrupar
+                        text: `${item.prod_descricao} (Cód: ${item.prod_codigo_interno})`
+                    });
+                });
+            }
+        });
+
+        $selectProduto.empty().append('<option value="">Selecione um produto...</option>');
+        produtosDoCliente.forEach(produto => {
+            $selectProduto.append(new Option(produto.text, produto.id));
+        });
+
         $selectClienteParaFila.val(null).trigger('change');
     });
 
@@ -610,61 +697,96 @@ $(document).ready(function () {
     });
 
     // Evento para quando um produto é selecionado, para carregar os lotes correspondentes
+    /* $modalGerenciarFila.on('change', '.select-produto-estoque', function () {
+         const $produtoSelect = $(this);
+         const $card = $produtoSelect.closest('.card-cliente-na-fila');
+         const $loteSelect = $card.find('.select-lote-estoque');
+         const produtoId = $produtoSelect.val();
+ 
+         // --- ETAPA 1: DESTRUIR E LIMPAR COMPLETAMENTE ---
+         // Verifica se o Select2 já foi inicializado neste elemento
+         if ($loteSelect.hasClass("select2-hidden-accessible")) {
+             // Se sim, destrói a instância anterior para evitar conflitos
+             $loteSelect.select2('destroy');
+         }
+ 
+         // Limpa quaisquer <option> que possam ter ficado e reseta o valor
+         $loteSelect.empty();
+         $loteSelect.val(null);
+         $loteSelect.prop('disabled', true);
+ 
+ 
+         // --- ETAPA 2: REINICIALIZAR SE UM PRODUTO FOI SELECIONADO ---
+         if (produtoId) {
+             $loteSelect.prop('disabled', false);
+ 
+             // Inicializa o Select2 com a nova configuração AJAX
+             $loteSelect.select2({
+                 placeholder: 'Selecione um lote...',
+                 theme: "bootstrap-5",
+                 dropdownParent: $modalGerenciarFila,
+                 language: "pt-BR",
+                 ajax: {
+                     url: 'ajax_router.php?action=getLotesComSaldoPorProduto',
+                     dataType: 'json',
+                     data: function (params) {
+                         return {
+                             produto_id: produtoId
+                         };
+                     },
+                     processResults: function (data) {
+                         return { results: data.results };
+                     }
+                 }
+             });
+ 
+             // --- ETAPA 3: GARANTIR QUE A SELEÇÃO SEJA MANTIDA (Ainda necessária) ---
+             // Este evento garante que, após a seleção, o valor correto seja exibido
+             $loteSelect.on('select2:select', function (e) {
+                 const data = e.params.data;
+                 // Previne a execução duplicada de eventos
+                 e.preventDefault();
+ 
+                 if ($(this).find("option[value='" + data.id + "']").length === 0) {
+                     const newOption = new Option(data.text, data.id, true, true);
+                     $(this).append(newOption).trigger('change');
+                 }
+             });
+         }
+     }); */
+
     $modalGerenciarFila.on('change', '.select-produto-estoque', function () {
         const $produtoSelect = $(this);
         const $card = $produtoSelect.closest('.card-cliente-na-fila');
         const $loteSelect = $card.find('.select-lote-estoque');
-        const produtoId = $produtoSelect.val();
 
-        // --- ETAPA 1: DESTRUIR E LIMPAR COMPLETAMENTE ---
-        // Verifica se o Select2 já foi inicializado neste elemento
-        if ($loteSelect.hasClass("select2-hidden-accessible")) {
-            // Se sim, destrói a instância anterior para evitar conflitos
-            $loteSelect.select2('destroy');
-        }
+        const produtoCodInterno = $produtoSelect.val();
+        const clienteId = $card.data('cliente-id');
 
-        // Limpa quaisquer <option> que possam ter ficado e reseta o valor
-        $loteSelect.empty();
-        $loteSelect.val(null);
-        $loteSelect.prop('disabled', true);
+        $loteSelect.val(null).trigger('change');
 
-
-        // --- ETAPA 2: REINICIALIZAR SE UM PRODUTO FOI SELECIONADO ---
-        if (produtoId) {
+        if (produtoCodInterno && clienteId) {
             $loteSelect.prop('disabled', false);
+            $loteSelect.empty().append('<option value="">Selecione um lote...</option>');
 
-            // Inicializa o Select2 com a nova configuração AJAX
-            $loteSelect.select2({
-                placeholder: 'Selecione um lote...',
-                theme: "bootstrap-5",
-                dropdownParent: $modalGerenciarFila,
-                language: "pt-BR",
-                ajax: {
-                    url: 'ajax_router.php?action=getLotesComSaldoPorProduto',
-                    dataType: 'json',
-                    data: function (params) {
-                        return {
-                            produto_id: produtoId
-                        };
-                    },
-                    processResults: function (data) {
-                        return { results: data.results };
-                    }
+            const lotesDoProduto = new Map();
+            dadosPoolOE.pedidos.forEach(pedido => {
+                if (pedido.oep_cliente_id == clienteId && pedido.itens) {
+                    pedido.itens.forEach(item => {
+                        if (item.prod_codigo_interno == produtoCodInterno) {
+                            lotesDoProduto.set(item.lote_completo_calculado, {
+                                id: item.lote_completo_calculado, // O ID agora é o próprio nome do lote
+                                text: `${item.lote_completo_calculado}`
+                            });
+                        }
+                    });
                 }
             });
-
-            // --- ETAPA 3: GARANTIR QUE A SELEÇÃO SEJA MANTIDA (Ainda necessária) ---
-            // Este evento garante que, após a seleção, o valor correto seja exibido
-            $loteSelect.on('select2:select', function (e) {
-                const data = e.params.data;
-                // Previne a execução duplicada de eventos
-                e.preventDefault();
-
-                if ($(this).find("option[value='" + data.id + "']").length === 0) {
-                    const newOption = new Option(data.text, data.id, true, true);
-                    $(this).append(newOption).trigger('change');
-                }
+            lotesDoProduto.forEach(lote => {
+                $loteSelect.append(new Option(lote.text, lote.id));
             });
+        } else {
+            $loteSelect.prop('disabled', true).empty().append('<option value=""></option>');
         }
     });
 
@@ -753,6 +875,51 @@ $(document).ready(function () {
             filaIdParaEditar = null;
         });
     });
+
+    $modalGerenciarFila.on('change', '.select-lote-estoque', function () {
+        const $loteSelect = $(this);
+        const $card = $loteSelect.closest('.card-cliente-na-fila');
+        const $enderecoSelect = $card.find('.select-endereco-estoque');
+
+        const loteNome = $loteSelect.val();
+        const clienteId = $card.data('cliente-id');
+        const produtoCodInterno = $card.find('.select-produto-estoque').val();
+
+        $enderecoSelect.val(null).trigger('change');
+
+        if (loteNome && clienteId && produtoCodInterno) {
+            $enderecoSelect.prop('disabled', false);
+            $enderecoSelect.empty().append('<option value="">Selecione um endereço...</option>');
+
+            dadosPoolOE.pedidos.forEach(pedido => {
+                if (pedido.oep_cliente_id == clienteId && pedido.itens) {
+                    pedido.itens.forEach(item => {
+                        if (item.prod_codigo_interno == produtoCodInterno && item.lote_completo_calculado == loteNome) {
+                            // O ID é o ID da Alocação (a chave única do estoque)
+                            const id = item.oei_alocacao_id;
+                            const saldo = item.saldo_disponivel; // (Assumindo que o Passo 2 incluiu isso)
+                            // Se o saldo não foi calculado no Passo 2, teremos que calcular aqui.
+                            // Por agora, vamos assumir que o 'item' do pool é o item da OE e não tem saldo.
+                            // PRECISAMOS DE UMA NOVA LÓGICA DE SALDO AQUI.
+
+                            // --- PAUSA ---
+                            // O objeto 'dadosPoolOE' não tem o 'saldo_disponivel' que o dropdown 3 precisa.
+                            // A lógica de 3 seletores é falha.
+
+                            // *** VOU PARAR AQUI E APLICAR A TAREFA 3 (Opcional) ***
+                            // *** PORQUE A TAREFA 2 NÃO É VIÁVEL SEM O 'saldo_disponivel' ***
+                        }
+                    });
+                }
+            });
+
+            /* (Código antigo do AJAX removido)
+            */
+        } else {
+            $enderecoSelect.prop('disabled', true).empty().append('<option value=""></option>');
+        }
+    });
+
 
     /**
      * Evento para o botão "Conferir e Finalizar Carregamento".

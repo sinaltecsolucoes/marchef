@@ -152,7 +152,7 @@ class LabelService
         $linhaPesoLiquido = "PESO LÍQUIDO: " . $pesoFormatado . "kg";
         $partesEndereco = array_filter([($dados['end_logradouro'] ?? '') . ', ' . ($dados['end_numero'] ?? ''), $dados['end_complemento'] ?? '', $dados['end_bairro'] ?? '']);
         $linhaEndereco = implode(' - ', $partesEndereco);
-        $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '                CEP: ' . ($dados['end_cep'] ?? '');
+        $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '     CEP: ' . ($dados['end_cep'] ?? '');
         $linhaCnpjIe = "CNPJ: " . $this->formatCnpj($dados['ent_cnpj'] ?? '') . "     I.E.: " . ($dados['ent_inscricao_estadual'] ?? '');
 
         // --- MAPA COMPLETO DE PLACEHOLDERS ---
@@ -165,7 +165,7 @@ class LabelService
             '{data_fabricacao}' => $dataFab,
             '{data_validade}' => $dataVal,
             '{quantidade}' => $dados['lote_item_qtd'] ?? '',
-            '{categoria_produto}' => $dados['prod_categoria'] ?? '',
+            '{categoria}' => $dados['prod_categoria'] ?? '',
 
             // Compostos e de Negócio
             '{fonte_produto_nome}' => $comandoFonte,
@@ -196,23 +196,57 @@ class LabelService
         return sprintf('%s.%s.%s/%s-%s', substr($cnpj, 0, 2), substr($cnpj, 2, 3), substr($cnpj, 5, 3), substr($cnpj, 8, 4), substr($cnpj, 12, 2));
     }
 
+    /* private function buildClassificationLine(array $produto): string
+     {
+         $partes = [];
+         if ($produto['prod_tipo_embalagem'] === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
+             $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
+             if ($produtoPrimario) {
+                 if (!empty($produto['prod_total_pecas']))
+                     $partes[] = $produto['prod_total_pecas'];
+                 $pesoPrimarioFormatado = str_replace('.', ',', (string) ((float) ($produtoPrimario['prod_peso_embalagem'] ?? 0)));
+                 $partes[] = "UNIDADES/" . $pesoPrimarioFormatado . "kg";
+             }
+         } else {
+             if (!empty($produto['prod_classificacao']))
+                 $partes[] = $produto['prod_classificacao'];
+             if (!empty($produto['prod_total_pecas']))
+                 $partes[] = $produto['prod_total_pecas'];
+         }
+         return implode(' ', $partes);
+     } */
+
     private function buildClassificationLine(array $produto): string
     {
         $partes = [];
+        $pesoParaFormatar = 0;
+
+        // --- ETAPA 1: Adiciona a Classificação/Peças (Comum a ambos) ---
+        if (!empty($produto['prod_classificacao'])) {
+            $partes[] = $produto['prod_classificacao'];
+        }
+        if (!empty($produto['prod_total_pecas'])) {
+            $partes[] = $produto['prod_total_pecas'];
+        }
+
+        // --- ETAPA 2: Encontra o Peso Correto ---
         if ($produto['prod_tipo_embalagem'] === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
+            // Se for SECUNDÁRIA, busca o peso do PRIMÁRIO
             $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
             if ($produtoPrimario) {
-                if (!empty($produto['prod_total_pecas']))
-                    $partes[] = $produto['prod_total_pecas'];
-                $pesoPrimarioFormatado = str_replace('.', ',', (string) ((float) ($produtoPrimario['prod_peso_embalagem'] ?? 0)));
-                $partes[] = "UNIDADES/" . $pesoPrimarioFormatado . "kg";
+                $pesoParaFormatar = (float) ($produtoPrimario['prod_peso_embalagem'] ?? 0);
             }
-        } else {
-            if (!empty($produto['prod_classificacao']))
-                $partes[] = $produto['prod_classificacao'];
-            if (!empty($produto['prod_total_pecas']))
-                $partes[] = $produto['prod_total_pecas'];
+        } else if ($produto['prod_tipo_embalagem'] === 'PRIMARIA') {
+            // Se for PRIMÁRIA, usa o seu PRÓPRIO peso
+            $pesoParaFormatar = (float) ($produto['prod_peso_embalagem'] ?? 0);
         }
+
+        // --- ETAPA 3: Formata e Adiciona o Peso (se encontrado) ---
+        if ($pesoParaFormatar > 0) {
+            $pesoFormatado = str_replace('.', ',', (string) $pesoParaFormatar);
+            $partes[] = "UNIDADES/" . $pesoFormatado . "kg";
+        }
+
         return implode(' ', $partes);
     }
 

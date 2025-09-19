@@ -58,9 +58,29 @@ class RegraRepository
     /**
      * Busca uma única regra pelo seu ID.
      */
+    /*   public function find(int $id): ?array
+       {
+           $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_regras WHERE regra_id = :id");
+           $stmt->execute([':id' => $id]);
+           return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+       } */
+
     public function find(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_regras WHERE regra_id = :id");
+        // Agora faz JOINs para buscar os nomes/textos para os Selects
+        $sql = "SELECT 
+                r.*,
+                -- Usamos o CONCAT/COALESCE que já criamos para a função getClienteOptions
+                CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social), ' (Cód: ', COALESCE(e.ent_codigo_interno, 'N/A'), ')') AS cliente_text,
+                p.prod_descricao AS produto_text,
+                t.template_nome AS template_text
+            FROM tbl_etiqueta_regras r
+            LEFT JOIN tbl_entidades e ON r.regra_cliente_id = e.ent_codigo
+            LEFT JOIN tbl_produtos p ON r.regra_produto_id = p.prod_codigo
+            LEFT JOIN tbl_etiqueta_templates t ON r.regra_template_id = t.template_id
+            WHERE r.regra_id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }

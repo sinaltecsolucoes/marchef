@@ -160,23 +160,52 @@ $(document).ready(function () {
     }
 
     // Função para carregar Clientes 
+    /* function carregarClientes() {
+         return $.get('ajax_router.php?action=getClienteOptions').done(function (response) {
+             if (response.success) {
+                 const $select = $('#lote_cliente_id_novo');
+                 $select.empty().append('<option value="">Selecione...</option>');
+                 response.data.forEach(function (cliente) {
+                     $select.append(
+                         $('<option>', {
+                             value: cliente.ent_codigo,
+                             // text: `${cliente.ent_razao_social} (Cód: ${cliente.ent_codigo_interno})`,
+                             text: `${cliente.nome_display} (Cód: ${cliente.ent_codigo_interno})`,
+                             'data-codigo-interno': cliente.ent_codigo_interno
+                         })
+                     );
+                 });
+                 $select.trigger('change.select2');
+             }
+         });
+     } */
+
+
+    // Função para carregar Clientes 
     function carregarClientes() {
-        return $.get('ajax_router.php?action=getClienteOptions').done(function (response) {
-            if (response.success) {
+        // Adicionamos o 'term' vazio e corrigimos a lógica do 'done'
+        return $.get('ajax_router.php?action=getClienteOptions', { term: '' }).done(function (response) {
+            // Verificamos 'response.data' (que o ajax_router envia)
+            if (response.data) {
                 const $select = $('#lote_cliente_id_novo');
                 $select.empty().append('<option value="">Selecione...</option>');
+
+                // Lemos 'cliente.id' e 'cliente.text' (que o Repo envia)
                 response.data.forEach(function (cliente) {
                     $select.append(
                         $('<option>', {
-                            value: cliente.ent_codigo,
-                            // text: `${cliente.ent_razao_social} (Cód: ${cliente.ent_codigo_interno})`,
-                            text: `${cliente.nome_display} (Cód: ${cliente.ent_codigo_interno})`,
-                            'data-codigo-interno': cliente.ent_codigo_interno
+                            value: cliente.id, // Usar 'id'
+                            text: cliente.text, // Usar 'text' (já formatado)
+                            'data-codigo-interno': cliente.ent_codigo_interno // Manter o data-
                         })
                     );
                 });
                 $select.trigger('change.select2');
+            } else {
+                console.error('Erro ao carregar clientes:', response.message);
             }
+        }).fail(function (xhr, status, error) {
+            console.error('Erro na requisição AJAX (carregarClientes):', status, error);
         });
     }
 

@@ -481,7 +481,7 @@ class EntidadeRepository
 
     public function getClienteOptions(string $term = ''): array
     {
-        
+
         $sql = "SELECT 
                     ent_codigo AS id,
                     CONCAT(COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social), ' (Cód: ', COALESCE(ent_codigo_interno, 'N/A'), ')') AS text,
@@ -505,7 +505,12 @@ class EntidadeRepository
             $params[':term_cod'] = '%' . $term . '%';
         }
 
-        $sql .= " ORDER BY COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) ASC LIMIT 50";
+        $sql .= " ORDER BY COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) ASC";
+
+        // APLICA O LIMITE APENAS SE FOR UMA BUSCA (se o $term não estiver vazio)
+        if (!empty($term)) {
+            $sql .= " LIMIT 50";
+        }
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
