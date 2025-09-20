@@ -399,6 +399,12 @@ switch ($action) {
     case 'getFotosDaFila':
         getFotosDaFila($carregamentoRepo);
         break;
+    case 'salvarFilaDoPool':
+        salvarFilaDoPool($carregamentoRepo);
+        break;
+    case 'atualizarFilaDoPool':
+        atualizarFilaDoPool($carregamentoRepo);
+        break;
 
     // --- ROTAS PARA O DASHBOARD (KPIs) ---
     case 'getKpiLotesAtivos':
@@ -1955,6 +1961,45 @@ function getFotosDaFila(CarregamentoRepository $repo)
     }
 }
 
+function salvarFilaDoPool(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $filaDataJson = $_POST['fila_data'] ?? '[]';
+        $filaData = json_decode($filaDataJson, true);
+
+        if (!$carregamentoId || empty($filaData)) {
+            throw new Exception("Dados inválidos para salvar a fila.");
+        }
+
+        // Chamamos a nova função do repositório
+        $repo->salvarFilaDoPool($carregamentoId, $filaData);
+        echo json_encode(['success' => true, 'message' => 'Fila salva com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function atualizarFilaDoPool(CarregamentoRepository $repo)
+{
+    try {
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        $filaDataJson = $_POST['fila_data'] ?? '[]';
+        $filaData = json_decode($filaDataJson, true);
+
+        if (!$carregamentoId || !$filaId || !is_array($filaData)) {
+            throw new Exception("Dados inválidos para atualizar a fila.");
+        }
+
+        // Chamamos a nova função do repositório
+        $repo->atualizarFilaDoPool($filaId, $carregamentoId, $filaData);
+        echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 // --- FUNÇÕES DE CONTROLE PARA O DASHBOARD (KPIs) ---
 
 function getKpiLotesAtivos(LoteNovoRepository $repo)
@@ -2313,7 +2358,7 @@ function addItemPedidoOrdem(OrdemExpedicaoRepository $repo)
 
 function getProdutosComEstoqueDisponivel(OrdemExpedicaoRepository $repo)
 {
-    $term = $_GET['term'] ?? ''; 
+    $term = $_GET['term'] ?? '';
     echo json_encode(['results' => $repo->getProdutosComEstoqueDisponivel($term)]);
 }
 
@@ -2322,7 +2367,7 @@ function getLotesDisponiveisPorProduto(OrdemExpedicaoRepository $repo)
     $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
     echo json_encode(['results' => $repo->getLotesDisponiveisPorProduto($produtoId)]);
 }
-    
+
 function getEnderecosDisponiveisPorLoteItem(OrdemExpedicaoRepository $repo)
 {
     $loteItemId = filter_input(INPUT_GET, 'lote_item_id', FILTER_VALIDATE_INT);

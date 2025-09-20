@@ -185,6 +185,14 @@ $(document).ready(function () {
         });
     }
 
+    function resetModalEstoqueParaAbrir() {
+        $selectProduto.val(null).trigger('change');
+        $selectLote.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
+        $selectEndereco.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
+        $displaySaldo.val(''); $inputQtd.val('').prop('disabled', true);
+        $inputObs.val(''); $btnAddItem.prop('disabled', true);
+    }
+
     // ### INICIALIZAÇÃO DO DRAG AND DROP ###
     const pedidosContainerEl = document.getElementById('pedidos-container');
     if (pedidosContainerEl) {
@@ -330,14 +338,6 @@ $(document).ready(function () {
         });
     });
 
-    function resetModalEstoqueParaAbrir() {
-        $selectProduto.val(null).trigger('change');
-        $selectLote.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
-        $selectEndereco.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
-        $displaySaldo.val(''); $inputQtd.val('').prop('disabled', true);
-        $inputObs.val(''); $btnAddItem.prop('disabled', true);
-    }
-
     $selectProduto.select2({
         placeholder: "Selecione um produto...",
         dropdownParent: $modalEstoque,
@@ -363,16 +363,6 @@ $(document).ready(function () {
         }
     });
 
-    $selectLote.select2({
-        placeholder: "Selecione um lote...",
-        dropdownParent: $modalEstoque, theme: "bootstrap-5"
-    });
-
-    $selectEndereco.select2({
-        placeholder: "Selecione um endereço...",
-        dropdownParent: $modalEstoque, theme: "bootstrap-5"
-    });
-
     $selectProduto.on('change', function () {
         const produtoId = $(this).val();
         $selectLote.val(null).trigger('change');
@@ -392,6 +382,16 @@ $(document).ready(function () {
         else {
             $selectLote.prop('disabled', true).empty().append('<option value=""></option>');
         }
+    });
+
+    $selectLote.select2({
+        placeholder: "Selecione um lote...",
+        dropdownParent: $modalEstoque, theme: "bootstrap-5"
+    });
+
+    $selectEndereco.select2({
+        placeholder: "Selecione um endereço...",
+        dropdownParent: $modalEstoque, theme: "bootstrap-5"
     });
 
     $selectLote.on('change', function () {

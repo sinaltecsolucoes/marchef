@@ -246,6 +246,7 @@ class CarregamentoRepository
         $stmtItens = $this->pdo->prepare(
             "SELECT 
             ci.car_item_fila_id,
+            ci.car_item_lote_novo_item_id AS item_emb_id,
             ci.car_item_quantidade,
             e_destino.ent_razao_social as cliente_razao_social,
             p.prod_descricao, 
@@ -1324,4 +1325,129 @@ class CarregamentoRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Adiciona um item (baseado na Alocação da OE) a uma fila.
+     * Esta é a nova função que lê da OE.
+     * @param integer $alocacaoId ID da tabela tbl_estoque_alocacoes
+     */
+    public function adicionarItemAFilaDoPool(int $filaId, int $alocacaoId, float $quantidade, int $carregamentoId, int $clienteId): bool
+    {
+        // ETAPA 1: Precisamos descobrir o 'car_item_lote_novo_item_id' (item_emb_id)
+        // a partir do 'alocacaoId' (que é o 'estoque_alocacao_id').
+        $stmtFindItem = $this->pdo->prepare(
+            "SELECT estoque_lote_item_id FROM tbl_estoque_alocacoes 
+         WHERE alocacao_id = :alocacao_id"
+        );
+        $stmtFindItem->execute([':alocacao_id' => $alocacaoId]);
+        $loteNovoItemId = $stmtFindItem->fetchColumn();
+
+        if (!$loteNovoItemId) {
+            // Este item vem da OE, que já validou o estoque. 
+            // Mas por segurança, verificamos.
+            throw new Exception("Não foi possível encontrar o item de estoque original para a alocação ID {$alocacaoId}.");
+        }
+
+        // ETAPA 2: Inserir o item de carregamento com o ID da embalagem correto.
+        $sql = "INSERT INTO tbl_carregamento_itens (
+              car_item_carregamento_id, 
+              car_item_fila_id,
+              car_item_cliente_id, 
+              car_item_lote_novo_item_id, 
+              car_item_quantidade
+          ) VALUES (
+              :carregamento_id, 
+              :fila_id, 
+              :cliente_id,
+              :lote_novo_item_id, 
+              :qtd
+          )";
+
+        $stmt = $this->pdo->prepare($sql);
+        $success = $stmt->execute([
+            ':carregamento_id' => $carregamentoId,
+            ':fila_id' => $filaId,
+            ':cliente_id' => $clienteId,
+            ':lote_novo_item_id' => $loteNovoItemId, // ID da tabela 'tbl_lotes_novo_embalagem'
+            ':qtd' => $quantidade
+        ]);
+
+        // (Opcional, mas recomendado: adicionar log de auditoria)
+        // $this->auditLogger->log('CREATE', $this->pdo->lastInsertId(), 'tbl_carregamento_itens', null, [...]);
+
+        return $success;
+    }
+
+    /**
+     * Salva uma fila composta vinda do Pool (baseado em alocacaoId).
+     */
+    public function salvarFilaDoPool(int $carregamentoId, array $filaData): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // Adiciona a fila e pega o ID
+            $filaId = $this->adicionarFila($carregamentoId);
+
+            foreach ($filaData as $dadosCliente) {
+                $clienteId = $dadosCliente['clienteId'];
+                $produtos = $dadosCliente['produtos'];
+
+                if (empty($produtos))
+                    continue;
+
+                foreach ($produtos as $produto) {
+                    $this->adicionarItemAFilaDoPool( // <-- MUDANÇA
+                        $filaId,
+                        $produto['alocacaoId'], // <-- MUDANÇA
+                        $produto['quantidade'],
+                        $carregamentoId,
+                        $clienteId
+                    );
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw new Exception("Erro ao salvar os dados da fila: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Atualiza uma fila composta vinda do Pool (baseado em alocacaoId).
+     */
+    public function atualizarFilaDoPool(int $filaId, int $carregamentoId, array $filaData): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // Limpa os itens antigos da fila
+            $stmtDelete = $this->pdo->prepare("DELETE FROM tbl_carregamento_itens WHERE car_item_fila_id = :fila_id");
+            $stmtDelete->execute([':fila_id' => $filaId]);
+            // (Opcional: log de auditoria)
+
+            foreach ($filaData as $dadosCliente) {
+                $clienteId = $dadosCliente['clienteId'];
+                $produtos = $dadosCliente['produtos'];
+
+                if (empty($produtos))
+                    continue;
+
+                foreach ($produtos as $produto) {
+                    $this->adicionarItemAFilaDoPool( // <-- MUDANÇA
+                        $filaId,
+                        $produto['alocacaoId'], // <-- MUDANÇA
+                        $produto['quantidade'],
+                        $carregamentoId,
+                        $clienteId
+                    );
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw new Exception("Erro ao atualizar os dados da fila: " . $e->getMessage());
+        }
+    }
+
 }

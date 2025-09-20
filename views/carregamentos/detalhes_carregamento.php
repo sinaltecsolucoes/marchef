@@ -171,17 +171,23 @@
         <div class="card-body">
 
             <form class="form-adicionar-produto-ao-cliente">
+
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-4"><label class="form-label">Produto</label><select
-                            class="form-select select-produto-estoque" style="width: 100%;"></select></div>
-                    <div class="col-md-4"><label class="form-label">Lote (Estoque)</label><select
-                            class="form-select select-lote-estoque" style="width: 100%;" disabled></select></div>
-                    <div class="col-md-2"><label class="form-label">Quantidade</label><input type="number"
-                            class="form-control" min="1" step="0.001"></div>
+                    <div class="col-md-8">
+                        <label class="form-label">Item do Pool (Produto | Lote | Endereço)</label>
+                        <select class="form-select select-item-do-pool" style="width: 100%;"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quantidade</label>
+                        <input type="number" class="form-control" min="0.001" step="0.001" placeholder="0.000">
+                    </div>
                     <div class="col-md-2 d-flex">
-                        <button type="submit" class="btn btn-primary w-100" title="Adicionar Produto">+</button>
+                        <button type="submit" class="btn btn-primary w-100" title="Adicionar Item">
+                            <i class="fas fa-plus"></i>
+                        </button>
                     </div>
                 </div>
+
             </form>
 
             <hr>

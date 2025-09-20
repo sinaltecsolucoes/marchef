@@ -107,6 +107,7 @@ class OrdemExpedicaoRepository
                 i.oei_id,
                 i.oei_quantidade,
                 i.oei_observacao,
+                lne.item_emb_id,                
                 p_sec.prod_codigo_interno,
                 p_sec.prod_descricao,
                 p_prim.prod_peso_embalagem AS peso_primario,

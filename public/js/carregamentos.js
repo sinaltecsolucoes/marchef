@@ -129,7 +129,7 @@ $(document).ready(function () {
         $.get('ajax_router.php?action=getProximoNumeroCarregamento', function (response) {
             if (response.success) {
                 $('#car_numero').val(response.proximo_numero);
-                atualizarOrdemExpedicao();
+                // atualizarOrdemExpedicao();
             }
         });
 
@@ -137,15 +137,15 @@ $(document).ready(function () {
         carregarClientesParaModal();
 
         // 2. Lista de clientes
-        $.get('ajax_router.php?action=getClienteOptions', function (response) {
-            if (response.success) {
-                const $select = $('#car_entidade_id_organizador');
-                $select.empty().append('<option value="">Selecione...</option>');
-                response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
-                });
-            }
-        });
+        /*    $.get('ajax_router.php?action=getClienteOptions', function (response) {
+                if (response.success) {
+                    const $select = $('#car_entidade_id_organizador');
+                    $select.empty().append('<option value="">Selecione...</option>');
+                    response.data.forEach(function (cliente) {
+                        $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
+                    });
+                }
+            });*/
 
         // Para inicializar o novo select da OE
         $('#car_ordem_expedicao_id').val(null).trigger('change'); // Limpa o select
@@ -338,16 +338,18 @@ $(document).ready(function () {
             type: 'GET',
             dataType: 'json'
         }).done(function (response) {
-            if (response.success) {
+            if (response.data) {
                 const $select = $('#car_entidade_id_organizador');
                 $select.empty().append('<option value="">Selecione um cliente...</option>');
                 response.data.forEach(function (cliente) {
-                    $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
+                    //$select.append(new Option(cliente.nome_display, cliente.ent_codigo));
+                    $select.append(new Option(cliente.text, cliente.id));
 
                 });
             } else {
                 // SUBSTITUÍDO: alert() por notificacaoErro()
-                notificacaoErro('Erro ao Carregar Clientes', response.message);
+                //notificacaoErro('Erro ao Carregar Clientes', response.message);
+                notificacaoErro('Erro ao Carregar Clientes', response.message || 'Resposta inesperada do servidor.');
             }
         }).fail(function () {
             // SUBSTITUÍDO: alert() por notificacaoErro()
@@ -374,8 +376,8 @@ $(document).ready(function () {
          }
      } */
 
-    $('#form-carregamento').on('change keyup', '#car_numero, #car_data', function () {
-        atualizarOrdemExpedicao();
-    });
+    /* $('#form-carregamento').on('change keyup', '#car_numero, #car_data', function () {
+         atualizarOrdemExpedicao();
+     }); */
 
 });
