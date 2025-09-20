@@ -105,6 +105,7 @@ class OrdemExpedicaoRepository
             $stmtItens = $this->pdo->prepare(
                 "SELECT 
                 i.oei_id,
+                i.oei_alocacao_id,
                 i.oei_quantidade,
                 i.oei_observacao,
                 lne.item_emb_id,                

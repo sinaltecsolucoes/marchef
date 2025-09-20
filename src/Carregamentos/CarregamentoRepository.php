@@ -247,8 +247,9 @@ class CarregamentoRepository
             "SELECT 
             ci.car_item_fila_id,
             ci.car_item_lote_novo_item_id AS item_emb_id,
+            ci.car_item_alocacao_id,
             ci.car_item_quantidade,
-            e_destino.ent_razao_social as cliente_razao_social,
+            COALESCE(e_destino.ent_nome_fantasia, e_destino.ent_razao_social) as cliente_nome_display,
             p.prod_descricao, 
             p.prod_codigo_interno,
             lnh.lote_completo_calculado,
@@ -399,7 +400,6 @@ class CarregamentoRepository
         $fila['clientes'] = array_values($clientes);
         return $fila;
     }
-
 
     public function findLotesComSaldoPorProduto(int $produtoId): array
     {
@@ -1331,12 +1331,13 @@ class CarregamentoRepository
      * Esta é a nova função que lê da OE.
      * @param integer $alocacaoId ID da tabela tbl_estoque_alocacoes
      */
-    public function adicionarItemAFilaDoPool(int $filaId, int $alocacaoId, float $quantidade, int $carregamentoId, int $clienteId): bool
+    public function adicionarItemAFilaDoPool(int $filaId, int $alocacaoId, float $quantidade, int $carregamentoId, int $clienteId, ?string $motivo = null): bool
     {
         // ETAPA 1: Precisamos descobrir o 'car_item_lote_novo_item_id' (item_emb_id)
         // a partir do 'alocacaoId' (que é o 'estoque_alocacao_id').
         $stmtFindItem = $this->pdo->prepare(
-            "SELECT estoque_lote_item_id FROM tbl_estoque_alocacoes 
+            //"SELECT estoque_lote_item_id FROM tbl_estoque_alocacoes 
+            "SELECT alocacao_lote_item_id FROM tbl_estoque_alocacoes 
          WHERE alocacao_id = :alocacao_id"
         );
         $stmtFindItem->execute([':alocacao_id' => $alocacaoId]);
@@ -1351,17 +1352,22 @@ class CarregamentoRepository
         // ETAPA 2: Inserir o item de carregamento com o ID da embalagem correto.
         $sql = "INSERT INTO tbl_carregamento_itens (
               car_item_carregamento_id, 
-              car_item_fila_id,
+              car_item_fila_id, 
               car_item_cliente_id, 
               car_item_lote_novo_item_id, 
-              car_item_quantidade
-          ) VALUES (
+              car_item_alocacao_id,
+              car_item_quantidade, 
+              car_item_motivo_divergencia
+            ) 
+        VALUES (
               :carregamento_id, 
               :fila_id, 
-              :cliente_id,
-              :lote_novo_item_id, 
-              :qtd
-          )";
+              :cliente_id, 
+              :lote_novo_item_id,
+              :alocacao_id, 
+              :qtd, 
+              :motivo
+           )";
 
         $stmt = $this->pdo->prepare($sql);
         $success = $stmt->execute([
@@ -1369,12 +1375,10 @@ class CarregamentoRepository
             ':fila_id' => $filaId,
             ':cliente_id' => $clienteId,
             ':lote_novo_item_id' => $loteNovoItemId, // ID da tabela 'tbl_lotes_novo_embalagem'
-            ':qtd' => $quantidade
+            ':alocacao_id' => $alocacaoId,
+            ':qtd' => $quantidade,
+            ':motivo' => $motivo
         ]);
-
-        // (Opcional, mas recomendado: adicionar log de auditoria)
-        // $this->auditLogger->log('CREATE', $this->pdo->lastInsertId(), 'tbl_carregamento_itens', null, [...]);
-
         return $success;
     }
 
@@ -1396,12 +1400,14 @@ class CarregamentoRepository
                     continue;
 
                 foreach ($produtos as $produto) {
-                    $this->adicionarItemAFilaDoPool( // <-- MUDANÇA
+                    $this->adicionarItemAFilaDoPool(
                         $filaId,
-                        $produto['alocacaoId'], // <-- MUDANÇA
+                        //$produto['alocacaoId'],
+                        (int) $produto['alocacaoId'],
                         $produto['quantidade'],
                         $carregamentoId,
-                        $clienteId
+                        $clienteId,
+                        $produto['motivo'] ?? null
                     );
                 }
             }
@@ -1433,12 +1439,14 @@ class CarregamentoRepository
                     continue;
 
                 foreach ($produtos as $produto) {
-                    $this->adicionarItemAFilaDoPool( // <-- MUDANÇA
+                    $this->adicionarItemAFilaDoPool(
                         $filaId,
-                        $produto['alocacaoId'], // <-- MUDANÇA
+                        //$produto['alocacaoId'],
+                        (int) $produto['alocacaoId'],
                         $produto['quantidade'],
                         $carregamentoId,
-                        $clienteId
+                        $clienteId,
+                        $produto['motivo'] ?? null
                     );
                 }
             }

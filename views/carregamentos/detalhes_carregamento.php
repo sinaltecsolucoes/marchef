@@ -300,3 +300,32 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-motivo-divergencia" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Justificar Divergência</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está adicionando uma quantidade <strong>maior</strong> que o saldo pendente da OE.</p>
+                <p><strong>Item:</strong> <span id="motivo-item-nome" class="fw-bold">...</span></p>
+                <p><strong>Saldo Pendente:</strong> <span id="motivo-saldo-pendente" class="fw-bold">0</span></p>
+                <p><strong>Quantidade Adicionada:</strong> <span id="motivo-qtd-adicionada"
+                        class="fw-bold text-danger">0</span></p>
+                <div class="mb-3">
+                    <label for="motivo-divergencia-texto" class="form-label"><strong>Motivo
+                            (Obrigatório):</strong></label>
+                    <textarea class="form-control" id="motivo-divergencia-texto" rows="3"
+                        placeholder="Ex: Quebra de caixa, troca de lote, solicitação do cliente..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btn-confirmar-motivo-divergencia">Confirmar e
+                    Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>

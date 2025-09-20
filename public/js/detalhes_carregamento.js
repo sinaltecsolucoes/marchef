@@ -68,6 +68,9 @@ $(document).ready(function () {
                 const filas = response.data.filas;
                 $tabelaComposicaoBody.empty();
 
+                calcularESincronizarSaldosPool();
+                controlarVisibilidadeAcoes();
+
                 if (!filas || filas.length === 0) {
                     $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td></tr>');
                     return;
@@ -131,7 +134,8 @@ $(document).ready(function () {
 
                     if (totalItensNaFila > 0) {
                         const clientesDaFila = fila.itens.reduce((acc, item) => {
-                            (acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
+                            //(acc[item.cliente_razao_social] = acc[item.cliente_razao_social] || []).push(item);
+                            (acc[item.cliente_nome_display] = acc[item.cliente_nome_display] || []).push(item);
                             return acc;
                         }, {});
 
@@ -172,8 +176,8 @@ $(document).ready(function () {
             } else {
                 $tabelaComposicaoBody.html(`<tr><td colspan="7" class="text-center text-danger">Erro ao carregar os dados: ${response.message || ''}</td></tr>`);
             }
-            calcularESincronizarSaldosPool();
-            controlarVisibilidadeAcoes();
+            /* calcularESincronizarSaldosPool();
+             controlarVisibilidadeAcoes();*/
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.error('Erro ao recarregar tabela:', textStatus, errorThrown, 'Resposta:', jqXHR.responseText);
             $tabelaComposicaoBody.html('<tr><td colspan="7" class="text-center text-danger">Erro de comunicação ao carregar os dados.</td></tr>');
@@ -300,8 +304,16 @@ $(document).ready(function () {
                     // Coluna Quantidade (no futuro, será Qtd_Total - Qtd_Alocada_nas_Filas)
                     // $linha.append(`<td class="text-center align-middle fw-bold" data-qtd-total-oe="${item.oei_quantidade}">${formatarNumeroBrasileiro(item.oei_quantidade, 0)}</td>`);
                     const saldoPendente = parseFloat(item.saldo_pendente);
+
+                    let corClasse = 'text-primary'; // Zerado (Azul)
+                    if (saldoPendente > 0) {
+                        corClasse = 'text-success'; // Positivo (Verde)
+                    } else if (saldoPendente < 0) {
+                        corClasse = 'text-danger'; // Negativo (Vermelho)
+                    }
+
                     $linha.append(
-                        `<td class="text-center align-middle fw-bold" 
+                        `<td class="text-center align-middle fw-bold ${corClasse}" 
                                 data-qtd-total-oe="${item.oei_quantidade}"
                                 data-qtd-pendente="${saldoPendente}">
                                 ${formatarNumeroBrasileiro(saldoPendente, 0)}
@@ -314,10 +326,10 @@ $(document).ready(function () {
     }
 
     /**
- * Calcula o saldo pendente (Total OE - Total Alocado nas Filas)
- * e armazena em dadosPoolOE.
- * Depois, atualiza a UI (Tabela do Pool e Dropdowns do Modal).
- */
+    * Calcula o saldo pendente (Total OE - Total Alocado nas Filas)
+    * e armazena em dadosPoolOE.
+    * Depois, atualiza a UI (Tabela do Pool e Dropdowns do Modal).
+    */
     function calcularESincronizarSaldosPool() {
         if (!dadosPoolOE || !dadosPoolOE.pedidos) return; // Pool não carregado
         if (!dadosFilasAtuais) return; // Filas não carregadas
@@ -327,11 +339,11 @@ $(document).ready(function () {
         const mapaAlocado = new Map();
         dadosFilasAtuais.forEach(fila => {
             (fila.itens || []).forEach(item => {
-                const itemEmbId = item.item_emb_id; // <-- A Chave Comum (do PHP)
+                const alocacaoId = item.car_item_alocacao_id; // <-- MUDANÇA (A Chave Comum)
                 const quantidade = parseFloat(item.car_item_quantidade);
-                if (itemEmbId) {
-                    const totalAtual = mapaAlocado.get(itemEmbId) || 0;
-                    mapaAlocado.set(itemEmbId, totalAtual + quantidade);
+                if (alocacaoId) {
+                    const totalAtual = mapaAlocado.get(alocacaoId) || 0;
+                    mapaAlocado.set(alocacaoId, totalAtual + quantidade);
                 }
             });
         });
@@ -339,9 +351,9 @@ $(document).ready(function () {
         // 2. Iterar sobre o Pool e calcular o saldo pendente
         dadosPoolOE.pedidos.forEach(pedido => {
             (pedido.itens || []).forEach(item => {
-                const itemEmbId = item.item_emb_id; // <-- A Chave Comum (do PHP)
+                const alocacaoId = item.oei_alocacao_id; // <-- MUDANÇA (A Chave Comum)
                 const totalOE = parseFloat(item.oei_quantidade);
-                const totalAlocado = mapaAlocado.get(itemEmbId) || 0;
+                const totalAlocado = mapaAlocado.get(alocacaoId) || 0;
 
                 // 3. Salva o novo saldoPendente dentro do objeto do Pool
                 item.saldo_pendente = totalOE - totalAlocado;
@@ -351,6 +363,67 @@ $(document).ready(function () {
         // 4. Agora que o dadosPoolOE está atualizado, renderiza a UI
         renderizarPool(dadosPoolOE);
         popularClientesDoPool(); // Repopula o modal com os saldos corretos
+    }
+
+    /**
+    * Adiciona ou Soma o item na tabela do modal.
+    * Esta é a função "core" da lógica de adição.
+    */
+    function adicionarItemNaTabela(item, alocacaoId, quantidade, motivo = '') {
+        // Pega o container de lista de produtos do cliente correto
+        const $listaProdutos = $(`#clientes-e-produtos-container-modal .card-cliente-na-fila[data-cliente-id="${item.oep_cliente_id}"] .lista-produtos-cliente`);
+        if ($listaProdutos.length === 0) return; // Segurança
+
+        const $linhaExistente = $listaProdutos.find(`tr[data-alocacao-id="${alocacaoId}"]`);
+        const qtdTotalOE = parseFloat(item.oei_quantidade); // Total da OE
+
+        if ($linhaExistente.length > 0) {
+            // 1. O ITEM JÁ EXISTE: Vamos somar
+            const qtdAtual = parseFloat($linhaExistente.attr('data-quantidade'));
+            const novaQtdTotal = qtdAtual + quantidade;
+
+            // 1.1. (REMOVIDA) A validação de saldo já foi feita ANTES de chamar esta função.
+
+            // 1.2. Atualiza os dados da linha
+            $linhaExistente.attr('data-quantidade', novaQtdTotal); // Atualiza o data-attribute
+            $linhaExistente.find('td:nth-child(2)').text(novaQtdTotal.toFixed(3)); // Atualiza o texto
+
+            // Se um novo motivo foi dado, ele sobrescreve o antigo
+            if (motivo) {
+                $linhaExistente.attr('data-motivo', motivo);
+                notificacaoSucesso('Item Somado com Divergência', `Total agora: ${novaQtdTotal.toFixed(3)}`);
+            } else {
+                notificacaoSucesso('Item Somado', `+${quantidade.toFixed(3)} adicionado. Total agora: ${novaQtdTotal.toFixed(3)}`);
+            }
+
+        } else {
+            // 2. O ITEM É NOVO: Vamos adicionar
+            const produtoTexto = `
+            ${item.prod_descricao} 
+            (Lote: ${item.lote_completo_calculado} | End: ${item.endereco_completo})
+         `;
+            const quantidadeTexto = quantidade.toFixed(3);
+
+            // Adiciona o motivo como um data-attribute se existir
+            const motivoAttr = motivo ? `data-motivo="${motivo}"` : '';
+            const classeDivergencia = (quantidade > parseFloat(item.saldo_pendente)) ? 'table-warning' : '';
+
+            const produtoHtml = `
+            <tr data-alocacao-id="${alocacaoId}" data-quantidade="${quantidade}" ${motivoAttr} class="${classeDivergencia}">
+                <td>${produtoTexto.replace(/(\r\n|\n|\r|\s\s+)/gm, "")}</td>
+                <td class="text-end">${quantidadeTexto}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista">Remover</button>
+                </td>
+            </tr>
+         `;
+            $listaProdutos.append(produtoHtml);
+        }
+
+        // --- Limpa o formulário (em ambos os casos) ---
+        const $form = $listaProdutos.closest('.card-cliente-na-fila').find('form');
+        $form.find('.select-item-do-pool').val(null).trigger('change');
+        $form.find('input[type="number"]').val('');
     }
 
     /**
@@ -380,6 +453,20 @@ $(document).ready(function () {
         clientesDoPool.forEach(cliente => {
             $selectClienteParaFila.append(new Option(cliente.text, cliente.id));
         });
+    }
+
+    function encontrarItemNoPool(alocacaoId) {
+        if (!dadosPoolOE || !dadosPoolOE.pedidos) return null;
+        for (const pedido of dadosPoolOE.pedidos) {
+            if (pedido.itens) {
+                for (const item of pedido.itens) {
+                    if (item.oei_alocacao_id == alocacaoId) {
+                        return item; // Retorna o objeto 'item' completo do pool
+                    }
+                }
+            }
+        }
+        return null; // Não encontrado
     }
 
     // --- EVENT HANDLERS ---
@@ -413,53 +500,172 @@ $(document).ready(function () {
     });
 
     //Evento para carregar os dados de uma fila existente no modo de edição.
+    /*  $modalGerenciarFila.on('shown.bs.modal', function (event) {
+          if (modoModal === 'edicao' && filaIdParaEditar) {
+              $.ajax({
+                  url: 'ajax_router.php?action=getFilaDetalhes',
+                  type: 'POST',
+                  data: { fila_id: filaIdParaEditar, csrf_token: csrfToken },
+                  dataType: 'json'
+              }).done(function (response) {
+                  if (response.success && response.data) {
+                      const fila = response.data;
+                      $('#numero-fila-modal').text(String(fila.fila_numero_sequencial).padStart(2, '0'));
+                      $containerClientesNoModal.empty();
+  
+                      fila.clientes.forEach(cliente => {
+                          const $novoCard = $($('#template-card-cliente-modal').html());
+                          const selectIdUnico = `select-produto-${cliente.clienteId}-${new Date().getTime()}`;
+                          const numeroCliente = $containerClientesNoModal.find('.card-cliente-na-fila').length + 1;
+                          const novoTitulo = `CLIENTE ${String(numeroCliente).padStart(2, '0')} - ${cliente.clienteNome}`;
+                          $novoCard.attr('data-cliente-id', cliente.clienteId);
+                          $novoCard.find('.nome-cliente-card').text(novoTitulo);
+                          $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
+  
+                          const $listaProdutos = $novoCard.find('.lista-produtos-cliente');
+  
+                          cliente.produtos.forEach(produto => {
+                              const produtoHtml = `
+                                   <tr data-lote-item-id="${produto.loteItemId}" data-produto-id="${produto.produtoId}">
+                                       <td>${produto.produtoTexto}</td>
+                                       <td class="text-end">${parseFloat(produto.quantidade).toFixed(3)}</td>
+                                       <td class="text-center">
+                                           <button type="button" class="btn btn-warning btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
+                                           <button type="button" class="btn btn-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
+                                       </td>
+                                   </tr>`;
+                              $listaProdutos.append(produtoHtml);
+                          });
+  
+                          $containerClientesNoModal.append($novoCard);
+                          inicializarSelectProdutoNoCard(selectIdUnico);
+                      });
+                  } else {
+                      notificacaoErro('Erro!', response.message || 'Não foi possível carregar os dados desta fila.');
+                  }
+              }).fail(function (jqXHR, textStatus, errorThrown) {
+                  console.error('Erro AJAX getFilaDetalhes:', textStatus, errorThrown);
+                  notificacaoErro('Erro de Comunicação', 'A requisição para buscar os dados da fila falhou.');
+              });
+          }
+      }); */
+
+
     $modalGerenciarFila.on('shown.bs.modal', function (event) {
         if (modoModal === 'edicao' && filaIdParaEditar) {
-            $.ajax({
-                url: 'ajax_router.php?action=getFilaDetalhes',
-                type: 'POST',
-                data: { fila_id: filaIdParaEditar, csrf_token: csrfToken },
-                dataType: 'json'
-            }).done(function (response) {
-                if (response.success && response.data) {
-                    const fila = response.data;
-                    $('#numero-fila-modal').text(String(fila.fila_numero_sequencial).padStart(2, '0'));
-                    $containerClientesNoModal.empty();
 
-                    fila.clientes.forEach(cliente => {
-                        const $novoCard = $($('#template-card-cliente-modal').html());
-                        const selectIdUnico = `select-produto-${cliente.clienteId}-${new Date().getTime()}`;
-                        const numeroCliente = $containerClientesNoModal.find('.card-cliente-na-fila').length + 1;
-                        const novoTitulo = `CLIENTE ${String(numeroCliente).padStart(2, '0')} - ${cliente.clienteNome}`;
-                        $novoCard.attr('data-cliente-id', cliente.clienteId);
-                        $novoCard.find('.nome-cliente-card').text(novoTitulo);
-                        $novoCard.find('.select-produto-estoque').attr('id', selectIdUnico);
+            // 1. Encontra a fila atual nos dados que já temos
+            const filaAtual = dadosFilasAtuais.find(f => f.fila_id == filaIdParaEditar);
+            if (!filaAtual) {
+                notificacaoErro('Erro!', 'Não foi possível encontrar os dados da fila para edição.');
+                $modalGerenciarFila.modal('hide');
+                return;
+            }
 
-                        const $listaProdutos = $novoCard.find('.lista-produtos-cliente');
-
-                        cliente.produtos.forEach(produto => {
-                            const produtoHtml = `
-                                 <tr data-lote-item-id="${produto.loteItemId}" data-produto-id="${produto.produtoId}">
-                                     <td>${produto.produtoTexto}</td>
-                                     <td class="text-end">${parseFloat(produto.quantidade).toFixed(3)}</td>
-                                     <td class="text-center">
-                                         <button type="button" class="btn btn-warning btn-sm btn-editar-produto-da-lista"><i class="fas fa-pencil-alt"></i> Editar</button>
-                                         <button type="button" class="btn btn-danger btn-sm btn-remover-produto-da-lista"><i class="fas fa-trash"></i> Remover</button>
-                                     </td>
-                                 </tr>`;
-                            $listaProdutos.append(produtoHtml);
-                        });
-
-                        $containerClientesNoModal.append($novoCard);
-                        inicializarSelectProdutoNoCard(selectIdUnico);
+            // 2. Agrupa os itens da fila por cliente
+            const clientesDaFila = new Map();
+            (filaAtual.itens || []).forEach(item => {
+                if (!clientesDaFila.has(item.cliente_nome_display)) {
+                    clientesDaFila.set(item.cliente_nome_display, {
+                        clienteId: item.car_item_cliente_id, // Precisamos do ID
+                        clienteNome: item.cliente_nome_display,
+                        produtos: []
                     });
-                } else {
-                    notificacaoErro('Erro!', response.message || 'Não foi possível carregar os dados desta fila.');
                 }
-            }).fail(function (jqXHR, textStatus, errorThrown) {
-                console.error('Erro AJAX getFilaDetalhes:', textStatus, errorThrown);
-                notificacaoErro('Erro de Comunicação', 'A requisição para buscar os dados da fila falhou.');
+                clientesDaFila.get(item.cliente_nome_display).produtos.push(item);
             });
+
+            // 3. Limpa o container e começa a reconstruir o modal
+            $containerClientesNoModal.empty();
+
+            // 4. Se não houver clientes (fila vazia), mostra mensagem
+            if (clientesDaFila.size === 0) {
+                $containerClientesNoModal.html('<p class="text-muted">Nenhum cliente adicionado a esta fila.</p>');
+                popularClientesDoPool(); // Popula o select para adicionar
+                return;
+            }
+
+            // 5. Itera sobre os clientes e recria os cards
+            clientesDaFila.forEach(cliente => {
+                // Adiciona o card do cliente (copiado do 'btn-adicionar-cliente-a-fila')
+                const $novoCard = $($('#template-card-cliente-modal').html());
+                const $selectItemPool = $novoCard.find('.select-item-do-pool');
+                const selectIdUnico = `select-item-${cliente.clienteId}-${new Date().getTime()}`;
+                $selectItemPool.attr('id', selectIdUnico);
+                $novoCard.attr('data-cliente-id', cliente.clienteId);
+                $novoCard.find('.nome-cliente-card').text(`CLIENTE - ${cliente.clienteNome}`);
+                $containerClientesNoModal.append($novoCard);
+
+                // Inicializa o Select2 do card
+                $selectItemPool.select2({ /* ... (copiando do handler 'btn-adicionar-cliente-a-fila') ... */
+                    placeholder: 'Selecione um item do pool...',
+                    theme: "bootstrap-5",
+                    dropdownParent: $modalGerenciarFila,
+                    language: "pt-BR",
+                    templateResult: function (data) { if (!data.id) { return data.text; } return $.parseHTML(data.text.replace(/(\r\n|\n|\r|\s\s+)/gm, "")); },
+                    templateSelection: function (data) { if (!data.id) { return data.text; } return $.parseHTML(data.text.replace(/(\r\n|\n|\r|\s\s+)/gm, "")); }
+                });
+
+                // Popula o select (copiado do handler 'btn-adicionar-cliente-a-fila')
+                $selectItemPool.empty().append('<option value="">Selecione um item...</option>');
+                let itensEncontrados = 0;
+                dadosPoolOE.pedidos.forEach(pedido => {
+                    if (pedido.oep_cliente_id == cliente.clienteId && pedido.itens) {
+                        pedido.itens.forEach(item => {
+                            item.oep_cliente_id = pedido.oep_cliente_id;
+                            const saldoPendente = parseFloat(item.saldo_pendente);
+
+                            // NOTA: A lógica aqui precisa ser "saldo pendente > 0" OU "este item já está na fila"
+                            let itemJaEstaNestaFila = cliente.produtos.find(p => p.car_item_alocacao_id == item.oei_alocacao_id);
+
+                            if (saldoPendente > 0 || itemJaEstaNestaFila) {
+                                const textoOpcao = `
+                                ${item.prod_descricao} | 
+                                Lote: ${item.lote_completo_calculado} | 
+                                End: ${item.endereco_completo} 
+                                (Pendente: ${formatarNumeroBrasileiro(saldoPendente, 0)})
+                            `;
+                                const $option = new Option(textoOpcao, item.oei_alocacao_id);
+                                $($option).data('item-completo', item);
+                                $selectItemPool.append($option);
+                                itensEncontrados++;
+                            }
+                        });
+                    }
+                });
+                if (itensEncontrados === 0) { /* ... (lógica de desabilitar select) ... */ }
+
+                // 6. Recria a TABELA de produtos do card (a parte que faltava)
+                const $listaProdutos = $novoCard.find('.lista-produtos-cliente');
+                cliente.produtos.forEach(produto => {
+                    // Tenta encontrar o item correspondente no Pool para obter todos os detalhes
+                    const itemDoPool = encontrarItemNoPool(produto.car_item_alocacao_id);
+
+                    if (itemDoPool) {
+                        const produtoTexto = `
+                        ${itemDoPool.prod_descricao} 
+                        (Lote: ${itemDoPool.lote_completo_calculado} | End: ${itemDoPool.endereco_completo})
+                    `;
+                        const quantidadeTexto = parseFloat(produto.car_item_quantidade).toFixed(3);
+                        const motivoAttr = produto.car_item_motivo_divergencia ? `data-motivo="${produto.car_item_motivo_divergencia}"` : '';
+                        const classeDivergencia = (parseFloat(produto.car_item_quantidade) > parseFloat(itemDoPool.oei_quantidade)) ? 'table-warning' : ''; // Compara com o total da OE por segurança
+
+                        const produtoHtml = `
+                        <tr data-alocacao-id="${produto.car_item_alocacao_id}" data-quantidade="${quantidadeTexto}" ${motivoAttr} class="${classeDivergencia}">
+                            <td>${produtoTexto.replace(/(\r\n|\n|\r|\s\s+)/gm, "")}</td>
+                            <td class="text-end">${quantidadeTexto}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista">Remover</button>
+                            </td>
+                        </tr>
+                    `;
+                        $listaProdutos.append(produtoHtml);
+                    }
+                });
+            });
+
+            // 7. Popula o dropdown de Clientes (para o caso de quererem adicionar mais)
+            popularClientesDoPool();
         }
     });
 
@@ -529,6 +735,8 @@ $(document).ready(function () {
         dadosPoolOE.pedidos.forEach(pedido => {
             if (pedido.oep_cliente_id == clienteId && pedido.itens) {
                 pedido.itens.forEach(item => {
+                    item.oep_cliente_id = pedido.oep_cliente_id; // Injeta o ID do cliente no item
+
                     const saldoPendente = parseFloat(item.saldo_pendente);
 
                     // NOTA: Por enquanto, estamos mostrando a quantidade TOTAL da OE.
@@ -566,7 +774,6 @@ $(document).ready(function () {
         $selectClienteParaFila.val(null).trigger('change');
     });
 
-
     $modalGerenciarFila.on('click', '.btn-remover-cliente-da-fila', function () {
         $(this).closest('.card-cliente-na-fila').remove();
         if ($containerClientesNoModal.find('.card-cliente-na-fila').length === 0) {
@@ -574,100 +781,159 @@ $(document).ready(function () {
         }
     });
 
+    /* $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (event) {
+         event.preventDefault();
+         const $form = $(this);
+         const $card = $form.closest('.card-cliente-na-fila');
+         const $selectItemPool = $form.find('.select-item-do-pool');
+         const $quantidadeInput = $form.find('input[type="number"]');
+         const $listaProdutos = $card.find('.lista-produtos-cliente');
+ 
+         const $selectedOption = $selectItemPool.find('option:selected');
+         const alocacaoId = $selectedOption.val(); 
+         const item = $selectedOption.data('item-completo');
+         const quantidade = parseFloat($quantidadeInput.val());
+ 
+         // --- Validação ---
+         if (!alocacaoId || !item) {
+             notificacaoErro('Item Inválido', 'Por favor, selecione um item válido do pool.');
+             return;
+         }
+ 
+         if (!quantidade || quantidade <= 0) {
+             notificacaoErro('Quantidade Inválida', 'Por favor, insira uma quantidade maior que zero.');
+             return;
+         }
+ 
+         // Validação de Saldo (usando o total da OE por enquanto)
+         const qtdTotalOE = parseFloat(item.oei_quantidade);
+         const saldoPendente = parseFloat(item.saldo_pendente);
+ 
+         if (quantidade > saldoPendente) {
+             notificacaoErro('Quantidade Inválida',
+                 `A quantidade (${quantidade.toFixed(3)}) é maior que o saldo pendente (${saldoPendente.toFixed(3)}).`);
+             return;
+         }
+ 
+         // --- PROCURAR ITEM EXISTENTE PARA SOMAR ---
+ 
+         const $linhaExistente = $listaProdutos.find(`tr[data-alocacao-id="${alocacaoId}"]`);
+ 
+         if ($linhaExistente.length > 0) {
+             // 1. O ITEM JÁ EXISTE: Vamos somar
+ 
+             const qtdAtual = parseFloat($linhaExistente.attr('data-quantidade'));
+             const novaQtdTotal = qtdAtual + quantidade;
+ 
+             // 1.1. Revalida o saldo com a nova soma
+            if (novaQtdTotal > saldoPendente) { 
+                 notificacaoErro('Quantidade Excede o Saldo',
+                     `Você já tinha ${qtdAtual.toFixed(3)} e adicionou ${quantidade.toFixed(3)}. O total ${novaQtdTotal.toFixed(3)} excede o saldo pendente (${saldoPendente.toFixed(3)}).`);
+                 return;
+             }
+ 
+ 
+ 
+             // 1.2. Atualiza os dados da linha
+             $linhaExistente.attr('data-quantidade', novaQtdTotal); // Atualiza o data-attribute
+             $linhaExistente.find('td:nth-child(2)').text(novaQtdTotal.toFixed(3)); // Atualiza o texto
+ 
+             notificacaoSucesso('Item Somado', `+${quantidade.toFixed(3)} adicionado. Total agora: ${novaQtdTotal.toFixed(3)}`);
+ 
+         } else {
+             // 2. O ITEM É NOVO: Vamos adicionar
+ 
+             // --- Monta a Linha da Tabela ---
+             const produtoTexto = `
+                 ${item.prod_descricao} 
+                 (Lote: ${item.lote_completo_calculado} | End: ${item.endereco_completo})
+             `;
+             const quantidadeTexto = quantidade.toFixed(3);
+ 
+             const produtoHtml = `
+                 <tr data-alocacao-id="${alocacaoId}" data-quantidade="${quantidade}">
+                     <td>${produtoTexto.replace(/(\r\n|\n|\r|\s\s+)/gm, "")}</td>
+                     <td class="text-end">${quantidadeTexto}</td>
+                     <td class="text-center">
+                         <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista">Remover</button>
+                     </td>
+                 </tr>
+             `;
+             $listaProdutos.append(produtoHtml);
+         }
+ 
+         // --- Limpa o formulário (em ambos os casos) ---
+         $selectItemPool.val(null).trigger('change');
+         $quantidadeInput.val('');
+     }); */
+
     $modalGerenciarFila.on('submit', '.form-adicionar-produto-ao-cliente', function (event) {
         event.preventDefault();
+
+        // Obtenção de dados (igual a antes)
         const $form = $(this);
-        const $card = $form.closest('.card-cliente-na-fila');
         const $selectItemPool = $form.find('.select-item-do-pool');
         const $quantidadeInput = $form.find('input[type="number"]');
-        const $listaProdutos = $card.find('.lista-produtos-cliente');
-
         const $selectedOption = $selectItemPool.find('option:selected');
-        const alocacaoId = $selectedOption.val(); // Este é o 'oei_alocacao_id'
+        const alocacaoId = $selectedOption.val();
         const item = $selectedOption.data('item-completo');
         const quantidade = parseFloat($quantidadeInput.val());
 
-        // --- Validação ---
+        // --- Validações Iniciais ---
         if (!alocacaoId || !item) {
             notificacaoErro('Item Inválido', 'Por favor, selecione um item válido do pool.');
             return;
         }
-
         if (!quantidade || quantidade <= 0) {
             notificacaoErro('Quantidade Inválida', 'Por favor, insira uma quantidade maior que zero.');
             return;
         }
 
-        // Validação de Saldo (usando o total da OE por enquanto)
-        const qtdTotalOE = parseFloat(item.oei_quantidade);
-        /* if (quantidade > qtdTotalOE) {
-             notificacaoErro('Quantidade Inválida',
-                 `A quantidade (${quantidade.toFixed(3)}) é maior que o total planejado na OE (${qtdTotalOE.toFixed(3)}).`);
-             return;
-         } */
-
-        const saldoPendente = parseFloat(item.saldo_pendente);
-        if (quantidade > saldoPendente) {
-            notificacaoErro('Quantidade Inválida',
-                `A quantidade (${quantidade.toFixed(3)}) é maior que o saldo pendente (${saldoPendente.toFixed(3)}).`);
-            return;
-        }
-
-        // --- NOVA LÓGICA: PROCURAR ITEM EXISTENTE PARA SOMAR ---
-
+        // --- NOVA LÓGICA DE DIVERGÊNCIA ---
+        const saldoPendente = parseFloat(item.saldo_pendente) || 0;
+        const $listaProdutos = $form.closest('.card-cliente-na-fila').find('.lista-produtos-cliente');
         const $linhaExistente = $listaProdutos.find(`tr[data-alocacao-id="${alocacaoId}"]`);
 
+        let qtdAtual = 0;
         if ($linhaExistente.length > 0) {
-            // 1. O ITEM JÁ EXISTE: Vamos somar
-
-            const qtdAtual = parseFloat($linhaExistente.attr('data-quantidade'));
-            const novaQtdTotal = qtdAtual + quantidade;
-
-            // 1.1. Revalida o saldo com a nova soma
-          /*  if (novaQtdTotal > qtdTotalOE) {
-                notificacaoErro('Quantidade Excede o Total',
-                    `Você já tinha ${qtdAtual.toFixed(3)} e adicionou ${quantidade.toFixed(3)}. O total ${novaQtdTotal.toFixed(3)} excede o planejado na OE (${qtdTotalOE.toFixed(3)}).`);
-                return;
-            }*/ if (novaQtdTotal > saldoPendente) { // <-- MUDANÇA (de qtdTotalOE para saldoPendente)
-                notificacaoErro('Quantidade Excede o Saldo',
-                    `Você já tinha ${qtdAtual.toFixed(3)} e adicionou ${quantidade.toFixed(3)}. O total ${novaQtdTotal.toFixed(3)} excede o saldo pendente (${saldoPendente.toFixed(3)}).`);
-                return;
-            }
-
-
-
-            // 1.2. Atualiza os dados da linha
-            $linhaExistente.attr('data-quantidade', novaQtdTotal); // Atualiza o data-attribute
-            $linhaExistente.find('td:nth-child(2)').text(novaQtdTotal.toFixed(3)); // Atualiza o texto
-
-            notificacaoSucesso('Item Somado', `+${quantidade.toFixed(3)} adicionado. Total agora: ${novaQtdTotal.toFixed(3)}`);
-
-        } else {
-            // 2. O ITEM É NOVO: Vamos adicionar
-
-            // --- Monta a Linha da Tabela ---
-            const produtoTexto = `
-                ${item.prod_descricao} 
-                (Lote: ${item.lote_completo_calculado} | End: ${item.endereco_completo})
-            `;
-            const quantidadeTexto = quantidade.toFixed(3);
-
-            const produtoHtml = `
-                <tr data-alocacao-id="${alocacaoId}" data-quantidade="${quantidade}">
-                    <td>${produtoTexto.replace(/(\r\n|\n|\r|\s\s+)/gm, "")}</td>
-                    <td class="text-end">${quantidadeTexto}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-sm btn-danger btn-remover-produto-da-lista">Remover</button>
-                    </td>
-                </tr>
-            `;
-            $listaProdutos.append(produtoHtml);
+            qtdAtual = parseFloat($linhaExistente.attr('data-quantidade'));
         }
 
-        // --- Limpa o formulário (em ambos os casos) ---
-        $selectItemPool.val(null).trigger('change');
-        $quantidadeInput.val('');
+        const novaQtdTotal = qtdAtual + quantidade;
+
+        if (novaQtdTotal <= saldoPendente) {
+            // CASO 1: SALDO OK
+            // A quantidade total está DENTRO do saldo pendente. Adiciona direto.
+            adicionarItemNaTabela(item, alocacaoId, quantidade, ''); // Sem motivo
+
+        } else {
+            // CASO 2: DIVERGÊNCIA (Acima do Saldo)
+            confirmacaoAcao(
+                'Quantidade Excede o Saldo',
+                `O saldo pendente é ${saldoPendente.toFixed(3)}. Você está tentando adicionar ${quantidade.toFixed(3)} (Total: ${novaQtdTotal.toFixed(3)}). Deseja continuar e justificar?`
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    // Sim, o usuário quer continuar. Abre o modal de motivo.
+                    const $modalMotivo = $('#modal-motivo-divergencia');
+
+                    // Armazena os dados no modal para o próximo passo
+                    $modalMotivo.data('item-para-adicionar', item);
+                    $modalMotivo.data('alocacao-id', alocacaoId);
+                    $modalMotivo.data('quantidade', quantidade); // A quantidade a ADICIONAR
+
+                    // Preenche os campos do modal de motivo
+                    $modalMotivo.find('#motivo-item-nome').text(item.prod_descricao);
+                    $modalMotivo.find('#motivo-saldo-pendente').text(saldoPendente.toFixed(3));
+                    $modalMotivo.find('#motivo-qtd-adicionada').text(`${quantidade.toFixed(3)} (Total na fila: ${novaQtdTotal.toFixed(3)})`);
+                    $modalMotivo.find('#motivo-divergencia-texto').val('');
+
+                    $modalMotivo.modal('show');
+                }
+                // Se 'result.isConfirmed' for falso (usuário clicou 'Cancelar'), não faz nada.
+            });
+        }
     });
+
 
     $modalGerenciarFila.on('click', '.btn-remover-produto-da-lista', function () {
         const $row = $(this).closest('tr');
@@ -714,14 +980,10 @@ $(document).ready(function () {
             const produtos = [];
             $card.find('.lista-produtos-cliente tr').each(function () {
                 const $linhaProduto = $(this);
-                /*produtos.push({
-                    produtoId: $linhaProduto.data('produto-id'), // Adiciona o ID do produto
-                    loteId: $linhaProduto.data('lote-id'), // Usa o novo atributo data
-                    quantidade: parseFloat($linhaProduto.find('td:nth-child(2)').text())
-                });*/
                 produtos.push({
-                    alocacaoId: $linhaProduto.data('alocacao-id'), // <-- MUDANÇA
-                    quantidade: parseFloat($linhaProduto.data('quantidade')) // <-- MUDANÇA
+                    alocacaoId: $linhaProduto.data('alocacao-id'),
+                    quantidade: parseFloat($linhaProduto.data('quantidade')),
+                    motivo: $linhaProduto.data('motivo') || null
                 });
 
             });
@@ -735,8 +997,6 @@ $(document).ready(function () {
             return;
         }
 
-        // Correção: URL limpa, sem caracteres inválidos
-        //let ajaxUrl = 'ajax_router.php?action=salvarFilaComposta';
         let ajaxUrl = 'ajax_router.php?action=salvarFilaDoPool';
         let ajaxData = {
             carregamento_id: carregamentoId,
@@ -745,7 +1005,6 @@ $(document).ready(function () {
         };
 
         if (modoModal === 'edicao' && filaIdParaEditar) {
-            //ajaxUrl = 'ajax_router.php?action=atualizarFilaComposta';
             ajaxUrl = 'ajax_router.php?action=atualizarFilaDoPool';
             ajaxData.fila_id = filaIdParaEditar;
         }
@@ -908,6 +1167,31 @@ $(document).ready(function () {
             // Reabilita o botão, independentemente do resultado
             $botaoConfirmar.prop('disabled', false).html('<i class="fas fa-truck-loading me-2"></i> Confirmar e Dar Baixa no Estoque');
         });
+    });
+
+    /**
+    * Evento do botão 'Confirmar' dentro do modal de MOTIVO.
+    * Ele pega o motivo e finalmente chama a função de adicionar.
+        */
+    $('#btn-confirmar-motivo-divergencia').on('click', function () {
+        const $modalMotivo = $('#modal-motivo-divergencia');
+        const motivo = $modalMotivo.find('#motivo-divergencia-texto').val().trim();
+
+        if (!motivo) {
+            notificacaoErro('Obrigatório', 'Você deve informar o motivo da divergência.');
+            return;
+        }
+
+        // Pega os dados que guardamos no modal
+        const item = $modalMotivo.data('item-para-adicionar');
+        const alocacaoId = $modalMotivo.data('alocacao-id');
+        const quantidade = $modalMotivo.data('quantidade');
+
+        // Agora sim, chama a função para adicionar o item, passando o motivo
+        adicionarItemNaTabela(item, alocacaoId, quantidade, motivo);
+
+        // Fecha o modal de motivo
+        $modalMotivo.modal('hide');
     });
 
     $tabelaComposicaoBody.on('click', '.btn-remover-fila-principal', function () {
