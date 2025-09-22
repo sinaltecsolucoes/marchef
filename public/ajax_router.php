@@ -354,11 +354,11 @@ switch ($action) {
     case 'reabrirCarregamento':
         reabrirCarregamento($carregamentoRepo);
         break;
+    case 'getOrdensParaCarregamentoSelect':
+        getOrdensParaCarregamentoSelect($ordemExpedicaoRepo);
+        break;
     case 'adicionarItemCarregamento':
         adicionarItemCarregamento($carregamentoRepo);
-        break;
-    case 'removerItemCarregamento':
-        removerItemCarregamento($carregamentoRepo);
         break;
     case 'getCarregamentoDetalhes': // Para recarregar os dados
         getCarregamentoDetalhes($carregamentoRepo);
@@ -404,6 +404,54 @@ switch ($action) {
         break;
     case 'atualizarFilaDoPool':
         atualizarFilaDoPool($carregamentoRepo);
+        break;
+    case 'getCarregamentoDetalhesCompletos':
+        getCarregamentoDetalhesCompletos($carregamentoRepo);
+        break;
+    case 'addFilaCarregamento':
+        addFilaCarregamento($carregamentoRepo);
+        break;
+    case 'removeFilaCarregamento':
+        removeFilaCarregamento($carregamentoRepo);
+        break;
+    case 'removeItemCarregamento':
+        removeItemCarregamento($carregamentoRepo);
+        break;
+    case 'addItemCarregamentoFromOE':
+        addItemCarregamentoFromOE($carregamentoRepo);
+        break;
+    case 'addItemCarregamentoDivergencia':
+        addItemCarregamentoDivergencia($carregamentoRepo);
+        break;
+    case 'finalizarCarregamento':
+        finalizarCarregamento($carregamentoRepo);
+        break;
+    case 'updateCarregamentoHeader':
+        updateCarregamentoHeader($carregamentoRepo);
+        break;
+    case 'getClientesDaOE':
+        getClientesDaOE($carregamentoRepo);
+        break;
+    case 'getProdutosDoClienteNaOE':
+        getProdutosDoClienteNaOE($carregamentoRepo);
+        break;
+    case 'getLotesDoProdutoNaOE':
+        getLotesDoProdutoNaOE($carregamentoRepo);
+        break;
+    case 'addItemCascata':
+        addItemCascata($carregamentoRepo);
+        break;
+    case 'removeClienteFromFila':
+        removeClienteFromFila($carregamentoRepo);
+        break;
+    case 'getCarregamentoItemDetalhes':
+        getCarregamentoItemDetalhes($carregamentoRepo);
+        break;
+    case 'updateCarregamentoItemQuantidade':
+        updateCarregamentoItemQuantidade($carregamentoRepo);
+        break;
+    case 'addItemCarregamentoDivergencia':
+        addItemCarregamentoDivergencia($carregamentoRepo);
         break;
 
     // --- ROTAS PARA O DASHBOARD (KPIs) ---
@@ -1638,22 +1686,11 @@ function criarBackup()
     }
 }
 
-// --- FUNÇÃO DE CONTROLE PARA CARREGAMENTOS ---
-
 function listarCarregamentos(CarregamentoRepository $repo)
 {
-    try {
-        $output = $repo->findAllForDataTable($_POST);
-        echo json_encode($output);
-    } catch (Exception $e) {
-        error_log("Erro na API listarCarregamentos: " . $e->getMessage());
-        echo json_encode([
-            "draw" => intval($_POST['draw'] ?? 1),
-            "recordsTotal" => 0,
-            "recordsFiltered" => 0,
-            "data" => []
-        ]);
-    }
+    // A função do repositório agora faz todo o trabalho
+    $output = $repo->findAllForDataTable($_POST);
+    echo json_encode($output);
 }
 
 function getProximoNumeroCarregamento(CarregamentoRepository $repo)
@@ -1666,7 +1703,7 @@ function getProximoNumeroCarregamento(CarregamentoRepository $repo)
     }
 }
 
-function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
+/* function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
 {
     // A lógica de salvar (criar ou editar) já está a ser preparada no repositório.
     try {
@@ -1676,6 +1713,24 @@ function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
         error_log("Erro em salvarCarregamentoHeader: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Erro ao salvar o carregamento.']);
     }
+} */
+
+
+function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
+{
+    try {
+        $newId = $repo->salvarCarregamentoHeader($_POST, $userId);
+        echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamento_id' => $newId]);
+    } catch (Exception $e) {
+        error_log("Erro em salvarCarregamentoHeader: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getOrdensParaCarregamentoSelect(OrdemExpedicaoRepository $repo)
+{
+    $term = $_POST['term'] ?? ''; // Select2 envia por POST
+    echo json_encode(['results' => $repo->findOrdensParaCarregamentoSelect($term)]);
 }
 
 function adicionarItemCarregamento(CarregamentoRepository $repo)
@@ -1694,7 +1749,7 @@ function adicionarItemCarregamento(CarregamentoRepository $repo)
     }
 }
 
-function removerItemCarregamento(CarregamentoRepository $repo)
+/* function removerItemCarregamento(CarregamentoRepository $repo)
 {
     try {
         $carItemId = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
@@ -1706,7 +1761,7 @@ function removerItemCarregamento(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+} */
 
 function getDadosConferencia(CarregamentoRepository $repo)
 {
@@ -1875,7 +1930,7 @@ function excluirCarregamento(CarregamentoRepository $repo)
         if (!$carregamentoId) {
             throw new Exception("ID de carregamento inválido.");
         }
-        $repo->excluir($carregamentoId);
+        $repo->excluir($carregamentoId); // Chama a função do Repositório
         echo json_encode(['success' => true, 'message' => 'Carregamento excluído permanentemente!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1900,11 +1955,11 @@ function reabrirCarregamento(CarregamentoRepository $repo)
 {
     try {
         $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $motivo = trim($_POST['motivo'] ?? '');
-        if (!$id || empty($motivo)) {
+        $motivo = trim($_POST['motivo'] ?? '');// <-- LÊ O MOTIVO
+        if (!$id || empty($motivo)) {// <-- Valida o motivo
             throw new Exception("Dados inválidos para reabertura.");
         }
-        $repo->reabrir($id, $motivo);
+        $repo->reabrir($id, $motivo);// <-- Passa o motivo
         echo json_encode(['success' => true, 'message' => 'Carregamento reaberto com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1995,6 +2050,223 @@ function atualizarFilaDoPool(CarregamentoRepository $repo)
         // Chamamos a nova função do repositório
         $repo->atualizarFilaDoPool($filaId, $carregamentoId, $filaData);
         echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getCarregamentoItemDetalhes(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID do Item inválido.");
+
+        $data = $repo->getCarregamentoItemDetalhes($id);
+        echo json_encode(['success' => true, 'data' => $data]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function updateCarregamentoItemQuantidade(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
+        $qtd = filter_input(INPUT_POST, 'edit_quantidade', FILTER_VALIDATE_FLOAT);
+        if (!$id || $qtd === false) {
+            throw new Exception("Dados inválidos.");
+        }
+
+        $repo->updateCarregamentoItemQuantidade($id, $qtd);
+        echo json_encode(['success' => true, 'message' => 'Quantidade atualizada.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA DETALHES DO CARREGAMENTO ---
+
+function getCarregamentoDetalhesCompletos(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+
+        $data = $repo->getDetalhesCompletos($id);
+        echo json_encode(['success' => true, 'data' => $data]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function updateCarregamentoHeader(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'car_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID do Carregamento inválido.");
+
+        $repo->updateHeader($id, $_POST);
+        echo json_encode(['success' => true, 'message' => 'Cabeçalho atualizado.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function addFilaCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+
+        $filaId = $repo->addFila($id);
+        echo json_encode(['success' => true, 'fila_id' => $filaId]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function removeFilaCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+
+        $repo->removeFila($id);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function removeItemCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID do item inválido.");
+
+        $repo->removeItem($id);
+        echo json_encode(['success' => true, 'message' => 'Item removido']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function addItemCarregamentoFromOE(CarregamentoRepository $repo)
+{
+    try {
+        $id = $repo->addItemFromOE($_POST);
+        echo json_encode(['success' => true, 'item_id' => $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function addItemCarregamentoDivergencia(CarregamentoRepository $repo)
+{
+    try {
+        $id = $repo->addItemDivergencia($_POST);
+        echo json_encode(['success' => true, 'item_id' => $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function finalizarCarregamento(CarregamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+
+        $repo->finalizar($id);
+        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA O MODAL CASCATA ---
+
+function getClientesDaOE(CarregamentoRepository $repo)
+{
+    $oeId = filter_input(INPUT_POST, 'oe_id', FILTER_VALIDATE_INT);
+    if (!$oeId) {
+        echo json_encode(['results' => []]);
+        return;
+    }
+    echo json_encode(['results' => $repo->getClientesDaOE($oeId)]);
+}
+
+function getProdutosDoClienteNaOE(CarregamentoRepository $repo)
+{
+    try {
+        $oeId = filter_input(INPUT_POST, 'oe_id', FILTER_VALIDATE_INT);
+        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+        if (!$oeId || !$clienteId) {
+            echo json_encode(['results' => []]);
+            return;
+        }
+
+        $results = $repo->getProdutosDoClienteNaOE($oeId, $clienteId);
+        echo json_encode(['results' => $results]);
+
+    } catch (Exception $e) {
+        // Se houver um erro de SQL aqui, ele será capturado
+        error_log("Erro em getProdutosDoClienteNaOE: " . $e->getMessage());
+        echo json_encode(['results' => [], 'error' => $e->getMessage()]);
+    }
+}
+
+function getLotesDoProdutoNaOE(CarregamentoRepository $repo)
+{
+    $oeId = filter_input(INPUT_POST, 'oe_id', FILTER_VALIDATE_INT);
+    $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+    $produtoId = filter_input(INPUT_POST, 'produto_id', FILTER_VALIDATE_INT);
+    $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+
+    if (!$oeId || !$clienteId || !$produtoId || !$carregamentoId) {
+        echo json_encode(['results' => [], 'message' => 'Dados incompletos']);
+        return;
+    }
+    echo json_encode(['results' => $repo->getLotesDoProdutoNaOE($oeId, $clienteId, $produtoId, $carregamentoId)]);
+}
+
+function addItemCascata(CarregamentoRepository $repo)
+{
+    try {
+        // O carregamentoId está na URL, não no POST do formulário
+        $urlParams = [];
+        parse_str($_SERVER['HTTP_REFERER'] ?? '', $urlParams);
+        $carregamentoId = $urlParams['id'] ?? 0;
+
+        if (empty($carregamentoId)) {
+            throw new Exception("ID do Carregamento não encontrado na URL.");
+        }
+
+        $id = $repo->addItemCascata($_POST, (int) $carregamentoId);
+        echo json_encode(['success' => true, 'item_id' => $id]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function removeClienteFromFila(CarregamentoRepository $repo)
+{
+    try {
+        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
+        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+        if (!$filaId || !$clienteId) {
+            throw new Exception("IDs de Fila e Cliente são obrigatórios.");
+        }
+
+        $repo->removeClienteFromFila($filaId, $clienteId);
+        echo json_encode(['success' => true, 'message' => 'Cliente removido da fila.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

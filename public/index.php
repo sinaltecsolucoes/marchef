@@ -173,24 +173,7 @@ try {
     if ($temPermissao && isset($paginasPermitidas[$paginaAtual])) {
         // Se tem permissão e a página existe, processa
         switch ($paginaAtual) {
-            case 'carregamento_detalhes':
-                // Lógica especial para esta página: buscar dados antes de carregar a view
-                $carregamentoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-                if (!$carregamentoId) {
-                    // Se não houver ID, redireciona para a lista
-                    header("Location: index.php?page=carregamentos");
-                    exit;
-                }
-
-                $carregamentoRepo = new \App\Carregamentos\CarregamentoRepository($pdo);
-                $carregamentoData = $carregamentoRepo->findCarregamentoComItens($carregamentoId);
-
-                if (!$carregamentoData) {
-                    // Se não encontrar o carregamento, mostra um erro ou redireciona
-                    die("Erro: Carregamento não encontrado.");
-                }
-
-                // Define a view a ser incluída
+              case 'carregamento_detalhes':
                 $arquivoView = $paginasPermitidas[$paginaAtual];
                 break;
 
@@ -210,9 +193,6 @@ try {
     }
 
     $viewParaIncluir = __DIR__ . '/../views/' . $arquivoView;
-
-    // Renderiza o Layout Principal
-    // require_once __DIR__ . '/../views/layouts/main.php';
 
     // ### LÓGICA DE RENDERIZAÇÃO ###
     // Define quais páginas devem ser carregadas SEM o layout principal (menu, navbar, etc.)

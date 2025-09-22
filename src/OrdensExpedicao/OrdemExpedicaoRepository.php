@@ -562,4 +562,35 @@ class OrdemExpedicaoRepository
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Retorna uma lista de Ordens de Expedição que AINDA NÃO têm um carregamento.
+     * Formatado para o Select2.
+     */
+    public function findOrdensParaCarregamentoSelect(string $term = ''): array
+    {
+        $params = [];
+        $sqlWhereTerm = "";
+
+        // Adiciona o filtro de busca (term)
+        if (!empty($term)) {
+            $sqlWhereTerm = " AND (oe.oe_numero LIKE :term) ";
+            $params[':term'] = '%' . $term . '%';
+        }
+
+        $sql = "SELECT 
+                    oe.oe_id AS id, 
+                    oe.oe_numero AS text
+                FROM tbl_ordens_expedicao_header oe
+                LEFT JOIN tbl_carregamentos c ON oe.oe_id = c.car_ordem_expedicao_id AND c.car_status != 'CANCELADO'
+                WHERE 
+                    c.car_id IS NULL -- O ponto principal: Só traz OE que NÃO estão em um carregamento ativo
+                    {$sqlWhereTerm}
+                ORDER BY oe.oe_data DESC, oe.oe_id DESC
+                LIMIT 20"; // Limita para o Select2
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

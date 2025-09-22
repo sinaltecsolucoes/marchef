@@ -1,383 +1,276 @@
 // /public/js/carregamentos.js
-
 $(document).ready(function () {
+    const csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="csrf_token"]').first().val();
+    const $modalNovoCarregamento = $('#modal-novo-carregamento');
+    const $formNovoCarregamento = $('#form-novo-carregamento');
+    const $tabelaCarregamentos = $('#tabela-carregamentos'); // Cache da tabela
 
-    const csrfToken = $('meta[name="csrf-token"]').attr('content');
-    const $modalCarregamento = $('#modal-carregamento');
-    let tabelaCarregamentos; // Definida aqui para ser acessível em todo o escopo
-
-    // Inicialização da tabela DataTables
-    tabelaCarregamentos = $('#tabela-carregamentos').DataTable({
-        "serverSide": true, // Processamento de dados no lado do servidor
+    // 1. Inicializar a DataTable
+    const dataTable = $tabelaCarregamentos.DataTable({
+        "serverSide": true,
         "ajax": {
             "url": "ajax_router.php?action=listarCarregamentos",
             "type": "POST",
-            "data": function (d) {
-                // Adiciona o token CSRF e o valor do nosso filtro de status à requisição
-                d.csrf_token = csrfToken;
-                d.filtro_status = $('#filtro-status-carregamento').val();
-            }
+            "data": { csrf_token: csrfToken }
         },
         "columns": [
-            {
-                "data": "car_numero", "className": "text-center align-middle",
-            },
-            {
-                "data": "ent_razao_social", "className": "align-middle",
-            },
+            { "data": "car_numero" },
             {
                 "data": "car_data",
-                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
-                    // Adiciona T00:00:00 para evitar problemas de fuso horário
                     const date = new Date(data + 'T00:00:00');
                     return date.toLocaleDateString('pt-BR');
                 }
             },
-            {
-                "data": "car_status",
-                "className": "text-center",
-                "render": function (data) {
-                    let badgeClass = 'bg-secondary';
-                    if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
-                    if (data === 'AGUARDANDO CONFERENCIA') badgeClass = 'bg-primary';
-                    if (data === 'FINALIZADO') badgeClass = 'bg-success';
-                    if (data === 'CANCELADO') badgeClass = 'bg-danger';
-                    return `<span class="badge ${badgeClass}">${data || 'INDEFINIDO'}</span>`;
-                }
-            },
+            { "data": "oe_numero" },
+            { "data": "car_motorista_nome" },
+            { "data": "car_placas" },
+            { "data": "car_status" },
             {
                 "data": "car_id",
                 "orderable": false,
                 "className": "text-center",
                 "render": function (data, type, row) {
-                    const status = row.car_status;
-                    const carregamentoId = row.car_id;
-                    const carregamentoNumero = row.car_numero;
-                    let acoesHtml = '';
+                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-info btn-sm me-1" title="Detalhes/Editar"><i class="fas fa-search"></i> Detalhes</a>`;
 
-                    // Ações para carregamentos ATIVOS
-                    if (status === 'EM ANDAMENTO' || status === 'AGUARDANDO CONFERENCIA') {
-                        acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-info btn-sm btn-continuar-carregamento me-1">Continuar</a>`;
-                        acoesHtml += `
-                                    <div class="btn-group d-inline-block">
-                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item btn-cancelar-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Cancelar</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger btn-excluir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Excluir</a></li>
-                                        </ul>
-                                    </div>`;
-                        return acoesHtml;
+                    let btnCancelar = '';
+                    let btnReabrir = '';
+                    let btnExcluir = '';
+
+                    if (row.car_status === 'EM ANDAMENTO' || row.car_status === 'AGUARDANDO CONFERENCIA') {
+                        btnCancelar = `<button class="btn btn-danger btn-sm me-1 btn-cancelar" data-id="${data}" title="Cancelar"><i class="fas fa-times-circle"></i> Cancelar</button>`;
                     }
 
-                    if (status === 'FINALIZADO') {
-                        let acoesHtml = `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes me-1">Ver Detalhes</a>`;
-                        acoesHtml += `
-                                <div class="btn-group d-inline-block">
-                                    <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Mais</button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item btn-reabrir-carregamento" href="#" data-id="${carregamentoId}" data-numero="${carregamentoNumero}">Reabrir Carregamento</a></li>
-                                    </ul>
-                                </div>`;
-                        return acoesHtml;
+                    if (row.car_status === 'FINALIZADO' || row.car_status === 'CANCELADO') {
+                        btnReabrir = `<button class="btn btn-warning btn-sm me-1 btn-reabrir" data-id="${data}" title="Reabrir"><i class="fas fa-undo"></i> Reabrir</button>`;
                     }
 
-                    // Ação padrão para FINALIZADO (ou qualquer outro status)
-                    return `<a href="index.php?page=carregamento_detalhes&id=${carregamentoId}" class="btn btn-secondary btn-sm btn-ver-detalhes">Ver Detalhes</a>`;
+                    // Só pode excluir se NÃO estiver finalizado
+                    if (row.car_status !== 'FINALIZADO') {
+                        btnExcluir = `<button class="btn btn-dark btn-sm ms-1 btn-excluir" data-id="${data}" title="Excluir Permanentemente"><i class="fas fa-trash-alt"></i></button>`;
+                    }
+
+                    return `<div class="btn-group">${btnDetalhes}${btnCancelar}${btnReabrir}${btnExcluir}</div>`;
                 }
             }
         ],
-        "order": [[2, 'desc']], // Ordenar pela data (mais recente primeiro)
-        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        "order": [[1, 'desc']]
     });
 
-    // --- EVENT HANDLERS (AÇÕES DO UTILIZADOR) ---
-    // Ação para os botões 'Continuar', 'Conferir' ou 'Ver Detalhes'
-    $('#tabela-carregamentos tbody').on('click', '.btn-continuar-carregamento, .btn-conferir-carregamento, .btn-ver-detalhes', function () {
-        const carregamentoId = $(this).data('id');
+    // 2. Lógica do Modal de Novo Carregamento
 
-        // Redireciona o navegador para a nova página de detalhes, passando o ID do carregamento na URL
-        window.location.href = `index.php?page=carregamento_detalhes&id=${carregamentoId}`;
-    });
+    // Ao abrir o modal
+    $modalNovoCarregamento.on('show.bs.modal', function () {
+        $formNovoCarregamento[0].reset();
 
-    // Evento para o filtro de status
-    // Sempre que o utilizador mudar a seleção, a tabela é recarregada
-    $('#filtro-status-carregamento').on('change', function () {
-        tabelaCarregamentos.ajax.reload();
-    });
-
-    // Inicialização do Select2 para o dropdown de clientes dentro do novo modal
-    $('#car_entidade_id_organizador').select2({
-        placeholder: 'Selecione um cliente',
-        dropdownParent: $modalCarregamento, // Essencial para funcionar no modal
-        theme: "bootstrap-5"
-    });
-
-    // Ação para o botão "Novo Carregamento"
-    $('#btn-novo-carregamento').on('click', function () {
-        // Limpa o formulário
-        $('#form-carregamento')[0].reset();
-        $('#car_id').val('');
+        // Resetar Select2
         $('#car_entidade_id_organizador').val(null).trigger('change');
-        $('#modal-carregamento-label').text('Novo Carregamento');
-        $('#mensagem-carregamento-modal').html('');
+        $('#car_transportadora_id').val(null).trigger('change');
+        $('#car_ordem_expedicao_id').val(null).trigger('change');
 
-        // Busca os dados necessários para preencher o formulário
-        // 1. Próximo número de carregamento
-        $.get('ajax_router.php?action=getProximoNumeroCarregamento', function (response) {
+        $.post('ajax_router.php?action=getProximoNumeroCarregamento', { csrf_token: csrfToken }, function (response) {
             if (response.success) {
                 $('#car_numero').val(response.proximo_numero);
-                // atualizarOrdemExpedicao();
             }
-        });
+        }, 'json');
 
-        // Limpa e carrega os clientes
-        carregarClientesParaModal();
-
-        // 2. Lista de clientes
-        /*    $.get('ajax_router.php?action=getClienteOptions', function (response) {
-                if (response.success) {
-                    const $select = $('#car_entidade_id_organizador');
-                    $select.empty().append('<option value="">Selecione...</option>');
-                    response.data.forEach(function (cliente) {
-                        $select.append(new Option(cliente.nome_display, cliente.ent_codigo));
-                    });
-                }
-            });*/
-
-        // Para inicializar o novo select da OE
-        $('#car_ordem_expedicao_id').val(null).trigger('change'); // Limpa o select
-        $('#car_ordem_expedicao_id').select2({
-            placeholder: 'Selecione uma OE aberta...',
-            dropdownParent: $modalCarregamento,
-            theme: "bootstrap-5",
-            language: "pt-BR",
-            ajax: {
-                url: 'ajax_router.php?action=getOrdensParaFaturamentoSelect', // Rota que já existe e busca OEs!
-                dataType: 'json',
-                processResults: function (data) {
-                    return data; // A rota já retorna {results: [...]}
-                }
-            }
-        });
-
-        // Abre o modal
-        $modalCarregamento.modal('show');
+        $('#car_data').val(new Date().toISOString().split('T')[0]);
     });
 
-    // Ação para submeter o formulário de SALVAR (novo carregamento)
-    $('#form-carregamento').on('submit', function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const $botaoSalvar = $(this).find('button[type="submit"]');
+    // Inicializar Select2 para Cliente Responsável
+    $('#car_entidade_id_organizador').select2({
+        placeholder: "Selecione o cliente responsável",
+        dropdownParent: $modalNovoCarregamento,
+        theme: "bootstrap-5",
+        ajax: {
+            url: 'ajax_router.php?action=getClienteOptions',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { term: params.term }; },
+            processResults: function (data) { return { results: data.data }; }
+        }
+    });
 
-        // Desabilitar o botão para evitar cliques duplos
-        $botaoSalvar.prop('disabled', true);
+    // *** Inicializar Select2 para Transportadora ***
+    $('#car_transportadora_id').select2({
+        placeholder: "Selecione a transportadora",
+        dropdownParent: $modalNovoCarregamento,
+        theme: "bootstrap-5",
+        allowClear: true, // Permite limpar o campo
+        ajax: {
+            url: 'ajax_router.php?action=getTransportadoraOptions',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { term: params.term }; },
+            processResults: function (data) { return { results: data.results }; }
+        }
+    });
+
+    // Inicializar Select2 para Ordem de Expedição (Base)
+    $('#car_ordem_expedicao_id').select2({
+        placeholder: "Selecione a Ordem de Expedição (base)",
+        dropdownParent: $modalNovoCarregamento,
+        theme: "bootstrap-5",
+        ajax: {
+            url: 'ajax_router.php?action=getOrdensParaCarregamentoSelect',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { term: params.term, csrf_token: csrfToken }; },
+            type: 'POST',
+            processResults: function (data) { return { results: data.results }; }
+        }
+    });
+
+    // *** Inicializar Máscaras (Placa e CPF) ***
+
+    // Máscara de CPF
+    $('#car_motorista_cpf').mask('000.000.000-00', { clearIfNotMatch: true });
+
+    // Máscara de PLACA (exatamente como você enviou)
+    $('#car_placas').mask('SSS-0A00 / SSS-0A00', {
+        translation: {
+            'S': { pattern: /[A-Za-z]/ }, // Aceita Letras
+            'A': { pattern: /[A-Za-z0-9]/ } // Aceita Letra ou Número (para Mercosul)
+        },
+        onKeyPress: function (val, e, field, options) {
+            // 1. Força tudo para MAIÚSCULAS
+            field.val(val.toUpperCase());
+
+            // 2. Lógica para pular a barra '/'
+            if (val.length === 8) {
+                if (val.charAt(7) !== ' ') {
+                    let charExtra = val.charAt(7);
+                    let newVal = val.substring(0, 7) + ' / ' + charExtra;
+                    field.val(newVal);
+                    field.mask('SSS-0A00 / SSS-0A00', options); // Reaplica
+                }
+            }
+        },
+        // 3. Não apaga o campo se digitar só a primeira placa
+        clearIfNotMatch: true
+    });
+
+    // 3. Salvar o Cabeçalho
+    $formNovoCarregamento.on('submit', function (e) {
+        e.preventDefault();
+
+        const $cpfField = $('#car_motorista_cpf');
+        const cpfLimpo = $cpfField.cleanVal(); // Pega o valor limpo
+        const formData = $(this).serialize() + '&car_motorista_cpf_limpo=' + cpfLimpo;
 
         $.ajax({
             url: 'ajax_router.php?action=salvarCarregamentoHeader',
             type: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.success) {
-                $modalCarregamento.modal('hide');
-                tabelaCarregamentos.ajax.reload(null, false);
-                notificacaoSucesso('Sucesso!', 'Carregamento criado com sucesso.');
-            } else {
-                notificacaoErro('Erro ao Salvar', response.message);
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    $modalNovoCarregamento.modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: 'Carregamento criado. Redirecionando para os detalhes...',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = `index.php?page=carregamento_detalhes&id=${response.carregamento_id}`;
+                    });
+                } else {
+                    Swal.fire('Erro', response.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire('Erro', 'Não foi possível conectar ao servidor.', 'error');
             }
-        }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o carregamento.');
-        }).always(function () {
-            // Reabilitar o botão
-            $botaoSalvar.prop('disabled', false);
         });
     });
 
-    /**
-    * Evento para o botão CANCELAR um carregamento na tabela principal.
-    */
-    $('#tabela-carregamentos').on('click', '.btn-cancelar-carregamento', function (e) {
-        e.preventDefault();
-        const carregamentoId = $(this).data('id');
-        const carregamentoNumero = $(this).data('numero');
-
-        confirmacaoAcao(
-            `Cancelar Carregamento Nº ${carregamentoNumero}?`,
-            'O status do carregamento será alterado para "CANCELADO", mas o registo será mantido para fins de histórico. Deseja continuar?'
-        ).then((result) => {
+    function handleAcaoCarregamento(id, action, title, text, successMessage) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim, confirmar!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
             if (result.isConfirmed) {
-                $.ajax({
-                    url: 'ajax_router.php?action=cancelarCarregamento',
-                    type: 'POST',
-                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
-                    dataType: 'json'
-                }).done(function (response) {
+                $.post('ajax_router.php?action=' + action, {
+                    carregamento_id: id,
+                    csrf_token: csrfToken
+                }, function (response) {
                     if (response.success) {
-                        tabelaCarregamentos.ajax.reload(null, false);
-                        notificacaoSucesso('Cancelado!', response.message);
+                        Swal.fire('Sucesso!', successMessage, 'success');
+                        dataTable.ajax.reload(); // Recarrega a tabela
                     } else {
-                        notificacaoErro('Erro!', response.message);
+                        Swal.fire('Erro', response.message, 'error');
                     }
-                });
+                }, 'json');
             }
-        });
-    });
-
-    /**
-     * Evento para o botão EXCLUIR um carregamento na tabela principal.
-     */
-    $('#tabela-carregamentos').on('click', '.btn-excluir-carregamento', function (e) {
-        e.preventDefault();
-        const carregamentoId = $(this).data('id');
-        const carregamentoNumero = $(this).data('numero');
-
-        confirmacaoAcao(
-            `Excluir Carregamento Nº ${carregamentoNumero}?`,
-            'Esta ação é IRREVERSÍVEL e irá apagar permanentemente o carregamento, todas as suas filas e todos os seus produtos. Tem a certeza absoluta?'
-        ).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: 'ajax_router.php?action=excluirCarregamento',
-                    type: 'POST',
-                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
-                    dataType: 'json'
-                }).done(function (response) {
-                    if (response.success) {
-                        tabelaCarregamentos.ajax.reload(null, false);
-                        notificacaoSucesso('Excluído!', response.message);
-                    } else {
-                        notificacaoErro('Erro!', response.message);
-                    }
-                });
-            }
-        });
-    });
-
-    /**
-    * Evento para o botão REATIVAR um carregamento na tabela principal.
-    */
-    $('#tabela-carregamentos').on('click', '.btn-reativar-carregamento', function (e) {
-        e.preventDefault();
-        const carregamentoId = $(this).data('id');
-        const carregamentoNumero = $(this).data('numero');
-
-        confirmacaoAcao(
-            `Reativar Carregamento Nº ${carregamentoNumero}?`,
-            'O status do carregamento voltará para "EM ANDAMENTO".'
-        ).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: 'ajax_router.php?action=reativarCarregamento',
-                    type: 'POST',
-                    data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
-                    dataType: 'json'
-                }).done(function (response) {
-                    if (response.success) {
-                        tabelaCarregamentos.ajax.reload(null, false);
-                        notificacaoSucesso('Reativado!', response.message);
-                    } else {
-                        notificacaoErro('Erro!', response.message);
-                    }
-                });
-            }
-        });
-    });
-
-    // Evento para ABRIR o modal de reabertura
-    $('#tabela-carregamentos').on('click', '.btn-reabrir-carregamento', function () {
-        const id = $(this).data('id');
-        const numero = $(this).data('numero');
-
-        $('#carregamento-id-reabrir').val(id);
-        $('#carregamento-numero-reabrir').text(numero);
-        $('#motivo-reabertura').val(''); // Limpa o campo de motivo
-
-        $('#modal-reabrir-carregamento').modal('show');
-    });
-
-    // Evento para CONFIRMAR a reabertura
-    $('#btn-confirmar-reabertura').on('click', function () {
-        const id = $('#carregamento-id-reabrir').val();
-        const motivo = $('#motivo-reabertura').val().trim();
-
-        if (motivo === '') {
-            notificacaoErro('Campo Obrigatório', 'Por favor, preencha o motivo da reabertura.');
-            return;
-        }
-
-        $.ajax({
-            url: 'ajax_router.php?action=reabrirCarregamento',
-            type: 'POST',
-            data: { carregamento_id: id, motivo: motivo, csrf_token: csrfToken },
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.success) {
-                $('#modal-reabrir-carregamento').modal('hide');
-                tabelaCarregamentos.ajax.reload(null, false);
-                notificacaoSucesso('Reaberto!', response.message);
-            } else {
-                notificacaoErro('Erro!', response.message);
-            }
-        });
-    });
-
-    // --- FUNÇÕES AUXILIARES ---
-
-    /**
-     * Carrega a lista de clientes para o dropdown do modal de carregamento.
-     */
-    function carregarClientesParaModal() {
-        return $.ajax({
-            url: 'ajax_router.php?action=getClienteOptions',
-            type: 'GET',
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.data) {
-                const $select = $('#car_entidade_id_organizador');
-                $select.empty().append('<option value="">Selecione um cliente...</option>');
-                response.data.forEach(function (cliente) {
-                    //$select.append(new Option(cliente.nome_display, cliente.ent_codigo));
-                    $select.append(new Option(cliente.text, cliente.id));
-
-                });
-            } else {
-                // SUBSTITUÍDO: alert() por notificacaoErro()
-                //notificacaoErro('Erro ao Carregar Clientes', response.message);
-                notificacaoErro('Erro ao Carregar Clientes', response.message || 'Resposta inesperada do servidor.');
-            }
-        }).fail(function () {
-            // SUBSTITUÍDO: alert() por notificacaoErro()
-            notificacaoErro('Falha de Comunicação', 'Não foi possível carregar a lista de clientes.');
         });
     }
 
-    /**
-     * Atualiza o campo "Ordem de Expedição" com base no número e data.
-    */
-    /* function atualizarOrdemExpedicao() {
-         const numero = $('#car_numero').val();
-         const dataStr = $('#car_data').val(); // Formato YYYY-MM-DD
- 
-         if (numero && dataStr) {
-             const data = new Date(dataStr + 'T00:00:00');
-             const mes = String(data.getMonth() + 1).padStart(2, '0'); // +1 porque getMonth() é base 0
-             const ano = data.getFullYear();
- 
-             const ordemExpedicao = `${numero}.${mes}.${ano}`;
-             $('#car_ordem_expedicao').val(ordemExpedicao);
-         } else {
-             $('#car_ordem_expedicao').val(''); // Limpa se os campos não estiverem preenchidos
-         }
-     } */
+    // Cancelar
+    $tabelaCarregamentos.on('click', '.btn-cancelar', function () {
+        const id = $(this).data('id');
+        handleAcaoCarregamento(id, 'cancelarCarregamento',
+            'Cancelar Carregamento?',
+            'Esta ação irá cancelar o carregamento. Nenhum estoque será baixado.',
+            'Carregamento cancelado.'
+        );
+    });
 
-    /* $('#form-carregamento').on('change keyup', '#car_numero, #car_data', function () {
-         atualizarOrdemExpedicao();
-     }); */
+    // Reabrir
+    $tabelaCarregamentos.on('click', '.btn-reabrir', function (e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        const numero = $(this).closest('tr').find('td').eq(0).text(); // Pega o número da tabela
 
+        $('#reabrir-carregamento-id').val(id);
+        $('#reabrir-carregamento-numero').text(numero);
+        $('#reabrir-motivo').val(''); // Limpa o campo
+
+        $('#modal-reabrir-motivo').modal('show');
+    });
+
+    $('#btn-confirmar-reabertura').on('click', function () {
+        const id = $('#reabrir-carregamento-id').val();
+        const motivo = $('#reabrir-motivo').val().trim();
+
+        if (motivo === '') {
+            Swal.fire('Erro', 'O motivo é obrigatório para reabrir o carregamento.', 'error');
+            return;
+        }
+
+        // Faz a chamada AJAX (com a action na URL)
+        $.post('ajax_router.php?action=reabrirCarregamento', {
+            carregamento_id: id,
+            motivo: motivo, // Envia o motivo no POST
+            csrf_token: csrfToken
+        }, function (response) {
+            $('#modal-reabrir-motivo').modal('hide');
+            if (response.success) {
+                Swal.fire('Reaberto!', 'Carregamento reaberto e estoque estornado.', 'success');
+                dataTable.ajax.reload();
+            } else {
+                Swal.fire('Erro', response.message, 'error');
+            }
+        }, 'json');
+    });
+
+    $tabelaCarregamentos.on('click', '.btn-excluir', function (e) {
+        e.preventDefault(); // Necessário
+        const id = $(this).data('id');
+
+        // Usamos a mesma função 'handleAcaoCarregamento'
+        handleAcaoCarregamento(id, 'excluirCarregamento', // <-- Nova Action
+            'Excluir Carregamento?',
+            'Esta ação é IRREVERSÍVEL e apagará o carregamento, filas e itens. O estoque será estornado (se aplicável). Deseja continuar?',
+            'Carregamento excluído permanentemente.'
+        );
+    });
 });

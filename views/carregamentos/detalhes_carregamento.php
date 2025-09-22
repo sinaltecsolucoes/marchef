@@ -1,57 +1,99 @@
-<?php
-// /views/carregamentos/detalhes_carregamento.php
-?>
+<?php // /views/carregamentos/detalhes_carregamento.php ?>
 
-<h4 class="fw-bold mb-3">Detalhe Carregamento</h4>
-
-<script>
-    // Passa os dados do carregamento do PHP para uma variável JavaScript global
-    const carregamentoData = <?php echo json_encode($carregamentoData ?? null); ?>;
-    const csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
-</script>
+<h4 class="fw-bold mb-3" id="main-title">Carregamento</h4>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Dados Carregamento</h6>
-    </div>
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div id="dados-carregamento-header">
-                <h4 class="fw-bold mb-1">Carregamento Nº <span id="car-numero-detalhe">...</span></h4>
-                <p class="text-muted mb-0">Status: <span id="car-status-detalhe" class="badge bg-secondary">...</span>
-                </p>
-            </div>
-            <a href="index.php?page=carregamentos" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i> Voltar para a Listagem
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">1. Cabeçalho</h6>
+        <div>
+            <button class="btn btn-success btn-sm" id="btn-finalizar-detalhe" style="display: none;">
+                <i class="fas fa-check-circle me-1"></i> Finalizar Carregamento
+            </button>
+            <button class="btn btn-primary btn-sm" id="btn-editar-header"><i class="fas fa-pencil-alt me-1"></i>
+                Editar</button>
+            <button class="btn btn-success btn-sm" id="btn-salvar-header" style="display: none;"><i
+                    class="fas fa-save me-1"></i> Salvar</button>
+            <button class="btn btn-secondary btn-sm" id="btn-cancelar-header" style="display: none;"><i
+                    class="fas fa-times me-1"></i> Cancelar</button>
+            <a href="index.php?page=carregamentos" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar
             </a>
         </div>
     </div>
+
+    <div class="card-body">
+        <form id="form-carregamento-header">
+            <input type="hidden" id="carregamento_id" name="car_id">
+            <input type="hidden" id="oe_id_hidden" name="oe_id_hidden"> <input type="hidden" name="csrf_token"
+                value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Nº Carregamento</label>
+                    <input type="text" id="car_numero" name="car_numero" class="form-control" readonly>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Data</label>
+                    <input type="date" id="car_data" name="car_data" class="form-control" readonly>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Ordem de Expedição (Base)</label>
+                    <input type="text" id="oe_numero_base" class="form-control" readonly>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Cliente Responsável</label>
+                    <select id="car_entidade_id_organizador" name="car_entidade_id_organizador" class="form-select"
+                        style="width: 100%;" disabled></select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Transportadora</label>
+                    <select id="car_transportadora_id" name="car_transportadora_id" class="form-select"
+                        style="width: 100%;" disabled></select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Motorista</label>
+                    <input type="text" id="car_motorista_nome" name="car_motorista_nome" class="form-control" readonly>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">CPF</label>
+                    <input type="text" id="car_motorista_cpf" name="car_motorista_cpf" class="form-control" readonly>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Placa(s)</label>
+                    <input type="text" id="car_placas" name="car_placas" class="form-control" readonly>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Lacre(s)</label>
+                    <input type="text" id="car_lacres" name="car_lacres" class="form-control" readonly>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="card shadow mb-4 card-custom" id="card-pool-oe">
+<div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Itens Pendentes da Ordem de Expedição (Pool)</h6>
+        <h6 class="m-0 font-weight-bold text-primary">2. Planejamento (Gabarito da OE)</h6>
     </div>
     <div class="card-body">
-        <p>Abaixo estão todos os itens da Ordem de Expedição vinculada que precisam ser alocados nas filas.</p>
-
+        <p class="text-muted">Resumo dos itens planejados na Ordem de Expedição. Use esta tabela como referência para o
+            carregamento.</p>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped table-sm" id="tabela-pool-carregamento">
+            <table class="table table-bordered table-sm" id="tabela-planejamento">
                 <thead class="table-light">
                     <tr>
-                        <th class="align-middle">Cliente / Pedido</th>
-                        <th class="align-middle">Produto</th>
-                        <th class="align-middle">Lote</th>
-                        <th class="align-middle">Endereço (Origem)</th>
-                        <th class="text-center align-middle">Qtd. Pendente</th>
+                        <th>Cliente</th>
+                        <th>Produto</th>
+                        <th>Lote</th>
+                        <th>Endereço</th>
+                        <th class="text-end">Qtd. Planejada (Caixas)</th>
+                        <th class="text-end">Qtd. Carregada (Caixas)</th>
+                        <th class="text-end fw-bold">Saldo (Caixas)</th>
                     </tr>
                 </thead>
-                <tbody id="tbody-pool-carregamento">
-                    <tr>
-                        <td colspan="5" class="text-center">
-                            <i class="fas fa-spinner fa-spin"></i> Carregando itens da Ordem de Expedição...
-                        </td>
-                    </tr>
+                <tbody id="tabela-planejamento-body">
                 </tbody>
             </table>
         </div>
@@ -59,273 +101,186 @@
 </div>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Composição do Carregamento</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-gerenciar-fila">
-                <i class="fas fa-plus me-2"></i> Adicionar Nova Fila
-            </button>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-bordered" id="tabela-composicao-carregamento">
-                <thead class="table-light">
-                    <tr>
-                        <th>Fila</th>
-                        <th class="text-center coluna-acoes" style="width: 120px;">Ações</th>
-                        <th class="text-center">Cliente</th>
-                        <th class="text-center">Produto</th>
-                        <th class="text-center">Lote Origem</th>
-                        <th class="text-center">Fornecedor</th>
-                        <th class="text-center">Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody id="tbody-composicao-carregamento">
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Nenhuma fila adicionada.</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Finalizar Carregamento</h6>
-    </div>
-    <div class="card-body">
-        <p>Após adicionar todas as filas e itens, clique no botão abaixo para rever e confirmar a saída do estoque.</p>
-        <button id="btn-abrir-conferencia" class="btn btn-success btn-lg">
-            <i class="fas fa-check-double me-2"></i> Conferir e Finalizar Carregamento
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">3. Execução (Filas de Carregamento)</h6>
+        <button class="btn btn-success btn-sm" id="btn-adicionar-fila">
+            <i class="fas fa-plus me-1"></i> Adicionar Nova Fila
         </button>
     </div>
+    <div class="card-body">
+        <div id="filas-container">
+        </div>
+    </div>
 </div>
 
-<div class="modal fade" id="modal-gerenciar-fila" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+
+<div class="modal fade" id="modal-add-item-cascata" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Gerenciar Fila Nº <span id="numero-fila-modal">1</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                <h5 class="modal-title">Adicionar Item (Baseado na OE)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <form id="form-add-item-cascata">
+                <div class="modal-body">
+                    <input type="hidden" id="cascata_fila_id" name="cascata_fila_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
 
+                    <div class="mb-3">
+                        <label for="cascata_cliente" class="form-label">1. Cliente (da OE)</label>
+                        <select id="cascata_cliente" name="cascata_cliente_id" class="form-select" style="width: 100%;"
+                            required></select>
+                    </div>
 
-            <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="cascata_produto" class="form-label">2. Produto (da OE)</label>
+                        <select id="cascata_produto" name="cascata_produto_id" class="form-select" style="width: 100%;"
+                            disabled required></select>
+                    </div>
 
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h6 class="card-title">Passo 1: Adicionar Clientes à Fila</h6>
-                        <div class="row align-items-end g-3">
-                            <div class="col-md-8">
-                                <label for="select-cliente-para-fila" class="form-label">Selecione o Cliente</label>
-                                <select id="select-cliente-para-fila" class="form-select" style="width: 100%;"></select>
-                            </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-info w-100" id="btn-adicionar-cliente-a-fila">
-                                    <i class="fas fa-user-plus me-2"></i> Adicionar Cliente
-                                </button>
-                            </div>
+                    <div class="mb-3">
+                        <label for="cascata_lote_endereco" class="form-label">3. Lote / Endereço (da OE)</label>
+                        <select id="cascata_lote_endereco" name="cascata_alocacao_id" class="form-select"
+                            style="width: 100%;" disabled required></select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Saldo Disponível (neste Lote/Endereço)</label>
+                            <input type="text" id="cascata_saldo_display" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cascata_quantidade" class="form-label">4. Quantidade a Carregar</label>
+                            <input type="number" id="cascata_quantidade" name="cascata_quantidade" class="form-control"
+                                step="1" min="1" disabled required>
                         </div>
                     </div>
                 </div>
-                <h6 class="mb-3">Passo 2: Adicionar Produtos para cada Cliente</h6>
-
-                <div class="clientes-container-scroll">
-                    <div id="clientes-e-produtos-container-modal">
-                        <p class="text-muted">Nenhum cliente adicionado a esta fila.</p>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btn-confirmar-add-item-cascata" class="btn btn-primary" disabled>Adicionar
+                        Item</button>
                 </div>
-            </div>
-
-            <style>
-                .clientes-container-scroll {
-                    max-height: 45vh;
-                    /* Define uma altura máxima (45% da altura da tela) */
-                    overflow-y: auto;
-                    /* Adiciona a barra de rolagem vertical apenas quando necessário */
-                    padding: 5px;
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                }
-            </style>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btn-salvar-e-fechar-fila">
-                    <i class="fas fa-check me-2"></i> Concluir e Adicionar Fila ao Carregamento
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<template id="template-card-cliente-modal">
-    <div class="card mb-3 card-cliente-na-fila">
-        <div class="card-header d-flex justify-content-between">
-            <h6 class="m-0 nome-cliente-card"></h6>
-            <button type="button" class="btn-close btn-remover-cliente-da-fila"></button>
-        </div>
-        <div class="card-body">
-
-            <form class="form-adicionar-produto-ao-cliente">
-
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-8">
-                        <label class="form-label">Item do Pool (Produto | Lote | Endereço)</label>
-                        <select class="form-select select-item-do-pool" style="width: 100%;"></select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Quantidade</label>
-                        <input type="number" class="form-control" min="0.001" step="0.001" placeholder="0.000">
-                    </div>
-                    <div class="col-md-2 d-flex">
-                        <button type="submit" class="btn btn-primary w-100" title="Adicionar Item">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                </div>
-
             </form>
-
-            <hr>
-
-            <div class="table-responsive">
-                <table class="table table-sm table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th>PRODUTO | LOTE</th>
-                            <th class="text-end">QUANT.</th>
-                            <th class="text-center">AÇÕES</th>
-                        </tr>
-                    </thead>
-                    <tbody class="lista-produtos-cliente">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</template>
-</template>
-
-<div class="modal fade" id="modal-conferencia-final" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">Conferir e Confirmar Saída de Estoque</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <p>Por favor, confira os itens e quantidades abaixo antes de confirmar a baixa no estoque. Esta ação é
-                    irreversível.</p>
-
-                <div id="aviso-discrepancia-estoque" class="mb-3"></div>
-
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="tabela-resumo-conferencia">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Lote</th>
-                                <th class="text-end">Qtd. no Carregamento (Unidades)</th>
-                                <th class="text-end">Qtd. em Estoque (Unidades)</th>
-                                <th class="text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-resumo-conferencia">
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="form-check form-switch my-3 d-none" id="container-forcar-baixa">
-                    <input class="form-check-input" type="checkbox" id="forcar-baixa-estoque">
-                    <label class="form-check-label fw-bold text-danger" for="forcar-baixa-estoque">
-                        Confirmar e forçar a baixa, mesmo com estoque insuficiente (irá gerar estoque negativo).
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
-                <button type="button" class="btn btn-success" id="btn-confirmar-baixa-estoque">
-                    <i class="fas fa-truck-loading me-2"></i> Confirmar e Dar Baixa no Estoque
-                </button>
-            </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modal-reabrir-carregamento" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">Reabrir Carregamento</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="carregamento-id-reabrir">
-                <p>Você está prestes a reabrir o Carregamento Nº <strong id="carregamento-numero-reabrir">...</strong>.
-                </p>
-                <p>O status voltará para "EM ANDAMENTO", permitindo novas edições.</p>
-                <div class="mb-3">
-                    <label for="motivo-reabertura" class="form-label"><strong>Motivo da Reabertura
-                            (Obrigatório):</strong></label>
-                    <textarea class="form-control" id="motivo-reabertura" rows="4"
-                        placeholder="Ex: Cliente solicitou a adição de mais um produto."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning" id="btn-confirmar-reabertura">Confirmar e Reabrir</button>
-            </div>
-        </div>
-    </div>
+<div class="modal fade" id="modal-adicionar-divergencia" tabindex="-1" aria-hidden="true">
 </div>
 
-<div class="modal fade" id="modal-galeria-fotos" tabindex="-1" aria-labelledby="modalGaleriaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+<div class="modal fade" id="modal-editar-item" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalGaleriaLabel">Fotos da Fila Nº XX</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Editar Quantidade do Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="galeria-modal-body">
-                <p class="text-center">Carregando fotos...</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-            </div>
+            <form id="form-editar-item">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_car_item_id" name="car_item_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+                    <div class="mb-3">
+                        <label class="form-label">Produto</label>
+                        <p id="edit-produto-nome" class="form-control-plaintext bg-light p-2 rounded"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Lote / Endereço</label>
+                        <p id="edit-lote-endereco" class="form-control-plaintext bg-light p-2 rounded"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_quantidade" class="form-label">Nova Quantidade</label>
+                        <input type="number" class="form-control" id="edit_quantidade" name="edit_quantidade" step="1"
+                            min="1" required>
+                        <div id="edit-saldo-info" class="form-text"></div>
+                        <div class="invalid-feedback">A quantidade excede o saldo disponível!</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modal-motivo-divergencia" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="modal-adicionar-divergencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">Justificar Divergência</h5>
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Item por Divergência (Fora da OE)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>Você está adicionando uma quantidade <strong>maior</strong> que o saldo pendente da OE.</p>
-                <p><strong>Item:</strong> <span id="motivo-item-nome" class="fw-bold">...</span></p>
-                <p><strong>Saldo Pendente:</strong> <span id="motivo-saldo-pendente" class="fw-bold">0</span></p>
-                <p><strong>Quantidade Adicionada:</strong> <span id="motivo-qtd-adicionada"
-                        class="fw-bold text-danger">0</span></p>
-                <div class="mb-3">
-                    <label for="motivo-divergencia-texto" class="form-label"><strong>Motivo
-                            (Obrigatório):</strong></label>
-                    <textarea class="form-control" id="motivo-divergencia-texto" rows="3"
-                        placeholder="Ex: Quebra de caixa, troca de lote, solicitação do cliente..."></textarea>
+
+            <form id="form-add-divergencia">
+                <div class="modal-body">
+                    <input type="hidden" id="div_fila_id" name="div_fila_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> Você está adicionando um item que não foi planejado na Ordem de
+                        Expedição.
+                        O motivo é obrigatório.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="div_cliente_id" class="form-label">1. Cliente <span
+                                    class="text-danger">*</span></label>
+                            <select id="div_cliente_id" name="div_cliente_id" class="form-select" style="width: 100%;"
+                                required></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="div_motivo" class="form-label">2. Motivo da Divergência <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" id="div_motivo" name="div_motivo" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <p class="fw-bold">3. Seleção de Estoque Disponível</p>
+
+                    <div class="mb-3">
+                        <label for="div_produto_estoque" class="form-label">Produto</label>
+                        <select id="div_produto_estoque" class="form-select" style="width: 100%;" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="div_lote_estoque" class="form-label">Lote</label>
+                        <select id="div_lote_estoque" class="form-select" style="width: 100%;" disabled
+                            required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="div_endereco_estoque" class="form-label">Endereço</label>
+                        <select id="div_endereco_estoque" name="div_alocacao_id" class="form-select"
+                            style="width: 100%;" disabled required></select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="div_saldo_display" class="form-label">Saldo Físico Disponível</label>
+                            <input type="text" id="div_saldo_display" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="div_quantidade" class="form-label">Quantidade a Adicionar</label>
+                            <input type="number" id="div_quantidade" name="div_quantidade" class="form-control" step="1"
+                                min="1" disabled required>
+                        </div>
+                    </div>
+
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning" id="btn-confirmar-motivo-divergencia">Confirmar e
-                    Adicionar</button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btn-confirmar-add-divergencia" class="btn btn-primary" disabled>Adicionar
+                        Item</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
