@@ -21,20 +21,33 @@ class OrdemExpedicaoRepository
      */
     public function findAllForDataTable(array $params): array
     {
+        /* $baseQuery = "FROM tbl_ordens_expedicao_header oe
+                      JOIN tbl_usuarios u ON oe.oe_usuario_id = u.usu_codigo";*/
+
         $baseQuery = "FROM tbl_ordens_expedicao_header oe
-                      JOIN tbl_usuarios u ON oe.oe_usuario_id = u.usu_codigo";
+                  JOIN tbl_usuarios u ON oe.oe_usuario_id = u.usu_codigo
+                  LEFT JOIN tbl_carregamentos c ON oe.oe_carregamento_id = c.car_id";
 
         $totalRecords = $this->pdo->query("SELECT COUNT(oe.oe_id) FROM tbl_ordens_expedicao_header oe")->fetchColumn();
 
+        /*   $sqlData = "SELECT 
+                           oe.oe_id,
+                           oe.oe_numero,
+                           oe.oe_data,
+                           oe.oe_status,
+                           u.usu_nome AS usuario_nome
+                       $baseQuery 
+                       ORDER BY oe.oe_data DESC, oe.oe_id DESC
+                       LIMIT :start, :length";*/
+
         $sqlData = "SELECT 
-                        oe.oe_id,
-                        oe.oe_numero,
-                        oe.oe_data,
-                        oe.oe_status,
-                        u.usu_nome AS usuario_nome
-                    $baseQuery 
-                    ORDER BY oe.oe_data DESC, oe.oe_id DESC
-                    LIMIT :start, :length";
+                    oe.oe_id, oe.oe_numero, oe.oe_data, oe.oe_status,
+                    oe.oe_carregamento_id,
+                    c.car_numero AS carregamento_numero,
+                    u.usu_nome AS usuario_nome
+                $baseQuery 
+                ORDER BY oe.oe_data DESC, oe.oe_id DESC
+                LIMIT :start, :length";
 
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
@@ -168,7 +181,8 @@ class OrdemExpedicaoRepository
                       JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id";
 
         // Subquery para calcular o total já reservado em outras ordens
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
 
         // Apenas itens com saldo disponível (alocado > reservado)
         $whereClause = " WHERE ea.alocacao_quantidade > {$subQueryReservado}";
@@ -211,7 +225,8 @@ class OrdemExpedicaoRepository
         }
 
         // Validação adicional: Verificar se a quantidade não excede o saldo disponível
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
         $query = "SELECT (ea.alocacao_quantidade - {$subQueryReservado}) AS saldo_disponivel
               FROM tbl_estoque_alocacoes ea
               WHERE ea.alocacao_id = :alocacao_id";
@@ -267,7 +282,8 @@ class OrdemExpedicaoRepository
 
     public function getProdutosDisponiveisParaSelecao(): array
     {
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        //  $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
         $sql = "SELECT DISTINCT
                     p.prod_codigo AS id,
                     CONCAT(p.prod_descricao, ' (Cód: ', p.prod_codigo_interno, ')') AS text
@@ -281,7 +297,8 @@ class OrdemExpedicaoRepository
 
     public function getLotesDisponiveisPorProduto(int $produtoId): array
     {
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
         $sql = "SELECT DISTINCT
                     lne.item_emb_id AS id,
                     CONCAT(lnh.lote_completo_calculado, ' [Saldo Total: ', FORMAT(SUM(ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') AS text
@@ -300,15 +317,16 @@ class OrdemExpedicaoRepository
 
     public function getEnderecosDisponiveisPorLoteItem(int $loteItemId): array
     {
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
         $sql = "SELECT 
-                    ea.alocacao_id AS id,
-                    CONCAT(ee.endereco_completo, ' [Saldo: ', FORMAT((ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') as text,
-                    (ea.alocacao_quantidade - {$subQueryReservado}) as saldo_disponivel
-                FROM tbl_estoque_alocacoes ea
-                JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
-                WHERE ea.alocacao_lote_item_id = :lote_item_id
-                AND ea.alocacao_quantidade > {$subQueryReservado}";
+                     ea.alocacao_id AS id,
+                     CONCAT(ee.endereco_completo, ' [Saldo: ', FORMAT((ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') as text,
+                     (ea.alocacao_quantidade - {$subQueryReservado}) as saldo_disponivel
+                 FROM tbl_estoque_alocacoes ea
+                 JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
+                 WHERE ea.alocacao_lote_item_id = :lote_item_id
+                 AND ea.alocacao_quantidade > {$subQueryReservado}";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':lote_item_id' => $loteItemId]);
@@ -537,7 +555,8 @@ class OrdemExpedicaoRepository
         $params = [];
         $sqlWhereTerm = "";
 
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
 
         // Adiciona o filtro de busca (term) se ele foi enviado
         if (!empty($term)) {
@@ -593,4 +612,81 @@ class OrdemExpedicaoRepository
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Vincula um carregamento a uma OE e atualiza os status.
+     */
+    public function linkCarregamento(int $ordemExpedicaoId, int $carregamentoId): bool
+    {
+        // 1. Marca os itens da OE que foram incluídos neste carregamento como 'CARREGADO'
+        $sqlItens = "UPDATE tbl_ordens_expedicao_itens 
+                     SET oei_status = 'CARREGADO' 
+                     WHERE oei_id IN (
+                         SELECT DISTINCT car_item_oei_id_origem 
+                         FROM tbl_carregamento_itens 
+                         WHERE car_item_carregamento_id = :carregamento_id 
+                         AND car_item_oei_id_origem IS NOT NULL
+                     )";
+        $stmtItens = $this->pdo->prepare($sqlItens);
+        $stmtItens->execute([':carregamento_id' => $carregamentoId]);
+
+        // 2. Atualiza o cabeçalho da OE para 'GEROU CARREGAMENTO' e salva o ID do carregamento
+        $sqlHeader = "UPDATE tbl_ordens_expedicao_header 
+                      SET oe_status = 'GEROU CARREGAMENTO', 
+                          oe_carregamento_id = :carregamento_id 
+                      WHERE oe_id = :oe_id";
+        $stmtHeader = $this->pdo->prepare($sqlHeader);
+        return $stmtHeader->execute([
+            ':carregamento_id' => $carregamentoId,
+            ':oe_id' => $ordemExpedicaoId
+        ]);
+    }
+
+    /**
+     * Exclui uma Ordem de Expedição completa (header, pedidos e itens).
+     * Apenas OEs com status 'EM ELABORAÇÃO' podem ser excluídas.
+     */
+    public function delete(int $ordemId): bool
+    {
+        // 1. Verifica se a OE pode ser excluída
+        $stmtCheck = $this->pdo->prepare("SELECT oe_status FROM tbl_ordens_expedicao_header WHERE oe_id = :id");
+        $stmtCheck->execute([':id' => $ordemId]);
+        $status = $stmtCheck->fetchColumn();
+
+        if ($status !== 'EM ELABORAÇÃO') {
+            throw new \Exception("Apenas Ordens de Expedição 'EM ELABORAÇÃO' podem ser excluídas.");
+        }
+
+        // 2. Inicia uma transação para garantir que tudo seja excluído
+        $this->pdo->beginTransaction();
+        try {
+            // Pega todos os IDs de pedidos (oep_id) desta OE
+            $stmtPedidos = $this->pdo->prepare("SELECT oep_id FROM tbl_ordens_expedicao_pedidos WHERE oep_ordem_id = :id");
+            $stmtPedidos->execute([':id' => $ordemId]);
+            $pedidoIds = $stmtPedidos->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($pedidoIds)) {
+                // Deleta todos os itens associados a esses pedidos
+                $inQuery = implode(',', array_fill(0, count($pedidoIds), '?'));
+                $stmtItens = $this->pdo->prepare("DELETE FROM tbl_ordens_expedicao_itens WHERE oei_pedido_id IN ($inQuery)");
+                $stmtItens->execute($pedidoIds);
+            }
+
+            // Deleta os pedidos
+            $stmtPedidosDelete = $this->pdo->prepare("DELETE FROM tbl_ordens_expedicao_pedidos WHERE oep_ordem_id = :id");
+            $stmtPedidosDelete->execute([':id' => $ordemId]);
+
+            // Finalmente, deleta o cabeçalho
+            $stmtHeader = $this->pdo->prepare("DELETE FROM tbl_ordens_expedicao_header WHERE oe_id = :id");
+            $stmtHeader->execute([':id' => $ordemId]);
+
+            $this->pdo->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->pdo->rollBack();
+            throw $e; // Re-lança a exceção para o controller
+        }
+    }
 }
+
+

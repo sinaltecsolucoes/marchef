@@ -272,7 +272,6 @@ switch ($action) {
         salvarCaixaMista($loteNovoRepo, $_SESSION['codUsuario']);
         break;
 
-
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
         salvarPermissoes($permissionRepo);
@@ -360,7 +359,7 @@ switch ($action) {
     case 'adicionarItemCarregamento':
         adicionarItemCarregamento($carregamentoRepo);
         break;
-    case 'getCarregamentoDetalhes': // Para recarregar os dados
+    case 'getCarregamentoDetalhes':
         getCarregamentoDetalhes($carregamentoRepo);
         break;
     case 'adicionarFila':
@@ -399,6 +398,9 @@ switch ($action) {
     case 'getFotosDaFila':
         getFotosDaFila($carregamentoRepo);
         break;
+    case 'addFotoFila':
+        addFotoFila($carregamentoRepo);
+        break;
     case 'salvarFilaDoPool':
         salvarFilaDoPool($carregamentoRepo);
         break;
@@ -420,11 +422,9 @@ switch ($action) {
     case 'addItemCarregamentoFromOE':
         addItemCarregamentoFromOE($carregamentoRepo);
         break;
-    case 'addItemCarregamentoDivergencia':
-        addItemCarregamentoDivergencia($carregamentoRepo);
-        break;
     case 'finalizarCarregamento':
-        finalizarCarregamento($carregamentoRepo);
+        // Adicionamos o $ordemExpedicaoRepo como segundo parâmetro
+        finalizarCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'updateCarregamentoHeader':
         updateCarregamentoHeader($carregamentoRepo);
@@ -438,9 +438,6 @@ switch ($action) {
     case 'getLotesDoProdutoNaOE':
         getLotesDoProdutoNaOE($carregamentoRepo);
         break;
-    case 'addItemCascata':
-        addItemCascata($carregamentoRepo);
-        break;
     case 'removeClienteFromFila':
         removeClienteFromFila($carregamentoRepo);
         break;
@@ -450,9 +447,16 @@ switch ($action) {
     case 'updateCarregamentoItemQuantidade':
         updateCarregamentoItemQuantidade($carregamentoRepo);
         break;
-    case 'addItemCarregamentoDivergencia':
-        addItemCarregamentoDivergencia($carregamentoRepo);
+    case 'addItemCarregamento':
+        addItemCarregamento($carregamentoRepo);
         break;
+    case 'getEnderecosParaCarregamentoPorLoteItem':
+        getEnderecosParaCarregamentoPorLoteItem($carregamentoRepo);
+        break;
+    case 'getLotesParaCarregamentoPorProduto':
+        getLotesParaCarregamentoPorProduto($carregamentoRepo);
+        break;
+
 
     // --- ROTAS PARA O DASHBOARD (KPIs) ---
     case 'getKpiLotesAtivos':
@@ -583,6 +587,9 @@ switch ($action) {
         break;
     case 'getOrdensParaFaturamentoSelect':
         getOrdensParaFaturamentoSelect($ordemExpedicaoRepo);
+        break;
+    case 'excluirOrdemExpedicao':
+        excluirOrdemExpedicao($ordemExpedicaoRepo);
         break;
 
 
@@ -1703,19 +1710,6 @@ function getProximoNumeroCarregamento(CarregamentoRepository $repo)
     }
 }
 
-/* function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
-{
-    // A lógica de salvar (criar ou editar) já está a ser preparada no repositório.
-    try {
-        $newId = $repo->createHeader($_POST, $userId);
-        echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamento_id' => $newId]);
-    } catch (Exception $e) {
-        error_log("Erro em salvarCarregamentoHeader: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o carregamento.']);
-    }
-} */
-
-
 function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
 {
     try {
@@ -1748,20 +1742,6 @@ function adicionarItemCarregamento(CarregamentoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-
-/* function removerItemCarregamento(CarregamentoRepository $repo)
-{
-    try {
-        $carItemId = filter_input(INPUT_POST, 'car_item_id', FILTER_VALIDATE_INT);
-        if (!$carItemId)
-            throw new Exception("ID do item inválido.");
-
-        $repo->removerItem($carItemId);
-        echo json_encode(['success' => true]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-} */
 
 function getDadosConferencia(CarregamentoRepository $repo)
 {
@@ -2016,6 +1996,21 @@ function getFotosDaFila(CarregamentoRepository $repo)
     }
 }
 
+function addFotoFila(CarregamentoRepository $repo)
+{
+    try {
+        // Chama a nova função 'addFotos' que processa múltiplos arquivos
+        $count = $repo->addFotos($_POST, $_FILES);
+
+        // Retorna uma mensagem com a contagem de fotos salvas
+        echo json_encode(['success' => true, 'message' => "{$count} foto(s) salva(s) com sucesso!"]);
+
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 function salvarFilaDoPool(CarregamentoRepository $repo)
 {
     try {
@@ -2080,6 +2075,47 @@ function updateCarregamentoItemQuantidade(CarregamentoRepository $repo)
 
         $repo->updateCarregamentoItemQuantidade($id, $qtd);
         echo json_encode(['success' => true, 'message' => 'Quantidade atualizada.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getEnderecosParaCarregamentoPorLoteItem(CarregamentoRepository $repo)
+{
+    // ### Buscar os dois IDs ###
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+
+    if (!$loteId || !$produtoId) { // Precisa dos dois
+        echo json_encode(['results' => []]);
+        return;
+    }
+
+    // ### MUDANÇA: Passa os dois IDs ###
+    echo json_encode(['results' => $repo->getEnderecosParaCarregamentoPorLoteItem($loteId, $produtoId)]);
+}
+
+function getLotesParaCarregamentoPorProduto(CarregamentoRepository $repo)
+{
+    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+    if (!$produtoId) {
+        echo json_encode(['results' => []]);
+        return;
+    }
+    // Chama a nova função do CarregamentoRepository
+    echo json_encode(['results' => $repo->getLotesParaCarregamentoPorProduto($produtoId)]);
+}
+
+function finalizarCarregamento(CarregamentoRepository $carregamentoRepo, OrdemExpedicaoRepository $ordemExpedicaoRepo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+
+        // Passamos o segundo repositório para a função
+        $carregamentoRepo->finalizar($id, $ordemExpedicaoRepo);
+        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -2167,26 +2203,19 @@ function addItemCarregamentoFromOE(CarregamentoRepository $repo)
     }
 }
 
-function addItemCarregamentoDivergencia(CarregamentoRepository $repo)
+function addItemCarregamento(CarregamentoRepository $repo)
 {
     try {
-        $id = $repo->addItemDivergencia($_POST);
-        echo json_encode(['success' => true, 'item_id' => $id]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}
+        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        if (!$carregamentoId) {
+            throw new Exception("ID do Carregamento não foi enviado.");
+        }
 
-function finalizarCarregamento(CarregamentoRepository $repo)
-{
-    try {
-        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        if (!$id)
-            throw new Exception("ID inválido.");
-
-        $repo->finalizar($id);
-        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado.']);
+        // Esta linha é modificada para passar o ID lido do POST
+        $novoItemId = $repo->addItemCarregamento($_POST, $carregamentoId);
+        echo json_encode(['success' => true, 'item_id' => $novoItemId, 'message' => 'Item adicionado com sucesso!']);
     } catch (Exception $e) {
+        http_response_code(400); // Erro de regra de negócio
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
@@ -2235,25 +2264,6 @@ function getLotesDoProdutoNaOE(CarregamentoRepository $repo)
         return;
     }
     echo json_encode(['results' => $repo->getLotesDoProdutoNaOE($oeId, $clienteId, $produtoId, $carregamentoId)]);
-}
-
-function addItemCascata(CarregamentoRepository $repo)
-{
-    try {
-        // O carregamentoId está na URL, não no POST do formulário
-        $urlParams = [];
-        parse_str($_SERVER['HTTP_REFERER'] ?? '', $urlParams);
-        $carregamentoId = $urlParams['id'] ?? 0;
-
-        if (empty($carregamentoId)) {
-            throw new Exception("ID do Carregamento não encontrado na URL.");
-        }
-
-        $id = $repo->addItemCascata($_POST, (int) $carregamentoId);
-        echo json_encode(['success' => true, 'item_id' => $id]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
 }
 
 function removeClienteFromFila(CarregamentoRepository $repo)
@@ -2742,6 +2752,21 @@ function salvarOrdemClientes(OrdemExpedicaoRepository $repo)
         echo json_encode(['success' => true, 'message' => 'Ordem de carregamento salva com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Erro ao salvar a ordem: ' . $e->getMessage()]);
+    }
+}
+
+function excluirOrdemExpedicao(OrdemExpedicaoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'oe_id', FILTER_VALIDATE_INT);
+        if (!$id) {
+            throw new Exception("ID da Ordem de Expedição inválido.");
+        }
+        $repo->delete($id);
+        echo json_encode(['success' => true, 'message' => 'Ordem de Expedição excluída com sucesso!']);
+    } catch (Exception $e) {
+        // Captura erros, incluindo a validação de status
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 

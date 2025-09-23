@@ -113,63 +113,6 @@
     </div>
 </div>
 
-
-<div class="modal fade" id="modal-add-item-cascata" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Adicionar Item (Baseado na OE)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="form-add-item-cascata">
-                <div class="modal-body">
-                    <input type="hidden" id="cascata_fila_id" name="cascata_fila_id">
-                    <input type="hidden" name="csrf_token"
-                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-
-                    <div class="mb-3">
-                        <label for="cascata_cliente" class="form-label">1. Cliente (da OE)</label>
-                        <select id="cascata_cliente" name="cascata_cliente_id" class="form-select" style="width: 100%;"
-                            required></select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="cascata_produto" class="form-label">2. Produto (da OE)</label>
-                        <select id="cascata_produto" name="cascata_produto_id" class="form-select" style="width: 100%;"
-                            disabled required></select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="cascata_lote_endereco" class="form-label">3. Lote / Endereço (da OE)</label>
-                        <select id="cascata_lote_endereco" name="cascata_alocacao_id" class="form-select"
-                            style="width: 100%;" disabled required></select>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Saldo Disponível (neste Lote/Endereço)</label>
-                            <input type="text" id="cascata_saldo_display" class="form-control" readonly>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="cascata_quantidade" class="form-label">4. Quantidade a Carregar</label>
-                            <input type="number" id="cascata_quantidade" name="cascata_quantidade" class="form-control"
-                                step="1" min="1" disabled required>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" id="btn-confirmar-add-item-cascata" class="btn btn-primary" disabled>Adicionar
-                        Item</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modal-adicionar-divergencia" tabindex="-1" aria-hidden="true">
-</div>
-
 <div class="modal fade" id="modal-editar-item" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -208,79 +151,125 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-adicionar-divergencia" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modal-adicionar-item-carregamento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Adicionar Item por Divergência (Fora da OE)</h5>
+                <h5 class="modal-title">Adicionar Item à Fila</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
-            <form id="form-add-divergencia">
+            <form id="form-adicionar-item">
                 <div class="modal-body">
-                    <input type="hidden" id="div_fila_id" name="div_fila_id">
+                    <input type="hidden" id="item_fila_id" name="item_fila_id">
+                    <input type="hidden" id="item_oei_id_origem" name="item_oei_id_origem">
                     <input type="hidden" name="csrf_token"
                         value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
 
-                    <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Atenção:</strong> Você está adicionando um item que não foi planejado na Ordem de
-                        Expedição.
-                        O motivo é obrigatório.
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="div_cliente_id" class="form-label">1. Cliente <span
-                                    class="text-danger">*</span></label>
-                            <select id="div_cliente_id" name="div_cliente_id" class="form-select" style="width: 100%;"
-                                required></select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="div_motivo" class="form-label">2. Motivo da Divergência <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" id="div_motivo" name="div_motivo" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <hr class="my-3">
-
-                    <p class="fw-bold">3. Seleção de Estoque Disponível</p>
-
                     <div class="mb-3">
-                        <label for="div_produto_estoque" class="form-label">Produto</label>
-                        <select id="div_produto_estoque" class="form-select" style="width: 100%;" required></select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="div_lote_estoque" class="form-label">Lote</label>
-                        <select id="div_lote_estoque" class="form-select" style="width: 100%;" disabled
+                        <label for="item_cliente_id" class="form-label">1. Cliente <span
+                                class="text-danger">*</span></label>
+                        <select id="item_cliente_id" name="item_cliente_id" class="form-select" style="width: 100%;"
                             required></select>
                     </div>
-                    <div class="mb-3">
-                        <label for="div_endereco_estoque" class="form-label">Endereço</label>
-                        <select id="div_endereco_estoque" name="div_alocacao_id" class="form-select"
-                            style="width: 100%;" disabled required></select>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="item_produto_id" class="form-label">2. Produto <span
+                                    class="text-danger">*</span></label>
+                            <select id="item_produto_id" name="item_produto_id" class="form-select" style="width: 100%;"
+                                disabled required></select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="item_lote_id" class="form-label">3. Lote <span
+                                    class="text-danger">*</span></label>
+                            <select id="item_lote_id" name="item_lote_id" class="form-select" style="width: 100%;"
+                                disabled required></select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="item_alocacao_id" class="form-label">4. Endereço <span
+                                    class="text-danger">*</span></label>
+                            <select id="item_alocacao_id" name="item_alocacao_id" class="form-select"
+                                style="width: 100%;" disabled required></select>
+                        </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="div_saldo_display" class="form-label">Saldo Físico Disponível</label>
-                            <input type="text" id="div_saldo_display" class="form-control" readonly>
+                        <div class="col-md-4 mb-3">
+                            <label for="item_saldo_display" class="form-label">Saldo Disponível</label>
+                            <input type="text" id="item_saldo_display" class="form-control" readonly>
+                            <div id="item_helper_text" class="form-text"></div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="div_quantidade" class="form-label">Quantidade a Adicionar</label>
-                            <input type="number" id="div_quantidade" name="div_quantidade" class="form-control" step="1"
-                                min="1" disabled required>
+                        <div class="col-md-4 mb-3">
+                            <label for="item_quantidade" class="form-label">5. Quantidade a Carregar <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" id="item_quantidade" name="item_quantidade" class="form-control"
+                                step="1" min="1" disabled required>
                         </div>
+                    </div>
+
+                    <div class="mb-3" id="container-motivo-divergencia" style="display: none;">
+                        <label for="item_motivo_divergencia" class="form-label">6. Motivo da Divergência <span
+                                class="text-danger">*</span></label>
+                        <input type="text" id="item_motivo_divergencia" name="item_motivo_divergencia"
+                            class="form-control" placeholder="Item não planejado na OE. Descreva o motivo.">
                     </div>
 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" id="btn-confirmar-add-divergencia" class="btn btn-primary" disabled>Adicionar
+                    <button type="submit" id="btn-confirmar-add-item" class="btn btn-primary" disabled>Adicionar
                         Item</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-adicionar-foto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Foto à Fila</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-adicionar-foto" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="foto_fila_id" name="foto_fila_id">
+                    <input type="hidden" name="csrf_token"
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+
+                    <div class="mb-3">
+                        <label for="foto_upload" class="form-label">Selecionar Imagem(ns) (JPG, PNG)</label>
+                        <input class="form-control" type="file" id="foto_upload" name="foto_upload[]"
+                            accept="image/jpeg, image/png" required multiple>
+                    </div>
+
+                    <div class="mb-3" id="foto-preview-container" style="display: none;">
+                        <label class="form-label">Pré-visualização:</label>
+                        <img id="foto-preview" src="#" alt="Preview" class="img-fluid rounded" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Foto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-visualizar-fotos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="visualizar-fotos-titulo">Fotos da Fila</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="fotos-preview-container" class="row">
+                </div>
+            </div>
         </div>
     </div>
 </div>

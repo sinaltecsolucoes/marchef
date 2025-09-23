@@ -13,6 +13,7 @@
                 <th>Nº da Ordem</th>
                 <th>Data</th>
                 <th>Status</th>
+                <th>Nº Carregamento</th>
                 <th>Criado por</th>
                 <th class="text-center">Ações</th>
             </tr>
