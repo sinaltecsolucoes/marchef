@@ -48,44 +48,46 @@ try {
     <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/img/icone_2.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/relatorios.css" rel="stylesheet">
-    <link href="libs/lightbox2/dist/css/lightbox.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
 </head>
 
 <body>
     <div class="container report-container">
 
-        <div class="report-header">
-            <div class="row align-items-center">
+        <div class="report-header border-bottom pb-3 mb-4">
+            <div class="row">
                 <div class="col-3">
                     <img src="img/logo_marchef.png" alt="Logo" style="max-width: 150px;">
                 </div>
+
                 <div class="col-9">
-                    <h4 class="mb-1">Relatório de Carregamento</h4>
-                    <p class="mb-0"><strong>Nº Carregamento:</strong>
-                        <?php echo htmlspecialchars($header['car_numero']); ?></p>
-                    <p class="mb-0"><strong>Data:</strong>
-                        <?php echo (new DateTime($header['car_data']))->format('d/m/Y'); ?></p>
-                    <p class="mb-0"><strong>OE Origem:</strong>
-                        <?php echo htmlspecialchars($header['oe_numero'] ?: 'N/A'); ?></p>
-                    <p class="mb-0"><strong>Motorista:</strong>
-                        <?php echo htmlspecialchars($header['car_motorista_nome'] ?: 'N/A'); ?> |
-                        <strong>Placa:</strong> <?php echo htmlspecialchars($header['car_placas'] ?: 'N/A'); ?></p>
+                    <div>
+                        <h4 class="mb-1">Relatório de Carregamento</h4>
+                        <p class="mb-0"><strong>Nº Carregamento:</strong>
+                            <?php echo htmlspecialchars($header['car_numero']); ?></p>
+                        <p class="mb-0"><strong>Data:</strong>
+                            <?php echo (new DateTime($header['car_data']))->format('d/m/Y'); ?></p>
+                        <p class="mb-0"><strong>OE Origem:</strong>
+                            <?php echo htmlspecialchars($header['oe_numero'] ?: 'N/A'); ?></p>
+                        <p class="mb-0"><strong>Motorista:</strong>
+                            <?php echo htmlspecialchars($header['car_motorista_nome'] ?: 'N/A'); ?> |
+                            <strong>Placa:</strong> <?php echo htmlspecialchars($header['car_placas'] ?: 'N/A'); ?>
+                        </p>
+                    </div>
+
+                    <div class="mt-3">
+                        <button class="btn btn-primary no-print" onclick="window.print()">
+                            <i class="fas fa-print"></i> Imprimir / Salvar PDF
+                        </button>
+                    </div>
                 </div>
             </div>
-
-            <div class="mt-3">
-                <button class="btn btn-primary no-print" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir / Salvar PDF
-                </button>
-            </div>
         </div>
-
         <?php foreach ($filas as $fila): ?>
             <div class="fila-container my-4">
-                <h5 class="fila-title">Fila <?php echo $fila['fila_numero']; ?></h5>
-
-                <h6>Itens Carregados:</h6>
-
+                <h6 class="fila-title">Fila <?php echo $fila['fila_numero']; ?>- Itens Carregados</h6>
                 <?php
                 // --- INÍCIO DA NOVA LÓGICA DE PROCESSAMENTO DE DADOS ---
             
@@ -114,8 +116,8 @@ try {
                         <tr>
                             <th style="width: 20%;" class="text-center align-middle">Cliente</th>
                             <th style="width: 10%;" class="text-center align-middle">Cód. Interno</th>
-                            <th style="width: 25%;" class="text-center align-middle">Produto</th>
-                            <th style="width: 15%;" class="text-center align-middle">Lote</th>
+                            <th style="width: 28%;" class="text-center align-middle">Produto</th>
+                            <th style="width: 12%;" class="text-center align-middle">Lote</th>
                             <th style="width: 5%;" class="text-center align-middle">Qtd.</th>
                             <th style="width: 25%;" class="text-center align-middle">Divergência (Motivo)</th>
                         </tr>
@@ -203,8 +205,9 @@ try {
         <?php endif; ?>
     </div>
 
-    <script src="libs/jquery/jquery-3.7.1.min.js"></script>
-    <script src="libs/lightbox2/dist/js/lightbox.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+
 </body>
 
 </html>

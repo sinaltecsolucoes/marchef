@@ -139,6 +139,7 @@ try {
         'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php',
         'ordens_expedicao' => 'ordens_expedicao/lista_ordens_expedicao.php',
         'ordem_expedicao_detalhes' => 'ordens_expedicao/detalhes_ordem_expedicao.php',
+        'ordem_expedicao_relatorio' => 'ordens_expedicao/ordem_expedicao_relatorio.php', 
         'condicoes_pagamento' => 'condicao_pagamento/lista_condicoes_pagamento.php',
         'faturamentos_listar' => 'faturamento/lista_faturamentos.php',
         'faturamento_gerar' => 'faturamento/gerar_resumo.php',
@@ -146,6 +147,8 @@ try {
         'relatorio_faturamento_excel' => 'faturamento/relatorio_faturamento_excel.php',
         'gestao_caixas_mistas' => 'lotes_novo/gestao_caixas_mistas.php',
         'carregamento_relatorio' => 'carregamentos/carregamento_relatorio.php',
+        
+
     ];
 
     $pageType = '';
@@ -201,6 +204,7 @@ try {
         'relatorio_faturamento',
         'relatorio_faturamento_excel',
         'carregamento_relatorio',
+        'ordem_expedicao_relatorio',
         // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
     ];
 
