@@ -350,8 +350,12 @@ switch ($action) {
     case 'reativarCarregamento':
         reativarCarregamento($carregamentoRepo);
         break;
-    case 'reabrirCarregamento':
+    /* case 'reabrirCarregamento':
         reabrirCarregamento($carregamentoRepo);
+        break;*/
+    case 'reabrirCarregamento':
+        // Adicionamos o $ordemExpedicaoRepo
+        reabrirCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'getOrdensParaCarregamentoSelect':
         getOrdensParaCarregamentoSelect($ordemExpedicaoRepo);
@@ -456,7 +460,9 @@ switch ($action) {
     case 'getLotesParaCarregamentoPorProduto':
         getLotesParaCarregamentoPorProduto($carregamentoRepo);
         break;
-
+    case 'getResumoParaFinalizar':
+        getResumoParaFinalizar($carregamentoRepo);
+        break;
 
     // --- ROTAS PARA O DASHBOARD (KPIs) ---
     case 'getKpiLotesAtivos':
@@ -629,6 +635,21 @@ switch ($action) {
     case 'salvarDadosTransporte':
         salvarDadosTransporte($faturamentoRepo);
         break;
+    case 'excluirFaturamento':
+        excluirFaturamento($faturamentoRepo);
+        break;
+    case 'marcarComoFaturado':
+        marcarComoFaturado($faturamentoRepo);
+        break;
+    case 'getGruposDeNotaParaFaturamento':
+        getGruposDeNotaParaFaturamento($faturamentoRepo);
+        break;
+    case 'cancelarFaturamento':
+        cancelarFaturamento($faturamentoRepo);
+        break;
+    case 'reabrirFaturamento':
+        reabrirFaturamento($faturamentoRepo);
+        break;
 
     // --- ROTAS DE CADASTRO - CONDIÇÕES DE PAGAMENTO ---
     case 'listarCondicoesPagamento':
@@ -720,7 +741,6 @@ function getProdutoOptions(ProdutoRepository $repo)
 {
     $tipo = $_GET['tipo_embalagem'] ?? 'Todos';
     $term = $_GET['term'] ?? '';
-    // echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo)]);
     echo json_encode(['success' => true, 'data' => $repo->getProdutoOptions($tipo, $term)]);
 }
 
@@ -824,7 +844,6 @@ function listarEnderecos(EntidadeRepository $repo)
 
 function getEndereco(EntidadeRepository $repo)
 {
-    // CORREÇÃO: Ler do POST e usar o nome de campo correto 'end_codigo'.
     $id = filter_input(INPUT_POST, 'end_codigo', FILTER_VALIDATE_INT);
 
     if (!$id) {
@@ -876,13 +895,9 @@ function getFornecedorOptions(EntidadeRepository $repo)
 
 function getClienteOptions(EntidadeRepository $repo)
 {
-    // echo json_encode(['success' => true, 'data' => $repo->getClienteOptions()]);
-
-    $term = $_GET['term'] ?? ''; // <-- ADICIONADO: Lê o termo de busca
-    // Retorna direto o array {data: [...]} (precisamos do 'success'?)
-    // O Select2 espera {results: [...]}. Vamos formatar corretamente.
-    $data = $repo->getClienteOptions($term); // <-- ADICIONADO: Passa o termo
-    echo json_encode(['data' => $data]); // JS está esperando data.data
+    $term = $_GET['term'] ?? '';
+    $data = $repo->getClienteOptions($term);
+    echo json_encode(['data' => $data]);
 }
 
 function getTransportadoraOptions(EntidadeRepository $repo)
@@ -1182,13 +1197,12 @@ function salvarLoteNovoHeader(LoteNovoRepository $repo, int $userId)
 
 function buscarLoteNovo(LoteNovoRepository $repo)
 {
-    // Corrigido para esperar por 'lote_id'
     $id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'ID inválido']);
         return;
     }
-    // Corrigido para chamar o novo método 'findLoteNovoCompleto'
+
     $lote = $repo->findLoteNovoCompleto($id);
     echo json_encode(['success' => !!$lote, 'data' => $lote]);
 }
@@ -1476,8 +1490,6 @@ function imprimirEtiquetaLoteItem(PDO $pdo)
         // 2. Chama o serviço de etiquetas (que precisará ser adaptado)
         $labelService = new App\Labels\LabelService($pdo);
 
-        // NOTA: A função 'gerarZplParaItemLote' será a nossa próxima tarefa.
-        // Ela receberá o tipo e o id para saber qual tabela consultar.
         $labelData = $labelService->gerarZplParaItemLote($itemId, $itemType, $clienteId);
 
         if ($labelData === null || empty($labelData['zpl'])) {
@@ -1683,7 +1695,7 @@ function criarBackup()
         $dbConfig = require __DIR__ . '/../config/database.php';
 
         // 2. Passa a configuração para o serviço ao criá-lo (Injeção de Dependência).
-        $backupService = new \App\Core\BackupService($dbConfig);
+        $backupService = new BackupService($dbConfig);
         $filename = $backupService->gerarBackup();
 
         echo json_encode(['success' => true, 'filename' => $filename]);
@@ -1931,7 +1943,7 @@ function reativarCarregamento(CarregamentoRepository $repo)
     }
 }
 
-function reabrirCarregamento(CarregamentoRepository $repo)
+/* function reabrirCarregamento(CarregamentoRepository $repo)
 {
     try {
         $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -1940,6 +1952,22 @@ function reabrirCarregamento(CarregamentoRepository $repo)
             throw new Exception("Dados inválidos para reabertura.");
         }
         $repo->reabrir($id, $motivo);// <-- Passa o motivo
+        echo json_encode(['success' => true, 'message' => 'Carregamento reaberto com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+} */
+
+function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, \App\OrdensExpedicao\OrdemExpedicaoRepository $ordemExpedicaoRepo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+        $motivo = trim($_POST['motivo'] ?? '');
+        if (!$id || empty($motivo)) {
+            throw new Exception("Dados inválidos para reabertura.");
+        }
+        // Passa o repositório da OE para a função
+        $carregamentoRepo->reabrir($id, $motivo, $ordemExpedicaoRepo);
         echo json_encode(['success' => true, 'message' => 'Carregamento reaberto com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2091,7 +2119,6 @@ function getEnderecosParaCarregamentoPorLoteItem(CarregamentoRepository $repo)
         return;
     }
 
-    // ### MUDANÇA: Passa os dois IDs ###
     echo json_encode(['results' => $repo->getEnderecosParaCarregamentoPorLoteItem($loteId, $produtoId)]);
 }
 
@@ -2102,7 +2129,7 @@ function getLotesParaCarregamentoPorProduto(CarregamentoRepository $repo)
         echo json_encode(['results' => []]);
         return;
     }
-    // Chama a nova função do CarregamentoRepository
+    // Chama a função do CarregamentoRepository
     echo json_encode(['results' => $repo->getLotesParaCarregamentoPorProduto($produtoId)]);
 }
 
@@ -2280,6 +2307,15 @@ function removeClienteFromFila(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function getResumoParaFinalizar(CarregamentoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
+    if (!$id) { /* tratamento de erro */
+    }
+    $resumo = $repo->getResumoParaFinalizacao($id);
+    echo json_encode(['success' => true, 'data' => $resumo]);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA O DASHBOARD (KPIs) ---
@@ -2514,20 +2550,19 @@ function excluirEnderecoCamaras(EnderecoRepository $repo)
     }
 }
 
-
 function alocarItemEndereco(EnderecoRepository $repo)
 {
     try {
         $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
         $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
-        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT); // <-- NOVO
+        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
         $usuarioId = $_SESSION['codUsuario'] ?? null;
 
-        if (!$enderecoId || !$loteItemId || !$quantidade || !$usuarioId) { // <-- NOVO
+        if (!$enderecoId || !$loteItemId || !$quantidade || !$usuarioId) {
             throw new Exception("Dados insuficientes (endereço, item, quantidade e usuário são obrigatórios).");
         }
 
-        if ($repo->alocarItem($enderecoId, $loteItemId, $quantidade, $usuarioId)) { // <-- NOVO
+        if ($repo->alocarItem($enderecoId, $loteItemId, $quantidade, $usuarioId)) {
             echo json_encode(['success' => true, 'message' => 'Item alocado com sucesso!']);
         } else {
             throw new Exception('Não foi possível alocar o item.');
@@ -2537,6 +2572,7 @@ function alocarItemEndereco(EnderecoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
 function desalocarItemEndereco(EnderecoRepository $repo)
 {
     try {
@@ -2892,6 +2928,70 @@ function salvarDadosTransporte(FaturamentoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
+function excluirFaturamento(FaturamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+        $repo->delete($id);
+        echo json_encode(['success' => true, 'message' => 'Faturamento excluído com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function marcarComoFaturado(FaturamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+        $notasJson = $_POST['notas'] ?? '[]';
+        $notas = json_decode($notasJson, true);
+        if (!$id || !is_array($notas))
+            throw new Exception("Dados inválidos.");
+        $repo->marcarComoFaturado($id, $notas);
+        echo json_encode(['success' => true, 'message' => 'Faturamento marcado como "Faturado" com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getGruposDeNotaParaFaturamento(FaturamentoRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+    if (!$id) { /* tratamento de erro */
+    }
+    $grupos = $repo->getGruposDeNotaParaFaturamento($id);
+    echo json_encode(['success' => true, 'data' => $grupos]);
+}
+
+function cancelarFaturamento(FaturamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+        $repo->cancelar($id);
+        echo json_encode(['success' => true, 'message' => 'Faturamento cancelado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function reabrirFaturamento(FaturamentoRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'resumo_id', FILTER_VALIDATE_INT);
+        if (!$id)
+            throw new Exception("ID inválido.");
+        $repo->reabrir($id);
+        echo json_encode(['success' => true, 'message' => 'Faturamento reaberto com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 
 // --- FUNÇÕES DE CONTROLE PARA CONDIÇÕES DE PAGAMENTO ---
 

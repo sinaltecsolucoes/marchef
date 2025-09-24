@@ -46,7 +46,7 @@ $(document).ready(function () {
         carregarPreview(ordemId);
     });
 
-    $btnGerar.on('click', function () {
+    $btnGerar.on('click', function () { 
         const ordemId = $selectOrdem.val();
         if (!ordemId) {
             notificacaoErro('Erro', 'Nenhuma Ordem de Expedição selecionada.');
@@ -108,41 +108,54 @@ $(document).ready(function () {
                     const header = response.data.header;
                     const gruposFazenda = response.data.grupos_fazenda;
 
-                    // 1. Preenche o subtítulo (como antes)
+                    // 1. Preenche o subtítulo e o card de transporte (sem alteração)
                     if (header && header.ordem_expedicao_numero) {
                         $('#ordem-origem-display')
                             .html(`Origem: <strong class="text-dark">Ordem Nº ${header.ordem_expedicao_numero}</strong>`)
                             .show();
                     }
-
-                    // 2. MOSTRA E PREENCHE O CARD DE TRANSPORTE
                     $('#card-transporte').show();
                     $('#fat_resumo_id_transporte').val(header.fat_id);
                     $('#fat_motorista_nome').val(header.fat_motorista_nome);
+                    $('#fat_motorista_cpf').mask('000.000.000-00').val(header.fat_motorista_cpf).trigger('input');
+                    $('#fat_veiculo_placa').val(header.fat_veiculo_placa);
 
-                    // REFINAMENTO 2 (Máscara do CPF): Adiciona .trigger('input')
-                    $('#fat_motorista_cpf').val(header.fat_motorista_cpf).trigger('input');
-
-                    $('#fat_veiculo_placa').val(header.fat_veiculo_placa).trigger('input'); // Adicionamos trigger aqui tbm
-
-                    // REFINAMENTO 4 (Texto do Botão): Verifica se já há dados salvos
-                    if (header.fat_transportadora_id || header.fat_motorista_nome) {
-                        $('#form-transporte button[type="submit"]').text('Atualizar Dados de Transporte');
-                    } else {
-                        $('#form-transporte button[type="submit"]').text('Salvar Dados de Transporte');
-                    }
-
-                    // Preenche o Select2 da transportadora (como antes)
                     if (header.fat_transportadora_id) {
-                        const transpNome = header.transportadora_nome || header.transportadora_razao || 'Carregando...';
+                        const transpNome = header.transportadora_nome || 'Carregando...';
                         const option = new Option(transpNome, header.fat_transportadora_id, true, true);
                         $('#select-transportadora').append(option).trigger('change');
                     } else {
                         $('#select-transportadora').val(null).trigger('change');
                     }
 
-                    // 3. Constrói a tabela principal (como antes)
+                    // 2. Constrói a tabela principal PRIMEIRO
                     construirTabelaFaturamentoEdicao(gruposFazenda);
+
+                    // 3. APLICA O BLOQUEIO DEPOIS QUE TUDO FOI RENDERIZADO
+                    if (header.fat_status === 'FATURADO') {
+                        // ### INÍCIO DA CORREÇÃO ###
+                        // Esconde o botão de salvar do transporte E desabilita os campos
+                        $('#form-transporte button[type="submit"]').hide();
+                        $('#form-transporte').find('input, select').prop('disabled', true);
+                        // ### FIM DA CORREÇÃO ###
+
+                        // Esconde os botões de edição dos itens
+                        $container.find('.btn-editar-nota, .btn-editar-item-faturamento').hide();
+
+                        // Adiciona a mensagem de aviso
+                        $('.card-header:contains("2. Resumo Agrupado")').closest('.card')
+                            .find('.card-body').prepend(`
+                                <div class="alert alert-success" role="alert">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Este faturamento já foi processado e está <strong>bloqueado</strong> para edição.
+                                </div>
+                            `);
+                    } else {
+                        // Garante que os campos e o botão de transporte fiquem habilitados se o status NÃO for FATURADO
+                        $('#form-transporte button[type="submit"]').show();
+                        $('#form-transporte').find('input, select').prop('disabled', false);
+                    }
+
                 } else {
                     $container.html(`<div class="alert alert-danger">${response.message}</div>`);
                 }

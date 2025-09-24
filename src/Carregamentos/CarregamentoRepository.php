@@ -3,7 +3,8 @@
 namespace App\Carregamentos;
 
 use PDO;
-use App\Core\AuditLoggerService; // Se você usa auditoria
+use App\Core\AuditLoggerService;
+use App\OrdensExpedicao\OrdemExpedicaoRepository;
 
 class CarregamentoRepository
 {
@@ -442,9 +443,9 @@ class CarregamentoRepository
     }
 
     /**
-     * Reabre um carregamento que foi finalizado ou cancelado.
+     * Reabre um carregamento, estorna o estoque e desvincula a OE.
      */
-    public function reabrir(int $carregamentoId, string $motivo = ''): bool
+    public function reabrir(int $carregamentoId, string $motivo, \App\OrdensExpedicao\OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
     {
         $this->pdo->beginTransaction();
         try {
@@ -464,7 +465,14 @@ class CarregamentoRepository
                 }
             }
 
-            // Atualiza o status
+            // ### INÍCIO DA NOVA LÓGICA ###
+            // Se o carregamento tinha uma OE base, desvincula ela
+            if (!empty($dadosAntigos['car_ordem_expedicao_id'])) {
+                $ordemExpedicaoRepo->unlinkCarregamento($dadosAntigos['car_ordem_expedicao_id']);
+            }
+            // ### FIM DA NOVA LÓGICA ###
+
+            // Atualiza o status do carregamento para 'EM ANDAMENTO'
             $this->updateStatus($carregamentoId, 'EM ANDAMENTO');
 
             // Log de Auditoria
@@ -651,13 +659,13 @@ class CarregamentoRepository
     }
 
     /**
-     * Busca TODOS os dados para a página de detalhes (REVISADO para o novo formato)
+     * Busca TODOS os dados para a página de detalhes
      */
     public function getDetalhesCompletos(int $carregamentoId): array
     {
         $data = [];
 
-        // 1. Buscar Cabeçalho (Mesma query de antes)
+        // 1. Buscar Cabeçalho
         $sqlHeader = "SELECT 
                         c.*, 
                         oe.oe_numero, oe.oe_id,
@@ -679,8 +687,17 @@ class CarregamentoRepository
         $ordemExpedicaoId = $header['oe_id']; // Pega o ID da OE
 
         // 2. Buscar Execução (Filas e Itens já carregados)
-        // (A lógica para buscar filas e itens continua a mesma)
-        $sqlFilas = "SELECT * FROM tbl_carregamento_filas WHERE fila_carregamento_id = :id ORDER BY fila_numero_sequencial";
+        // $sqlFilas = "SELECT * FROM tbl_carregamento_filas WHERE fila_carregamento_id = :id ORDER BY fila_numero_sequencial";
+
+        $sqlFilas = "SELECT 
+                        f.*, 
+                        (SELECT COUNT(foto_id) 
+                         FROM tbl_carregamento_fila_fotos 
+                         WHERE foto_fila_id = f.fila_id) AS total_fotos
+                     FROM tbl_carregamento_filas f 
+                     WHERE f.fila_carregamento_id = :id 
+                     ORDER BY f.fila_numero_sequencial";
+
         $stmtFilas = $this->pdo->prepare($sqlFilas);
         $stmtFilas->execute([':id' => $carregamentoId]);
         $filas = $stmtFilas->fetchAll(PDO::FETCH_ASSOC);
@@ -688,6 +705,7 @@ class CarregamentoRepository
         $sqlItens = "SELECT 
                         ci.*, ci.car_item_quantidade AS qtd_carregada,
                         ci.car_item_cliente_id,
+                        -- Usamos INNER JOIN e COALESCE para garantir que o nome sempre venha
                         COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS cliente_nome,
                         p.prod_descricao, 
                         p.prod_codigo_interno, 
@@ -696,15 +714,16 @@ class CarregamentoRepository
                         ee.endereco_completo, 
                         ci.car_item_motivo_divergencia AS motivo_divergencia
                      FROM tbl_carregamento_itens ci
-                     JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
-                     JOIN tbl_estoque_alocacoes ea ON ci.car_item_alocacao_id = ea.alocacao_id
-                     JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
-                     JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                     JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                     JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
+                     -- Usamos INNER JOIN para garantir que o cliente do item sempre exista
+                     INNER JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+                     INNER JOIN tbl_estoque_alocacoes ea ON ci.car_item_alocacao_id = ea.alocacao_id
+                     INNER JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+                     INNER JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                     INNER JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                     INNER JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
                      LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo 
                      WHERE ci.car_item_carregamento_id = :carregamento_id
-                     ORDER BY ci.car_item_fila_id, e.ent_nome_fantasia";
+                     ORDER BY ci.car_item_fila_id, cliente_nome";
 
         $stmtItens = $this->pdo->prepare($sqlItens);
         $stmtItens->execute([':carregamento_id' => $carregamentoId]);
@@ -717,7 +736,7 @@ class CarregamentoRepository
         }
         $data['execucao'] = $filas;
 
-        // 3. *** CORREÇÃO: Buscar Planejamento (Gabarito da OE) e calcular Saldo ***
+        // 3. *** Buscar Planejamento (Gabarito da OE) e calcular Saldo ***
         if ($ordemExpedicaoId) {
             $sqlPlanejamento = "SELECT 
                                     oei.oei_id,
@@ -917,9 +936,6 @@ class CarregamentoRepository
 
         if ($isDivergencia) {
             // --- É DIVERGÊNCIA ---
-            /* $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) 
-                                   FROM tbl_ordens_expedicao_itens 
-                                   WHERE oei_alocacao_id = ea.alocacao_id)";*/
             $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) 
                                   FROM tbl_ordens_expedicao_itens 
                                   WHERE oei_alocacao_id = ea.alocacao_id 
@@ -976,102 +992,114 @@ class CarregamentoRepository
      */
     public function addItemCarregamento(array $data, int $carregamentoId): int
     {
-        // 1. Coleta de Dados
+        // 1. Coleta e Validação de Dados (sem alteração)
         $filaId = filter_var($data['item_fila_id'], FILTER_VALIDATE_INT);
         $clienteId = filter_var($data['item_cliente_id'], FILTER_VALIDATE_INT);
         $alocacaoId = filter_var($data['item_alocacao_id'], FILTER_VALIDATE_INT);
-        $quantidade = filter_var($data['item_quantidade'], FILTER_VALIDATE_FLOAT);
+        $quantidadeAdicionada = filter_var($data['item_quantidade'], FILTER_VALIDATE_FLOAT);
         $motivo = trim($data['item_motivo_divergencia'] ?? '');
         $oeiIdOrigem = filter_var($data['item_oei_id_origem'], FILTER_VALIDATE_INT);
 
-        // 2. Validações Básicas
-        if (!$filaId || !$clienteId || !$alocacaoId || !$quantidade || $quantidade <= 0) {
+        if (!$filaId || !$clienteId || !$alocacaoId || !$quantidadeAdicionada || $quantidadeAdicionada <= 0) {
             throw new \Exception("Dados inválidos. Cliente, Alocação e Quantidade são obrigatórios.");
         }
         if (empty($motivo) && !$oeiIdOrigem) {
-            // Se não tem motivo E não tem ID da OE, algo está errado
             throw new \Exception("Item não planejado (divergência) requer um motivo obrigatório.");
         }
-        if (!empty($motivo) && $oeiIdOrigem) {
-            // Não deve ter os dois ao mesmo tempo
-            throw new \Exception("Erro de lógica: O item não pode ser da OE e uma divergência ao mesmo tempo.");
+
+        // 2. Verifica se um item idêntico já existe na fila
+        $stmtCheck = $this->pdo->prepare(
+            "SELECT car_item_id, car_item_quantidade 
+             FROM tbl_carregamento_itens 
+             WHERE car_item_fila_id = :fila_id 
+               AND car_item_cliente_id = :cliente_id 
+               AND car_item_alocacao_id = :alocacao_id 
+             LIMIT 1"
+        );
+        $stmtCheck->execute([':fila_id' => $filaId, ':cliente_id' => $clienteId, ':alocacao_id' => $alocacaoId]);
+        $itemExistente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        // 3. Calcula a quantidade TOTAL a ser validada
+        $quantidadeTotalParaValidar = $quantidadeAdicionada;
+        if ($itemExistente) {
+            $quantidadeTotalParaValidar = $itemExistente['car_item_quantidade'] + $quantidadeAdicionada;
         }
 
-        // 3. Validação de Saldo (Físico)
-        // (Usamos a mesma consulta que o modal usa para buscar o saldo)
-        //$subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
-        $querySaldo = "SELECT (ea.alocacao_quantidade - {$subQueryReservado}) as saldo_disponivel
-                       FROM tbl_estoque_alocacoes ea
-                       WHERE ea.alocacao_id = :alocacao_id";
-        $stmtSaldo = $this->pdo->prepare($querySaldo);
-        $stmtSaldo->execute([':alocacao_id' => $alocacaoId]);
-        $saldoDisponivelFisico = $stmtSaldo->fetchColumn();
+        // 4. VALIDAÇÃO DE SALDO (Executada apenas UMA VEZ)
+        $isDivergencia = empty($oeiIdOrigem);
+        $saldoDisponivelParaOperacao = 0;
+        $tipoDeSaldo = "";
 
-        if ($saldoDisponivelFisico === false || $saldoDisponivelFisico < $quantidade) {
-            throw new \Exception("Quantidade solicitada ({$quantidade}) excede o saldo físico disponível ({$saldoDisponivelFisico}) no endereço.");
+        if ($isDivergencia) {
+            $querySaldo = "SELECT ea.alocacao_quantidade as saldo FROM tbl_estoque_alocacoes ea WHERE ea.alocacao_id = :alocacao_id";
+            $stmtSaldo = $this->pdo->prepare($querySaldo);
+            $stmtSaldo->execute([':alocacao_id' => $alocacaoId]);
+            $saldoDisponivelParaOperacao = $stmtSaldo->fetchColumn();
+            $tipoDeSaldo = "FÍSICO";
+        } else {
+            $tipoDeSaldo = "planejado na OE";
+            $stmtPlanejado = $this->pdo->prepare("SELECT oei_quantidade FROM tbl_ordens_expedicao_itens WHERE oei_id = :oei_id");
+            $stmtPlanejado->execute([':oei_id' => $oeiIdOrigem]);
+            $saldoDisponivelParaOperacao = (float) $stmtPlanejado->fetchColumn();
         }
 
-        // 4. Busca o lote_novo_item_id
-        $stmtLote = $this->pdo->prepare("SELECT alocacao_lote_item_id FROM tbl_estoque_alocacoes WHERE alocacao_id = :id");
-        $stmtLote->execute([':id' => $alocacaoId]);
-        $loteNovoItemId = $stmtLote->fetchColumn();
-        if (!$loteNovoItemId) {
-            throw new \Exception("Não foi possível encontrar o item de lote correspondente à alocação.");
+        if ($saldoDisponivelParaOperacao === false || $saldoDisponivelParaOperacao < $quantidadeTotalParaValidar) {
+            $saldoFormatado = number_format($saldoDisponivelParaOperacao, 3, ',', '.');
+            throw new \Exception("Quantidade total ({$quantidadeTotalParaValidar}) excede o saldo {$tipoDeSaldo} ({$saldoFormatado}) no endereço.");
         }
 
-        // 5. Inserção no Banco
-        $sql = "INSERT INTO tbl_carregamento_itens 
-                    (car_item_carregamento_id, car_item_fila_id, car_item_cliente_id, 
-                     car_item_lote_novo_item_id, car_item_alocacao_id, 
-                     car_item_quantidade, car_item_oei_id_origem, car_item_motivo_divergencia)
-                VALUES
-                    (:car_id, :fila_id, :cliente_id, :lote_item_id, :alocacao_id, 
-                     :quantidade, :oei_id, :motivo)";
+        // 5. Executa a Ação no Banco de Dados (UPDATE ou INSERT)
+        if ($itemExistente) {
+            // --- Ação: ATUALIZAR ---
+            $stmtUpdate = $this->pdo->prepare("UPDATE tbl_carregamento_itens SET car_item_quantidade = :nova_qtd WHERE car_item_id = :item_id");
+            $stmtUpdate->execute([':nova_qtd' => $quantidadeTotalParaValidar, ':item_id' => $itemExistente['car_item_id']]);
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':car_id' => $carregamentoId,
-            ':fila_id' => $filaId,
-            ':cliente_id' => $clienteId,
-            ':lote_item_id' => $loteNovoItemId,
-            ':alocacao_id' => $alocacaoId,
-            ':quantidade' => $quantidade,
-            ':oei_id' => $oeiIdOrigem ?: null, // Salva o ID da OE se existir
-            ':motivo' => !empty($motivo) ? $motivo : null // Salva o Motivo se existir
-        ]);
+            $this->auditLogger->log('UPDATE', $itemExistente['car_item_id'], 'tbl_carregamento_itens', $itemExistente, ['car_item_quantidade' => $quantidadeTotalParaValidar]);
+            return (int) $itemExistente['car_item_id'];
 
-        $newId = (int) $this->pdo->lastInsertId();
+        } else {
+            // --- Ação: INSERIR ---
+            $stmtLote = $this->pdo->prepare("SELECT alocacao_lote_item_id FROM tbl_estoque_alocacoes WHERE alocacao_id = :id");
+            $stmtLote->execute([':id' => $alocacaoId]);
+            $loteNovoItemId = $stmtLote->fetchColumn();
+            if (!$loteNovoItemId)
+                throw new \Exception("Lote correspondente à alocação não encontrado.");
 
-        // 6. Auditoria
-        $auditMessage = 'Item adicionado ao carregamento.';
-        if (!empty($motivo)) {
-            $auditMessage = 'Item de DIVERGÊNCIA adicionado: ' . $motivo;
+            $sql = "INSERT INTO tbl_carregamento_itens (car_item_carregamento_id, car_item_fila_id, car_item_cliente_id, car_item_lote_novo_item_id, car_item_alocacao_id, car_item_quantidade, car_item_oei_id_origem, car_item_motivo_divergencia)
+                    VALUES (:car_id, :fila_id, :cliente_id, :lote_item_id, :alocacao_id, :quantidade, :oei_id, :motivo)";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([
+                ':car_id' => $carregamentoId,
+                ':fila_id' => $filaId,
+                ':cliente_id' => $clienteId,
+                ':lote_item_id' => $loteNovoItemId,
+                ':alocacao_id' => $alocacaoId,
+                ':quantidade' => $quantidadeAdicionada,
+                ':oei_id' => $oeiIdOrigem ?: null,
+                ':motivo' => !empty($motivo) ? $motivo : null
+            ]);
+            $newId = (int) $this->pdo->lastInsertId();
+            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data);
+            return $newId;
         }
-        $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data, $auditMessage);
-
-        return $newId;
     }
 
     /**
      * Busca endereços por LOTE e PRODUTO.
      */
-    // ### A função agora recebe $loteId e $produtoId ###
     public function getEnderecosParaCarregamentoPorLoteItem(int $loteId, int $produtoId): array
     {
-        //$subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
         $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
 
         $sql = "SELECT 
                     ea.alocacao_id AS id,
-                    -- CONCAT(ee.endereco_completo, ' [Saldo Disp: ', FORMAT((ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') as text,
                     CONCAT(ee.endereco_completo, ' [Saldo Físico: ', FORMAT(ea.alocacao_quantidade, 3, 'de_DE'), ']') as text,
-                    (ea.alocacao_quantidade - {$subQueryReservado}) as saldo_disponivel
+                    (ea.alocacao_quantidade - {$subQueryReservado}) as saldo_disponivel,
+                    ea.alocacao_quantidade AS saldo_fisico
                 FROM tbl_estoque_alocacoes ea
                 JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
                 JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
                 
-                -- ### MUDANÇA: A lógica do WHERE mudou ###
                 WHERE lne.item_emb_lote_id = :lote_id
                 AND lne.item_emb_prod_sec_id = :produto_id
                 AND ea.alocacao_quantidade > 0";
@@ -1103,59 +1131,6 @@ class CarregamentoRepository
         $stmt->execute([':produto_id' => $produtoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /**
-     * Salva uma foto enviada por upload para uma fila específica.
-     */
-    /*    public function addFoto(array $postData, array $fileData): string
-        {
-            $filaId = filter_var($postData['foto_fila_id'], FILTER_VALIDATE_INT);
-            if (!$filaId) {
-                throw new \Exception("ID da fila inválido.");
-            }
-
-            // 1. Validação do Arquivo
-            if (!isset($fileData['foto_upload']) || $fileData['foto_upload']['error'] !== UPLOAD_ERR_OK) {
-                throw new \Exception("Erro no upload. Código: " . ($fileData['foto_upload']['error'] ?? 'N/A'));
-            }
-
-            $file = $fileData['foto_upload'];
-            $fileTmpName = $file['tmp_name'];
-
-            // 2. Validação de Segurança (Tipo e Tamanho)
-            $allowedTypes = ['image/jpeg', 'image/png'];
-            if (!in_array(mime_content_type($fileTmpName), $allowedTypes)) {
-                throw new \Exception("Tipo de arquivo inválido. Apenas JPG e PNG são permitidos.");
-            }
-            if ($file['size'] > 5 * 1024 * 1024) { // 5 MB
-                throw new \Exception("Arquivo muito grande. Limite de 5MB.");
-            }
-
-            // 3. Mover o Arquivo
-            $uploadDir = __DIR__ . '/../../public/uploads/carregamentos/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0775, true);
-            }
-
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $newFileName = "fila_{$filaId}_" . time() . "." . $ext;
-            $destination = $uploadDir . $newFileName;
-            $publicPath = "uploads/carregamentos/" . $newFileName; // Caminho a ser salvo no DB
-
-            if (!move_uploaded_file($fileTmpName, $destination)) {
-                throw new \Exception("Falha ao mover o arquivo para o destino.");
-            }
-
-            // 4. Salvar no Banco
-            $sql = "INSERT INTO tbl_carregamento_fila_fotos (foto_fila_id, foto_path) VALUES (:fila_id, :path)";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([
-                ':fila_id' => $filaId,
-                ':path' => $publicPath
-            ]);
-
-            return $publicPath;
-        } */
 
     /**
      * Salva UMA OU MAIS fotos enviadas por upload para uma fila específica.
@@ -1229,7 +1204,6 @@ class CarregamentoRepository
         }
     }
 
-
     /**
      * Busca os caminhos das fotos associadas a uma fila.
      * Chamada pela rota 'getFotosDaFila' do ajax_router.
@@ -1245,5 +1219,225 @@ class CarregamentoRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Compara o planejado (OE) com o executado (Carregamento) e retorna um resumo.
+     */
+    public function getResumoParaFinalizacao(int $carregamentoId): array
+    {
+        $detalhes = $this->getDetalhesCompletos($carregamentoId);
+        $planejado = $detalhes['planejamento'] ?? [];
+        $executado = [];
+        foreach ($detalhes['execucao'] as $fila) {
+            $executado = array_merge($executado, $fila['itens']);
+        }
 
+        $resumo = [];
+        // Mapeia os itens por uma chave única (alocacao_id) para fácil comparação
+        $mapaPlanejado = [];
+        foreach ($planejado as $item) {
+            $mapaPlanejado[$item['oei_alocacao_id']] = $item;
+        }
+
+        $mapaExecutado = [];
+        foreach ($executado as $item) {
+            $chave = $item['car_item_alocacao_id'];
+            if (!isset($mapaExecutado[$chave])) {
+                $mapaExecutado[$chave] = $item;
+            } else {
+                $mapaExecutado[$chave]['qtd_carregada'] += $item['qtd_carregada'];
+            }
+        }
+
+        // Compara os dois mapas
+        foreach ($mapaPlanejado as $alocacaoId => $itemP) {
+            if (!isset($mapaExecutado[$alocacaoId])) {
+                $itemP['status_divergencia'] = 'NÃO CARREGADO';
+                $resumo[] = $itemP;
+            } else {
+                $itemE = $mapaExecutado[$alocacaoId];
+                if ($itemP['qtd_planejada'] != $itemE['qtd_carregada']) {
+                    $itemP['status_divergencia'] = 'QUANTIDADE DIVERGENTE';
+                    $itemP['qtd_carregada'] = $itemE['qtd_carregada']; // Atualiza com o valor real
+                    $resumo[] = $itemP;
+                }
+                unset($mapaExecutado[$alocacaoId]);
+            }
+        }
+
+        foreach ($mapaExecutado as $alocacaoId => $itemE) {
+            $itemE['status_divergencia'] = 'ITEM NÃO PLANEJADO';
+            $resumo[] = $itemE;
+        }
+
+        return $resumo;
+    }
+
+    /**
+     * Busca todos os dados de um carregamento para a geração de relatório.
+     * Retorna um array estruturado com header, filas, itens e fotos.
+     */
+    /*   public function getDadosCompletosParaRelatorio(int $carregamentoId): array
+       {
+           $dados = [
+               'header' => null,
+               'filas' => []
+           ];
+
+           // 1. Busca o cabeçalho do Carregamento
+           $stmtHeader = $this->pdo->prepare(
+               "SELECT c.*, oeh.oe_numero 
+                FROM tbl_carregamentos c 
+                LEFT JOIN tbl_ordens_expedicao_header oeh ON c.car_ordem_expedicao_id = oeh.oe_id
+                WHERE c.car_id = :id"
+           );
+           $stmtHeader->execute([':id' => $carregamentoId]);
+           $dados['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+
+           if (!$dados['header']) {
+               return []; // Retorna vazio se não encontrar o carregamento
+           }
+
+           // 2. Busca todas as Filas, Itens e Fotos de uma vez
+           $sqlItens = "SELECT 
+                           f.fila_id, f.fila_numero_sequencial,
+                           foto.foto_path,
+                           ci.car_item_id,
+                           COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS cliente_nome,
+                           p.prod_codigo_interno, p.prod_descricao,
+                           lnh.lote_completo_calculado AS lote_completo,
+                           COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social) AS cliente_lote_nome,
+                           ee.endereco_completo,
+                           ci.car_item_quantidade AS qtd_carregada,
+                           ci.car_item_motivo_divergencia
+                        FROM tbl_carregamento_filas f
+                        LEFT JOIN tbl_carregamento_itens ci ON f.fila_id = ci.car_item_fila_id
+                        LEFT JOIN tbl_carregamento_fila_fotos foto ON f.fila_id = foto.foto_fila_id
+                        LEFT JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+                        LEFT JOIN tbl_estoque_alocacoes ea ON ci.car_item_alocacao_id = ea.alocacao_id
+                        LEFT JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+                        LEFT JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                        LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                        LEFT JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
+                        LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo
+                        WHERE f.fila_carregamento_id = :id
+                        ORDER BY f.fila_numero_sequencial, e.ent_nome_fantasia, p.prod_descricao";
+
+           $stmtItens = $this->pdo->prepare($sqlItens);
+           $stmtItens->execute([':id' => $carregamentoId]);
+           $results = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+           // 3. Organiza os dados em uma estrutura hierárquica
+           $filasProcessadas = [];
+           foreach ($results as $row) {
+               $filaId = $row['fila_id'];
+               if (!isset($filasProcessadas[$filaId])) {
+                   $filasProcessadas[$filaId] = [
+                       'fila_numero' => $row['fila_numero_sequencial'],
+                       'itens' => [],
+                       'fotos' => []
+                   ];
+               }
+               // Adiciona item se ele existir (evita duplicatas de LEFT JOIN)
+               if ($row['car_item_id'] && !isset($filasProcessadas[$filaId]['itens'][$row['car_item_id']])) {
+                   $filasProcessadas[$filaId]['itens'][$row['car_item_id']] = $row;
+               }
+               // Adiciona foto se ela existir (evita duplicatas)
+               if ($row['foto_path'] && !in_array($row['foto_path'], $filasProcessadas[$filaId]['fotos'])) {
+                   $filasProcessadas[$filaId]['fotos'][] = $row['foto_path'];
+               }
+           }
+           $dados['filas'] = array_values($filasProcessadas); // Reindexa o array
+
+           return $dados;
+       } */
+
+    /**
+     * Conta o número de carregamentos criados na data de hoje.
+     * Usado pelo KPI no Dashboard.
+     */
+    public function countForToday(): int
+    {
+        $stmt = $this->pdo->prepare("SELECT COUNT(car_id) FROM tbl_carregamentos WHERE car_data = CURDATE()");
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Busca todos os dados de um carregamento para a geração de relatório.
+     * Retorna um array estruturado com header, filas, itens e fotos.
+     */
+    public function getDadosCompletosParaRelatorio(int $carregamentoId): array
+    {
+        $dados = [
+            'header' => null,
+            'filas' => []
+        ];
+
+        // 1. Busca o cabeçalho do Carregamento
+        $stmtHeader = $this->pdo->prepare(
+            "SELECT c.*, oeh.oe_numero 
+             FROM tbl_carregamentos c 
+             LEFT JOIN tbl_ordens_expedicao_header oeh ON c.car_ordem_expedicao_id = oeh.oe_id
+             WHERE c.car_id = :id"
+        );
+        $stmtHeader->execute([':id' => $carregamentoId]);
+        $dados['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+
+        if (!$dados['header']) {
+            return []; // Retorna vazio se não encontrar o carregamento
+        }
+
+        // 2. Busca todas as Filas, Itens e Fotos de uma vez
+        $sqlItens = "SELECT 
+                        f.fila_id, f.fila_numero_sequencial,
+                        foto.foto_path,
+                        ci.car_item_id,
+                        COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS cliente_nome,
+                        p.prod_codigo_interno, p.prod_descricao,
+                        lnh.lote_completo_calculado AS lote_completo,
+                        COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social) AS cliente_lote_nome,
+                        ee.endereco_completo,
+                        ci.car_item_quantidade AS qtd_carregada,
+                        ci.car_item_motivo_divergencia
+                     FROM tbl_carregamento_filas f
+                     LEFT JOIN tbl_carregamento_itens ci ON f.fila_id = ci.car_item_fila_id
+                     LEFT JOIN tbl_carregamento_fila_fotos foto ON f.fila_id = foto.foto_fila_id
+                     LEFT JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+                     LEFT JOIN tbl_estoque_alocacoes ea ON ci.car_item_alocacao_id = ea.alocacao_id
+                     LEFT JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+                     LEFT JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+                     LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                     LEFT JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
+                     LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo
+                     WHERE f.fila_carregamento_id = :id
+                     ORDER BY f.fila_numero_sequencial, e.ent_nome_fantasia, p.prod_descricao";
+
+        $stmtItens = $this->pdo->prepare($sqlItens);
+        $stmtItens->execute([':id' => $carregamentoId]);
+        $results = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Organiza os dados em uma estrutura hierárquica
+        $filasProcessadas = [];
+        foreach ($results as $row) {
+            $filaId = $row['fila_id'];
+            if (!isset($filasProcessadas[$filaId])) {
+                $filasProcessadas[$filaId] = [
+                    'fila_numero' => $row['fila_numero_sequencial'],
+                    'itens' => [],
+                    'fotos' => []
+                ];
+            }
+            // Adiciona item se ele existir (evita duplicatas de LEFT JOIN)
+            if ($row['car_item_id'] && !isset($filasProcessadas[$filaId]['itens'][$row['car_item_id']])) {
+                $filasProcessadas[$filaId]['itens'][$row['car_item_id']] = $row;
+            }
+            // Adiciona foto se ela existir (evita duplicatas)
+            if ($row['foto_path'] && !in_array($row['foto_path'], $filasProcessadas[$filaId]['fotos'])) {
+                $filasProcessadas[$filaId]['fotos'][] = $row['foto_path'];
+            }
+        }
+        $dados['filas'] = array_values($filasProcessadas); // Reindexa o array
+
+        return $dados;
+    }
 }

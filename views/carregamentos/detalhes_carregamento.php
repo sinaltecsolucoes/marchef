@@ -273,3 +273,26 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-conferencia-finalizacao" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferência para Finalização</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Por favor, revise o resumo abaixo. Ao confirmar, o estoque será baixado e o carregamento finalizado.
+                </p>
+                <div id="resumo-finalizacao-container">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao-real">
+                    <i class="fas fa-check-circle me-1"></i> Confirmar e Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -63,8 +63,8 @@ class FaturamentoRepository
             WHERE oep.oep_ordem_id = :ordem_id
             
             GROUP BY
-                fazenda.ent_codigo, -- CORRIGIDO
-                cliente.ent_codigo, -- CORRIGIDO
+                fazenda.ent_codigo, 
+                cliente.ent_codigo, 
                 oep.oep_numero_pedido,
                 p_sec.prod_codigo,
                 lnh.lote_id
@@ -80,77 +80,6 @@ class FaturamentoRepository
         $stmt->execute([':ordem_id' => $ordemId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /**
-     * Gera e salva um novo resumo de faturamento a partir de uma Ordem de Expedição.
-     * @param int $ordemId
-     * @param int $usuarioId
-     * @return int O ID do novo resumo de faturamento criado.
-     * @throws \Exception
-     */
-    /*  public function salvarResumo(int $ordemId, int $usuarioId): int
-      {
-          // 1. Prevenção de duplicatas: Verifica se já existe um resumo para esta Ordem
-          $stmtCheck = $this->pdo->prepare("SELECT fat_id FROM tbl_faturamento_resumos WHERE fat_ordem_expedicao_id = :ordem_id");
-          $stmtCheck->execute([':ordem_id' => $ordemId]);
-          if ($stmtCheck->fetch()) {
-              throw new \Exception("Já existe um resumo de faturamento gerado para esta Ordem de Expedição.");
-          }
-
-          // 2. Busca os dados agrupados que vamos salvar
-          $itensAgrupados = $this->getDadosAgrupadosPorOrdemExpedicao($ordemId);
-          if (empty($itensAgrupados)) {
-              throw new \Exception("Não há itens nesta Ordem de Expedição para gerar um resumo.");
-          }
-
-          // 3. Inicia uma transação para garantir a integridade dos dados
-          $this->pdo->beginTransaction();
-          try {
-              // 4. Insere o cabeçalho do resumo
-              $sqlHeader = "INSERT INTO tbl_faturamento_resumos (fat_ordem_expedicao_id, fat_usuario_id, fat_status) 
-                            VALUES (:ordem_id, :usuario_id, 'EM ELABORAÇÃO')";
-              $stmtHeader = $this->pdo->prepare($sqlHeader);
-              $stmtHeader->execute([
-                  ':ordem_id' => $ordemId,
-                  ':usuario_id' => $usuarioId
-              ]);
-              $novoResumoId = (int) $this->pdo->lastInsertId();
-
-              // 5. Prepara a query para inserir os itens
-              $sqlItens = "INSERT INTO tbl_faturamento_itens 
-                              (fati_resumo_id, fati_fazenda_id, fati_cliente_id, fati_numero_pedido, fati_produto_id, fati_lote_id, fati_qtd_caixas, fati_qtd_quilos) 
-                           VALUES 
-                              (:resumo_id, :fazenda_id, :cliente_id, :numero_pedido, :produto_id, :lote_id, :qtd_caixas, :qtd_quilos)";
-              $stmtItens = $this->pdo->prepare($sqlItens);
-
-              // 6. Loop para inserir cada item agrupado
-              foreach ($itensAgrupados as $item) {
-                  $stmtItens->execute([
-                      ':resumo_id' => $novoResumoId,
-                      ':fazenda_id' => $item['fazenda_id'],
-                      ':cliente_id' => $item['cliente_id'],
-                      ':numero_pedido' => $item['oep_numero_pedido'],
-                      ':produto_id' => $item['produto_id'],
-                      ':lote_id' => $item['lote_id'],
-                      ':qtd_caixas' => $item['total_caixas'],
-                      ':qtd_quilos' => $item['total_quilos']
-                  ]);
-              }
-
-              // 7. Se tudo correu bem, confirma a transação
-              $this->pdo->commit();
-
-              // Log de auditoria (opcional, mas bom ter)
-              $this->auditLogger->log('CREATE', $novoResumoId, 'tbl_faturamento_resumos', null, ['ordem_id' => $ordemId]);
-
-              return $novoResumoId;
-
-          } catch (\Exception $e) {
-              // 8. Se algo deu errado, desfaz tudo
-              $this->pdo->rollBack();
-              throw $e; // Re-lança a exceção para ser capturada pelo controller
-          }
-      } */
 
     /**
      * Busca os detalhes de um item de faturamento específico.
@@ -180,39 +109,10 @@ class FaturamentoRepository
      * @param array $data
      * @return bool
      */
-    /* public function updateItem(int $fatiId, array $data): bool
-     {
-         $dadosAntigos = $this->findItemDetalhes($fatiId);
-
-         $sql = "UPDATE tbl_faturamento_itens SET
-                     fati_preco_unitario = :preco,
-                     fati_preco_unidade_medida = :unidade,
-                     fati_observacao = :observacao
-                 WHERE fati_id = :fati_id";
-
-         $stmt = $this->pdo->prepare($sql);
-         $success = $stmt->execute([
-             ':preco' => $data['fati_preco_unitario'] ?: null,
-             ':unidade' => $data['fati_preco_unidade_medida'],
-             ':observacao' => $data['fati_observacao'] ?: null,
-             ':fati_id' => $fatiId
-         ]);
-
-         $this->auditLogger->log('UPDATE', $fatiId, 'tbl_faturamento_itens', $dadosAntigos, $data);
-         return $success;
-     } */
-
-    /**
-     * Atualiza os dados de preço e observação de um item de faturamento.
-     * @param int $fatiId
-     * @param array $data
-     * @return bool
-     */
     public function updateItem(int $fatiId, array $data): bool
     {
         $dadosAntigos = $this->findItemDetalhes($fatiId);
 
-        // SQL CORRIGIDO: Removida a 'fati_observacao' do UPDATE
         $sql = "UPDATE tbl_faturamento_itens SET
                     fati_preco_unitario = :preco,
                     fati_preco_unidade_medida = :unidade
@@ -223,7 +123,6 @@ class FaturamentoRepository
             ':preco' => $data['fati_preco_unitario'] ?: null,
             ':unidade' => $data['fati_preco_unidade_medida'],
             ':fati_id' => $fatiId
-            // Parâmetro ':observacao' removido
         ]);
 
         // A auditoria ainda registra a mudança completa (o $_POST)
@@ -241,7 +140,9 @@ class FaturamentoRepository
     public function salvarResumo(int $ordemId, int $usuarioId): int
     {
         // 1. Prevenção de duplicatas 
-        $stmtCheck = $this->pdo->prepare("SELECT fat_id FROM tbl_faturamento_resumos WHERE fat_ordem_expedicao_id = :ordem_id");
+        $stmtCheck = $this->pdo->prepare("SELECT fat_id 
+                                                 FROM tbl_faturamento_resumos 
+                                                 WHERE fat_ordem_expedicao_id = :ordem_id");
         $stmtCheck->execute([':ordem_id' => $ordemId]);
         if ($stmtCheck->fetch()) {
             throw new \Exception("Já existe um resumo de faturamento gerado para esta Ordem de Expedição.");
@@ -269,9 +170,19 @@ class FaturamentoRepository
             $stmtNotaGrupo = $this->pdo->prepare($sqlNotaGrupo);
 
             $sqlItens = "INSERT INTO tbl_faturamento_itens 
-                            (fati_nota_id, fati_fazenda_id, fati_produto_id, fati_lote_id, fati_qtd_caixas, fati_qtd_quilos) 
+                            (fati_nota_id, 
+                             fati_fazenda_id, 
+                             fati_produto_id, 
+                             fati_lote_id, 
+                             fati_qtd_caixas, 
+                             fati_qtd_quilos) 
                          VALUES 
-                            (:nota_id, :fazenda_id, :produto_id, :lote_id, :qtd_caixas, :qtd_quilos)";
+                            (:nota_id, 
+                             :fazenda_id, 
+                             :produto_id, 
+                             :lote_id, 
+                             :qtd_caixas, 
+                             :qtd_quilos)";
             $stmtItens = $this->pdo->prepare($sqlItens);
 
             $currentClientePedidoKey = null;
@@ -329,6 +240,7 @@ class FaturamentoRepository
         // 1. Busca o cabeçalho do resumo (Tabela 1) e dados da Transportadora
         $sqlHeader = "SELECT 
                         fr.*, 
+                        fr.fat_status,
                         oeh.oe_numero AS ordem_expedicao_numero,
                         t.ent_nome_fantasia AS transportadora_nome
                     FROM tbl_faturamento_resumos fr
@@ -458,62 +370,7 @@ class FaturamentoRepository
     }
 
     /**
-     * FUNÇÃO PÚBLICA DE DADOS
-     * Busca todos os dados de um resumo, enriquecidos com dados cadastrais completos 
-     * dos clientes para a geração de relatórios.
-     * * @param int $resumoId
-     * @return array
-     */
-    /* public function getDadosCompletosParaRelatorio(int $resumoId): array
-     {
-         $sql = "
-             SELECT
-                 f.*, 
-                 fazenda.ent_razao_social AS fazenda_razao_social,
-                 fazenda.ent_nome_fantasia AS fazenda_nome,
-
-                 -- Dados completos do Cliente Final (para a Nota Fiscal)
-                 cliente.ent_razao_social AS cliente_razao_social,
-                 cliente.ent_nome_fantasia AS cliente_nome,
-                 cliente.ent_cnpj,
-                 cliente.ent_inscricao_estadual,
-                 endr.end_logradouro,
-                 endr.end_numero,
-                 endr.end_bairro,
-                 endr.end_cidade,
-                 endr.end_uf,
-                 endr.end_cep,
-
-                 f.fati_numero_pedido,
-                 p.prod_descricao AS produto_descricao,
-                 lnh.lote_completo_calculado
-             FROM tbl_faturamento_itens f
-
-             -- Joins para Fazenda e Produto/Lote
-             JOIN tbl_entidades fazenda ON f.fati_fazenda_id = fazenda.ent_codigo
-             JOIN tbl_produtos p ON f.fati_produto_id = p.prod_codigo
-             JOIN tbl_lotes_novo_header lnh ON f.fati_lote_id = lnh.lote_id
-
-             -- Joins para Cliente Final e seu Endereço Principal
-             JOIN tbl_entidades cliente ON f.fati_cliente_id = cliente.ent_codigo
-             LEFT JOIN tbl_enderecos endr ON cliente.ent_codigo = endr.end_entidade_id AND endr.end_tipo_endereco = 'Principal'
-
-             WHERE f.fati_resumo_id = :resumo_id
-
-             -- Ordenação crucial para o relatório
-             ORDER BY
-                 fazenda_nome,
-                 cliente_nome,
-                 f.fati_numero_pedido,
-                 produto_descricao
-         ";
-         $stmt = $this->pdo->prepare($sql);
-         $stmt->execute([':resumo_id' => $resumoId]);
-         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-     } */
-
-    /**
-     * FUNÇÃO PÚBLICA DE DADOS (CORRIGIDA)
+     * FUNÇÃO PÚBLICA DE DADOS 
      * Busca todos os dados de um resumo, enriquecidos com dados cadastrais completos 
      * dos clientes para a geração de relatórios.
      * * @param int $resumoId
@@ -521,7 +378,6 @@ class FaturamentoRepository
      */
     public function getDadosCompletosParaRelatorio(int $resumoId): array
     {
-        // SQL CORRIGIDO PARA A ESTRUTURA DE 3 TABELAS
         $sql = "
             SELECT
                 -- Nível 3 (Item)
@@ -534,6 +390,7 @@ class FaturamentoRepository
                 -- Nível 2 (Nota/Pedido)
                 nota.fatn_numero_pedido,
                 nota.fatn_observacao,
+                nota.fatn_numero_nota_fiscal,
                 cond.cond_descricao AS condicao_pag_descricao,
                 
                 -- Dados da Fazenda (do Item)
@@ -584,25 +441,6 @@ class FaturamentoRepository
         $stmt->execute([':resumo_id' => $resumoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /* public function findResumoHeaderInfo(int $resumoId): ?array
-     {
-         $sql = "SELECT 
-                     fr.*,  -- Pega todos os campos do resumo, incluindo os novos de transporte
-                     oeh.oe_numero AS ordem_expedicao_numero,
-                     t.ent_nome_fantasia AS transportadora_nome,
-                     t.ent_razao_social AS transportadora_razao,
-                     u.usu_nome AS usuario_nome
-                 FROM tbl_faturamento_resumos fr
-                 JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
-                 JOIN tbl_usuarios u ON fr.fat_usuario_id = u.usu_codigo
-                 LEFT JOIN tbl_entidades t ON fr.fat_transportadora_id = t.ent_codigo
-                 WHERE fr.fat_id = :resumo_id";
-
-         $stmt = $this->pdo->prepare($sql);
-         $stmt->execute([':resumo_id' => $resumoId]);
-         return $stmt->fetch(PDO::FETCH_ASSOC);
-     } */
 
     /**
      * Busca todas as Condições de Pagamento ativas para um dropdown (Select2).
@@ -688,7 +526,9 @@ class FaturamentoRepository
      */
     public function updateNotaGrupo(int $fatnId, array $data): bool
     {
-        $dadosAntigos = $this->pdo->query("SELECT * FROM tbl_faturamento_notas_grupo WHERE fatn_id = $fatnId")->fetch(PDO::FETCH_ASSOC);
+        $dadosAntigos = $this->pdo->query("SELECT * 
+                                                  FROM tbl_faturamento_notas_grupo 
+                                                  WHERE fatn_id = $fatnId")->fetch(PDO::FETCH_ASSOC);
 
         $sql = "UPDATE tbl_faturamento_notas_grupo SET
                     fatn_condicao_pag_id = :condicao_id,
@@ -734,5 +574,119 @@ class FaturamentoRepository
 
         $this->auditLogger->log('UPDATE', $resumoId, 'tbl_faturamento_resumos', $dadosAntigos, $data);
         return $success;
+    }
+
+    /**
+     * Exclui um resumo de faturamento, mas apenas se ele estiver 'EM ELABORAÇÃO'.
+     * A exclusão em cascata (ON DELETE CASCADE) cuidará dos filhos.
+     */
+    public function delete(int $resumoId): bool
+    {
+        $stmtCheck = $this->pdo->prepare("SELECT fat_status FROM tbl_faturamento_resumos WHERE fat_id = :id");
+        $stmtCheck->execute([':id' => $resumoId]);
+        $status = $stmtCheck->fetchColumn();
+
+        // O status padrão no seu banco é 'EM ELABORAÇÃO'
+        if ($status !== 'EM ELABORAÇÃO') {
+            throw new \Exception("Apenas faturamentos 'EM ELABORAÇÃO' podem ser excluídos.");
+        }
+
+        // Graças ao ON DELETE CASCADE, só precisamos apagar o registro "pai".
+        $stmtResumo = $this->pdo->prepare("DELETE FROM tbl_faturamento_resumos WHERE fat_id = :id");
+        return $stmtResumo->execute([':id' => $resumoId]);
+    }
+
+    /**
+     * Marca um faturamento como 'FATURADO' e salva os números das notas fiscais.
+     */
+    public function marcarComoFaturado(int $resumoId, array $notas): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // Loop para salvar o número de cada nota fiscal
+            $stmtNota = $this->pdo->prepare("UPDATE tbl_faturamento_notas_grupo 
+                                                    SET fatn_numero_nota_fiscal = :nf 
+                                                    WHERE fatn_id = :id");
+            foreach ($notas as $nota) {
+                $stmtNota->execute([
+                    ':nf' => $nota['numero_nf'] ?: null, // Permite NF vazia
+                    ':id' => $nota['grupo_id']
+                ]);
+            }
+
+            // Atualiza o status do resumo principal
+            $stmtResumo = $this->pdo->prepare("UPDATE tbl_faturamento_resumos 
+                                                      SET fat_status = 'FATURADO' 
+                                                      WHERE fat_id = :id");
+            $stmtResumo->execute([':id' => $resumoId]);
+
+            $this->pdo->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Busca os grupos de nota de um resumo (para o modal de faturamento).
+     */
+    public function getGruposDeNotaParaFaturamento(int $resumoId): array
+    {
+        $sql = "SELECT 
+                    nota.fatn_id, 
+                    nota.fatn_numero_pedido,
+                    COALESCE(cliente.ent_nome_fantasia, cliente.ent_razao_social) AS cliente_nome,
+                    -- Subquery para buscar o nome da Fazenda a partir do primeiro item do grupo
+                    (SELECT COALESCE(faz.ent_nome_fantasia, faz.ent_razao_social) 
+                     FROM tbl_faturamento_itens item 
+                     JOIN tbl_entidades faz ON item.fati_fazenda_id = faz.ent_codigo 
+                     WHERE item.fati_nota_id = nota.fatn_id 
+                     LIMIT 1) AS fazenda_nome
+                FROM tbl_faturamento_notas_grupo nota
+                JOIN tbl_entidades cliente ON nota.fatn_cliente_id = cliente.ent_codigo
+                WHERE nota.fatn_resumo_id = :id 
+                ORDER BY fazenda_nome, cliente_nome, nota.fatn_numero_pedido";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $resumoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Altera o status de um faturamento para 'CANCELADO'.
+     * Só funciona se o status atual for 'EM ELABORAÇÃO'.
+     */
+    public function cancelar(int $resumoId): bool
+    {
+        $stmtCheck = $this->pdo->prepare("SELECT fat_status FROM tbl_faturamento_resumos WHERE fat_id = :id");
+        $stmtCheck->execute([':id' => $resumoId]);
+        $status = $stmtCheck->fetchColumn();
+
+        if ($status !== 'EM ELABORAÇÃO') {
+            throw new \Exception("Apenas faturamentos 'EM ELABORAÇÃO' podem ser cancelados.");
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE tbl_faturamento_resumos SET fat_status = 'CANCELADO' WHERE fat_id = :id");
+        return $stmt->execute([':id' => $resumoId]);
+    }
+
+    /**
+     * Reabre um faturamento, voltando o status para 'EM ELABORAÇÃO'.
+     * Só funciona se o status for 'FATURADO' ou 'CANCELADO'.
+     * NÃO estorna estoque, pois a baixa é feita pelo Carregamento.
+     */
+    public function reabrir(int $resumoId): bool
+    {
+        $stmtCheck = $this->pdo->prepare("SELECT fat_status FROM tbl_faturamento_resumos WHERE fat_id = :id");
+        $stmtCheck->execute([':id' => $resumoId]);
+        $status = $stmtCheck->fetchColumn();
+
+        if (!in_array($status, ['FATURADO', 'CANCELADO'])) {
+            throw new \Exception("Apenas faturamentos 'FATURADO' ou 'CANCELADO' podem ser reabertos.");
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE tbl_faturamento_resumos SET fat_status = 'EM ELABORAÇÃO' WHERE fat_id = :id");
+        return $stmt->execute([':id' => $resumoId]);
     }
 }

@@ -73,6 +73,7 @@ echo "<thead>
             <th>CEP</th>
             <th>N° Pedido Cliente</th>
             <th>Cond. Pagamento</th>
+            <th>N° Nota Fiscal</th> 
             <th>Obs. Pedido</th>
             <th>Produto</th>
             <th>Lote</th>
@@ -114,6 +115,7 @@ foreach ($itens as $item) {
     echo "<td>'" . formatTextoExcel($item['end_cep']) . "</td>";
     echo "<td>" . formatTextoExcel($item['fatn_numero_pedido']) . "</td>";
     echo "<td>" . formatTextoExcel($item['condicao_pag_descricao']) . "</td>";
+    echo "<td>" . formatTextoExcel($item['fatn_numero_nota_fiscal']) . "</td>";   
     echo "<td>" . formatTextoExcel($item['fatn_observacao']) . "</td>";
     echo "<td>" . formatTextoExcel($item['produto_descricao']) . "</td>";
     echo "<td>" . formatTextoExcel($item['lote_completo_calculado']) . "</td>";

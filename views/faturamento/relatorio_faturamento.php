@@ -132,6 +132,7 @@ function renderReportHeader($header)
 <head>
     <meta charset="UTF-8">
     <title>Resumo de Faturamento - Nº <?php echo $resumoId; ?></title>
+    <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/img/icone_2.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/relatorios.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
@@ -235,12 +236,16 @@ function renderReportHeader($header)
                 $condPag = htmlspecialchars($item['condicao_pag_descricao'] ?: 'N/A');
                 $obs = htmlspecialchars($item['fatn_observacao'] ?: 'Nenhuma');
 
+                $numNF = htmlspecialchars($item['fatn_numero_nota_fiscal'] ?: 'N/A');
+
                 echo "<div class='pedido-info mb-1'>";
                 // Linha única para Pedido e Condição de Pagamento
                 echo "  <p class='mb-0'><strong>N° Pedido Cliente:</strong> " . htmlspecialchars($currentPedido ?: 'N/A') .
-                    "  <span class='mx-2'>|</span>  " . // Adiciona um separador | com margem
-                    "<strong>Cond. Pagamento:</strong> $condPag</p>";
-
+                    "  <span class='mx-2'>|</span>  " .
+                    "<strong>Cond. Pagamento:</strong> $condPag" .
+                    "  <span class='mx-2'>|</span>  " . // Adiciona mais um separador
+                    "<strong>N° Nota Fiscal:</strong> $numNF</p>"; // Adiciona a NF        
+        
                 // Linha separada para Observação
                 echo "  <p class='mb-0'><strong>Observação do Pedido:</strong> $obs</p>";
                 echo "</div>";

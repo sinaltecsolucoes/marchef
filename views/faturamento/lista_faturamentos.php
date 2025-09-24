@@ -24,3 +24,26 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-marcar-faturado" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Informar Notas Fiscais</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-marcar-faturado">
+                <div class="modal-body">
+                    <input type="hidden" id="faturado_resumo_id" name="resumo_id">
+                    <p>Informe o número da Nota Fiscal para cada grupo de pedido:</p>
+                    <div id="notas-fiscais-container">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar e Marcar como Faturado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

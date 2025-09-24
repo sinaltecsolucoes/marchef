@@ -145,6 +145,7 @@ try {
         'relatorio_faturamento' => 'faturamento/relatorio_faturamento.php',
         'relatorio_faturamento_excel' => 'faturamento/relatorio_faturamento_excel.php',
         'gestao_caixas_mistas' => 'lotes_novo/gestao_caixas_mistas.php',
+        'carregamento_relatorio' => 'carregamentos/carregamento_relatorio.php',
     ];
 
     $pageType = '';
@@ -173,7 +174,7 @@ try {
     if ($temPermissao && isset($paginasPermitidas[$paginaAtual])) {
         // Se tem permissão e a página existe, processa
         switch ($paginaAtual) {
-              case 'carregamento_detalhes':
+            case 'carregamento_detalhes':
                 $arquivoView = $paginasPermitidas[$paginaAtual];
                 break;
 
@@ -199,6 +200,7 @@ try {
     $paginasSemLayout = [
         'relatorio_faturamento',
         'relatorio_faturamento_excel',
+        'carregamento_relatorio',
         // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
     ];
 
