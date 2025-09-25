@@ -1,33 +1,47 @@
 <?php // /views/estoque/lista_enderecos.php ?>
 
-<h4 class="fw-bold mb-3">Gerenciamento de Endereços de Estoque</h4>
+<h4 class="fw-bold mb-3">Gestão de Endereços de Estoque</h4>
 
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header">
-        <div class="row">
+    <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
             <div class="col-md-6">
-                <label for="select-camara-filtro" class="form-label">Selecione uma Câmara para gerenciar os
-                    endereços:</label>
-                <select id="select-camara-filtro" class="form-select"></select>
+                <div class="d-flex align-items-end gap-2">
+                    <div>
+                        <label for="select-camara-filtro" class="form-label">Selecione uma Câmara para gerenciar os
+                            endereços:</label>
+                        <select id="select-camara-filtro" class="form-select"></select>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" id="btn-adicionar-endereco" disabled>
+                            <i class="fas fa-plus me-2"></i> Adicionar Novo Endereço
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="card-body">
-        <button class="btn btn-primary mb-3" id="btn-adicionar-endereco" disabled>
-            <i class="fas fa-plus me-2"></i> Adicionar Novo Endereço
-        </button>
+</div>
 
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Endereços</h6>
+    </div>
+    <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-enderecos" class="table table-hover my-4" style="width:100%">
+            <table id="tabela-enderecos" class="table table-bordered table-hover" style="width:100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>Endereço Completo</th>
-                        <th>Lado</th>
-                        <th>Nível</th>
-                        <th>Fila</th>
-                        <th>Vaga</th>
-                        <th>Simples</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">Endereço Completo</th>
+                        <th class="text-center align-middle">Lado</th>
+                        <th class="text-center align-middle">Nível</th>
+                        <th class="text-center align-middle">Fila</th>
+                        <th class="text-center align-middle">Vaga</th>
+                        <th class="text-center align-middle">Simples</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

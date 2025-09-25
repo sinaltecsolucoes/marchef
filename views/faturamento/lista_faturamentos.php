@@ -1,22 +1,35 @@
 <?php // /views/faturamento/lista_faturamentos.php ?>
-<h4 class="fw-bold mb-3">Gerenciamento de Faturamento</h4>
 
-<a href="index.php?page=faturamento_gerar" class="btn btn-primary mb-3">
-    <i class="fas fa-plus me-2"></i> Gerar Novo Resumo de Faturamento
-</a>
+<h4 class="fw-bold mb-3">Gestão de Faturamento</h4>
+
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-1">
+            <div class="col-md-6">
+                <p>Gerencie todos os faturamentos</p>
+                <a href="index.php?page=faturamento_gerar" class="btn btn-primary mb-3">
+                    <i class="fas fa-plus me-2"></i> Criar Novo Faturamento
+                </a>                
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="card shadow card-custom">
     <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-faturamentos" class="table table-hover my-4" style="width:100%">
+            <table id="tabela-faturamentos" class="table table-bordered table-hover" style="width:100%">
                 <thead>
                     <tr>
-                        <th>ID Resumo</th>
-                        <th>Nº Ordem Origem</th>
-                        <th>Data Geração</th>
-                        <th>Status</th>
-                        <th>Gerado por</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">ID Resumo</th>
+                        <th class="text-center align-middle">Nº Ordem Origem</th>
+                        <th class="text-center align-middle">Data Geração</th>
+                        <th class="text-center align-middle">Status</th>
+                        <th class="text-center align-middle">Gerado por</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

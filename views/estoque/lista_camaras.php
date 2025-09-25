@@ -1,24 +1,43 @@
 <?php // /views/estoque/lista_camaras.php ?>
 
-<h4 class="fw-bold mb-3">Gerenciamento de Câmaras e Armazéns</h4>
+<h4 class="fw-bold mb-3">Gestão de Câmaras</h4>
 
-<button class="btn btn-primary mb-3" id="btn-adicionar-camara">
-    <i class="fas fa-plus me-2"></i> Adicionar Nova Câmara
-</button>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <p>Gerencie todas as câmaras e armazéns</p>
+                <button class="btn btn-primary" id="btn-adicionar-camara">
+                    <i class="fas fa-plus me-2"></i> Adicionar Nova Câmara
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="table-responsive">
-    <table id="tabela-camaras" class="table table-hover my-4" style="width:100%">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Nome da Câmara</th>
-                <th>Descrição</th>
-                <th>Indústria (Unidade de Origem)</th>
-                <th class="text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Câmaras</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="tabela-camaras" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th class="text-center align-middle">Código</th>
+                        <th class="text-center align-middle">Nome da Câmara</th>
+                        <th class="text-center align-middle">Descrição</th>
+                        <th class="text-center align-middle">Indústria (Unidade de Origem)</th>
+                        <th class="text-center align-middle">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="modal-camara" tabindex="-1" aria-labelledby="modal-camara-label" aria-hidden="true">

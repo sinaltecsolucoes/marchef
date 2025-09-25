@@ -8,10 +8,12 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Gerenciar Produtos</h6>
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
     </div>
     <div class="card-body">
         <div class="row align-items-center">
+            <p>Gerencie todos os produtos</p>
+
             <!-- Botão Adicionar -->
             <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
                 <button class="btn btn-primary" id="btn-adicionar-produto-main">
@@ -115,7 +117,7 @@
                                 <input class="form-check-input" type="checkbox" role="switch" id="prod_situacao"
                                     name="prod_situacao" value="A" checked>
                                 <label class="form-check-label" for="prod_situacao"><span
-                                    id="label-prod-situacao">Ativo</span></label>
+                                        id="label-prod-situacao">Ativo</span></label>
                             </div>
                         </div>
 

@@ -12,34 +12,44 @@ $(document).ready(function () {
         "columns": [
             {
                 "data": "fat_id",
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     // Converte o ID para string e preenche com zeros à esquerda até ter 4 dígitos
                     return String(data).padStart(4, '0');
                 }
             },
-            { "data": "ordem_numero" },
+            { "data": "ordem_numero",
+                "className": "text-center align-middle"
+             },
             {
                 "data": "fat_data_geracao",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     return new Date(data).toLocaleString('pt-BR');
                 }
             },
-            { "data": "fat_status" },
-            { "data": "usuario_nome" },
+            {
+                "data": "fat_status",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "usuario_nome",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "fat_id",
                 "orderable": false,
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
-                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm">Detalhes</a>`;
-                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento" data-id="${data}">Excluir</button>`;
-                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado" data-id="${data}">Faturar</button>`;
-                    let btnCancelar = `<button class="btn btn-warning btn-sm text-dark btn-cancelar-faturamento" data-id="${data}">Cancelar</button>`;
-                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento" data-id="${data}">Reabrir</button>`;
+                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-1">Detalhes</a>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento me-1" data-id="${data}">Excluir</button>`;
+                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado me-1" data-id="${data}">Faturar</button>`;
+                    let btnCancelar = `<button class="btn btn-warning btn-sm text-dark btn-cancelar-faturamento me-1" data-id="${data}">Cancelar</button>`;
+                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento me-1" data-id="${data}">Reabrir</button>`;
 
                     if (row.fat_status === 'FATURADO') {
-                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm">Visualizar</a>`;
+                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-2">Visualizar</a>`;
                         return `<div class="btn-group">${btnDetalhes}${btnReabrir}</div>`;
                     }
 

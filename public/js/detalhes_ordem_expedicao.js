@@ -104,8 +104,7 @@ $(document).ready(function () {
         // LÓGICA DO BOTÃO DE RELATÓRIO
         if ($('#btn-relatorio-oe').length === 0) {
             const btnRelatorio = `<a id="btn-relatorio-oe" href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" target="_blank" class="btn btn-info btn-sm me-2">
-                                <i class="fas fa-print"></i> Imprimir Relatório
-                             </a>`;
+                                <i class="fas fa-print"></i> Imprimir Relatório</a>`;
             // Adiciona o botão DENTRO do novo container de botões
             $('#botoes-cabecalho-oe').prepend(btnRelatorio);
         }

@@ -25,15 +25,30 @@ $(document).ready(function () {
         },
         "columns": [
             { "data": "endereco_completo" },
-            { "data": "lado" },
-            { "data": "nivel" },
-            { "data": "fila" },
-            { "data": "vaga" },
-            { "data": "descricao_simples" },
+            {
+                "data": "lado",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "nivel",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "fila",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "vaga",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "descricao_simples",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "endereco_id",
                 "orderable": false,
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     // Botões de ação simples, sem lógica condicional
                     return `

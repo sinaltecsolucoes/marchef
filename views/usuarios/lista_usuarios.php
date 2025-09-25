@@ -6,11 +6,12 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Novo Usuário</h6>
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
     </div>
     <div class="card-body">
         <div class="row align-items-center mb-3">
             <div class="col-md-6">
+                <p>Gerencie todos os usuários</p>
                 <button class="btn btn-primary" id="btn-adicionar-usuario">
                     <i class="fas fa-plus me-2"></i> Adicionar Usuário
                 </button>

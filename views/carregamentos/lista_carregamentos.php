@@ -1,26 +1,38 @@
 <?php // /views/carregamentos/lista_carregamentos.php ?>
 
-<h4 class="fw-bold mb-3">Gerenciamento de Carregamentos</h4>
-
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modal-novo-carregamento">
-    <i class="fas fa-plus me-2"></i> Criar Novo Carregamento
-</button>
+<h4 class="fw-bold mb-3">Gestão de Carregamentos</h4>
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Carregamentos</h6>
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <p>Gerencie todos os carregamentos</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-novo-carregamento">
+                    <i class="fas fa-plus me-2"></i> Criar Novo Carregamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Carregamentos</h6>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-carregamentos" class="table table-hover my-4" style="width:100%">
+            <table id="tabela-carregamentos" class="table table-bordered table-hover" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Nº Carregamento</th>
-                        <th>Data</th>
-                        <th>Ordem de Expedição</th>
-                        <th>Motorista</th>
-                        <th>Placas</th>
-                        <th>Status</th>
+                        <th class="text-center align-middle">Nº Carregamento</th>
+                        <th class="text-center align-middle">Data</th>
+                        <th class="text-center align-middle">Ordem de Expedição</th>
+                        <th class="text-center align-middle">Motorista</th>
+                        <th class="text-center align-middle">Placas</th>
+                        <th class="text-center align-middle">Status</th>
                         <th class="text-center">Ações</th>
                     </tr>
                 </thead>

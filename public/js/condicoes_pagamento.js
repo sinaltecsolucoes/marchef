@@ -13,14 +13,29 @@ $(document).ready(function () {
         },
         "columns": [
             {
-                "data": "cond_ativo", "className": "text-center",
+                "data": "cond_ativo",
+                "className": "text-center align-middle",
                 "render": data => (data == 1) ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
             },
-            { "data": "cond_codigo" },
-            { "data": "cond_descricao" },
-            { "data": "cond_dias_parcelas" },
             {
-                "data": "cond_id", "orderable": false, "className": "text-center",
+                "data": "cond_codigo",
+                "className": "text-center align-middle",
+
+            },
+            {
+                "data": "cond_descricao",
+                "className": "text-center align-middle",
+
+            },
+            {
+                "data": "cond_dias_parcelas",
+                "className": "text-center align-middle",
+
+            },
+            {
+                "data": "cond_id",
+                "orderable": false,
+                "className": "text-center align-middle",
                 "render": function (data) {
                     return `
                         <button class="btn btn-warning btn-sm btn-editar" data-id="${data}">Editar</button>

@@ -12,14 +12,26 @@ $(document).ready(function () {
             "data": { csrf_token: csrfToken }
         },
         "columns": [
-            { "data": "camara_codigo" },
-            { "data": "camara_nome" },
-            { "data": "camara_descricao" },
-            { "data": "camara_industria" },
+            {
+                "data": "camara_codigo",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "camara_nome",
+                "className": "align-middle"
+            },
+            {
+                "data": "camara_descricao",
+                "className": "align-middle"
+            },
+            {
+                "data": "camara_industria",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "camara_id",
                 "orderable": false,
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     return `
                         <button class="btn btn-warning btn-sm btn-editar-camara" data-id="${data}">Editar</button>

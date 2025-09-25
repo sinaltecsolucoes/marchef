@@ -10,9 +10,14 @@ $(document).ready(function () {
             "data": { csrf_token: csrfToken }
         },
         "columns": [
-            { "data": "oe_numero" },
+            {
+                "data": "oe_numero",
+                "className": "text-center align-middle"
+
+            },
             {
                 "data": "oe_data",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
@@ -22,6 +27,7 @@ $(document).ready(function () {
             { "data": "oe_status" },
             {
                 "data": "carregamento_numero",
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     if (!data) return 'N/A';
                     // Cria o link para o futuro relatório
@@ -29,11 +35,14 @@ $(document).ready(function () {
                            class="fw-bold" title="Ver relatório do carregamento">${data}</a>`;
                 }
             },
-            { "data": "usuario_nome" },
+            {
+                "data": "usuario_nome",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "oe_id",
                 "orderable": false,
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     // ### INÍCIO DA NOVA LÓGICA DE BOTÕES ###
                     if (row.oe_status === 'GEROU CARREGAMENTO') {

@@ -14,23 +14,39 @@ $(document).ready(function () {
             "data": { csrf_token: csrfToken }
         },
         "columns": [
-            { "data": "car_numero" },
+            {
+                "data": "car_numero",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "car_data",
+                "className": "text-center align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
                     return date.toLocaleDateString('pt-BR');
                 }
             },
-            { "data": "oe_numero" },
-            { "data": "car_motorista_nome" },
-            { "data": "car_placas" },
-            { "data": "car_status" },
+            {
+                "data": "oe_numero",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "car_motorista_nome",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "car_placas",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "car_status",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "car_id",
                 "orderable": false,
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-info btn-sm me-1" title="Detalhes/Editar"><i class="fas fa-search"></i> Detalhes</a>`;
 

@@ -16,7 +16,7 @@
             <button class="btn btn-secondary btn-sm" id="btn-cancelar-header" style="display: none;"><i
                     class="fas fa-times me-1"></i> Cancelar</button>
             <a href="index.php?page=carregamentos" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Voltar
+                <i class="fas fa-arrow-left"></i> Voltar para a Lista
             </a>
         </div>
     </div>

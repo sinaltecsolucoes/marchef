@@ -43,8 +43,8 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
                     id="btn-exportar-excel-link" class="btn btn-success btn-sm" target="_blank">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </a>
-                <button id="btn-gerar-relatorio" class="btn btn-info btn-sm">
-                    <i class="fas fa-file-pdf"></i> Gerar Relatório
+                <button id="btn-gerar-relatorio" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-print"></i> Imprimir Relatório
                 </button>
                 <a href="index.php?page=faturamentos_listar" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-left"></i> Voltar para a Lista

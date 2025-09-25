@@ -48,85 +48,6 @@ $(document).ready(function () {
     }
 
     // --- FUNÇÃO PRINCIPAL DE CARREGAMENTO ---
-    /* function loadDetalhesCarregamento() {
-         if (!carregamentoId) { return; }
-         $.ajax({
-             url: 'ajax_router.php?action=getCarregamentoDetalhesCompletos',
-             type: 'POST',
-             data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
-             dataType: 'json',
-             success: function (response) {
-                 if (response.success) {
-                     const data = response.data;
-                     oeId = data.header.car_ordem_expedicao_id;
-                     $('#oe_id_hidden').val(oeId);
-                     gabaritoPlanejamento = data.planejamento || [];
-                     renderCabecalho(data.header);
-                     renderPlanejamento(gabaritoPlanejamento);
-                     renderExecucao(data.execucao);
-                 } else {
-                     Swal.fire('Erro ao carregar', response.message, 'error');
-                 }
-             },
-             error: function () {
-                 Swal.fire('Erro de Conexão', 'Não foi possível buscar os dados do carregamento.', 'error');
-             }
-         });
-     } */
-
-    // --- FUNÇÃO PRINCIPAL DE CARREGAMENTO ---
-    /*   function loadDetalhesCarregamento() {
-           if (!carregamentoId) { return; }
-           $.ajax({
-               url: 'ajax_router.php?action=getCarregamentoDetalhesCompletos',
-               type: 'POST',
-               data: { carregamento_id: carregamentoId, csrf_token: csrfToken },
-               dataType: 'json',
-               success: function (response) {
-                   if (response.success) {
-                       const data = response.data;
-                       oeId = data.header.car_ordem_expedicao_id;
-                       $('#oe_id_hidden').val(oeId);
-                       gabaritoPlanejamento = data.planejamento || [];
-   
-                       // 1. Renderiza os componentes da tela (como já estava)
-                       renderCabecalho(data.header);
-                       renderPlanejamento(gabaritoPlanejamento);
-                       // renderExecucao(data.execucao);
-                       renderExecucao(data.execucao, data.header.car_status);
-   
-   
-                       // Lógica para os botões GLOBAIS
-                       if (data.header.car_status === 'FINALIZADO' || data.header.car_status === 'CANCELADO') {
-                           // Esconde o botão global de adicionar fila
-                           $('#btn-adicionar-fila').hide();
-                           // Esconde o botão global de editar cabeçalho
-                           $('#btn-editar-header').hide();
-   
-                           // Adiciona o botão de Relatório no cabeçalho, se ele ainda não existir
-                           if ($('#btn-gerar-relatorio-link').length === 0) {
-                               const btnRelatorio = `<a href="index.php?page=carregamento_relatorio&id=${carregamentoId}" id="btn-gerar-relatorio-link" class="btn btn-secondary btn-sm ms-2"><i class="fas fa-print"></i> Relatório</a>`;
-                               $('#btn-editar-header').parent().prepend(btnRelatorio); // Adiciona antes do grupo de botões
-                           }
-                           // Também desabilita o botão de finalizar (ele já deve estar desabilitado ou oculto se finalizado)
-                           $('#btn-finalizar-detalhe').hide(); // ou .prop('disabled', true); dependendo de como ele é gerenciado.
-                       } else {
-                           // Garante que os botões globais estejam visíveis para carregamentos em andamento
-                           $('#btn-adicionar-fila').show();
-                           $('#btn-editar-header').show();
-                           $('#btn-finalizar-detalhe').show();
-                           $('#btn-gerar-relatorio-link').remove(); // Remove o botão de relatório se reaberto
-                       }
-                   } else {
-                       Swal.fire('Erro ao carregar', response.message, 'error');
-                   }
-               },
-               error: function () {
-                   Swal.fire('Erro de Conexão', 'Não foi possível buscar os dados do carregamento.', 'error');
-               }
-           });
-       } */
-
     function loadDetalhesCarregamento() {
         if (!carregamentoId) { return; }
         $.ajax({
@@ -153,7 +74,8 @@ $(document).ready(function () {
                         $('#btn-finalizar-detalhe').hide();
 
                         if ($('#btn-gerar-relatorio-link').length === 0) {
-                            const btnRelatorio = `<a href="index.php?page=carregamento_relatorio&id=${carregamentoId}" id="btn-gerar-relatorio-link" class="btn btn-secondary btn-sm ms-2"><i class="fas fa-print"></i> Relatório</a>`;
+                            const btnRelatorio = `<a href="index.php?page=carregamento_relatorio&id=${carregamentoId}" id="btn-gerar-relatorio-link" class="btn btn-info btn-sm ms-2">
+                            <i class="fas fa-print"></i> Imprimir Relatório</a>`;
                             $('#btn-editar-header').parent().prepend(btnRelatorio);
                         }
                     } else {
