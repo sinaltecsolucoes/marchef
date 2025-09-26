@@ -44,37 +44,39 @@
                             data-bs-toggle="dropdown">Cadastros</a>
                         <ul class="dropdown-menu">
                             <?php
-                            // Cria uma cópia do array de páginas para usar apenas no menu de cadastros
-                            $paginasParaCadastro = $paginasPermitidas;
+                            // Itens do menu de Cadastros
+                            $paginasSimples = [
+                                'usuarios' => 'Usuários',
+                                'clientes' => 'Clientes',
+                                'fornecedores' => 'Fornecedores',
+                                'transportadoras' => 'Transportadoras',
+                                'condicoes_pagamento' => 'Condições de Pagamento'
+                            ];
 
-                            // Remove os itens que pertencem a outros menus (Configurações, etc.)
-                            unset($paginasParaCadastro['home']);
-                            unset($paginasParaCadastro['permissoes']);
-                            unset($paginasParaCadastro['templates']);
-                            unset($paginasParaCadastro['regras']);
-                            unset($paginasParaCadastro['auditoria']);
-                            unset($paginasParaCadastro['backup']);
-                            unset($paginasParaCadastro['estoque']);
-                            unset($paginasParaCadastro['carregamentos']);
-                            unset($paginasParaCadastro['carregamento_detalhes']);
-                            unset($paginasParaCadastro['ordens_expedicao']);
-                            unset($paginasParaCadastro['lotes_producao']);
-                            unset($paginasParaCadastro['lotes_embalagem']);
-                            unset($paginasParaCadastro['estoque_camaras']);
-                            unset($paginasParaCadastro['estoque_enderecos']);
-                            unset($paginasParaCadastro['visao_estoque_enderecos']);
-                            unset($paginasParaCadastro['faturamento_gerar']);
-                            unset($paginasParaCadastro['faturamentos_listar']);
-                            unset($paginasParaCadastro['condicoes_pagamento']);
-                            unset($paginasParaCadastro['gestao_caixas_mistas']);
-
-                            // Chama a função de renderização do menu apenas com a lista filtrada
-                            echo render_menu_items($paginasParaCadastro, $paginasPermitidasUsuario, BASE_URL);
+                            foreach ($paginasSimples as $page => $label) {
+                                if (in_array($page, $paginasPermitidasUsuario)) {
+                                    echo "<li><a class='dropdown-item' href='index.php?page={$page}'>{$label}</a></li>";
+                                }
+                            }
                             ?>
 
-                            <?php if (in_array('condicoes_pagamento', $paginasPermitidasUsuario)): ?>
-                                <li><a class="dropdown-item" href="index.php?page=condicoes_pagamento">Condições de
-                                        Pagamento</a></li>
+                            <?php // --- SUBMENU DE PRODUTOS ---
+                            $paginasProdutos = ['produtos', 'fichas_tecnicas'];
+                            if (count(array_intersect($paginasProdutos, $paginasPermitidasUsuario)) > 0):
+                                ?>
+                                <li class="dropend">
+                                    <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">Produtos</a>
+                                    <ul class="dropdown-menu dropdown-submenu">
+                                        <?php if (in_array('produtos', $paginasPermitidasUsuario)): ?>
+                                            <li><a class="dropdown-item" href="index.php?page=produtos">Gerenciar Produtos</a>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php if (in_array('fichas_tecnicas', $paginasPermitidasUsuario)): ?>
+                                            <li><a class="dropdown-item" href="index.php?page=fichas_tecnicas">Fichas
+                                                    Técnicas</a></li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </li>
                             <?php endif; ?>
 
                             <?php // --- SUBMENU DE ESTOQUE ---
@@ -368,6 +370,10 @@
 
     <?php if ($paginaAtual === 'gestao_caixas_mistas'): ?>
         <script src="<?php echo BASE_URL; ?>/js/gestao_caixas_mistas.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'fichas_tecnicas' || $paginaAtual === 'ficha_tecnica_detalhes'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/fichas_tecnicas.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'home'): ?>

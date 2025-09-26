@@ -38,6 +38,7 @@ use App\Estoque\EnderecoRepository;
 use App\OrdensExpedicao\OrdemExpedicaoRepository;
 use App\Faturamento\FaturamentoRepository;
 use App\CondicaoPagamento\CondicaoPagamentoRepository;
+use App\FichasTecnicas\FichaTecnicaRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -75,6 +76,7 @@ try {
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
     $faturamentoRepo = new FaturamentoRepository($pdo);//Cria a instância do repositorio para Faturamento
     $condPagRepo = new CondicaoPagamentoRepository($pdo);//Cria a instância do repositorio para Condições de Pagamento
+    $fichaTecnicaRepo = new FichaTecnicaRepository($pdo);//Cria a instância do repositorio para Fichas Técnicas
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -663,6 +665,23 @@ switch ($action) {
         break;
     case 'excluirCondicaoPagamento':
         excluirCondicaoPagamento($condPagRepo);
+        break;
+
+    // --- ROTAS DE FICHAS TÉCNICAS ---
+    case 'listarFichasTecnicas':
+        listarFichasTecnicas($fichaTecnicaRepo);
+        break;
+    case 'getFichaTecnicaCompleta':
+        getFichaTecnicaCompleta($fichaTecnicaRepo);
+        break;
+    case 'getProdutosSemFichaTecnica':
+        getProdutosSemFichaTecnica($fichaTecnicaRepo);
+        break;
+    case 'getFabricanteOptionsFT': // FT para Ficha Técnica, evitando conflito
+        getFabricanteOptionsFT($fichaTecnicaRepo);
+        break;
+    case 'getProdutoDetalhesParaFicha':
+        getProdutoDetalhesParaFicha($fichaTecnicaRepo);
         break;
 
     default:
@@ -3034,5 +3053,52 @@ function excluirCondicaoPagamento(CondicaoPagamentoRepository $repo)
         echo json_encode(['success' => true, 'message' => 'Condição excluída com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA FICHAS TÉCNICAS ---
+function listarFichasTecnicas(FichaTecnicaRepository $repo)
+{
+    echo json_encode($repo->findAllForDataTable($_POST));
+}
+
+function getFichaTecnicaCompleta(FichaTecnicaRepository $repo)
+{
+    $id = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID da Ficha inválido.']);
+        return;
+    }
+    $ficha = $repo->findCompletaById($id);
+    if ($ficha) {
+        echo json_encode(['success' => true, 'data' => $ficha]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Ficha Técnica não encontrada.']);
+    }
+}
+
+function getProdutosSemFichaTecnica(FichaTecnicaRepository $repo)
+{
+    $term = $_GET['term'] ?? '';
+    echo json_encode(['results' => $repo->findProdutosSemFichaTecnica($term)]);
+}
+
+function getFabricanteOptionsFT(FichaTecnicaRepository $repo)
+{
+    $term = $_GET['term'] ?? '';
+    echo json_encode(['results' => $repo->getFabricanteOptions($term)]);
+}
+
+function getProdutoDetalhesParaFicha(FichaTecnicaRepository $repo)
+{
+    $produtoId = filter_input(INPUT_POST, 'produto_id', FILTER_VALIDATE_INT);
+    if (!$produtoId) { /* tratamento de erro */
+    }
+
+    $produto = $repo->getProdutoDetalhes($produtoId);
+    if ($produto) {
+        echo json_encode(['success' => true, 'data' => $produto]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Produto não encontrado.']);
     }
 }

@@ -1273,85 +1273,6 @@ class CarregamentoRepository
     }
 
     /**
-     * Busca todos os dados de um carregamento para a geração de relatório.
-     * Retorna um array estruturado com header, filas, itens e fotos.
-     */
-    /*   public function getDadosCompletosParaRelatorio(int $carregamentoId): array
-       {
-           $dados = [
-               'header' => null,
-               'filas' => []
-           ];
-
-           // 1. Busca o cabeçalho do Carregamento
-           $stmtHeader = $this->pdo->prepare(
-               "SELECT c.*, oeh.oe_numero 
-                FROM tbl_carregamentos c 
-                LEFT JOIN tbl_ordens_expedicao_header oeh ON c.car_ordem_expedicao_id = oeh.oe_id
-                WHERE c.car_id = :id"
-           );
-           $stmtHeader->execute([':id' => $carregamentoId]);
-           $dados['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-
-           if (!$dados['header']) {
-               return []; // Retorna vazio se não encontrar o carregamento
-           }
-
-           // 2. Busca todas as Filas, Itens e Fotos de uma vez
-           $sqlItens = "SELECT 
-                           f.fila_id, f.fila_numero_sequencial,
-                           foto.foto_path,
-                           ci.car_item_id,
-                           COALESCE(e.ent_nome_fantasia, e.ent_razao_social) AS cliente_nome,
-                           p.prod_codigo_interno, p.prod_descricao,
-                           lnh.lote_completo_calculado AS lote_completo,
-                           COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social) AS cliente_lote_nome,
-                           ee.endereco_completo,
-                           ci.car_item_quantidade AS qtd_carregada,
-                           ci.car_item_motivo_divergencia
-                        FROM tbl_carregamento_filas f
-                        LEFT JOIN tbl_carregamento_itens ci ON f.fila_id = ci.car_item_fila_id
-                        LEFT JOIN tbl_carregamento_fila_fotos foto ON f.fila_id = foto.foto_fila_id
-                        LEFT JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
-                        LEFT JOIN tbl_estoque_alocacoes ea ON ci.car_item_alocacao_id = ea.alocacao_id
-                        LEFT JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
-                        LEFT JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                        LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                        LEFT JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id
-                        LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo
-                        WHERE f.fila_carregamento_id = :id
-                        ORDER BY f.fila_numero_sequencial, e.ent_nome_fantasia, p.prod_descricao";
-
-           $stmtItens = $this->pdo->prepare($sqlItens);
-           $stmtItens->execute([':id' => $carregamentoId]);
-           $results = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-
-           // 3. Organiza os dados em uma estrutura hierárquica
-           $filasProcessadas = [];
-           foreach ($results as $row) {
-               $filaId = $row['fila_id'];
-               if (!isset($filasProcessadas[$filaId])) {
-                   $filasProcessadas[$filaId] = [
-                       'fila_numero' => $row['fila_numero_sequencial'],
-                       'itens' => [],
-                       'fotos' => []
-                   ];
-               }
-               // Adiciona item se ele existir (evita duplicatas de LEFT JOIN)
-               if ($row['car_item_id'] && !isset($filasProcessadas[$filaId]['itens'][$row['car_item_id']])) {
-                   $filasProcessadas[$filaId]['itens'][$row['car_item_id']] = $row;
-               }
-               // Adiciona foto se ela existir (evita duplicatas)
-               if ($row['foto_path'] && !in_array($row['foto_path'], $filasProcessadas[$filaId]['fotos'])) {
-                   $filasProcessadas[$filaId]['fotos'][] = $row['foto_path'];
-               }
-           }
-           $dados['filas'] = array_values($filasProcessadas); // Reindexa o array
-
-           return $dados;
-       } */
-
-    /**
      * Conta o número de carregamentos criados na data de hoje.
      * Usado pelo KPI no Dashboard.
      */
@@ -1440,4 +1361,25 @@ class CarregamentoRepository
 
         return $dados;
     }
+
+    /**
+     * Busca os carregamentos em aberto mais antigos.
+     * @param int $limit O número máximo de carregamentos a retornar.
+     * @return array
+     */
+    public function findOpenShipments(int $limit = 5): array
+    {
+        $sql = "SELECT c.car_id, c.car_numero, c.car_data, c.car_status, e.ent_razao_social
+            FROM tbl_carregamentos c
+            LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo 
+            WHERE c.car_status NOT IN ('FINALIZADO', 'CANCELADO')
+            ORDER BY c.car_data ASC
+            LIMIT :limit";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }

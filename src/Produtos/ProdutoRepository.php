@@ -138,12 +138,12 @@ class ProdutoRepository
                     prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo, prod_classificacao, 
                     prod_categoria, prod_classe, prod_especie, prod_origem, prod_conservacao, prod_congelamento, 
                     prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas, 
-                    prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14) 
+                    prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14, prod_ncm, prod_marca) 
                 VALUES (
                     :prod_codigo_interno, :prod_descricao, :prod_situacao, :prod_tipo, :prod_subtipo, :prod_classificacao, 
                     :prod_categoria, :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
                     :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, 
-                    :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14
+                    :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14, :prod_ncm, :prod_marca
  
                 )";
         $stmt = $this->pdo->prepare($sql);
@@ -178,7 +178,7 @@ class ProdutoRepository
                     prod_fator_producao = :prod_fator_producao, prod_tipo_embalagem = :prod_tipo_embalagem, 
                     prod_peso_embalagem = :prod_peso_embalagem, prod_total_pecas = :prod_total_pecas, 
                     prod_validade_meses = :prod_validade_meses, prod_primario_id = :prod_primario_id, 
-                    prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14, prod_situacao = :prod_situacao
+                    prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14, prod_ncm = :prod_ncm, prod_marca = :prod_marca, prod_situacao = :prod_situacao
 
                 WHERE prod_codigo = :prod_codigo";
 
@@ -241,6 +241,8 @@ class ProdutoRepository
             ':prod_primario_id' => !empty($data['prod_primario_id']) ? $data['prod_primario_id'] : null,
             ':prod_ean13' => !empty($data['prod_ean13']) ? $data['prod_ean13'] : null,
             ':prod_dun14' => !empty($data['prod_dun14']) ? $data['prod_dun14'] : null,
+            ':prod_ncm' => !empty($data['prod_ncm']) ? $data['prod_ncm'] : null,
+            ':prod_marca' => !empty($data['prod_marca']) ? $data['prod_marca'] : null,
             ':prod_situacao' => $situacao,
             ':prod_codigo' => $data['prod_codigo'] ?? null,
         ];

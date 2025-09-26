@@ -94,9 +94,6 @@
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
                     <div class="row">
-                    </div>
-
-                    <div class="row">
                         <div class="col-md-3 mb-3">
                             <label for="prod_categoria" class="form-label">Categoria (IQF)</label>
                             <select class="form-select" id="prod_categoria" name="prod_categoria">
@@ -120,10 +117,6 @@
                                         id="label-prod-situacao">Ativo</span></label>
                             </div>
                         </div>
-
-                    </div>
-
-                    <div class="row">
                     </div>
 
                     <div id="mensagem-produto" class="mb-3"></div>
@@ -170,6 +163,19 @@
                                     id="asterisco-codigo-interno" style="display: none;">*</span></label>
                             <input type="text" class="form-control" id="prod_codigo_interno" name="prod_codigo_interno">
                         </div>
+                        <div class="col-md-5 mb-3">
+                            <label for="prod_ncm" class="form-label">NCM</label>
+                            <input type="text" class="form-control" id="prod_ncm" name="prod_ncm"
+                                placeholder="Nomenclatura Comum do Mercosul">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="prod_marca" class="form-label">Marca</label>
+                            <input type="text" class="form-control" id="prod_marca" name="prod_marca"
+                                placeholder="Marca do produto">
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-3 mb-3">
                             <label for="prod_tipo" class="form-label">Tipo</label>
                             <select class="form-select" id="prod_tipo" name="prod_tipo" required>
@@ -180,12 +186,13 @@
                                 <option value="OUTRO">Outro</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-9 mb-3">
                             <label for="prod_subtipo" class="form-label">Subtipo</label>
                             <input type="text" class="form-control" id="prod_subtipo" name="prod_subtipo"
                                 placeholder="Ex: Sem Cabeça, P&D, Posta...">
                         </div>
                     </div>
+
 
                     <!-- Linha 3: Classificação, Espécie e Origem -->
                     <div class="row">
