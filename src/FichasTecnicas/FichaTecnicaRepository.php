@@ -71,7 +71,7 @@ class FichaTecnicaRepository
 
         $sql = "SELECT
                     ent_codigo AS id,
-                    CONCAT(COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social), ' (Cód: ', ent_codigo, ')') AS text
+                    CONCAT(COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social), ' (Cód: ', ent_codigo_interno, ')') AS text
                 FROM tbl_entidades 
                 WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
                 AND ent_situacao = 'A'{$sqlWhereTerm}
@@ -101,28 +101,50 @@ class FichaTecnicaRepository
         $stmt->execute();
         return ["draw" => intval($params['draw'] ?? 1), "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalRecords, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     }
+    /* public function findCompletaById(int $fichaId): ?array
+     {
+         $stmtHeader = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
+         $stmtHeader->execute([':id' => $fichaId]);
+         $ficha['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+         if (!$ficha['header'])
+             return null;
+         $stmtCriterios = $this->pdo->prepare("SELECT * 
+                                                      FROM tbl_fichas_tecnicas_criterios 
+                                                      WHERE criterio_ficha_id = :id 
+                                                      ORDER BY criterio_id");
+         $stmtCriterios->execute([':id' => $fichaId]);
+         $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);
+         $ficha['fotos'] = [];
+         return $ficha;
+     } */
+
     public function findCompletaById(int $fichaId): ?array
     {
-        $stmtHeader = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
+        $ficha = [];
+        $stmtHeader = $this->pdo->prepare("
+            SELECT 
+                ft.*,
+                p.prod_descricao AS produto_nome,
+                CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social), ' (Cód: ', e.ent_codigo_interno, ')') AS fabricante_nome
+            FROM tbl_fichas_tecnicas ft
+            JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo
+            LEFT JOIN tbl_entidades e ON ft.ficha_fabricante_id = e.ent_codigo
+            WHERE ft.ficha_id = :id
+        ");
         $stmtHeader->execute([':id' => $fichaId]);
         $ficha['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-        if (!$ficha['header'])
+
+        if (!$ficha['header']) {
             return null;
-        $stmtCriterios = $this->pdo->prepare("SELECT * 
-                                                     FROM tbl_fichas_tecnicas_criterios 
-                                                     WHERE criterio_ficha_id = :id 
-                                                     ORDER BY criterio_id");
+        }
+
+        $stmtCriterios = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas_criterios WHERE criterio_ficha_id = :id ORDER BY criterio_id");
         $stmtCriterios->execute([':id' => $fichaId]);
         $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);
         $ficha['fotos'] = [];
+
         return $ficha;
     }
-    /* public function getProdutoDetalhes(int $produtoId): ?array
-     {
-         $stmt = $this->pdo->prepare("SELECT * FROM tbl_produtos WHERE prod_codigo = :id");
-         $stmt->execute([':id' => $produtoId]);
-         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-     } */
 
     public function getProdutoDetalhes(int $produtoId): ?array
     {
@@ -138,90 +160,6 @@ class FichaTecnicaRepository
         $stmt->execute([':id' => $produtoId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
-
-    /**
-     * Salva ou atualiza o cabeçalho (dados gerais) de uma Ficha Técnica.
-     *
-     * @param array $data Dados do formulário ($_POST)
-     * @param int $usuarioId ID do usuário que está realizando a ação
-     * @return int O ID da ficha salva ou atualizada
-     * @throws \Exception
-     */
-    /* public function saveHeader(array $data, int $usuarioId): int
-     {
-         $fichaId = !empty($data['ficha_id']) ? (int) $data['ficha_id'] : null;
-
-         // Validação básica
-         if (empty($data['ficha_produto_id'])) {
-             throw new \Exception("O campo 'Produto' é obrigatório.");
-         }
-
-         $this->pdo->beginTransaction();
-
-         try {
-             if ($fichaId) {
-                 // --- ATUALIZAÇÃO ---
-                 $sql = "UPDATE tbl_fichas_tecnicas SET
-                             ficha_fabricante_id = :ficha_fabricante_id,
-                             ficha_conservantes = :ficha_conservantes,
-                             ficha_alergenicos = :ficha_alergenicos,
-                             ficha_temp_estocagem_transporte = :ficha_temp_estocagem_transporte,
-                             ficha_origem = :ficha_origem,
-                             ficha_desc_embalagem = :ficha_desc_embalagem,
-                             ficha_medidas_embalagem = :ficha_medidas_embalagem,
-                             ficha_paletizacao = :ficha_paletizacao,
-                             ficha_gestao_qualidade = :ficha_gestao_qualidade,
-                             ficha_usuario_id = :usuario_id
-                         WHERE ficha_id = :ficha_id";
-
-                 $stmt = $this->pdo->prepare($sql);
-                 $stmt->bindValue(':ficha_id', $fichaId, PDO::PARAM_INT);
-             } else {
-                 // --- CRIAÇÃO ---
-                 $sql = "INSERT INTO tbl_fichas_tecnicas (
-                             ficha_produto_id, ficha_fabricante_id, ficha_conservantes, ficha_alergenicos,
-                             ficha_temp_estocagem_transporte, ficha_origem, ficha_desc_embalagem,
-                             ficha_medidas_embalagem, ficha_paletizacao, ficha_gestao_qualidade,
-                             ficha_usuario_id
-                         ) VALUES (
-                             :ficha_produto_id, :ficha_fabricante_id, :ficha_conservantes, :ficha_alergenicos,
-                             :ficha_temp_estocagem_transporte, :ficha_origem, :ficha_desc_embalagem,
-                             :ficha_medidas_embalagem, :ficha_paletizacao, :ficha_gestao_qualidade,
-                             :usuario_id
-                         )";
-
-                 $stmt = $this->pdo->prepare($sql);
-                 $stmt->bindValue(':ficha_produto_id', $data['ficha_produto_id'], PDO::PARAM_INT);
-             }
-
-             // Bind dos parâmetros comuns a ambas as operações
-             $stmt->bindValue(':usuario_id', $usuarioId, PDO::PARAM_INT);
-             $stmt->bindValue(':ficha_fabricante_id', !empty($data['ficha_fabricante_id']) ? $data['ficha_fabricante_id'] : null, PDO::PARAM_INT);
-             $stmt->bindValue(':ficha_conservantes', $data['ficha_conservantes'] ?? null);
-             $stmt->bindValue(':ficha_alergenicos', $data['ficha_alergenicos'] ?? null);
-             $stmt->bindValue(':ficha_temp_estocagem_transporte', $data['ficha_temp_estocagem_transporte'] ?? null);
-             $stmt->bindValue(':ficha_origem', $data['ficha_origem'] ?? 'INDÚSTRIA BRASILEIRA');
-             $stmt->bindValue(':ficha_desc_embalagem', $data['ficha_desc_embalagem'] ?? null);
-             $stmt->bindValue(':ficha_medidas_embalagem', $data['ficha_medidas_embalagem'] ?? null);
-             $stmt->bindValue(':ficha_paletizacao', $data['ficha_paletizacao'] ?? null);
-             $stmt->bindValue(':ficha_gestao_qualidade', $data['ficha_gestao_qualidade'] ?? null);
-
-             $stmt->execute();
-
-             if (!$fichaId) {
-                 $fichaId = (int) $this->pdo->lastInsertId();
-             }
-
-             $this->pdo->commit();
-
-             return $fichaId;
-
-         } catch (\PDOException $e) {
-             $this->pdo->rollBack();
-             error_log("Erro em saveHeader FichaTecnica: " . $e->getMessage()); // Log para o servidor
-             throw new \Exception("Erro ao salvar os dados no banco. Verifique os logs do servidor.");
-         }
-     } */
 
     public function saveHeader(array $data, int $usuarioId): int
     {
@@ -302,5 +240,215 @@ class FichaTecnicaRepository
             error_log("Erro em saveHeader FichaTecnica: " . $e->getMessage());
             throw new \Exception("Erro ao salvar os dados no banco. Verifique os logs do servidor.");
         }
+    }
+
+    /**
+     * Exclui uma Ficha Técnica e seus registros associados (via cascade do BD).
+     *
+     * @param int $fichaId O ID da ficha a ser excluída.
+     * @return bool
+     * @throws \Exception
+     */
+    public function delete(int $fichaId): bool
+    {
+        // Log de auditoria antes de deletar, para termos o registro do que foi apagado
+        $dadosAntigos = $this->findCompletaById($fichaId)['header'] ?? null;
+        if ($dadosAntigos) {
+            $this->auditLogger->log('DELETE', $fichaId, 'tbl_fichas_tecnicas', $dadosAntigos, null);
+        }
+
+        $stmt = $this->pdo->prepare("DELETE FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
+        $stmt->bindValue(':id', $fichaId, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+
+    /**
+     * Busca todos os critérios de uma ficha técnica específica.
+     * @param int $fichaId
+     * @return array
+     */
+    public function getCriteriosByFichaId(int $fichaId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM tbl_fichas_tecnicas_criterios
+            WHERE criterio_ficha_id = :ficha_id
+            ORDER BY criterio_grupo, criterio_nome
+        ");
+        $stmt->execute([':ficha_id' => $fichaId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Salva (cria ou atualiza) um critério.
+     * @param array $data
+     * @return int ID do critério salvo.
+     */
+    /*    public function saveCriterio(array $data): int
+        {
+            $id = filter_var($data['criterio_id'] ?? null, FILTER_VALIDATE_INT);
+
+            $params = [
+                ':ficha_id' => $data['criterio_ficha_id'],
+                ':grupo' => $data['criterio_grupo'],
+                ':nome' => $data['criterio_nome'],
+                ':unidade' => $data['criterio_unidade'] ?: null,
+                ':valor' => $data['criterio_valor']
+            ];
+
+            if ($id) {
+                // Lógica de UPDATE (será implementada quando fizermos a edição)
+                // Por enquanto, o formulário não envia ID, então só criará novos.
+                throw new Exception("Funcionalidade de edição ainda não implementada.");
+            } else {
+                // Lógica de INSERT
+                $sql = "INSERT INTO tbl_fichas_tecnicas_criterios
+                            (criterio_ficha_id, criterio_grupo, criterio_nome, criterio_unidade, criterio_valor)
+                        VALUES
+                            (:ficha_id, :grupo, :nome, :unidade, :valor)";
+            }
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+
+            return $id ?: (int) $this->pdo->lastInsertId();
+        } */
+
+    /**
+     * Salva (cria ou atualiza) um critério.
+     * @param array $data
+     * @return int ID do critério salvo.
+     */
+    public function saveCriterio(array $data): int
+    {
+        $id = filter_var($data['criterio_id'] ?? null, FILTER_VALIDATE_INT);
+
+        $params = [
+            ':ficha_id' => $data['criterio_ficha_id'],
+            ':grupo' => $data['criterio_grupo'],
+            ':nome' => $data['criterio_nome'],
+            ':unidade' => $data['criterio_unidade'] ?: null,
+            ':valor' => $data['criterio_valor']
+        ];
+
+        if ($id) {
+            // Lógica de UPDATE
+            $sql = "UPDATE tbl_fichas_tecnicas_criterios SET
+                        criterio_ficha_id = :ficha_id,
+                        criterio_grupo = :grupo,
+                        criterio_nome = :nome,
+                        criterio_unidade = :unidade,
+                        criterio_valor = :valor
+                    WHERE criterio_id = :id";
+            $params[':id'] = $id;
+        } else {
+            // Lógica de INSERT
+            $sql = "INSERT INTO tbl_fichas_tecnicas_criterios
+                        (criterio_ficha_id, criterio_grupo, criterio_nome, criterio_unidade, criterio_valor)
+                    VALUES
+                        (:ficha_id, :grupo, :nome, :unidade, :valor)";
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $id ?: (int) $this->pdo->lastInsertId();
+    }
+
+
+
+    /**
+     * Exclui um critério específico.
+     * @param int $criterioId
+     * @return bool
+     */
+    public function deleteCriterio(int $criterioId): bool
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM tbl_fichas_tecnicas_criterios WHERE criterio_id = :id");
+        return $stmt->execute([':id' => $criterioId]);
+    }
+
+
+    /**
+     * Busca todos os caminhos de fotos de uma ficha técnica.
+     * @param int $fichaId
+     * @return array
+     */
+    public function getFotosByFichaId(int $fichaId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT foto_tipo, foto_path 
+            FROM tbl_fichas_tecnicas_fotos
+            WHERE foto_ficha_id = :ficha_id
+        ");
+        $stmt->execute([':ficha_id' => $fichaId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Salva o caminho de uma foto no banco, garantindo que só haja uma por tipo.
+     * @param int $fichaId
+     * @param string $fotoTipo
+     * @param string $filePath
+     * @return bool
+     */
+    public function saveFotoPath(int $fichaId, string $fotoTipo, string $filePath): bool
+    {
+        // A lógica de apagar o registro antigo já foi movida para deleteFoto,
+        // então aqui só precisamos inserir o novo.
+        $sql = "INSERT INTO tbl_fichas_tecnicas_fotos (foto_ficha_id, foto_tipo, foto_path)
+                VALUES (:ficha_id, :tipo, :path)";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            ':ficha_id' => $fichaId,
+            ':tipo' => $fotoTipo,
+            ':path' => $filePath
+        ]);
+    }
+
+    /**
+     * Exclui o registro de uma foto do banco de dados e retorna seu caminho.
+     * @param int $fichaId
+     * @param string $fotoTipo
+     * @return string|null O caminho do arquivo que foi removido do banco.
+     */
+    public function deleteFoto(int $fichaId, string $fotoTipo): ?string
+    {
+        // Primeiro, busca o caminho do arquivo para poder retorná-lo
+        $stmtSelect = $this->pdo->prepare("
+            SELECT foto_path FROM tbl_fichas_tecnicas_fotos 
+            WHERE foto_ficha_id = :ficha_id AND foto_tipo = :tipo
+        ");
+        $stmtSelect->execute([':ficha_id' => $fichaId, ':tipo' => $fotoTipo]);
+        $path = $stmtSelect->fetchColumn();
+
+        // Se encontrou um registro, apaga
+        if ($path) {
+            $stmtDelete = $this->pdo->prepare("
+                DELETE FROM tbl_fichas_tecnicas_fotos 
+                WHERE foto_ficha_id = :ficha_id AND foto_tipo = :tipo
+            ");
+            $stmtDelete->execute([':ficha_id' => $fichaId, ':tipo' => $fotoTipo]);
+        }
+
+        return $path ?: null;
+    }
+
+    /**
+     * Busca o código interno do produto associado a uma ficha técnica.
+     * @param int $fichaId
+     * @return string|null
+     */
+    public function getCodigoInternoProdutoByFichaId(int $fichaId): ?string
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT p.prod_codigo_interno
+            FROM tbl_fichas_tecnicas ft
+            JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo
+            WHERE ft.ficha_id = :id
+        ");
+        $stmt->execute([':id' => $fichaId]);
+        return $stmt->fetchColumn() ?: null;
     }
 }

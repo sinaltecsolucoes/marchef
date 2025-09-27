@@ -691,7 +691,27 @@ switch ($action) {
     case 'salvarFichaTecnicaGeral':
         salvarFichaTecnicaGeral($fichaTecnicaRepo, $_SESSION['codUsuario']);
         break;
-
+    case 'excluirFichaTecnica':
+        excluirFichaTecnica($fichaTecnicaRepo);
+        break;
+    case 'listarCriteriosFicha':
+        listarCriteriosFicha($fichaTecnicaRepo);
+        break;
+    case 'salvarCriterioFicha':
+        salvarCriterioFicha($fichaTecnicaRepo);
+        break;
+    case 'excluirCriterioFicha':
+        excluirCriterioFicha($fichaTecnicaRepo);
+        break;
+    case 'listarFotosFicha':
+        listarFotosFicha($fichaTecnicaRepo);
+        break;
+    case 'uploadFotoFicha':
+        uploadFotoFicha($fichaTecnicaRepo);
+        break;
+    case 'excluirFotoFicha':
+        excluirFotoFicha($fichaTecnicaRepo);
+        break;
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -1971,21 +1991,6 @@ function reativarCarregamento(CarregamentoRepository $repo)
     }
 }
 
-/* function reabrirCarregamento(CarregamentoRepository $repo)
-{
-    try {
-        $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $motivo = trim($_POST['motivo'] ?? '');// <-- LÊ O MOTIVO
-        if (!$id || empty($motivo)) {// <-- Valida o motivo
-            throw new Exception("Dados inválidos para reabertura.");
-        }
-        $repo->reabrir($id, $motivo);// <-- Passa o motivo
-        echo json_encode(['success' => true, 'message' => 'Carregamento reaberto com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-} */
-
 function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, \App\OrdensExpedicao\OrdemExpedicaoRepository $ordemExpedicaoRepo)
 {
     try {
@@ -3143,3 +3148,201 @@ function salvarFichaTecnicaGeral(FichaTecnicaRepository $repo, int $usuarioId)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
+function excluirFichaTecnica(FichaTecnicaRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+        if (!$id) {
+            throw new Exception("ID da ficha técnica inválido.");
+        }
+
+        $repo->delete($id);
+
+        echo json_encode(['success' => true, 'message' => 'Ficha técnica excluída com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function listarCriteriosFicha(FichaTecnicaRepository $repo)
+{
+    $fichaId = filter_input(INPUT_GET, 'ficha_id', FILTER_VALIDATE_INT);
+    if (!$fichaId) {
+        echo json_encode(['success' => false, 'data' => []]);
+        return;
+    }
+    $criterios = $repo->getCriteriosByFichaId($fichaId);
+    echo json_encode(['success' => true, 'data' => $criterios]);
+}
+
+function salvarCriterioFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        // A função do repositório cuidará da lógica de criar ou atualizar
+        $repo->saveCriterio($_POST);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirCriterioFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        $id = filter_input(INPUT_POST, 'criterio_id', FILTER_VALIDATE_INT);
+        if (!$id) {
+            throw new Exception("ID do critério inválido.");
+        }
+        $repo->deleteCriterio($id);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// --- FUNÇÕES DE CONTROLE PARA FOTOS DA FICHA TÉCNICA ---
+
+function listarFotosFicha(FichaTecnicaRepository $repo)
+{
+    $fichaId = filter_input(INPUT_GET, 'ficha_id', FILTER_VALIDATE_INT);
+    if (!$fichaId) {
+        echo json_encode(['success' => false, 'data' => []]);
+        return;
+    }
+    $fotos = $repo->getFotosByFichaId($fichaId);
+    echo json_encode(['success' => true, 'data' => $fotos]);
+}
+
+/* function uploadFotoFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+        $fotoTipo = $_POST['foto_tipo'] ?? '';
+
+        if (!$fichaId || empty($fotoTipo) || empty($_FILES['foto_arquivo'])) {
+            throw new Exception("Dados insuficientes para o upload.");
+        }
+
+        $arquivo = $_FILES['foto_arquivo'];
+
+        // Validação do arquivo
+        if ($arquivo['error'] !== UPLOAD_ERR_OK) throw new Exception("Erro no upload do arquivo.");
+        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($arquivo['type'], $tiposPermitidos)) throw new Exception("Formato de arquivo não permitido.");
+        if ($arquivo['size'] > 5 * 1024 * 1024) throw new Exception("O arquivo excede o limite de 5MB.");
+
+        // Lógica para salvar o arquivo
+        $uploadDir = __DIR__ . '/uploads/fichas_tecnicas/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
+
+        $extensao = pathinfo($arquivo['name'], PATHINFO_EXTENSION);
+        $nomeArquivo = "ficha_" . $fichaId . "_" . $fotoTipo . "_" . time() . "." . $extensao;
+        $caminhoCompleto = $uploadDir . $nomeArquivo;
+        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomeArquivo;
+
+        // Antes de salvar o novo, remove um antigo do mesmo tipo, se houver
+        $caminhoAntigo = $repo->deleteFoto($fichaId, $fotoTipo);
+        if ($caminhoAntigo && file_exists(__DIR__ . '/' . $caminhoAntigo)) {
+            unlink(__DIR__ . '/' . $caminhoAntigo);
+        }
+
+        if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
+            throw new Exception("Falha ao mover o arquivo para o destino.");
+        }
+
+        // Salva o novo caminho no banco de dados
+        $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
+
+        echo json_encode(['success' => true]);
+
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+} */
+
+function uploadFotoFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+        $fotoTipo = $_POST['foto_tipo'] ?? '';
+
+        if (!$fichaId || empty($fotoTipo) || empty($_FILES['foto_arquivo'])) {
+            throw new Exception("Dados insuficientes para o upload.");
+        }
+
+        // --- LÓGICA DE ORGANIZAÇÃO DE PASTAS RESTAURADA ---
+        $codigoInternoProduto = $repo->getCodigoInternoProdutoByFichaId($fichaId);
+        if (!$codigoInternoProduto) {
+            throw new Exception("Não foi possível encontrar o produto associado a esta ficha.");
+        }
+        $nomePasta = preg_replace('/[^a-zA-Z0-9_-]/', '', $codigoInternoProduto);
+
+        $arquivo = $_FILES['foto_arquivo'];
+
+        // Validações do arquivo
+        if ($arquivo['error'] !== UPLOAD_ERR_OK)
+            throw new Exception("Erro no upload do arquivo.");
+        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($arquivo['type'], $tiposPermitidos))
+            throw new Exception("Formato de arquivo não permitido.");
+
+        // Cria a pasta do produto se não existir
+        $pastaProdutoDir = __DIR__ . '/uploads/fichas_tecnicas/' . $nomePasta . '/';
+        if (!is_dir($pastaProdutoDir)) {
+            mkdir($pastaProdutoDir, 0775, true);
+        }
+
+        $extensao = strtolower(pathinfo($arquivo['name'], PATHINFO_EXTENSION));
+        if (empty($extensao) && $arquivo['type'] == 'image/jpeg')
+            $extensao = 'jpg';
+
+        // Cria o nome do arquivo com o código interno
+        $nomeArquivo = $nomePasta . "_" . $fotoTipo . "_" . time() . "." . $extensao;
+        $caminhoCompleto = $pastaProdutoDir . $nomeArquivo;
+        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomePasta . '/' . $nomeArquivo;
+        // --- FIM DA LÓGICA DE ORGANIZAÇÃO ---
+
+        $caminhoAntigo = $repo->deleteFoto($fichaId, $fotoTipo);
+        if ($caminhoAntigo && file_exists(__DIR__ . '/' . $caminhoAntigo)) {
+            unlink(__DIR__ . '/' . $caminhoAntigo);
+        }
+
+        if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
+            throw new Exception("Falha ao mover o arquivo para o destino.");
+        }
+
+        $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
+
+        echo json_encode(['success' => true]);
+
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function excluirFotoFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+        $fotoTipo = $_POST['foto_tipo'] ?? '';
+        if (!$fichaId || empty($fotoTipo)) {
+            throw new Exception("Dados insuficientes para exclusão.");
+        }
+
+        $caminhoArquivo = $repo->deleteFoto($fichaId, $fotoTipo);
+
+        if ($caminhoArquivo && file_exists(__DIR__ . '/' . $caminhoArquivo)) {
+            unlink(__DIR__ . '/' . $caminhoArquivo);
+        }
+
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
