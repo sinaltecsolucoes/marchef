@@ -1,6 +1,11 @@
 <?php
 // /public/ajax_router.php
 // Ponto de entrada para todas as requisições AJAX do sistema.
+// ADICIONE ESTAS 3 LINHAS PARA DEBUG
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 
 require_once __DIR__ . '/../src/bootstrap.php';
 
@@ -683,6 +688,10 @@ switch ($action) {
     case 'getProdutoDetalhesParaFicha':
         getProdutoDetalhesParaFicha($fichaTecnicaRepo);
         break;
+    case 'salvarFichaTecnicaGeral':
+        salvarFichaTecnicaGeral($fichaTecnicaRepo, $_SESSION['codUsuario']);
+        break;
+
 
     default:
         echo json_encode(['success' => false, 'message' => 'Ação desconhecida.']);
@@ -3079,14 +3088,28 @@ function getFichaTecnicaCompleta(FichaTecnicaRepository $repo)
 
 function getProdutosSemFichaTecnica(FichaTecnicaRepository $repo)
 {
-    $term = $_GET['term'] ?? '';
-    echo json_encode(['results' => $repo->findProdutosSemFichaTecnica($term)]);
+    try {
+        $term = $_GET['term'] ?? '';
+        $data = $repo->findProdutosSemFichaTecnica($term);
+        echo json_encode(['results' => $data]);
+    } catch (\PDOException $e) {
+        // Captura especificamente erros de SQL e retorna a mensagem
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro de Banco de Dados: ' . $e->getMessage()]);
+    }
 }
 
 function getFabricanteOptionsFT(FichaTecnicaRepository $repo)
 {
-    $term = $_GET['term'] ?? '';
-    echo json_encode(['results' => $repo->getFabricanteOptions($term)]);
+    try {
+        $term = $_GET['term'] ?? '';
+        $data = $repo->getFabricanteOptions($term);
+        echo json_encode(['results' => $data]);
+    } catch (\PDOException $e) {
+        // Captura especificamente erros de SQL e retorna a mensagem
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro de Banco de Dados: ' . $e->getMessage()]);
+    }
 }
 
 function getProdutoDetalhesParaFicha(FichaTecnicaRepository $repo)
@@ -3100,5 +3123,23 @@ function getProdutoDetalhesParaFicha(FichaTecnicaRepository $repo)
         echo json_encode(['success' => true, 'data' => $produto]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Produto não encontrado.']);
+    }
+}
+
+function salvarFichaTecnicaGeral(FichaTecnicaRepository $repo, int $usuarioId)
+{
+    try {
+        // Adicionamos o ID do usuário como segundo argumento
+        $fichaId = $repo->saveHeader($_POST, $usuarioId);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Dados gerais salvos com sucesso!',
+            'ficha_id' => $fichaId // Retornamos o ID para o front-end
+        ]);
+    } catch (Exception $e) {
+        // Em caso de erro, retorna uma mensagem clara
+        http_response_code(400); // Bad Request
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }

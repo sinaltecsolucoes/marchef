@@ -34,38 +34,103 @@ $(document).ready(function () {
 
         const $produtoInfoDisplay = $('#produto-info-display');
 
-        // Evento que dispara quando um produto é selecionado
+        /*     $('#ficha_produto_id').on('change', function () {
+                 const produtoId = $(this).val();
+                 const $produtoInfoDisplay = $('#produto-info-display');
+     
+                 if (!produtoId) {
+                     $produtoInfoDisplay.hide().empty();
+                     return;
+                 }
+     
+                 function formatarPeso(peso) {
+                     if (peso === null || peso === undefined) return 'N/A';
+                     const numero = parseFloat(peso);
+                     if (numero % 1 === 0) {
+                         return numero.toFixed(0) + ' kg';
+                     } else {
+                         return numero.toFixed(3) + ' kg';
+                     }
+                 }
+     
+                 $.post('ajax_router.php?action=getProdutoDetalhesParaFicha', { produto_id: produtoId, csrf_token: csrfToken }, function (response) {
+                     if (response.success) {
+                         const p = response.data;
+     
+                         const pesoPrimarioFormatado = formatarPeso(p.peso_embalagem_primaria);
+                         const pesoSecundarioFormatado = formatarPeso(p.prod_peso_embalagem);
+     
+                         // --- AQUI ESTÁ A MUDANÇA NO LAYOUT ---
+                         const infoHtml = `
+                     <div class="row">
+                         <div class="col-md-6"><small class="text-muted">Denominação (Classe):</small><p class="fw-bold">${p.prod_classe || 'N/A'}</p></div>
+                         <div class="col-md-3"><small class="text-muted">Marca:</small><p class="fw-bold">${p.prod_marca || 'N/A'}</p></div>
+                         <div class="col-md-3"><small class="text-muted">NCM:</small><p class="fw-bold">${p.prod_ncm || 'N/A'}</p></div>
+                     </div>
+                     <div class="row mt-2">
+                         <div class="col-md-3"><small class="text-muted">Emb. Primária:</small><p class="fw-bold">${pesoPrimarioFormatado}</p></div>
+                         <div class="col-md-3"><small class="text-muted">Emb. Secundária:</small><p class="fw-bold">${pesoSecundarioFormatado}</p></div>
+                         <div class="col-md-3"><small class="text-muted">EAN-13 (Primário):</small><p class="fw-bold">${p.ean13_final || 'N/A'}</p></div>
+                         <div class="col-md-3"><small class="text-muted">DUN-14:</small><p class="fw-bold">${p.prod_dun14 || 'N/A'}</p></div>
+                     </div>
+                 `;
+                         $produtoInfoDisplay.html(infoHtml).slideDown();
+                     } else {
+                         $produtoInfoDisplay.hide().empty();
+                     }
+                 }, 'json');
+             }); */
+
+
         $('#ficha_produto_id').on('change', function () {
             const produtoId = $(this).val();
+            const $produtoInfoDisplay = $('#produto-info-display');
 
             if (!produtoId) {
                 $produtoInfoDisplay.hide().empty();
                 return;
             }
 
-            // Busca os detalhes do produto selecionado via AJAX
+            function formatarPeso(peso) {
+                if (peso === null || peso === undefined) return 'N/A';
+                const numero = parseFloat(peso);
+                if (numero % 1 === 0) {
+                    return numero.toFixed(0) + ' kg';
+                } else {
+                    return numero.toFixed(3) + ' kg';
+                }
+            }
+
             $.post('ajax_router.php?action=getProdutoDetalhesParaFicha', { produto_id: produtoId, csrf_token: csrfToken }, function (response) {
                 if (response.success) {
                     const p = response.data;
-                    // Constrói um HTML simples com os dados e o exibe
+
+                    const pesoPrimarioFormatado = formatarPeso(p.peso_embalagem_primaria);
+                    const pesoSecundarioFormatado = formatarPeso(p.prod_peso_embalagem);
+                    const validade = p.prod_validade_meses ? `${p.prod_validade_meses} meses` : 'N/A';
+
+                    // Layout com 6 colunas na segunda linha para melhor alinhamento
                     const infoHtml = `
-                        <div class="row">
-                            <div class="col-md-4"><small class="text-muted">Denominação (Classe):</small><p class="fw-bold">${p.prod_classe || 'N/A'}</p></div>
-                            <div class="col-md-4"><small class="text-muted">Marca:</small><p class="fw-bold">${p.prod_marca || 'N/A'}</p></div>
-                            <div class="col-md-4"><small class="text-muted">NCM:</small><p class="fw-bold">${p.prod_ncm || 'N/A'}</p></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4"><small class="text-muted">Embalagem Primária:</small><p>${p.prod_peso_embalagem} kg</p></div>
-                            <div class="col-md-4"><small class="text-muted">EAN-13:</small><p>${p.prod_ean13 || 'N/A'}</p></div>
-                            <div class="col-md-4"><small class="text-muted">DUN-14:</small><p>${p.prod_dun14 || 'N/A'}</p></div>
-                        </div>
-                    `;
+                <div class="row">
+                    <div class="col-md-6"><small class="text-muted">Denominação (Classe):</small><p class="fw-bold">${p.prod_classe || 'N/A'}</p></div>
+                    <div class="col-md-3"><small class="text-muted">Marca:</small><p class="fw-bold">${p.prod_marca || 'N/A'}</p></div>
+                    <div class="col-md-3"><small class="text-muted">NCM:</small><p class="fw-bold">${p.prod_ncm || 'N/A'}</p></div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-2"><small class="text-muted">Emb. Primária:</small><p class="fw-bold">${pesoPrimarioFormatado}</p></div>
+                    <div class="col-md-2"><small class="text-muted">Emb. Secundária:</small><p class="fw-bold">${pesoSecundarioFormatado}</p></div>
+                    <div class="col-md-2"><small class="text-muted">Validade:</small><p class="fw-bold">${validade}</p></div>
+                    <div class="col-md-3"><small class="text-muted">EAN-13 (Primário):</small><p class="fw-bold">${p.ean13_final || 'N/A'}</p></div>
+                    <div class="col-md-3"><small class="text-muted">DUN-14:</small><p class="fw-bold">${p.prod_dun14 || 'N/A'}</p></div>
+                </div>
+            `;
                     $produtoInfoDisplay.html(infoHtml).slideDown();
                 } else {
                     $produtoInfoDisplay.hide().empty();
                 }
             }, 'json');
         });
+
 
         // Verifica se há dados de uma cópia na memória do navegador
         const dadosCopiados = sessionStorage.getItem('fichaTecnicaCopiada');
@@ -143,5 +208,46 @@ $(document).ready(function () {
                 Swal.fire('Erro', response.message, 'error');
             }
         }, 'json');
+    });
+
+    $('#form-ficha-geral').on('submit', function (e) {
+        e.preventDefault(); // Impede o envio tradicional do formulário
+
+        const $btn = $('#btn-salvar-ficha-geral');
+        const originalHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin me-2"></i> Salvando...').prop('disabled', true);
+
+        const formData = $(this).serialize(); // Pega todos os dados do formulário
+
+        $.post('ajax_router.php?action=salvarFichaTecnicaGeral', formData, function (response) {
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: response.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                // Atualiza o ID oculto no formulário com o ID retornado pelo backend
+                $('#ficha_id').val(response.ficha_id);
+
+                // Desabilita o select de produto para não poder ser trocado após salvar
+                $('#ficha_produto_id').prop('disabled', true);
+
+                // Habilita e ativa a próxima aba (Critérios Laboratoriais)
+                const criteriosTab = new bootstrap.Tab($('#criterios-tab'));
+                $('#criterios-tab').prop('disabled', false).removeClass('disabled');
+                criteriosTab.show();
+
+            } else {
+                Swal.fire('Erro', response.message, 'error');
+            }
+        }, 'json').fail(function () {
+            Swal.fire('Erro de Conexão', 'Não foi possível se comunicar com o servidor.', 'error');
+        }).always(function () {
+            // Restaura o botão ao estado original
+            $btn.html(originalHtml).prop('disabled', false);
+        });
     });
 });
