@@ -76,6 +76,7 @@ $(document).ready(function () {
             const numero = parseFloat(peso);
             return (numero % 1 === 0) ? numero.toFixed(0) + ' kg' : numero.toFixed(3) + ' kg';
         }
+        
         function preencherFormularioFicha(fichaData, isCopy = false) {
             const header = fichaData.header;
             if (!header) return;
@@ -105,6 +106,7 @@ $(document).ready(function () {
                 $('#ficha_produto_id').prop('disabled', false).select2(select2ProdutoConfig);
             }
         }
+
         function resetarFormularioCriterios() {
             const $form = $('#form-ficha-criterios');
             $form[0].reset();
@@ -113,6 +115,7 @@ $(document).ready(function () {
             $btnSalvar.html('<i class="fas fa-plus me-2"></i>Adicionar').removeClass('btn-primary').addClass('btn-success');
             $('#btn-cancelar-edicao-criterio').remove();
         }
+
         function carregarCriterios(fichaId) {
             if (!fichaId) return;
             const $tbody = $('#tbody-criterios');
@@ -129,8 +132,10 @@ $(document).ready(function () {
                 }
             }, 'json');
         }
+
         $('#ficha_produto_id').select2(select2ProdutoConfig);
         $('#ficha_fabricante_id').select2({ placeholder: "Selecione um fabricante...", theme: "bootstrap-5", allowClear: true, ajax: { url: "ajax_router.php?action=getFabricanteOptionsFT", dataType: 'json', delay: 250, data: p => ({ term: p.term }), processResults: d => d } });
+        
         $('#ficha_produto_id').on('change', function () {
             const produtoId = $(this).val();
             if (!produtoId) { $produtoInfoDisplay.hide().empty(); return; }
@@ -142,6 +147,7 @@ $(document).ready(function () {
                 } else { $produtoInfoDisplay.hide().empty(); }
             }, 'json');
         });
+
         $('#form-ficha-geral').on('submit', function (e) {
             e.preventDefault();
             const $btn = $('#btn-salvar-ficha-geral');
@@ -161,7 +167,9 @@ $(document).ready(function () {
                 } else { Swal.fire('Erro', response.message, 'error'); }
             }, 'json').fail(() => Swal.fire('Erro', 'Não foi possível se comunicar com o servidor.', 'error')).always(() => $btn.html(originalHtml).prop('disabled', false));
         });
+
         $('#criterios-tab').on('shown.bs.tab', () => { const id = $('#ficha_id').val(); $('#criterio_ficha_id').val(id); carregarCriterios(id); });
+
         $('#form-ficha-criterios').on('submit', function (e) {
             e.preventDefault();
             const $btn = $('#btn-salvar-criterio');
@@ -175,6 +183,7 @@ $(document).ready(function () {
                 } else { Swal.fire('Erro!', response.message, 'error'); }
             }, 'json').always(() => $btn.prop('disabled', false));
         });
+
         $('#tbody-criterios').on('click', '.btn-editar-criterio', function () {
             const data = $(this).closest('tr').data('criterio-data');
             $('#criterio_id').val(data.criterio_id);
@@ -187,7 +196,9 @@ $(document).ready(function () {
                 $('#botoes-acao-criterio').append(' <button type="button" class="btn btn-secondary ms-2" id="btn-cancelar-edicao-criterio"><i class="fas fa-times me-2"></i>Cancelar</button>');
             }
         });
+
         $('#form-ficha-criterios').on('click', '#btn-cancelar-edicao-criterio', resetarFormularioCriterios);
+
         $('#tbody-criterios').on('click', '.btn-excluir-criterio', function () {
             const id = $(this).data('id');
             Swal.fire({ title: 'Tem certeza?', text: "Deseja realmente excluir este critério?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonText: 'Cancelar', confirmButtonText: 'Sim, excluir!' }).then((result) => {
@@ -328,6 +339,39 @@ $(document).ready(function () {
                     }
                 });
             });
+
+            // --- LÓGICA DO BOTÃO DE IMPRIMIR ---
+            /*const fichaIdParaImpressao = new URLSearchParams(window.location.search).get('id');
+            const $btnImprimir = $('#btn-imprimir-ficha');
+
+            if (fichaIdParaImpressao) {
+                $btnImprimir.show(); // Mostra o botão se estivermos editando
+                $btnImprimir.on('click', function () {
+                    // Abre o relatório em uma nova aba
+                    window.open(`index.php?page=relatorio_ficha_tecnica?id=${fichaIdParaImpressao}`, '_blank');
+                });
+            }*/
+
+            const fichaIdParaImpressao = new URLSearchParams(window.location.search).get('id');
+            const $btnImprimir = $('#btn-imprimir-ficha');
+
+            if (fichaIdParaImpressao) {
+                // Esconda o botão atual
+                $btnImprimir.hide();
+
+                // Verifique se o novo botão já existe para evitar duplicatas
+                if ($('#btn-relatorio-ft').length === 0) {
+                    // Crie o link do botão com a lógica correta
+                    const btnRelatorio = `<a id="btn-relatorio-ft" href="index.php?page=relatorio_ficha_tecnica&id=${fichaIdParaImpressao}" target="_blank" class="btn btn-info btn-sm me-2">
+                                <i class="fas fa-print"></i> Imprimir Ficha
+                            </a>`;
+
+                    // Adicione o botão no local apropriado
+                    // (Verifique no HTML o ID do elemento onde deseja adicionar o botão)
+                    // Por exemplo, antes do botão de voltar
+                    $('.card-body .d-flex.justify-content-between.align-items-center.mb-3 > div').prepend(btnRelatorio);
+                }
+            }
 
         }
 

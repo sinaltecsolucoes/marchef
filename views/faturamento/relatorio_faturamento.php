@@ -1,5 +1,5 @@
 <?php
-// public/relatorio_faturamento.php 
+// views/faturamento/relatorio_faturamento.php 
 require_once __DIR__ . '/../../src/bootstrap.php';
 
 use App\Core\Database;

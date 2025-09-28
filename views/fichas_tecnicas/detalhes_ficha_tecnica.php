@@ -22,6 +22,9 @@
             </ul>
 
             <div>
+                <button href="index.php?page=relatorio_ficha_tecnica" class="btn btn-outline-primary" id="btn-imprimir-ficha" style="display: none;">
+                    <i class="fas fa-print"></i> Imprimir Ficha
+                </button>
                 <a href="index.php?page=fichas_tecnicas" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar para a Lista
                 </a>

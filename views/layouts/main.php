@@ -301,7 +301,6 @@
     <script src="<?php echo BASE_URL; ?>/js/app_notifications.js"></script>
     <script src="<?php echo BASE_URL; ?>/js/app_config.js"></script>
 
-
     <?php if ($paginaAtual === 'permissoes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/permissoes.js"></script>
     <?php endif; ?>

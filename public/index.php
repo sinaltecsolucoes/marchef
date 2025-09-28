@@ -149,6 +149,7 @@ try {
         'carregamento_relatorio' => 'carregamentos/carregamento_relatorio.php',
         'fichas_tecnicas' => 'fichas_tecnicas/lista_fichas_tecnicas.php',
         'ficha_tecnica_detalhes' => 'fichas_tecnicas/detalhes_ficha_tecnica.php',
+        'relatorio_ficha_tecnica' => 'fichas_tecnicas/relatorio_ficha_tecnica.php',
 
     ];
 
@@ -206,6 +207,7 @@ try {
         'relatorio_faturamento_excel',
         'carregamento_relatorio',
         'ordem_expedicao_relatorio',
+        'relatorio_ficha_tecnica',
         // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
     ];
 
