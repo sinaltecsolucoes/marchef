@@ -729,6 +729,71 @@ class OrdemExpedicaoRepository
         // Se qualquer um falhar, o PDO lançará uma exceção que será capturada pela função 'reabrir'.
         return $headerSuccess && $itensSuccess;
     }
+
+    /**
+     * @doc: Busca Ordens de Expedição prontas para serem carregadas pela API.
+     * @return array Uma lista de Ordens de Expedição.
+     */
+    public function findProntasParaApi(): array
+    {
+        $sql = "
+        SELECT 
+            oe.oe_id,
+            oe.oe_numero,
+            oe.oe_data,
+            GROUP_CONCAT(DISTINCT ent.ent_nome_fantasia SEPARATOR ', ') as clientes
+        FROM 
+            tbl_ordens_expedicao_header oe
+        JOIN 
+            tbl_ordens_expedicao_pedidos oep ON oe.oe_id = oep.oep_ordem_id
+        JOIN 
+            tbl_entidades ent ON oep.oep_cliente_id = ent.ent_codigo
+        WHERE 
+            oe.oe_status = 'PRONTA PARA CARREGAR'
+            AND oe.oe_id NOT IN (
+                SELECT car_ordem_expedicao_id 
+                FROM tbl_carregamentos 
+                WHERE car_ordem_expedicao_id IS NOT NULL AND car_status != 'CANCELADO'
+            )
+        GROUP BY
+            oe.oe_id, oe.oe_numero, oe.oe_data
+        ORDER BY 
+            oe.oe_data DESC, oe.oe_numero DESC
+    ";
+
+        $stmt = $this->pdo->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+    }
+
+    /**
+     * @doc: Busca os detalhes de uma OE para pré-preencher um novo carregamento.
+     * @param int $oeId O ID da Ordem de Expedição.
+     * @return array|null Os detalhes da OE.
+     */
+    public function findDetalhesParaCarregamento(int $oeId): ?array
+    {
+        // Esta consulta busca os dados principais do primeiro pedido da OE
+        // para usar como sugestão no formulário.
+        $sql = "
+        SELECT 
+            oep.oep_cliente_id as cliente_id,
+            c.car_transportadora_id as transportadora_id -- Supondo que a transportadora é definida no carregamento
+        FROM tbl_ordens_expedicao_pedidos oep
+        LEFT JOIN tbl_carregamentos c ON oep.oep_ordem_id = c.car_ordem_expedicao_id
+        WHERE oep.oep_ordem_id = :oe_id
+        ORDER BY oep.oep_id ASC
+        LIMIT 1
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':oe_id' => $oeId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ?: null;
+    }
+
 }
 
 

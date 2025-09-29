@@ -569,4 +569,19 @@ class EnderecoRepository
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * @doc: Busca todos os endereços de uma câmara específica.
+     * *
+     * @param int $camaraId O ID da câmara para filtrar os endereços.
+     * @return array Uma lista de endereços.
+     */
+     public function findByCamaraId(int $camaraId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM tbl_estoque_enderecos WHERE endereco_camara_id = ? ORDER BY endereco_completo ASC"
+        );
+        $stmt->execute([$camaraId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

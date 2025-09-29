@@ -21,6 +21,11 @@ use App\Core\Database;
 use App\Usuarios\UsuarioRepository;
 use App\Carregamentos\CarregamentoRepository;
 use App\Entidades\EntidadeRepository;
+use App\Entrada\EntradaRepository;
+use App\Estoque\CamaraRepository;
+use App\Estoque\EnderecoRepository;
+use App\Estoque\EstoqueRepository;
+use App\OrdensExpedicao\OrdemExpedicaoRepository;
 
 // --- Configurações Iniciais da API ---
 header('Content-Type: application/json');
@@ -33,6 +38,12 @@ try {
     $usuarioRepo = new UsuarioRepository($pdo);
     $carregamentoRepo = new CarregamentoRepository($pdo);
     $entidadeRepo = new EntidadeRepository($pdo);
+    $entradaRepo = new EntradaRepository($pdo);
+    $camaraRepo = new CamaraRepository($pdo);
+    $enderecoRepo = new EnderecoRepository($pdo);
+    $estoqueRepo = new EstoqueRepository($pdo);
+    $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo);
+
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
@@ -48,7 +59,7 @@ switch ($action) {
         break;
 
     case 'getDadosNovoCarregamento':
-        apiGetDadosNovoCarregamento($carregamentoRepo, $entidadeRepo);
+        apiGetDadosNovoCarregamento($entidadeRepo, $carregamentoRepo);
         break;
 
     case 'salvarCarregamentoHeader':
@@ -129,6 +140,52 @@ switch ($action) {
 
     case 'excluirFotoFila': // Este endpoint agora receberá `foto_id`
         apiExcluirFotoFila($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'getDadosNovaEntrada':
+        apiGetDadosNovaEntrada($entradaRepo, $usuarioRepo);
+        break;
+
+    case 'salvarLeituraEntrada':
+        apiSalvarLeituraEntrada($entradaRepo, $usuarioRepo);
+        break;
+
+    case 'get_camaras':
+        apiGetCamaras($camaraRepo);
+        break;
+
+    case 'get_enderecos_por_camara':
+        apiGetEnderecosPorCamara($enderecoRepo);
+        break;
+
+    case 'registrar_entrada_estoque':
+        apiRegistrarEntradaEstoque($carregamentoRepo, $estoqueRepo);
+        break;
+
+    case 'excluir_alocacao_entrada':
+        apiExcluirAlocacao($estoqueRepo);
+        break;
+
+    case 'editar_quantidade_alocacao':
+        apiEditarQuantidadeAlocacao($estoqueRepo);
+        break;
+
+    case 'get_entradas_do_dia':
+        apiGetEntradasDoDia($estoqueRepo);
+        break;
+
+    case 'get_ordens_prontas':
+        // A função que busca as ordens precisa do OrdemExpedicaoRepository
+        apiGetOrdensProntas($ordemExpedicaoRepo);
+        break;
+
+    case 'criar_carregamento_de_oe':
+        // A função que cria o carregamento precisa do CarregamentoRepository
+        apiCriarCarregamentoDeOe($carregamentoRepo, $usuarioRepo);
+        break;
+
+    case 'get_detalhes_oe':
+        apiGetDetalhesOe($ordemExpedicaoRepo);
         break;
 
     default:
@@ -213,27 +270,31 @@ function apiLogin(UsuarioRepository $repo)
     }
 }
 
-/**
- * Fornece os dados iniciais para a tela de novo carregamento do app.
- */
-function apiGetDadosNovoCarregamento(CarregamentoRepository $carregamentoRepo, EntidadeRepository $entidadeRepo)
+function apiGetDadosNovoCarregamento($entidadeRepo, $carregamentoRepo)
 {
-    // Futuramente, esta função também terá uma verificação de token de segurança
+    $usuarioAutenticado = getAuthenticatedUser($GLOBALS['usuarioRepo']);
 
-    $proximoNumero = $carregamentoRepo->getNextNumeroCarregamento();
-    $clientes = $entidadeRepo->getClienteOptions();
+    try {
+        $clientes = $entidadeRepo->getClienteOptions();
+        $transportadoras = $entidadeRepo->getTransportadoraOptions();
+        $proximoNumero = $carregamentoRepo->getNextNumeroCarregamento();
 
-    echo json_encode([
-        'success' => true,
-        'proximoNumero' => $proximoNumero,
-        'clientes' => $clientes
-    ]);
+        echo json_encode([
+            'success' => true,
+            'clientes' => $clientes,
+            'transportadoras' => $transportadoras,
+            'proximo_numero' => $proximoNumero
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
+    }
 }
 
 /**
  * Lida com o salvamento do cabeçalho de um novo carregamento.
  */
-function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+/* function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
     $input = json_decode(file_get_contents('php://input'), true);
@@ -252,7 +313,43 @@ function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioReposi
         http_response_code(500); // Internal Server Error
         echo json_encode(['success' => false, 'message' => 'Erro ao salvar o cabeçalho: ' . $e->getMessage()]);
     }
+} */
+
+function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Validação básica dos dados recebidos do app
+    if (empty($input['numero']) || empty($input['data']) || empty($input['clienteOrganizadorId'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Campos obrigatórios ausentes.']);
+        return;
+    }
+
+    // --- CORREÇÃO APLICADA AQUI ---
+    // 1. "Traduzimos" os nomes dos campos do app para os nomes da base de dados.
+    // 2. Adicionamos o 'tipo' que definimos. Por agora, será 'AVULSA'.
+    $dadosParaSalvar = [
+        'car_numero' => $input['numero'],
+        'car_data' => $input['data'],
+        'car_entidade_id_organizador' => $input['clienteOrganizadorId'],
+        'car_placas' => $input['placa'] ?? null,
+        'car_lacres' => $input['lacre'] ?? null,
+        'tipo' => $input['tipo'] // O app vai enviar este campo
+        // Adicione outros campos aqui se necessário (ex: transportadoraId)
+    ];
+
+    try {
+        // 3. Chamamos o método com o nome correto e passamos os dados formatados.
+        $newId = $repo->salvarCarregamentoHeader($dadosParaSalvar, $user['usu_codigo']);
+        echo json_encode(['success' => true, 'message' => 'Cabeçalho salvo com sucesso!', 'carregamentoId' => $newId]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o cabeçalho: ' . $e->getMessage()]);
+    }
 }
+
 
 /**
  * Lida com o salvamento de uma lista de leituras para um cliente em uma fila.
@@ -301,68 +398,6 @@ function apiSalvarFilaComLeituras(CarregamentoRepository $repo, UsuarioRepositor
 /**
  * Lida com o upload de uma foto para uma fila de carregamento.
  */
-/*function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    getAuthenticatedUser($userRepo);
-
-    $filaId = filter_input(INPUT_POST, 'filaId', FILTER_VALIDATE_INT);
-
-    if (!$filaId || !isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos. É necessário enviar uma foto e um filaId válido.']);
-        return;
-    }
-
-    try {
-        $info = $repo->getInfoParaNomeArquivo($filaId);
-        if (!$info) {
-            throw new Exception("Fila ou Carregamento não encontrado.");
-        }
-
-        $ordemExpedicao = $info['car_ordem_expedicao'];
-        $numeroFila = $info['fila_numero_sequencial'];
-
-        // --- INÍCIO DA ALTERAÇÃO NO NOME DA PASTA E ARQUIVO ---
-
-        // 1. Sanitiza a ordem de expedição para usar como nome da pasta/arquivo
-        $nomePasta = preg_replace('/[^a-zA-Z0-9]/', '', $ordemExpedicao); // Remove tudo que não for letra ou número
-
-        // 2. Cria o diretório do carregamento usando o nome da Ordem de Expedição
-        $uploadDir = __DIR__ . '/uploads/carregamentos/' . $nomePasta . '/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0775, true);
-        }
-
-        // 3. Monta o novo nome do arquivo como você sugeriu
-        $fileExtension = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
-        $newFileName = 'oe' . $nomePasta . '_fila' . $numeroFila . '.' . $fileExtension;
-
-        $uploadFilePath = $uploadDir . $newFileName;
-
-        // 4. Mover o arquivo para o destino com o novo nome
-        if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFilePath)) {
-            // O caminho a ser salvo no banco deve ser relativo à pasta public
-            $publicPath = 'uploads/carregamentos/' . $nomePasta . '/' . $newFileName;
-
-            //$repo->updateFilaPhotoPath($filaId, $publicPath);
-            $repo->adicionarFotoFila($filaId, $publicPath);
-
-            echo json_encode(['success' => true, 'message' => 'Foto enviada com sucesso!', 'path' => $publicPath]);
-        } else {
-            throw new Exception("Erro ao salvar o arquivo da foto no servidor.");
-        }
-        // --- FIM DA ALTERAÇÃO ---
-
-    } catch (Exception $e) {
-        http_response_code(500);
-        error_log("API Error in apiUploadFotoFila: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
-    }
-}*/
-
-
-// /public/api.php
-
 function apiUploadFotoFila(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     getAuthenticatedUser($userRepo);
@@ -460,6 +495,7 @@ function apiFinalizarCarregamento(CarregamentoRepository $repo, UsuarioRepositor
         }
     }
 }
+
 function apiValidarLeitura(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     $user = getAuthenticatedUser($userRepo); // Protege o endpoint
@@ -534,6 +570,7 @@ function apiGetResumoCarregamento(CarregamentoRepository $repo, UsuarioRepositor
         echo json_encode(['success' => false, 'message' => 'Erro ao buscar resumo do carregamento: ' . $e->getMessage()]);
     }
 }
+
 function apiGetFilasPorCarregamento(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
     getAuthenticatedUser($userRepo);
@@ -824,4 +861,300 @@ function apiGetFotosDaFila(CarregamentoRepository $repo, UsuarioRepository $user
     }
     $fotos = $repo->findFotosByFilaId($filaId);
     echo json_encode(['success' => true, 'data' => $fotos]);
+}
+
+function apiGetDadosNovaEntrada(EntradaRepository $repo, UsuarioRepository $userRepo)
+{
+    getAuthenticatedUser($userRepo);
+
+    $cameras = $repo->getCamaraOptions();
+    $enderecos = $repo->getEnderecoOptions();
+
+    echo json_encode([
+        'success' => true,
+        'cameras' => $cameras,
+        'enderecos' => $enderecos,
+    ]);
+}
+
+/**
+ * Salva a leitura de uma entrada, criando um lote/item e alocando-o.
+ */
+function apiSalvarLeituraEntrada(EntradaRepository $repo, UsuarioRepository $userRepo)
+{
+    $user = getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    $enderecoId = $input['enderecoId'] ?? null;
+    $leitura = $input['leitura'] ?? null;
+
+    if (!$enderecoId || !$leitura || !is_array($leitura)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Dados de entrada inválidos.']);
+        return;
+    }
+
+    try {
+        $repo->salvarEntrada((int) $enderecoId, (int) $user['usu_codigo'], $leitura);
+        echo json_encode(['success' => true, 'message' => 'Entrada salva com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        error_log("API Error in salvarEntrada: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro interno ao salvar os itens: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * @doc: Endpoint da API para buscar todas as câmaras de estoque.
+ * Responde a requisições GET.
+ * @param \App\Estoque\CamaraRepository $repo Repositório para acesso aos dados das câmaras.
+ */
+function apiGetCamaras(CamaraRepository $repo)
+{
+    // Apenas responde a requisições do tipo GET
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        header('Content-Type: application/json', true, 405); // Method Not Allowed
+        echo json_encode(['status' => 'error', 'message' => 'Método não permitido.']);
+        return;
+    }
+
+    try {
+        $camaras = $repo->findAll();
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'data' => $camaras]);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500); // Internal Server Error
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao buscar câmaras: ' . $e->getMessage()]);
+    }
+}
+
+function apiGetEnderecosPorCamara(EnderecoRepository $repo)
+{
+    // Apenas responde a requisições do tipo GET
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        header('Content-Type: application/json', true, 405); // Method Not Allowed
+        echo json_encode(['status' => 'error', 'message' => 'Método não permitido.']);
+        return;
+    }
+
+    // Valida se o parâmetro camara_id foi enviado
+    if (!isset($_GET['camara_id'])) {
+        header('Content-Type: application/json', true, 400); // Bad Request
+        echo json_encode(['status' => 'error', 'message' => 'ID da câmara não fornecido.']);
+        return;
+    }
+
+    $camaraId = (int) $_GET['camara_id'];
+
+    try {
+        // A chamada principal que vai buscar os dados
+        $enderecos = $repo->findByCamaraId($camaraId);
+
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'data' => $enderecos]);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500); // Internal Server Error
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao buscar endereços: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * @doc: Endpoint para registrar a entrada de um item (lido via QR Code) em um endereço de estoque.
+ */
+/* function apiRegistrarEntradaEstoque(EstoqueRepository $repo)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Content-Type: application/json', true, 405);
+        echo json_encode(['status' => 'error', 'message' => 'Método não permitido.']);
+        return;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $enderecoId = $input['endereco_id'] ?? null;
+    $qrCode = $input['qrcode'] ?? null;
+    $usuarioId = $input['usuario_id'] ?? 1; // Idealmente, o ID do usuário logado viria do token
+
+    if (!$enderecoId || !$qrCode) {
+        header('Content-Type: application/json', true, 400);
+        echo json_encode(['status' => 'error', 'message' => 'Endereco ID e QR Code são obrigatórios.']);
+        return;
+    }
+
+    try {
+        $resultado = $repo->alocarItemPorQrCode($enderecoId, $qrCode, $usuarioId);
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'message' => 'Item alocado com sucesso!', 'data' => $resultado]);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+} */
+
+function apiRegistrarEntradaEstoque($carregamentoRepo, $estoqueRepo)
+{
+    $input = json_decode(file_get_contents('php://input'), true);
+    $enderecoId = $input['endereco_id'] ?? null;
+    $qrCode = $input['qrcode'] ?? null;
+    $usuarioId = $input['usuario_id'] ?? 1; // TO DO: Obter o ID do usuário a partir do token de sessão
+
+    if (!$enderecoId || !$qrCode) {
+        header('Content-Type: application/json', true, 400);
+        echo json_encode(['success' => false, 'message' => 'Endereço, QR Code e Usuário são obrigatórios.']);
+        return;
+    }
+
+    try {
+        // Passo 1: Validar o QR Code usando a sua função existente
+        $validacao = $carregamentoRepo->validarQrCode($qrCode);
+
+        if (!$validacao['success']) {
+            // Se a validação falhar, devolve a mensagem de erro da própria função
+            header('Content-Type: application/json', true, 404); // Not Found
+            echo json_encode($validacao);
+            return;
+        }
+
+        // Extrai o ID do item que precisamos para alocar
+        $loteItemId = $validacao['lote_item_id'];
+
+        // Passo 2: Alocar o item no endereço
+        $novaAlocacaoId = $estoqueRepo->alocarItem($enderecoId, $loteItemId, $usuarioId);
+
+        // Se tudo correu bem, devolve uma resposta de sucesso
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'message' => 'Entrada registrada com sucesso!',
+            'data' => [ // Devolvemos os dados para o app poder mostrar na lista
+                'alocacao_id' => $novaAlocacaoId,
+                'produto' => $validacao['produto'],
+                'lote' => $validacao['lote']
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        // Captura qualquer erro (ex: item já alocado) e envia uma resposta clara
+        header('Content-Type: application/json', true, 409); // Conflict
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiExcluirAlocacao($estoqueRepo)
+{
+    $input = json_decode(file_get_contents('php://input'), true);
+    $alocacaoId = $input['alocacao_id'] ?? null;
+
+    if (!$alocacaoId) {
+        header('Content-Type: application/json', true, 400);
+        echo json_encode(['success' => false, 'message' => 'ID da alocação não fornecido.']);
+        return;
+    }
+
+    try {
+        $estoqueRepo->excluirAlocacao((int) $alocacaoId);
+        echo json_encode(['success' => true, 'message' => 'Alocação excluída com sucesso.']);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiEditarQuantidadeAlocacao($estoqueRepo)
+{
+    $input = json_decode(file_get_contents('php://input'), true);
+    $alocacaoId = $input['alocacao_id'] ?? null;
+    $novaQuantidade = $input['nova_quantidade'] ?? null;
+
+    if (!$alocacaoId || $novaQuantidade === null) {
+        header('Content-Type: application/json', true, 400);
+        echo json_encode(['success' => false, 'message' => 'ID da alocação e nova quantidade são obrigatórios.']);
+        return;
+    }
+
+    try {
+        $estoqueRepo->editarQuantidade((int) $alocacaoId, (float) $novaQuantidade);
+        echo json_encode(['success' => true, 'message' => 'Quantidade atualizada com sucesso.']);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiGetEntradasDoDia($estoqueRepo)
+{
+    $enderecoId = $_GET['endereco_id'] ?? null;
+
+    if (!$enderecoId) {
+        header('Content-Type: application/json', true, 400);
+        echo json_encode(['success' => false, 'message' => 'ID do endereço não fornecido.']);
+        return;
+    }
+
+    try {
+        $entradas = $estoqueRepo->findEntradasDoDiaPorEndereco((int) $enderecoId);
+        echo json_encode(['success' => true, 'data' => $entradas]);
+    } catch (Exception $e) {
+        header('Content-Type: application/json', true, 500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiGetOrdensProntas(OrdemExpedicaoRepository $repo)
+{
+    getAuthenticatedUser($GLOBALS['usuarioRepo']);
+    try {
+        // Chamamos o método que acabámos de criar no repositório correto
+        $ordens = $repo->findProntasParaApi();
+        echo json_encode(['success' => true, 'data' => $ordens]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiCriarCarregamentoDeOe(CarregamentoRepository $repo, UsuarioRepository $userRepo)
+{
+    $usuario = getAuthenticatedUser($userRepo);
+    $input = json_decode(file_get_contents('php://input'), true);
+    $oeId = $input['oe_id'] ?? null;
+
+    if (!$oeId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID da Ordem de Expedição não fornecido.']);
+        return;
+    }
+
+    try {
+        // Reutilizamos o método que já existe no seu CarregamentoRepository
+        $novoCarregamentoId = $repo->createCarregamentoFromOE((int) $oeId, $usuario['usu_codigo']);
+        echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamentoId' => $novoCarregamentoId]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function apiGetDetalhesOe(OrdemExpedicaoRepository $repo)
+{
+    getAuthenticatedUser($GLOBALS['usuarioRepo']);
+    $oeId = $_GET['oe_id'] ?? null;
+
+    if (!$oeId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID da OE não fornecido.']);
+        return;
+    }
+
+    try {
+        $detalhes = $repo->findDetalhesParaCarregamento((int) $oeId);
+        if ($detalhes) {
+            echo json_encode(['success' => true, 'data' => $detalhes]);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Ordem de Expedição não encontrada.']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }

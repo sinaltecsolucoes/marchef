@@ -125,11 +125,11 @@ class CarregamentoRepository
                     (car_numero, car_data, car_entidade_id_organizador, 
                     car_transportadora_id, car_ordem_expedicao_id, 
                     car_motorista_nome, car_motorista_cpf, car_placas, 
-                    car_lacres, car_usuario_id_responsavel, car_status)
+                    car_lacres, car_usuario_id_responsavel, car_status, car_tipo)
                 VALUES 
                     (:car_numero, :car_data, :car_entidade_id_organizador, 
                     :car_transportadora_id, :car_ordem_expedicao_id, :car_motorista_nome, 
-                    :car_motorista_cpf, :car_placas, :car_lacres, :usuario_id, 'EM ANDAMENTO')";
+                    :car_motorista_cpf, :car_placas, :car_lacres, :usuario_id, 'EM ANDAMENTO', :tipo)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -142,7 +142,8 @@ class CarregamentoRepository
             ':car_motorista_cpf' => $data['car_motorista_cpf_limpo'] ?: null,
             ':car_placas' => $data['car_placas'] ?: null,
             ':car_lacres' => $data['car_lacres'] ?: null,
-            ':usuario_id' => $usuarioId
+            ':usuario_id' => $usuarioId,
+            ':tipo' => $data['tipo']
         ]);
 
         $newId = (int) $this->pdo->lastInsertId();
@@ -445,7 +446,7 @@ class CarregamentoRepository
     /**
      * Reabre um carregamento, estorna o estoque e desvincula a OE.
      */
-    public function reabrir(int $carregamentoId, string $motivo, \App\OrdensExpedicao\OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
+    public function reabrir(int $carregamentoId, string $motivo, OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
     {
         $this->pdo->beginTransaction();
         try {
@@ -1382,4 +1383,62 @@ class CarregamentoRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function validarQrCode(string $qrCodeContent): array
+    {
+        $codigoProduto = null;
+        $lote = null;
+
+        // Padrão para extrair os dados do QR Code
+        $pattern = '/241(.+?)10(.+?)11/';
+
+        if (preg_match($pattern, $qrCodeContent, $matches)) {
+            $codigoProduto = $matches[1] ?? null;
+            $lote = $matches[2] ?? null;
+        }
+
+        if (!$codigoProduto || !$lote) {
+            return ['success' => false, 'message' => 'Parse Falhou. Não foi possível extrair Cód. Produto (241) e Lote (10).'];
+        }
+
+        // Consulta SQL para encontrar o item
+        $sql = "
+    SELECT 
+        lne.item_emb_id as lote_item_id,
+        p.prod_descricao,
+        p.prod_codigo as produtoId, 
+        lnh.lote_id as loteIdHeader 
+    FROM tbl_produtos p
+    JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
+    JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+    WHERE p.prod_codigo_interno = :codigo_produto
+      AND lnh.lote_completo_calculado = :lote
+    LIMIT 1;
+    ";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':codigo_produto' => $codigoProduto, ':lote' => $lote]);
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($item) {
+                return [
+                    'success' => true,
+                    'message' => 'Item válido.',
+                    'produto' => $item['prod_descricao'],
+                    'lote' => $lote,
+                    'lote_item_id' => $item['lote_item_id'],
+                    'produtoId' => $item['produtoId'],
+                    'loteIdHeader' => $item['loteIdHeader']
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Produto/Lote não encontrado no sistema.',
+                    'dados_buscados' => ['produto' => $codigoProduto, 'lote' => $lote]
+                ];
+            }
+        } catch (\PDOException $e) {
+            return ['success' => false, 'message' => 'Erro de SQL: ' . $e->getMessage()];
+        }
+    }
 }

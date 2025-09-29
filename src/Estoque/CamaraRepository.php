@@ -90,4 +90,14 @@ class CamaraRepository
         $this->auditLogger->log('DELETE', $id, 'tbl_estoque_camaras', $dadosAntigos, null);
         return $success;
     }
+
+    /**
+     * @doc: Busca todas as câmaras de estoque para uso geral, como em APIs.
+     * @return array Uma lista de todas as câmaras.
+     */
+    public function findAll(): array
+    {
+        $stmt = $this->pdo->query("SELECT * FROM tbl_estoque_camaras ORDER BY camara_nome ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
