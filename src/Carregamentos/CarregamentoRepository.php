@@ -109,52 +109,55 @@ class CarregamentoRepository
     }
 
     /**
-     * Salva o cabeçalho do Carregamento (Função que substitui a 'createHeader' que estava no router)
-     * Usa os campos que você acabou de adicionar no banco.
+     * Busca o próximo número de carregamento
      */
+
     public function salvarCarregamentoHeader(array $data, int $usuarioId): int
     {
+        // Obtém o ID da OE de forma segura. Se não existir, usa null.
+        $ordemExpedicaoId = $data['car_ordem_expedicao_id'] ?? null;
+
         // Validação: Verifica se a OE já não está em outro carregamento
-        $stmtCheck = $this->pdo->prepare("SELECT car_id FROM tbl_carregamentos WHERE car_ordem_expedicao_id = :oe_id AND car_status != 'CANCELADO'");
-        $stmtCheck->execute([':oe_id' => $data['car_ordem_expedicao_id']]);
-        if ($stmtCheck->fetchColumn()) {
-            throw new \Exception("Esta Ordem de Expedição já está sendo usada em outro carregamento.");
+        if ($ordemExpedicaoId !== null) {
+            $stmtCheck = $this->pdo->prepare("SELECT car_id FROM tbl_carregamentos WHERE car_ordem_expedicao_id = :oe_id AND car_status != 'CANCELADO'");
+            $stmtCheck->execute([':oe_id' => $ordemExpedicaoId]);
+
+            if ($stmtCheck->fetchColumn()) {
+                throw new \Exception("Esta Ordem de Expedição já está sendo usada em outro carregamento.");
+            }
         }
 
+        // Prepara e executa a inserção no banco de dados
         $sql = "INSERT INTO tbl_carregamentos 
-                    (car_numero, car_data, car_entidade_id_organizador, 
-                    car_transportadora_id, car_ordem_expedicao_id, 
-                    car_motorista_nome, car_motorista_cpf, car_placas, 
-                    car_lacres, car_usuario_id_responsavel, car_status, car_tipo)
-                VALUES 
-                    (:car_numero, :car_data, :car_entidade_id_organizador, 
-                    :car_transportadora_id, :car_ordem_expedicao_id, :car_motorista_nome, 
-                    :car_motorista_cpf, :car_placas, :car_lacres, :usuario_id, 'EM ANDAMENTO', :tipo)";
+                (car_numero, car_data, car_entidade_id_organizador, 
+                car_transportadora_id, car_ordem_expedicao_id, 
+                car_motorista_nome, car_motorista_cpf, car_placas, 
+                car_lacres, car_usuario_id_responsavel, car_status, car_tipo)
+            VALUES 
+                (:car_numero, :car_data, :car_entidade_id_organizador, 
+                :car_transportadora_id, :car_ordem_expedicao_id, :car_motorista_nome, 
+                :car_motorista_cpf, :car_placas, :car_lacres, :usuario_id, 'EM ANDAMENTO', :tipo)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':car_numero' => $data['car_numero'],
             ':car_data' => $data['car_data'],
             ':car_entidade_id_organizador' => $data['car_entidade_id_organizador'],
-            ':car_transportadora_id' => $data['car_transportadora_id'] ?: null,
-            ':car_ordem_expedicao_id' => $data['car_ordem_expedicao_id'],
-            ':car_motorista_nome' => $data['car_motorista_nome'] ?: null,
-            ':car_motorista_cpf' => $data['car_motorista_cpf_limpo'] ?: null,
-            ':car_placas' => $data['car_placas'] ?: null,
-            ':car_lacres' => $data['car_lacres'] ?: null,
+            ':car_transportadora_id' => $data['car_transportadora_id'] ?? null, // Agora seguro
+            ':car_ordem_expedicao_id' => $ordemExpedicaoId,
+            ':car_motorista_nome' => $data['car_motorista_nome'] ?? null, // Agora seguro
+            ':car_motorista_cpf' => $data['car_motorista_cpf_limpo'] ?? null, // Agora seguro
+            ':car_placas' => $data['car_placas'] ?? null, // Agora seguro
+            ':car_lacres' => $data['car_lacres'] ?? null, // Agora seguro
             ':usuario_id' => $usuarioId,
             ':tipo' => $data['tipo']
         ]);
 
         $newId = (int) $this->pdo->lastInsertId();
-        // $this->auditLogger->log('CREATE', $newId, 'tbl_carregamentos', null, $data);
 
         return $newId;
     }
 
-    /**
-     * Busca o próximo número de carregamento (você já deve ter essa)
-     */
     public function getNextNumeroCarregamento(): string
     {
         $stmt = $this->pdo->query("SELECT MAX(CAST(SUBSTRING_INDEX(car_numero, '.', 1) AS UNSIGNED)) FROM tbl_carregamentos");
@@ -1167,6 +1170,7 @@ class CarregamentoRepository
                     // Pula este arquivo, mas continua com os outros
                     continue;
                 }
+
                 if ($fileData['foto_upload']['size'][$i] > 5 * 1024 * 1024) { // 5 MB
                     continue;
                 }
@@ -1441,4 +1445,218 @@ class CarregamentoRepository
             return ['success' => false, 'message' => 'Erro de SQL: ' . $e->getMessage()];
         }
     }
+
+    /* public function findAtivos(int $limit = 3): array
+     {
+         $sql = "SELECT 
+                     c.car_id as carregamentoId,
+                     c.car_numero as numero, 
+                     c.car_data as data, 
+                     e.ent_nome_fantasia as nome_cliente,
+                     u.usu_nome as responsavel
+                 FROM tbl_carregamentos c
+                 JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+                 JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+                 WHERE c.car_status = 'EM ANDAMENTO'
+                 ORDER BY c.car_data DESC, c.car_id DESC
+                 LIMIT :limit";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+         $stmt->execute();
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     }
+
+
+
+     /**
+      * Busca os últimos carregamentos com status 'FINALIZADO'.
+      */
+
+    /* public function findFinalizados(int $limit = 3): array
+     {
+         $sql = "SELECT 
+                     c.car_id as carregamentoId,
+                     c.car_numero as numero, 
+                     c.car_data as data, 
+                     e.ent_nome_fantasia as nome_cliente,
+                     u.usu_nome as responsavel
+                 FROM tbl_carregamentos c
+                 JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+                 JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+                 WHERE c.car_status = 'FINALIZADO' 
+                 ORDER BY c.car_data DESC, c.car_id DESC
+                 LIMIT :limit";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+         $stmt->execute();
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     } */
+
+    /**
+     * Altere a função findFilasByCarregamentoId para incluir a contagem de fotos
+     */
+    /* public function findFilasByCarregamentoId(int $carregamentoId): array
+     {
+         $sql = "SELECT 
+                     f.fila_id, 
+                     f.fila_numero_sequencial,
+                     (SELECT COUNT(*) FROM tbl_carregamento_fila_fotos ff WHERE ff.foto_fila_id = f.fila_id) as total_fotos,
+                     (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
+                      FROM tbl_carregamento_itens ci 
+                      WHERE ci.car_item_fila_id = f.fila_id) as total_clientes,
+                     (SELECT SUM(ci.car_item_quantidade) 
+                      FROM tbl_carregamento_itens ci 
+                      WHERE ci.car_item_fila_id = f.fila_id) as total_quantidade
+                 FROM tbl_carregamento_filas f
+                 WHERE f.fila_carregamento_id = :carregamento_id
+                 ORDER BY f.fila_numero_sequencial ASC";
+
+         $stmt = $this->pdo->prepare($sql);
+         $stmt->execute([':carregamento_id' => $carregamentoId]);
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+     }
+  */
+
+    /**
+     * @doc: Busca carregamentos com status 'EM ANDAMENTO' ou 'EM SEPARACAO'.
+     * @return array Uma lista de carregamentos ativos.
+     */
+    public function findAtivos(): array
+    {
+        $sql = "
+        SELECT 
+            c.car_id AS carregamentoId,
+            c.car_numero AS numero, 
+            c.car_data AS data, 
+            c.car_status AS status,
+            e.ent_nome_fantasia AS cliente_nome,
+            u.usu_nome AS responsavel
+        FROM tbl_carregamentos c
+        LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+        LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+        WHERE c.car_status IN ('EM ANDAMENTO', 'EM SEPARACAO')
+        ORDER BY c.car_data DESC, c.car_id DESC
+    ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @doc: Busca carregamentos com status 'FINALIZADO'.
+     * @return array Uma lista de carregamentos finalizados.
+     */
+    public function findFinalizados(): array
+    {
+        $sql = "
+        SELECT 
+            c.car_id AS carregamentoId,
+            c.car_numero AS numero, 
+            c.car_data AS data, 
+            c.car_status AS status,
+            e.ent_nome_fantasia AS cliente_nome,
+            u.usu_nome AS responsavel
+        FROM tbl_carregamentos c
+        LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+        LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+        WHERE c.car_status = 'FINALIZADO' 
+        ORDER BY c.car_data DESC, c.car_id DESC
+    ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @doc: Busca as filas de um carregamento específico.
+     * @param int $carregamentoId O ID do carregamento.
+     * @return array Uma lista de filas.
+     */
+    public function findFilasByCarregamentoId(int $carregamentoId): array
+    {
+        $sql = "SELECT 
+                cf.fila_id, 
+                cf.fila_numero_sequencial,
+                (SELECT COUNT(*) FROM tbl_carregamento_fila_fotos ff WHERE ff.foto_fila_id = cf.fila_id) as total_fotos,
+                (SELECT COUNT(DISTINCT ci.car_item_cliente_id) 
+                 FROM tbl_carregamento_itens ci 
+                 WHERE ci.car_item_fila_id = cf.fila_id) as total_clientes,
+                (SELECT SUM(ci.car_item_quantidade) 
+                 FROM tbl_carregamento_itens ci 
+                 WHERE ci.car_item_fila_id = cf.fila_id) as total_quantidade
+            FROM tbl_carregamento_filas cf
+            WHERE cf.fila_carregamento_id = :carregamento_id
+            ORDER BY cf.fila_numero_sequencial ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':carregamento_id' => $carregamentoId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @doc: Busca uma fila de carregamento e todos os clientes e itens associados a ela.
+     * @param int $filaId O ID da fila.
+     * @return array A fila e seus itens.
+     */
+    // src/Carregamentos/CarregamentoRepository.php
+
+    // Substitua a sua função atual por esta
+    public function findFilaComClientesEItens(int $filaId): ?array
+    {
+        $stmtFila = $this->pdo->prepare(
+            "SELECT f.fila_id, f.fila_numero_sequencial
+         FROM tbl_carregamento_filas f 
+         WHERE f.fila_id = :id"
+        );
+        $stmtFila->execute([':id' => $filaId]);
+        $fila = $stmtFila->fetch(PDO::FETCH_ASSOC);
+
+        if (!$fila) {
+            return null;
+        }
+
+        $stmtItens = $this->pdo->prepare(
+            "SELECT
+            ci.car_item_id as itemId,
+            ci.car_item_lote_novo_item_id as loteId,
+            ci.car_item_quantidade as quantidade,
+            ci.car_item_cliente_id as clienteId,
+            lne.item_emb_prod_sec_id as produtoId,
+            e.ent_razao_social as clienteNome,
+            CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as produtoTexto
+         FROM tbl_carregamento_itens ci
+         JOIN tbl_entidades e ON ci.car_item_cliente_id = e.ent_codigo
+         JOIN tbl_lotes_novo_embalagem lne ON ci.car_item_lote_novo_item_id = lne.item_emb_id
+         JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+         LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+         WHERE ci.car_item_fila_id = :fila_id"
+        );
+
+        $stmtItens->execute([':fila_id' => $filaId]);
+        $todosOsItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        $clientes = [];
+        foreach ($todosOsItens as $item) {
+            $clienteId = $item['clienteId'];
+            if (!isset($clientes[$clienteId])) {
+                $clientes[$clienteId] = [
+                    'clienteId' => $clienteId,
+                    'clienteNome' => $item['clienteNome'],
+                    'produtos' => []
+                ];
+            }
+            $clientes[$clienteId]['produtos'][] = [
+                'itemId' => $item['itemId'],
+                'loteId' => $item['loteId'],
+                'quantidade' => $item['quantidade'],
+                'produtoId' => $item['produtoId'],
+                'produtoTexto' => $item['produtoTexto']
+            ];
+        }
+
+        $fila['clientes'] = array_values($clientes);
+        return $fila;
+    }
+
 }

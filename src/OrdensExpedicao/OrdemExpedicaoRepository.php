@@ -749,7 +749,7 @@ class OrdemExpedicaoRepository
         JOIN 
             tbl_entidades ent ON oep.oep_cliente_id = ent.ent_codigo
         WHERE 
-            oe.oe_status = 'PRONTA PARA CARREGAR'
+            oe.oe_status = 'EM ELABORAÇÃO'
             AND oe.oe_id NOT IN (
                 SELECT car_ordem_expedicao_id 
                 FROM tbl_carregamentos 

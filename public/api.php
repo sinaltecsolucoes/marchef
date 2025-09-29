@@ -179,13 +179,15 @@ switch ($action) {
         apiGetOrdensProntas($ordemExpedicaoRepo);
         break;
 
-    case 'criar_carregamento_de_oe':
-        // A função que cria o carregamento precisa do CarregamentoRepository
-        apiCriarCarregamentoDeOe($carregamentoRepo, $usuarioRepo);
-        break;
-
     case 'get_detalhes_oe':
         apiGetDetalhesOe($ordemExpedicaoRepo);
+        break;
+
+    case 'salvar_carregamento_header':
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        error_log('API: Dados recebidos: ' . json_encode($input));
+        apiSalvarCarregamentoHeader($carregamentoRepo, $usuarioRepo);
         break;
 
     default:
@@ -291,29 +293,6 @@ function apiGetDadosNovoCarregamento($entidadeRepo, $carregamentoRepo)
     }
 }
 
-/**
- * Lida com o salvamento do cabeçalho de um novo carregamento.
- */
-/* function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $user = getAuthenticatedUser($userRepo); // Protege o endpoint
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    // Validação básica dos dados recebidos
-    if (empty($input['numero']) || empty($input['data']) || empty($input['clienteOrganizadorId'])) {
-        http_response_code(400); // Bad Request
-        echo json_encode(['success' => false, 'message' => 'Campos obrigatórios ausentes: numero, data, clienteOrganizadorId.']);
-        return;
-    }
-
-    try {
-        $newId = $repo->createHeader($input, $user['usu_codigo']);
-        echo json_encode(['success' => true, 'message' => 'Cabeçalho salvo com sucesso!', 'carregamentoId' => $newId]);
-    } catch (Exception $e) {
-        http_response_code(500); // Internal Server Error
-        echo json_encode(['success' => false, 'message' => 'Erro ao salvar o cabeçalho: ' . $e->getMessage()]);
-    }
-} */
 
 function apiSalvarCarregamentoHeader(CarregamentoRepository $repo, UsuarioRepository $userRepo)
 {
@@ -958,37 +937,6 @@ function apiGetEnderecosPorCamara(EnderecoRepository $repo)
     }
 }
 
-/**
- * @doc: Endpoint para registrar a entrada de um item (lido via QR Code) em um endereço de estoque.
- */
-/* function apiRegistrarEntradaEstoque(EstoqueRepository $repo)
-{
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        header('Content-Type: application/json', true, 405);
-        echo json_encode(['status' => 'error', 'message' => 'Método não permitido.']);
-        return;
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true);
-    $enderecoId = $input['endereco_id'] ?? null;
-    $qrCode = $input['qrcode'] ?? null;
-    $usuarioId = $input['usuario_id'] ?? 1; // Idealmente, o ID do usuário logado viria do token
-
-    if (!$enderecoId || !$qrCode) {
-        header('Content-Type: application/json', true, 400);
-        echo json_encode(['status' => 'error', 'message' => 'Endereco ID e QR Code são obrigatórios.']);
-        return;
-    }
-
-    try {
-        $resultado = $repo->alocarItemPorQrCode($enderecoId, $qrCode, $usuarioId);
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => 'Item alocado com sucesso!', 'data' => $resultado]);
-    } catch (Exception $e) {
-        header('Content-Type: application/json', true, 500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-} */
 
 function apiRegistrarEntradaEstoque($carregamentoRepo, $estoqueRepo)
 {
@@ -1112,28 +1060,6 @@ function apiGetOrdensProntas(OrdemExpedicaoRepository $repo)
     }
 }
 
-function apiCriarCarregamentoDeOe(CarregamentoRepository $repo, UsuarioRepository $userRepo)
-{
-    $usuario = getAuthenticatedUser($userRepo);
-    $input = json_decode(file_get_contents('php://input'), true);
-    $oeId = $input['oe_id'] ?? null;
-
-    if (!$oeId) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'ID da Ordem de Expedição não fornecido.']);
-        return;
-    }
-
-    try {
-        // Reutilizamos o método que já existe no seu CarregamentoRepository
-        $novoCarregamentoId = $repo->createCarregamentoFromOE((int) $oeId, $usuario['usu_codigo']);
-        echo json_encode(['success' => true, 'message' => 'Carregamento criado com sucesso!', 'carregamentoId' => $novoCarregamentoId]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}
-
 function apiGetDetalhesOe(OrdemExpedicaoRepository $repo)
 {
     getAuthenticatedUser($GLOBALS['usuarioRepo']);
@@ -1158,3 +1084,4 @@ function apiGetDetalhesOe(OrdemExpedicaoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
