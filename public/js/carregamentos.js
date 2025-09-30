@@ -48,26 +48,27 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center align-middle",
                 "render": function (data, type, row) {
-                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-info btn-sm me-1" title="Detalhes/Editar"><i class="fas fa-search"></i> Detalhes</a>`;
+                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-warning btn-sm me-1" title="Detalhes/Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
 
+                    let btnExcluir = '';
                     let btnCancelar = '';
                     let btnReabrir = '';
-                    let btnExcluir = '';
+                    
 
                     if (row.car_status === 'EM ANDAMENTO' || row.car_status === 'AGUARDANDO CONFERENCIA') {
-                        btnCancelar = `<button class="btn btn-danger btn-sm me-1 btn-cancelar" data-id="${data}" title="Cancelar"><i class="fas fa-times-circle"></i> Cancelar</button>`;
+                        btnCancelar = `<button class="btn btn-secondary btn-sm me-1 btn-cancelar" data-id="${data}" title="Cancelar"><i class="fas fa-times me-1"></i>Cancelar</button>`;
                     }
 
                     if (row.car_status === 'FINALIZADO' || row.car_status === 'CANCELADO') {
-                        btnReabrir = `<button class="btn btn-warning btn-sm me-1 btn-reabrir" data-id="${data}" title="Reabrir"><i class="fas fa-undo"></i> Reabrir</button>`;
+                        btnReabrir = `<button class="btn btn-warning btn-sm me-1 btn-reabrir" data-id="${data}" title="Reabrir"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
                     }
 
                     // Só pode excluir se NÃO estiver finalizado
                     if (row.car_status !== 'FINALIZADO') {
-                        btnExcluir = `<button class="btn btn-dark btn-sm ms-1 btn-excluir" data-id="${data}" title="Excluir Permanentemente"><i class="fas fa-trash-alt"></i></button>`;
+                        btnExcluir = `<button class="btn btn-danger btn-sm me-1 btn-excluir" data-id="${data}" title="Excluir Permanentemente"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
                     }
 
-                    return `<div class="btn-group">${btnDetalhes}${btnCancelar}${btnReabrir}${btnExcluir}</div>`;
+                    return `<div class="btn-group">${btnDetalhes}${btnReabrir}${btnExcluir}${btnCancelar}</div>`;
                 }
             }
         ],

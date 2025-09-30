@@ -8,7 +8,7 @@
         <h6 class="m-0 font-weight-bold text-primary">1. Cabeçalho</h6>
 
         <div id="botoes-cabecalho-oe" class="btn-group">
-            <a href="index.php?page=ordens_expedicao" class="btn btn-secondary btn-sm">
+            <a href="index.php?page=ordens_expedicao" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Voltar para a Lista
             </a>
         </div>
@@ -53,8 +53,8 @@
     <div id="section-details" class="card shadow mb-4 card-custom" style="display: none;">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">2. Detalhes (Pedidos e Itens)</h6>
-            <button class="btn btn-success btn-sm" id="btn-adicionar-pedido-cliente">
-                <i class="fas fa-plus me-1"></i> Adicionar Pedido/Cliente
+            <button class="btn btn-primary" id="btn-adicionar-pedido-cliente">
+                <i class="fas fa-plus me-1"></i>Adicionar Pedido/Cliente
             </button>
         </div>
         <div class="card-body">
@@ -89,8 +89,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Adicionar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Adicionar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -144,9 +144,9 @@
 
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="btn-confirmar-add-item" class="btn btn-primary" disabled>Adicionar Item ao
+                    <button type="button" id="btn-confirmar-add-item" class="btn btn-primary" disabled><i class="fas fa-plus me-2"></i>Adicionar Item ao
                         Pedido</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>
                 </div>
             </div>
         </div>

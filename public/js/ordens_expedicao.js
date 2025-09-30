@@ -54,8 +54,8 @@ $(document).ready(function () {
                             </a>`;
                     } else {
                         // Senão, mostra os botões "Editar" e "Excluir"
-                        let btnEditar = `<a href="index.php?page=ordem_expedicao_detalhes&id=${data}" class="btn btn-warning btn-sm me-1">Editar</a>`;
-                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-oe" data-id="${data}">Excluir</button>`;
+                        let btnEditar = `<a href="index.php?page=ordem_expedicao_detalhes&id=${data}" class="btn btn-warning btn-sm me-1"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-oe" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
                         return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                     }
                     // ### FIM DA NOVA LÓGICA DE BOTÕES ###

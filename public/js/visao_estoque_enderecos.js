@@ -82,7 +82,7 @@ $(document).ready(function () {
                         <td class="text-center text-success fw-bolder">${parseFloat(caixasDisponiveisEndereco).toFixed(3)}</td>
                         <td class="text-center">${parseFloat(endereco.total_quilos).toFixed(3)}</td>
                         <td class="text-center">
-                            <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}">Alocar Item</button>
+                            <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}"><i class="fas fa-download me-1"></i>Alocar Item</button>
                         </td>
                     </tr>
                 `;

@@ -158,11 +158,20 @@ $(document).ready(function () {
             "columns": [
                 { "data": "end_tipo_endereco" },
                 { "data": "end_logradouro" },
-                { "data": null, "render": (data, type, row) => `${row.end_cidade || ''}/${row.end_uf || ''}` },
-                { "data": "end_codigo", "orderable": false, "render": data => `<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}">Editar</a><a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}">Excluir</a>` }
+                {
+                    "data": null,
+                    "render": (data, type, row) => `${row.end_cidade || ''}/${row.end_uf || ''}`
+                },
+                {
+                    "data": "end_codigo",
+                    "orderable": false,
+                    "render": data => `<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
+                                       <a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
+                }
             ],
-            paging: false, searching: false, info: false,
-            // language: { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
+            paging: false,
+            searching: false,
+            info: false,
             language: { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         });
     }
@@ -249,7 +258,7 @@ $(document).ready(function () {
             "data": function (d) {
                 // Envia os filtros atuais para o backend
                 d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
-                d.tipo_entidade = pageType; // Envia 'cliente' ou 'fornecedor'
+                d.tipo_entidade = pageType; // Envia 'cliente' ou 'fornecedor ou transportadora'
                 d.filtro_tipo_entidade = $('#filtro-tipo-entidade').val(); // Envia o valor do novo filtro
                 d.csrf_token = csrfToken;
             }
@@ -257,16 +266,34 @@ $(document).ready(function () {
         "responsive": true,
         "columns": [
             {
-                "data": "ent_situacao", "className": "text-center font-small", "width": "3%",
+                "data": "ent_situacao",
+                "className": "text-center align-middle font-small",
+                "width": "3%",
                 "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
             },
-            { "data": "ent_tipo_entidade", "className": "text-center font-small", "width": "7%" },
-            { "data": "ent_codigo_interno", "className": "text-center font-small", "width": "3%" },
-            { "data": "ent_razao_social", "className": "font-small", "width": "20%" },
-            { "data": "ent_nome_fantasia", "className": "font-small", "width": "15%" },
+            {
+                "data": "ent_tipo_entidade",
+                "className": "text-center align-middle font-small",
+                "width": "7%"
+            },
+            {
+                "data": "ent_codigo_interno",
+                "className": "text-center align-middle font-small",
+                "width": "3%"
+            },
+            {
+                "data": "ent_razao_social",
+                "className": "align-middle font-small",
+                "width": "20%"
+            },
+            {
+                "data": "ent_nome_fantasia",
+                "className": "align-middle font-small",
+                "width": "15%"
+            },
             {
                 "data": null,
-                "className": "text-center font-small",
+                "className": "text-center align-middle font-small",
                 "width": "8%",
                 "render": function (data, type, row) {
                     if (row.ent_tipo_pessoa === 'F') {
@@ -276,14 +303,22 @@ $(document).ready(function () {
                     }
                 }
             },
-            { "data": "end_logradouro", "className": "font-small", "width": "10%", "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A' },
             {
-                "data": "ent_codigo", "orderable": false, "className": "text-center", "width": "8%", "render": (data, type, row) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}">Editar</a>` +
-                    `<a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}">Inativar</a>`
+                "data": "end_logradouro",
+                "className": "align-middle font-small",
+                "width": "10%",
+                "render": (data, type, row) => data ? `${row.end_logradouro || ''}, ${row.end_numero || ''}` : 'N/A'
+            },
+            {
+                "data": "ent_codigo",
+                "orderable": false,
+                "className": "text-center align-middle ",
+                "width": "8%",
+                "render": (data, type, row) =>
+                    `<a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>` +
+                    `<a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>`
             }
         ],
-        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
@@ -299,14 +334,8 @@ $(document).ready(function () {
 
     // Dispara a lógica de UI quando o tipo de pessoa muda
     $tipoPessoaRadios.on('change', function () {
-
-        // FORMA ROBUSTA DE PEGAR O VALOR:
-        // Em vez de confiar em 'this', buscamos no DOM pelo radio que está ":checked".
         const valorSelecionado = $('input[name="ent_tipo_pessoa"]:checked').val();
-
-        // Agora usamos esse valor garantido para atualizar a interface.
         updatePessoaFields(valorSelecionado, true);
-
     });
 
     // Dispara a busca de CNPJ ao clicar no botão
@@ -337,7 +366,6 @@ $(document).ready(function () {
     // Limpa o modal ao clicar em "Adicionar"
     $modalEntidade.on('show.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
-            // LÓGICA CORRIGIDA PARA 3 TIPOS
             let singular = 'Entidade';
             switch (pageType) {
                 case 'cliente':
@@ -424,12 +452,12 @@ $(document).ready(function () {
                 $('#end-codigo').val('');
                 $btnSalvarEndereco.text('Salvar Endereço Adicional');
                 tableEnderecos.ajax.reload();
-                notificacaoSucesso('Sucesso!', response.message); // << REATORADO
+                notificacaoSucesso('Sucesso!', response.message);
             } else {
-                notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
+                notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o endereço.'); // << REATORADO
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o endereço.');
         });
     });
 
@@ -447,7 +475,6 @@ $(document).ready(function () {
                     const entidadeId = data.ent_codigo;
 
                     // Limpa o formulário de estados anteriores
-                    //  $formEntidade[0].reset();
                     $('#mensagem-entidade').empty().removeClass();
 
                     // --- Dados Principais ---
@@ -493,10 +520,10 @@ $(document).ready(function () {
                     $modalEntidade.modal('show');
 
                 } else {
-                    notificacaoErro('Erro ao Carregar', response.message); // << REATORADO
+                    notificacaoErro('Erro ao Carregar', response.message);
                 }
             }).fail(function () {
-                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da entidade.'); // << REATORADO
+                notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da entidade.');
             });
     });
 
@@ -577,12 +604,12 @@ $(document).ready(function () {
                 }).done(function (response) {
                     if (response.success) {
                         tableEnderecos.ajax.reload();
-                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
+                        notificacaoSucesso('Excluído!', response.message);
                     } else {
-                        notificacaoErro('Erro ao Excluir', response.message); // << REATORADO
+                        notificacaoErro('Erro ao Excluir', response.message);
                     }
                 }).fail(function () {
-                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o endereço.'); // << REATORADO
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o endereço.');
                 });
             }
         });

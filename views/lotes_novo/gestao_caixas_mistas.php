@@ -16,10 +16,10 @@
             <table class="table table-bordered table-hover" id="tabela-estoque-sobras" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center" style="width: 5%;"><i class="fas fa-check"></i></th>
-                        <th class="align-middle">Lote de Origem</th>
-                        <th class="align-middle">Produto (Primário)</th>
-                        <th class="align-middle">Fornecedor</th>
+                        <th class="text-center align-middle" style="width: 5%;"><i class="fas fa-check"></i></th>
+                        <th class="text-center align-middle">Lote de Origem</th>
+                        <th class="text-center align-middle">Produto (Primário)</th>
+                        <th class="text-center align-middle">Fornecedor</th>
                         <th class="text-center align-middle">Data Fabricação</th>
                         <th class="text-center align-middle">Saldo Restante (Unid.)</th>
                     </tr>
@@ -80,7 +80,7 @@
                         </div>
                     </div>
                     <hr>
-                    <button type="submit" id="btn-salvar-caixa-mista" class="btn btn-success w-100 btn-lg" disabled>
+                    <button type="submit" id="btn-salvar-caixa-mista" class="btn btn-primary w-100 btn-lg" disabled>
                         <i class="fas fa-save me-2"></i> Salvar Caixa Mista e Gerar Etiqueta
                     </button>
                 </div>

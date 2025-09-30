@@ -42,14 +42,14 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center align-middle",
                 "render": function (data, type, row) {
-                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-1">Detalhes</a>`;
-                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento me-1" data-id="${data}">Excluir</button>`;
-                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado me-1" data-id="${data}">Faturar</button>`;
-                    let btnCancelar = `<button class="btn btn-warning btn-sm text-dark btn-cancelar-faturamento me-1" data-id="${data}">Cancelar</button>`;
-                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento me-1" data-id="${data}">Reabrir</button>`;
+                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-warning btn-sm me-1"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento me-1" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado me-1" data-id="${data}"><i class="fas fa-receipt me-1"></i>Faturar</button>`;
+                    let btnCancelar = `<button class="btn btn-secondary btn-sm btn-cancelar-faturamento me-1" data-id="${data}"><i class="fas fa-times me-1"></i>Cancelar</button>`;
+                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento me-1" data-id="${data}"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
 
                     if (row.fat_status === 'FATURADO') {
-                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-2">Visualizar</a>`;
+                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-2"><i class="fas fa-search me-1"></i>Visualizar</a>`;
                         return `<div class="btn-group">${btnDetalhes}${btnReabrir}</div>`;
                     }
 

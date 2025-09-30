@@ -198,7 +198,7 @@
 
                             <div class="text-end mt-3">
                                 <button type="button" class="btn btn-success"
-                                    id="btn-adicionar-item-embalagem">Adicionar Item</button>
+                                    id="btn-adicionar-item-embalagem"><i class="fas fa-plus me-1"></i>Adicionar Item</button>
                             </div>
                         </form>
                         <hr>
@@ -261,9 +261,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao">Confirmar
+                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao"><i class="fas fa-check-circle me-1"></i>Confirmar
                     Finalização</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Cancelar</button>
             </div>
         </div>
     </div>

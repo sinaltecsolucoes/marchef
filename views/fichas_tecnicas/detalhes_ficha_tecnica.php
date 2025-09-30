@@ -22,15 +22,16 @@
             </ul>
 
             <div>
-                <button href="index.php?page=relatorio_ficha_tecnica" class="btn btn-outline-primary" id="btn-imprimir-ficha" style="display: none;">
+                <button href="index.php?page=relatorio_ficha_tecnica" class="btn btn-success" id="btn-imprimir-ficha" style="display: none;">
                     <i class="fas fa-print"></i> Imprimir Ficha
+                </button>
+                <button type="submit" form="form-ficha-geral" class="btn btn-primary" id="btn-salvar-ficha-geral">
+                    <i class="fas fa-save me-2"></i> Salvar e ir para Critérios
                 </button>
                 <a href="index.php?page=fichas_tecnicas" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar para a Lista
                 </a>
-                <button type="submit" form="form-ficha-geral" class="btn btn-primary" id="btn-salvar-ficha-geral">
-                    <i class="fas fa-save me-2"></i> Salvar e ir para Critérios
-                </button>
+                
             </div>
 
         </div>
@@ -172,7 +173,7 @@
                         </div>
                         <div class="col-md-2">
                             <div id="botoes-acao-criterio" class="d-flex">
-                                <button type="submit" class="btn btn-success" id="btn-salvar-criterio">
+                                <button type="submit" class="btn btn-primary" id="btn-salvar-criterio">
                                     <i class="fas fa-plus me-2"></i>Adicionar
                                 </button>
                             </div>
@@ -187,11 +188,11 @@
                     <table class="table table-sm table-striped table-hover" id="tabela-criterios">
                         <thead class="table-light">
                             <tr>
-                                <th>Grupo</th>
-                                <th>Critério</th>
-                                <th>Unidade</th>
-                                <th>Padrão</th>
-                                <th class="text-center" style="width: 120px;">Ações</th>
+                                <th class="text-center align-middle">Grupo</th>
+                                <th class="text-center align-middle">Critério</th>
+                                <th class="text-center align-middle">Unidade</th>
+                                <th class="text-center align-middle">Padrão</th>
+                                <th class="text-center align-middle" style="width: 20%;">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-criterios">

@@ -3,6 +3,9 @@ $(document).ready(function () {
     const $modalUsuario = $('#modal-usuario');
     const $formUsuario = $('#form-usuario');
 
+    // =================================================================
+    // INICIALIZAÇÃO DA TABELA DATATABLES
+    // =================================================================
     const tableUsuarios = $('#tabela-usuarios').DataTable({
         "serverSide": true,
         "processing": true,
@@ -27,11 +30,11 @@ $(document).ready(function () {
                 "data": "usu_tipo", "className": "text-center align-middle",
             },
             {
-                "data": "usu_codigo", "orderable": false, 
+                "data": "usu_codigo", "orderable": false,
                 "className": "text-center align-middle",
                 "render": (data, type, row) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1" data-id="${data}">Editar</a>` +
-                    `<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="${data}" data-nome="${row.usu_nome}">Excluir</a>`
+                    `<a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>` +
+                    `<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="${data}" data-nome="${row.usu_nome}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
             }
         ],
         //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }

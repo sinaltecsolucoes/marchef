@@ -52,8 +52,8 @@ $(document).ready(function () {
                 "render": function (data) {
                     // Botões de ação simples, sem lógica condicional
                     return `
-                        <button class="btn btn-warning btn-sm btn-editar-endereco" data-id="${data}">Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}">Excluir</button>
+                        <button class="btn btn-warning btn-sm btn-editar-endereco" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
+                        <button class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
                     `;
                 }
             }

@@ -9,7 +9,7 @@
             <button class="btn btn-success btn-sm" id="btn-finalizar-detalhe" style="display: none;">
                 <i class="fas fa-check-circle me-1"></i> Finalizar Carregamento
             </button>
-            <button class="btn btn-primary btn-sm" id="btn-editar-header"><i class="fas fa-pencil-alt me-1"></i>
+            <button class="btn btn-warning btn-sm" id="btn-editar-header"><i class="fas fa-pencil-alt me-1"></i>
                 Editar</button>
             <button class="btn btn-success btn-sm" id="btn-salvar-header" style="display: none;"><i
                     class="fas fa-save me-1"></i> Salvar</button>

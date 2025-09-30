@@ -104,7 +104,7 @@ $(document).ready(function () {
         // LÓGICA DO BOTÃO DE RELATÓRIO
         if ($('#btn-relatorio-oe').length === 0) {
             const btnRelatorio = `<a id="btn-relatorio-oe" href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" target="_blank" class="btn btn-info btn-sm me-2">
-                                <i class="fas fa-print"></i> Imprimir Relatório</a>`;
+                                <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
             // Adiciona o botão DENTRO do novo container de botões
             $('#botoes-cabecalho-oe').prepend(btnRelatorio);
         }
@@ -162,8 +162,8 @@ $(document).ready(function () {
 
                 // Os botões de ação do pedido (cabeçalho) só são criados se NÃO estiver bloqueado
                 const botoesAcaoPedido = !estaBloqueada ?
-                    `<button class="btn btn-info btn-sm btn-adicionar-produto" data-oep-id="${pedido.oep_id}">Adicionar Produto</button>
-                 <button class="btn btn-danger btn-sm btn-remover-pedido ms-2" data-oep-id="${pedido.oep_id}">Remover Pedido</button>` : '';
+                    `<button class="btn btn-info btn-adicionar-produto" data-oep-id="${pedido.oep_id}"><i class="fas fa-plus me-1"></i>Adicionar Produto</button>
+                 <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
 
                 // O cabeçalho da coluna Ações só é criado se NÃO estiver bloqueado
                 const thAcoes = !estaBloqueada ? '<th class="text-center align-middle small" style="width: 8%;">Ações</th>' : '';

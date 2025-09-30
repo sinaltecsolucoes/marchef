@@ -118,7 +118,7 @@
                         </form>
                         <hr>
                         <div class="text-end mt-3">
-                            <button type="button" class="btn btn-primary" id="btn-salvar-lote-novo-header">Salvar
+                            <button type="button" class="btn btn-primary" id="btn-salvar-lote-novo-header"><i class="fas fa-save me-2"></i>Salvar
                                 Cabeçalho</button>
                         </div>
                     </div>
@@ -156,10 +156,10 @@
                                 </div>
                             </div>
                             <div class="text-end mt-3">
-                                <button type="button" class="btn btn-success" id="btn-adicionar-item-producao">Adicionar
+                                <button type="button" class="btn btn-primary" id="btn-adicionar-item-producao"><i class="fas fa-plus me-1"></i>Adicionar
                                     Item</button>
                                 <button type="button" class="btn btn-secondary"
-                                    id="btn-cancelar-edicao-producao">Limpar</button>
+                                    id="btn-cancelar-edicao-producao"><i class="fas fa-times me-2"></i>Limpar</button>
                             </div>
                         </form>
                         <hr>
@@ -213,7 +213,7 @@
 
                             <div class="text-end mt-3">
                                 <button type="button" class="btn btn-success"
-                                    id="btn-adicionar-item-embalagem">Adicionar Item</button>
+                                    id="btn-adicionar-item-embalagem"><i class="fas fa-plus me-1"></i>Adicionar Item</button>
                             </div>
                         </form>
                         <hr>
@@ -276,8 +276,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao">Confirmar
+                <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao"><i class="fas fa-save me-2"></i>Confirmar
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>
                     Finalização</button>
             </div>
         </div>

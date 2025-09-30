@@ -4,6 +4,9 @@ $(document).ready(function () {
     const $modal = $('#modal-condicao');
     const $form = $('#form-condicao');
 
+    // =================================================================
+    // INICIALIZAÇÃO DA TABELA DATATABLES
+    // =================================================================
     const table = $('#tabela-condicoes').DataTable({
         "serverSide": true,
         "ajax": {
@@ -38,8 +41,8 @@ $(document).ready(function () {
                 "className": "text-center align-middle",
                 "render": function (data) {
                     return `
-                        <button class="btn btn-warning btn-sm btn-editar" data-id="${data}">Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir" data-id="${data}">Excluir</button>
+                        <button class="btn btn-warning btn-sm btn-editar" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
+                        <button class="btn btn-danger btn-sm btn-excluir" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
                     `;
                 }
             }

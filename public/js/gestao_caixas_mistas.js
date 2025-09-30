@@ -47,10 +47,25 @@ $(document).ready(function () {
             "dataSrc": "data"
         },
         "columns": [
-            { "data": null, "defaultContent": '', "orderable": false, "className": "dt-center checkbox-select-col" },
-            { "data": "lote_completo_calculado", "className": "align-middle" },
-            { "data": "prod_descricao", "className": "align-middle" },
-            { "data": "fornecedor_nome", "className": "align-middle", "defaultContent": "<i>N/A</i>" },
+            {
+                "data": null,
+                "defaultContent": '',
+                "orderable": false,
+                "className": "dt-center checkbox-select-col"
+            },
+            {
+                "data": "lote_completo_calculado",
+                "className": "text-center align-middle"
+            },
+            {
+                "data": "prod_descricao",
+                "className": "align-middle"
+            },
+            {
+                "data": "fornecedor_nome",
+                "className": "align-middle",
+                "defaultContent": "<i>N/A</i>"
+            },
             {
                 "data": "lote_data_fabricacao",
                 "className": "text-center align-middle",
@@ -77,22 +92,6 @@ $(document).ready(function () {
     });
 
     // 2. INICIALIZA OS DROPDOWNS (PAINEL B)
-    /* $('#select-produto-final').select2({
-         placeholder: 'Selecione o produto final...',
-         theme: "bootstrap-5",
-         language: "pt-BR",
-         ajax: {
-             url: 'ajax_router.php?action=getProdutoOptions',
-             dataType: 'json',
-             data: function (params) {
-                 return { tipo_embalagem: 'Secundaria', term: params.term };
-             },
-             processResults: function (data) {
-                 return { results: data.data };
-             }
-         }
-     }); */
-
     $('#select-produto-final').select2({
         placeholder: 'Selecione o produto final...',
         theme: "bootstrap-5",
@@ -179,7 +178,7 @@ $(document).ready(function () {
                     step: 0.001
                 },
                 showCancelButton: true,
-                confirmButtonText: 'Adicionar ao Carrinho',
+                confirmButtonText: 'Adicionar',
                 cancelButtonText: 'Cancelar',
                 validationMessage: (value) => {
                     const num = parseFloat(value);

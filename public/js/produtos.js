@@ -42,6 +42,7 @@ $(document).ready(function () {
     // =================================================================
     // Funções Auxiliares
     // =================================================================
+    
     /**
     * Calcula e atualiza o campo 'Classe' com base em outros campos do formulário.
     */
@@ -167,6 +168,9 @@ $(document).ready(function () {
         $('#label-prod-situacao').text(isChecked ? 'Ativo' : 'Inativo');
     });
 
+    // =================================================================
+    // INICIALIZAÇÃO DA TABELA DATATABLES
+    // =================================================================
     const tableProdutos = $('#tabela-produtos').DataTable({
         "serverSide": true,
         "ajax": {
@@ -205,9 +209,9 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "text-center ",
                 "render": (data) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}">Editar</a>
-                     <a href="#" class="btn btn-info btn-sm btn-copiar-produto me-1" data-id="${data}" title="Copiar/Duplicar">Copiar</a> 
-                     <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}">Excluir</a>`
+                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
+                     <a href="#" class="btn btn-info btn-sm btn-copiar-produto" data-id="${data}" title="Copiar/Duplicar"><i class="fas fa-copy me-1"></i>Copiar</a> 
+                     <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
@@ -345,10 +349,10 @@ $(document).ready(function () {
                 $('#modal-adicionar-produto-label').text('Editar Produto');
                 $modalProduto.modal('show');
             } else {
-                notificacaoErro('Erro!', response.message); // << REATORADO
+                notificacaoErro('Erro!', response.message); 
             }
         }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto.'); // << REATORADO
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto.'); 
         });
     });
 
@@ -369,12 +373,12 @@ $(document).ready(function () {
                 }).done(function (response) {
                     if (response.success) {
                         tableProdutos.ajax.reload();
-                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
+                        notificacaoSucesso('Excluído!', response.message); 
                     } else {
-                        notificacaoErro('Erro ao Excluir', response.message); // << REATORADO
+                        notificacaoErro('Erro ao Excluir', response.message); 
                     }
                 }).fail(function () {
-                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.'); // << REATORADO
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.'); 
                 });
             }
         });
@@ -400,7 +404,7 @@ $(document).ready(function () {
                 const produto = response.data;
                 Object.keys(produto).forEach(key => $formProduto.find(`[name="${key}"],#${key}`).val(produto[key]));
 
-                // 2. A MÁGICA: Limpamos o ID do produto.
+                // 2. Limpamos o ID do produto.
                 // Isso garante que, ao salvar, o backend entenda como um INSERT (Criar), não um UPDATE (Editar).
                 $('#prod_codigo').val('');
 

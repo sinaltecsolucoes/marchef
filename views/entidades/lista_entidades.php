@@ -38,7 +38,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             <!-- Botão Adicionar -->
             <div class="col-12 col-md-3 mb-3 mb-md-0 w-25">
                 <button class="btn btn-primary" id="btn-adicionar-entidade">
-                    <i class="fas fa-plus me-2"></i> Adicionar <?php echo $singular; ?>
+                    <i class="fas fa-plus me-2"></i>Adicionar <?php echo $singular; ?>
                 </button>
             </div>
 
@@ -99,14 +99,14 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             <table class="table table-bordered table-hover" id="tabela-entidades" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center">Situação</th>
-                        <th class="text-center">Tipo</th>
-                        <th class="text-center">Código Interno</th>
-                        <th class="text-center">Razão Social</th>
-                        <th class="text-center">Nome Fantasia</th>
-                        <th class="text-center">CPF/CNPJ</th>
-                        <th class="text-center">Endereço Principal</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">Situação</th>
+                        <th class="text-center align-middle">Tipo</th>
+                        <th class="text-center align-middle">Código Interno</th>
+                        <th class="text-center align-middle">Razão Social</th>
+                        <th class="text-center align-middle">Nome Fantasia</th>
+                        <th class="text-center align-middle">CPF/CNPJ</th>
+                        <th class="text-center align-middle">Endereço Principal</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -366,9 +366,9 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                         <div class="col-md-4 mb-3 d-flex align-items-end">
                                             <label class="form-label"> </label>
                                             <button type="submit" class="btn btn-primary mt-2 me-2"
-                                                id="btn-    alvar-endereco">Salvar Endereço Adicional</button>
+                                                id="btn-    alvar-endereco"><i class="fas fa-save me-1"></i>Salvar Endereço Adicional</button>
                                             <button type="button" class="btn btn-secondary mt-2"
-                                                id="btn-cancelar-edicao-endereco">Cancelar</button>
+                                                id="btn-cancelar-edicao-endereco"><i class="fas fa-times me-2"></i>Cancelar</button>
                                         </div>
                                     </div>
                                     <small id="cep-feedback-adicional" class="form-text text-muted"></small>
@@ -393,9 +393,9 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             </div>
 
             <div class="modal-footer">
-                <button type="submit" form="form-entidade" class="btn btn-primary" id="btn-salvar-entidade">Salvar
+                <button type="submit" form="form-entidade" class="btn btn-primary" id="btn-salvar-entidade"><i class="fas fa-save me-2"></i>Salvar
                     <?php echo $singular; ?></button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-trash-alt me-1"></i>Fechar</button>
             </div>
         </div>
 

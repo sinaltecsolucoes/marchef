@@ -34,8 +34,8 @@ $(document).ready(function () {
                 "className": "text-center align-middle",
                 "render": function (data) {
                     return `
-                        <button class="btn btn-warning btn-sm btn-editar-camara" data-id="${data}">Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir-camara" data-id="${data}">Excluir</button>
+                        <button class="btn btn-warning btn-sm btn-editar-camara" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
+                        <button class="btn btn-danger btn-sm btn-excluir-camara" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
                     `;
                 }
             }
