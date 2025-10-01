@@ -198,3 +198,7 @@ qtd-a-finalizar {
 .dropdown-menu>li:hover>.dropdown-submenu {
     display: block;
 }
+
+.bg-menu-azul {
+    background-color: #a1c8f0;
+}

@@ -16,7 +16,8 @@ $(document).ready(function () {
         "columns": [
             {
                 "data": "car_numero",
-                "className": "text-center align-middle"
+                "className": "text-center align-middle",
+                "render": data => String(data).padStart(4, '0')
             },
             {
                 "data": "car_data",
@@ -53,7 +54,7 @@ $(document).ready(function () {
                     let btnExcluir = '';
                     let btnCancelar = '';
                     let btnReabrir = '';
-                    
+
 
                     if (row.car_status === 'EM ANDAMENTO' || row.car_status === 'AGUARDANDO CONFERENCIA') {
                         btnCancelar = `<button class="btn btn-secondary btn-sm me-1 btn-cancelar" data-id="${data}" title="Cancelar"><i class="fas fa-times me-1"></i>Cancelar</button>`;

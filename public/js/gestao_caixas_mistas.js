@@ -51,7 +51,7 @@ $(document).ready(function () {
                 "data": null,
                 "defaultContent": '',
                 "orderable": false,
-                "className": "dt-center checkbox-select-col"
+                "className": "dt-center checkbox-select-col align-middle"
             },
             {
                 "data": "lote_completo_calculado",
@@ -116,27 +116,22 @@ $(document).ready(function () {
         theme: "bootstrap-5",
         language: "pt-BR",
         ajax: {
-            url: 'ajax_router.php?action=getOpenLotsForSelect', // Rota do Passo 4
+            url: 'ajax_router.php?action=getOpenLotsForSelect',
             dataType: 'json',
             processResults: function (data) {
                 return data;
             }
-        }
+        },
+        templateResult: formatarOpcaoLote,
+        templateSelection: formatarSelecaoLote
     });
 
-    // 3. LÓGICA DE INTERAÇÃO (O CARRINHO)
-    function atualizarEstadoCarrinho() {
-        const itemCount = $tabelaCart.find('tr:not(#cart-placeholder)').length;
-        if (itemCount > 0) {
-            $placeholderCart.hide();
-            $btnSalvarCaixa.prop('disabled', false);
-        } else {
-            $placeholderCart.show();
-            $btnSalvarCaixa.prop('disabled', true);
-        }
-    }
+    // Funções de template para o Select2 (exemplo, ajuste conforme necessário)
+    /* function formatarOpcaoProduto(produto) {
+         if (!produto.id) return produto.text;
+         return $(`<span>${produto.text}</span>`);
+     } */
 
-    // Função para formatar o item na LISTA DE OPÇÕES (dropdown)
     function formatarOpcaoProduto(produto) {
         if (produto.loading) {
             return produto.text;
@@ -146,6 +141,10 @@ $(document).ready(function () {
         // Retorna um objeto jQuery formatado (assim como no módulo de Lotes)
         return $(`<span>${produto.text} (Cód: ${codigoInterno})</span>`);
     }
+
+    /*  function formatarSelecaoProduto(produto) {
+          return produto.text || produto.id;
+      } */
 
     // Função para formatar o item DEPOIS DE SELECIONADO (na caixa principal)
     function formatarSelecaoProduto(produto) {
@@ -158,62 +157,81 @@ $(document).ready(function () {
         return `${produto.text} (Cód: ${codigoInterno})`;
     }
 
-    $('#tabela-estoque-sobras tbody').on('change', '.check-sobra-item', async function () {
-        const $check = $(this);
-        const rowNode = $check.closest('tr');
-        const rowData = tabelaSobras.row(rowNode).data();
-        const itemId = rowData.item_prod_id;
-        const saldoDisponivel = parseFloat(rowData.item_prod_saldo);
+    function formatarOpcaoLote(lote) {
+        if (!lote.id) return lote.text;
+        return $(`<span>${lote.text}</span>`);
+    }
 
-        if ($check.is(':checked')) {
-            const { value: quantidade } = await Swal.fire({
-                title: 'Adicionar Item',
-                text: `Produto: ${rowData.prod_descricao} | Saldo: ${formatarNumeroBR(saldoDisponivel)}`,
+    function formatarSelecaoLote(lote) {
+        return lote.text || lote.id;
+    }
+
+    // 3. ATUALIZA ESTADO DO CARRINHO
+    function atualizarEstadoCarrinho() {
+        const itensNoCarrinho = $tabelaCart.find('tr:not(#cart-placeholder)').length;
+        if (itensNoCarrinho > 0) {
+            $placeholderCart.hide();
+            $btnSalvarCaixa.prop('disabled', false);
+        } else {
+            $placeholderCart.show();
+            $btnSalvarCaixa.prop('disabled', true);
+        }
+    }
+
+    // 4. EVENTO DE SELEÇÃO NA TABELA DE SOBRAS
+    $('#tabela-estoque-sobras tbody').on('click', '.check-sobra-item', function () {
+        const $check = $(this);
+        const isChecked = $check.is(':checked');
+        const itemId = $check.data('item-id');
+        const rowData = tabelaSobras.row($check.closest('tr')).data();
+        const rowNode = $check.closest('tr');
+
+        if (isChecked) {
+            Swal.fire({
+                title: 'Quantidade a Usar',
                 input: 'number',
-                inputLabel: 'Quantidade a usar:',
-                inputValue: saldoDisponivel,
                 inputAttributes: {
-                    max: saldoDisponivel,
+                    step: 0.001,
                     min: 0.001,
-                    step: 0.001
+                    max: rowData.item_prod_saldo
                 },
+                inputValue: rowData.item_prod_saldo,
                 showCancelButton: true,
                 confirmButtonText: 'Adicionar',
                 cancelButtonText: 'Cancelar',
-                validationMessage: (value) => {
-                    const num = parseFloat(value);
-                    if (!num || num <= 0) {
-                        return 'A quantidade deve ser maior que zero.';
-                    }
-                    if (num > saldoDisponivel) {
-                        return `Valor excede o saldo disponível de ${formatarNumeroBR(saldoDisponivel)}`;
+                inputValidator: (value) => {
+                    if (!value || parseFloat(value) <= 0 || parseFloat(value) > rowData.item_prod_saldo) {
+                        return 'Quantidade inválida! Deve ser entre 0.001 e ' + formatarNumeroBR(rowData.item_prod_saldo);
                     }
                 }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const quantidade = parseFloat(result.value);
+                    $check.prop('checked', true);
+                    rowNode.addClass('table-success');
+
+                    const $template = $('#template-cart-row').contents().clone();
+                    $template.data('item-prod-id', itemId);
+                    $template.data('quantidade-usada', quantidade);
+                    $template.find('.cart-item-produto').text(rowData.prod_descricao);
+                    $template.find('.cart-item-lote').text(rowData.lote_completo_calculado);
+                    $template.find('.cart-item-qtd').text(formatarNumeroBR(quantidade));
+
+                    $template.attr('id', `cart-row-${itemId}`);
+
+                    $tabelaCart.append($template);
+                    rowNode.addClass('table-success');
+                } else {
+                    $check.prop('checked', false);
+                }
+
+                atualizarEstadoCarrinho();
             });
-
-            if (quantidade) {
-                const $template = $('#template-cart-row').contents().clone(true);
-
-                $template.data('item-prod-id', itemId);
-                $template.data('quantidade-usada', parseFloat(quantidade));
-
-                $template.find('.cart-item-produto').text(rowData.prod_descricao);
-                $template.find('.cart-item-lote').text(rowData.lote_completo_calculado);
-                $template.find('.cart-item-qtd').text(formatarNumeroBR(quantidade));
-
-                $template.attr('id', `cart-row-${itemId}`);
-
-                $tabelaCart.append($template);
-                rowNode.addClass('table-success');
-            } else {
-                $check.prop('checked', false);
-            }
-
         } else {
             $(`#cart-row-${itemId}`).remove();
             rowNode.removeClass('table-success');
+            atualizarEstadoCarrinho();
         }
-        atualizarEstadoCarrinho();
     });
 
     $tabelaCart.on('click', '.btn-remover-cart-item', function () {
@@ -229,7 +247,7 @@ $(document).ready(function () {
         atualizarEstadoCarrinho();
     });
 
-    // 4. ### PASSO 6: LÓGICA DE SUBMIT (NOVO) ###
+    // 5. LÓGICA DE SUBMIT
     $formCaixaMista.on('submit', function (e) {
         e.preventDefault();
 
@@ -253,25 +271,19 @@ $(document).ready(function () {
             return;
         }
 
-        // Precisamos enviar os dados do carrinho de uma forma que o PHP entenda como um array
-        // O jQuery.param() não serializa arrays complexos por padrão, então vamos construir os dados.
-
         let postData = {};
-        // Adiciona os campos do formulário (Selects e CSRF)
         formData.forEach(field => {
             postData[field.name] = field.value;
         });
 
-        // Adiciona os itens do carrinho (o PHP receberá isso como $_POST['itens'])
         postData.itens = cartItens;
 
-        // Desabilita o botão para evitar clique duplo
         $btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Salvando...');
 
         $.ajax({
             url: 'ajax_router.php?action=salvarCaixaMista',
             type: 'POST',
-            data: postData, // Envia o objeto de dados completo
+            data: postData,
             dataType: 'json'
         }).done(function (response) {
             if (response.success) {
@@ -286,31 +298,213 @@ $(document).ready(function () {
                     cancelButtonText: 'Fechar'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Chama a função de impressão que criamos
                         imprimirEtiquetaEmbalagem(novoItemId);
                     }
                 });
 
-                // Limpa tudo e recarrega a tabela de sobras
-                tabelaSobras.ajax.reload(); // Recarrega as sobras (os saldos diminuíram)
-                $tabelaCart.empty().append($placeholderCart); // Limpa o carrinho
+                // Limpa tudo e recarrega as tabelas
+                tabelaSobras.ajax.reload();
+                tabelaCaixasMistas.ajax.reload();
+                $tabelaCart.empty().append($placeholderCart);
                 $('#select-produto-final').val(null).trigger('change');
                 $('#select-lote-destino').val(null).trigger('change');
-                atualizarEstadoCarrinho(); // Reseta o formulário
+                atualizarEstadoCarrinho();
 
             } else {
-                // Erro de validação do backend (ex: Saldo insuficiente)
                 notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function (jqXHR) {
             const errorMsg = jqXHR.responseJSON ? jqXHR.responseJSON.message : 'Falha na comunicação com o servidor.';
             notificacaoErro('Erro Crítico', errorMsg);
         }).always(function () {
-            // Reabilita o botão
             $btnSubmit.prop('disabled', false).html('<i class="fas fa-save me-2"></i> Salvar Caixa Mista e Gerar Etiqueta');
         });
     });
 
-    // Inicializa o estado do carrinho (garante que o placeholder apareça)
+    // 6. INICIALIZA A TABELA DE CAIXAS MISTAS CRIADAS
+    const tabelaCaixasMistas = $('#tabela-caixas-mistas').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "ajax_router.php?action=listarCaixasMistas",
+            "type": "POST",
+            "data": function (d) {
+                d.csrf_token = csrfToken;
+                console.log('Dados enviados para listarCaixasMistas:', d);  // Log para debug
+                return d;
+            },
+            "dataSrc": function (json) {
+                console.log('Resposta recebida de listarCaixasMistas:', json);  // Log para debug
+                if (json.error) {
+                    notificacaoErro('Erro no Servidor', json.error);
+                    return [];  // Retorna array vazio para evitar crash
+                }
+                if (!Array.isArray(json.data)) {
+                    console.error('data não é array:', json.data);
+                    return [];  // Força array vazio se inválido
+                }
+                return json.data;
+            },
+            "error": function (xhr, error, thrown) {
+                console.error('Erro AJAX em tabelaCaixasMistas:', xhr.status, xhr.responseText);  // Log para debug
+                let errorMsg = 'Falha na comunicação com o servidor (Status: ' + xhr.status + ').';
+                try {
+                    const responseJson = JSON.parse(xhr.responseText);
+                    if (responseJson.error) {
+                        errorMsg = responseJson.error;
+                    } else if (responseJson.message) {
+                        errorMsg = responseJson.message;
+                    }
+                } catch (e) {
+                    // Response não é JSON válido
+                }
+                notificacaoErro('Erro ao Carregar Tabela de Caixas Mistas', errorMsg);
+            }
+        },
+        "columns": [
+            { "data": "mista_id", "className": "text-center align-middle" },
+            { "data": "produto_final", "className": "align-middle" },
+            { "data": "lote_destino", "className": "text-center align-middle" },
+            {
+                "data": "data_criacao",
+                "className": "text-center align-middle",
+                "render": function (data) {
+                    if (!data) return 'N/A';
+                    const date = new Date(data);
+                    return date.toLocaleString('pt-BR');
+                }
+            },
+            {
+                "data": "total_qtd_consumida",
+                "className": "text-center align-middle fw-bold",
+                "render": function (data) {
+                    if (data === null || data === undefined) return '0.000';
+                    return formatarNumeroBR(parseFloat(data), 3);
+                }
+            },
+            {
+                "data": null,
+                "orderable": false,
+                "className": "text-center align-middle",
+                "render": function (data, type, row) {
+                    const mistaId = row.mista_id || '';
+                    const itemEmbId = row.mista_item_embalagem_id_gerado || '';
+                    return `
+                    <button class="btn btn-info btn-sm btn-detalhes-caixa me-1" data-id="${mistaId}" title="Ver Detalhes">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-primary btn-sm btn-imprimir-etiqueta" data-item-id="${itemEmbId}" title="Imprimir Etiqueta">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm btn-excluir-caixa" data-id="${mistaId}" title="Excluir Caixa Mista">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                }
+            }
+        ],
+        "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
+        "order": [[3, 'desc']],
+        "pageLength": 25,  // Mais registros por página para teste
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]]  // Opções de paginação
+    });
+
+    // 7. EVENTOS DA TABELA DE CAIXAS MISTAS (ajustado com logs)
+    $('#tabela-caixas-mistas tbody').on('click', '.btn-imprimir-etiqueta', function () {
+        const itemId = $(this).data('item-id');
+        console.log('Imprimindo etiqueta para itemId:', itemId);  // Log para debug
+        if (!itemId) {
+            notificacaoErro('Erro', 'ID do item de embalagem não encontrado.');
+            return;
+        }
+        imprimirEtiquetaEmbalagem(itemId);
+    });
+
+    $('#tabela-caixas-mistas tbody').on('click', '.btn-detalhes-caixa', function () {
+        const mistaId = $(this).data('id');
+        console.log('Carregando detalhes para mistaId:', mistaId);  // Log para debug
+        if (!mistaId) {
+            notificacaoErro('Erro', 'ID da caixa mista não encontrado.');
+            return;
+        }
+        $.ajax({
+            url: 'ajax_router.php?action=getDetalhesCaixaMista',
+            type: 'POST',
+            data: { mista_id: mistaId, csrf_token: csrfToken },
+            dataType: 'json'
+        }).done(function (response) {
+            console.log('Resposta de getDetalhesCaixaMista:', response);  // Log para debug
+            if (response.success && Array.isArray(response.itens)) {
+                let detalhesHtml = '<div class="table-responsive"><table class="table table-sm table-striped"><thead class="table-light"><tr><th class="text-center">Produto Origem</th><th class="text-center">Lote Origem</th><th class="text-center">Qtd. Consumida</th></tr></thead><tbody>';
+                if (response.itens.length === 0) {
+                    detalhesHtml += '<tr><td colspan="3" class="text-center text-muted">Nenhum item encontrado para esta caixa mista.</td></tr>';
+                } else {
+                    response.itens.forEach(item => {
+                        detalhesHtml += `<tr>
+                        <td class="text-center">${item.prod_descricao || 'N/A'}</td>
+                        <td class="text-center">${item.lote_completo_calculado || 'N/A'}</td>
+                        <td class="text-center fw-bold">${formatarNumeroBR(parseFloat(item.qtd_consumida || 0), 3)}</td>
+                    </tr>`;
+                    });
+                }
+                detalhesHtml += '</tbody></table></div>';
+                detalhesHtml += `<p class="text-muted small mt-2">Total de itens: ${response.total_itens || 0}</p>`;
+
+                Swal.fire({
+                    title: `Detalhes da Caixa Mista ID ${mistaId}`,
+                    html: detalhesHtml,
+                    width: '800px',
+                    showCloseButton: true,
+                    confirmButtonText: 'Fechar'
+                });
+            } else {
+                notificacaoErro('Erro', response.message || 'Não foi possível carregar os detalhes.');
+            }
+        }).fail(function (jqXHR) {
+            console.error('Erro AJAX em getDetalhesCaixaMista:', jqXHR.status, jqXHR.responseText);
+            const errorMsg = jqXHR.responseJSON ? (jqXHR.responseJSON.message || 'Falha na comunicação.') : 'Falha na comunicação com o servidor.';
+            notificacaoErro('Erro Crítico', errorMsg);
+        });
+    });
+
+    $('#tabela-caixas-mistas tbody').on('click', '.btn-excluir-caixa', function () {
+        const mistaId = $(this).data('id');
+
+        Swal.fire({
+            title: 'Tem certeza?',
+            text: "Esta ação não pode ser desfeita e irá reverter os saldos consumidos para as sobras originais!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirCaixaMista',
+                    type: 'POST',
+                    data: {
+                        mista_id: mistaId,
+                        csrf_token: csrfToken
+                    },
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.success) {
+                        notificacaoSucesso('Excluído!', response.message);
+                        tabelaCaixasMistas.ajax.reload();
+                        tabelaSobras.ajax.reload(); // Recarrega também a tabela de sobras
+                    } else {
+                        notificacaoErro('Erro ao Excluir', response.message);
+                    }
+                }).fail(function (jqXHR) {
+                    const errorMsg = jqXHR.responseJSON ? jqXHR.responseJSON.message : 'Falha na comunicação com o servidor.';
+                    notificacaoErro('Erro Crítico', errorMsg);
+                });
+            }
+        });
+    });
+
+    // Inicializa o estado do carrinho
     atualizarEstadoCarrinho();
 });

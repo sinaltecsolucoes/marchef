@@ -43,7 +43,7 @@
                     <input type="text" id="destinos-geral" class="form-control fw-bold" value="-" readonly>
                 </div>
             </div>
-            <button type="submit" id="btn-salvar-header" class="btn btn-primary" style="display: none;">Salvar
+            <button type="submit" id="btn-salvar-header" class="btn btn-primary" style="display: none;"><i class="fas fa-save me-2"></i>Salvar
                 Cabeçalho
             </button>
         </form>
@@ -184,8 +184,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar Alterações</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>                       
                     </div>
                 </form>
             </div>

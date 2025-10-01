@@ -42,7 +42,7 @@ $(document).ready(function () {
     // =================================================================
     // Funções Auxiliares
     // =================================================================
-    
+
     /**
     * Calcula e atualiza o campo 'Classe' com base em outros campos do formulário.
     */
@@ -184,34 +184,39 @@ $(document).ready(function () {
         "columns": [
             {
                 "data": "prod_situacao",
-                "className": "text-center",
+                "className": "text-center align-middle",
                 "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
             },
             {
                 "data": "prod_codigo_interno",
-                "className": "text-center"
+                "className": "text-center align-middle"
             },
-            { "data": "prod_descricao" },
+            {
+                "data": "prod_descricao",
+                "className": "align-middle"
+            },
             {
                 "data": "prod_tipo",
-                "className": "text-center"
+                "className": "text-center align-middle"
             },
             {
                 "data": "prod_tipo_embalagem",
-                "className": "text-center"
+                "className": "text-center align-middle"
             },
             {
                 "data": "prod_peso_embalagem",
-                "className": "text-center"
+                "className": "text-center align-middle"
             },
             {
                 "data": "prod_codigo",
                 "orderable": false,
-                "className": "text-center ",
+                "className": "text-center align-middle",
                 "render": (data) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-produto" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
-                     <a href="#" class="btn btn-info btn-sm btn-copiar-produto" data-id="${data}" title="Copiar/Duplicar"><i class="fas fa-copy me-1"></i>Copiar</a> 
-                     <a href="#" class="btn btn-danger btn-sm btn-excluir-produto" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
+                    `<div class="btn-group" role="group">
+                        <a href="#" class="btn btn-warning btn-sm btn-editar-produto me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
+                        <a href="#" class="btn btn-info btn-sm btn-copiar-produto me-1" data-id="${data}" title="Copiar/Duplicar"><i class="fas fa-copy me-1"></i>Copiar</a> 
+                        <a href="#" class="btn btn-danger btn-sm btn-excluir-produto me-1" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>
+                    </div>`
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
@@ -349,10 +354,10 @@ $(document).ready(function () {
                 $('#modal-adicionar-produto-label').text('Editar Produto');
                 $modalProduto.modal('show');
             } else {
-                notificacaoErro('Erro!', response.message); 
+                notificacaoErro('Erro!', response.message);
             }
         }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto.'); 
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto.');
         });
     });
 
@@ -373,12 +378,12 @@ $(document).ready(function () {
                 }).done(function (response) {
                     if (response.success) {
                         tableProdutos.ajax.reload();
-                        notificacaoSucesso('Excluído!', response.message); 
+                        notificacaoSucesso('Excluído!', response.message);
                     } else {
-                        notificacaoErro('Erro ao Excluir', response.message); 
+                        notificacaoErro('Erro ao Excluir', response.message);
                     }
                 }).fail(function () {
-                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.'); 
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o produto.');
                 });
             }
         });

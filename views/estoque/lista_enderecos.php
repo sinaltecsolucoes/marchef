@@ -41,7 +41,7 @@
                         <th class="text-center align-middle">Fila</th>
                         <th class="text-center align-middle">Vaga</th>
                         <th class="text-center align-middle">Simples</th>
-                        <th class="text-center align-middle">Ações</th>
+                        <th class="text-center align-middle" width="20%">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

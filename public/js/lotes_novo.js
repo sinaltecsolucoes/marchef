@@ -1105,10 +1105,41 @@ $(document).ready(function () {
         $('#item_prod_data_validade_novo').val(validade);
 
         // 3. Muda o texto do botão de Ação e foca no formulário
-        $('#btn-adicionar-item-producao').text('Atualizar Item');
+        $('#btn-adicionar-item-producao').html('<i class="fas fa-save me-1"></i>Atualizar Item');
 
         // Leva o utilizador para o topo do modal para ver o formulário preenchido
         $modalLoteNovo.animate({ scrollTop: 0 }, "slow");
+    });
+
+    // Evento para imprimir etiqueta de PRODUÇÃO
+    $tabelaItensProducao.on('click', '.btn-imprimir-etiqueta-producao', function () {
+        const loteItemId = $(this).data('id');
+        const $btn = $(this);
+        const originalIcon = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.ajax({
+            url: 'ajax_router.php?action=imprimirEtiquetaLoteItem',
+            type: 'POST',
+            data: {
+                itemId: loteItemId,
+                itemType: 'producao',
+                clienteId: $('#lote_cliente_id_novo').val(),
+                csrf_token: csrfToken
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+            } else {
+                notificacaoErro('Erro ao gerar etiqueta', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro de comunicação', 'Não foi possível contactar o servidor.');
+        }).always(function () {
+            $btn.prop('disabled', false).html(originalIcon);
+        });
     });
 
     $tabelaItensEmbalagem.on('click', '.btn-editar-item-embalagem', function () {
@@ -1187,9 +1218,9 @@ $(document).ready(function () {
             $('#item_emb_id_novo').val(itemId);
             $('#item_emb_qtd_sec_novo').val(parseInt(quantidade));
 
-            $('#btn-adicionar-item-embalagem').text('Atualizar Item');
+            $('#btn-adicionar-item-embalagem').html('<i class="fas fa-save me-1"></i>Atualizar Item');
             if ($('#btn-cancelar-edicao-embalagem').length === 0) {
-                $('#btn-adicionar-item-embalagem').after(' <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-embalagem">Cancelar</button>');
+                $('#btn-adicionar-item-embalagem').after(' <button type="button" class="btn btn-secondary" id="btn-cancelar-edicao-embalagem"><i class="fas fa-times me-2"></i>Cancelar</button>');
             }
 
         }).fail(function () {
@@ -1279,38 +1310,6 @@ $(document).ready(function () {
             $btn.prop('disabled', false).html(originalIcon);
         });
     });
-
-    // Evento para imprimir etiqueta de PRODUÇÃO
-    $tabelaItensProducao.on('click', '.btn-imprimir-etiqueta-producao', function () {
-        const loteItemId = $(this).data('id');
-        const $btn = $(this);
-        const originalIcon = $btn.html();
-
-        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
-
-        $.ajax({
-            url: 'ajax_router.php?action=imprimirEtiquetaLoteItem',
-            type: 'POST',
-            data: {
-                itemId: loteItemId,
-                itemType: 'producao',
-                clienteId: $('#lote_cliente_id_novo').val(),
-                csrf_token: csrfToken
-            },
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.success) {
-                window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
-            } else {
-                notificacaoErro('Erro ao gerar etiqueta', response.message);
-            }
-        }).fail(function () {
-            notificacaoErro('Erro de comunicação', 'Não foi possível contactar o servidor.');
-        }).always(function () {
-            $btn.prop('disabled', false).html(originalIcon);
-        });
-    });
-
 
     $('#form-lote-novo-embalagem').on('change keyup', 'select, input', function () {
         calcularConsumoEmbalagem();

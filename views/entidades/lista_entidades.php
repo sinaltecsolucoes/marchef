@@ -378,10 +378,11 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                 <table id="tabela-enderecos-adicionais" class="table table-hover" style="width:100%">
                                     <thead>
                                         <tr>
-                                            <th>Tipo</th>
-                                            <th>Logradouro</th>
-                                            <th>Cidade/UF</th>
-                                            <th>Ações</th>
+                                            <th class="text-center align-middle">Tipo</th>
+                                            <th class="text-center align-middle">Logradouro</th>
+                                            <th class="text-center align-middle">Cidade/UF</th>
+                                            <th class="text-center align-middle"
+                                            >Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -395,7 +396,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             <div class="modal-footer">
                 <button type="submit" form="form-entidade" class="btn btn-primary" id="btn-salvar-entidade"><i class="fas fa-save me-2"></i>Salvar
                     <?php echo $singular; ?></button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-trash-alt me-1"></i>Fechar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Fechar</button>
             </div>
         </div>
 

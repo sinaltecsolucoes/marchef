@@ -110,8 +110,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="btn-salvar-carregamento">Salvar e Iniciar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-salvar-carregamento"><i class="fas fa-save me-2"></i>Salvar e Iniciar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>
                 </div>
             </form>
         </div>

@@ -247,7 +247,6 @@ class ProdutoRepository
             ':prod_codigo' => $data['prod_codigo'] ?? null,
         ];
     }
-
     public function findPrimarios(): ?array
     {
         $stmt = $this->pdo->query("SELECT 

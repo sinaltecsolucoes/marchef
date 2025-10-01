@@ -27,6 +27,45 @@ class LabelService
     /**
      * NOVA FUNÇÃO UNIVERSAL: Gera o ZPL de um item de lote (produção ou embalagem).
      */
+    /* public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
+     {
+         // 1. Buscar os dados do item com base no seu tipo.
+         $dados = null;
+         if ($itemType === 'producao') {
+             $dados = $this->findDadosItemProducao($itemId, $clienteId);
+         } elseif ($itemType === 'embalagem') {
+             $dados = $this->findDadosItemEmbalagem($itemId, $clienteId);
+         }
+
+         if (!$dados) {
+             throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
+         }
+
+         // 2. Usar o RegraRepository para descobrir qual template usar.
+         $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteId);
+         if ($templateId === null) {
+             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
+         }
+
+         // 3. Buscar o conteúdo ZPL do template encontrado.
+         $template = $this->templateRepo->find($templateId);
+         if (!$template || empty($template['template_conteudo_zpl'])) {
+             throw new Exception("O template de etiqueta (ID: {$templateId}) definido pela regra não foi encontrado ou está vazio.");
+         }
+
+         // 4. USAR A LÓGICA EXISTENTE para substituir os placeholders.
+         $zplFinal = $this->substituirPlaceholders($template['template_conteudo_zpl'], $dados);
+
+         // 5. Gerar um nome de arquivo.
+         $nomeArquivo = sprintf(
+             'etiqueta_%s_%s.pdf',
+             preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['prod_codigo_interno'] ?? 'produto'),
+             preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['lote_num_completo'] ?? 'lote')
+         );
+
+         return ['zpl' => $zplFinal, 'filename' => $nomeArquivo];
+     } */
+
     public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
     {
         // 1. Buscar os dados do item com base no seu tipo.
@@ -34,15 +73,21 @@ class LabelService
         if ($itemType === 'producao') {
             $dados = $this->findDadosItemProducao($itemId, $clienteId);
         } elseif ($itemType === 'embalagem') {
-            $dados = $this->findDadosItemEmbalagem($itemId, $clienteId);
+            // A função findDadosItemEmbalagem agora ignora o $clienteId,
+            // pois busca o cliente diretamente do lote de destino.
+            $dados = $this->findDadosItemEmbalagem($itemId, null);
         }
 
         if (!$dados) {
             throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
         }
 
+        // Agora, usamos o ID do cliente que foi encontrado na consulta.
+        $clienteParaRegra = $dados['lote_cliente_id'] ?? $clienteId;
+
         // 2. Usar o RegraRepository para descobrir qual template usar.
-        $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteId);
+        $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteParaRegra);
+
         if ($templateId === null) {
             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
         }
@@ -99,28 +144,38 @@ class LabelService
      */
     private function findDadosItemEmbalagem(int $itemEmbId, ?int $clienteId): ?array
     {
-        $sql = "SELECT 
-                    p.*,
-                    lnh.lote_completo_calculado as lote_num_completo,
-                    lnh.lote_data_fabricacao,
-                    lnp.item_prod_data_validade as lote_item_data_val,
-                    lne.item_emb_qtd_sec as lote_item_qtd,
-                    c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
-                    end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep
-                FROM tbl_lotes_novo_embalagem lne
-                JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
-                LEFT JOIN tbl_entidades c ON c.ent_codigo = :cliente_id
-                LEFT JOIN (
-                    SELECT *, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 ELSE 2 END) as rn 
-                    FROM tbl_enderecos
-                ) end ON c.ent_codigo = end.end_entidade_id AND end.rn = 1
-                WHERE lne.item_emb_id = :item_id";
+        $sql = "SELECT
+                p.*,
+                lnh.lote_completo_calculado as lote_num_completo,
+                lnh.lote_data_fabricacao,
+                lne.item_emb_qtd_sec as lote_item_qtd,
+                
+                -- Busca os dados do cliente do Lote de Destino, se houver
+                lnh.lote_cliente_id,
+                c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
+                end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep,
+
+                -- Lógica para a data de validade
+                IF(lne.item_emb_prod_prim_id IS NULL, lnh.lote_data_fabricacao, lnp.item_prod_data_validade) as lote_item_data_val
+                
+            FROM tbl_lotes_novo_embalagem lne
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            -- LEFT JOIN para lidar com caixas mistas (item_emb_prod_prim_id será NULL)
+            LEFT JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
+            -- Agora, buscamos o cliente usando o ID do lote de destino
+            LEFT JOIN tbl_entidades c ON c.ent_codigo = lnh.lote_cliente_id
+            LEFT JOIN (
+                SELECT *, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 ELSE 2 END) as rn
+                FROM tbl_enderecos
+            ) end ON c.ent_codigo = end.end_entidade_id AND end.rn = 1
+            WHERE lne.item_emb_id = :item_id";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':item_id' => $itemEmbId, ':cliente_id' => $clienteId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute([':item_id' => $itemEmbId]); // Não precisamos mais do :cliente_id aqui
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ?: null;
     }
 
     private function substituirPlaceholders(string $zpl, array $dados): string
@@ -196,25 +251,6 @@ class LabelService
         return sprintf('%s.%s.%s/%s-%s', substr($cnpj, 0, 2), substr($cnpj, 2, 3), substr($cnpj, 5, 3), substr($cnpj, 8, 4), substr($cnpj, 12, 2));
     }
 
-    /* private function buildClassificationLine(array $produto): string
-     {
-         $partes = [];
-         if ($produto['prod_tipo_embalagem'] === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
-             $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
-             if ($produtoPrimario) {
-                 if (!empty($produto['prod_total_pecas']))
-                     $partes[] = $produto['prod_total_pecas'];
-                 $pesoPrimarioFormatado = str_replace('.', ',', (string) ((float) ($produtoPrimario['prod_peso_embalagem'] ?? 0)));
-                 $partes[] = "UNIDADES/" . $pesoPrimarioFormatado . "kg";
-             }
-         } else {
-             if (!empty($produto['prod_classificacao']))
-                 $partes[] = $produto['prod_classificacao'];
-             if (!empty($produto['prod_total_pecas']))
-                 $partes[] = $produto['prod_total_pecas'];
-         }
-         return implode(' ', $partes);
-     } */
 
     private function buildClassificationLine(array $produto): string
     {

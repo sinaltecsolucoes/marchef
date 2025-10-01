@@ -20,37 +20,83 @@ class UsuarioRepository
     /**
      * Busca dados para o DataTables com paginação, busca e ordenação.
      */
+    /* public function findAllForDataTable(array $params): array
+     {
+         $draw = $params['draw'] ?? 1;
+         $start = $params['start'] ?? 0;
+         $length = $params['length'] ?? 10;
+         $searchValue = $params['search']['value'] ?? '';
+
+         $totalRecords = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios")->fetchColumn();
+
+         $whereClause = '';
+         $queryParams = [];
+         if (!empty($searchValue)) {
+             $whereClause = "WHERE usu_nome LIKE :search OR usu_login LIKE :search OR usu_tipo LIKE :search";
+             $queryParams[':search'] = '%' . $searchValue . '%';
+         }
+
+         $stmtFiltered = $this->pdo->prepare("SELECT COUNT(usu_codigo) FROM tbl_usuarios $whereClause");
+         $stmtFiltered->execute($queryParams);
+         $totalFiltered = $stmtFiltered->fetchColumn();
+
+         $sqlData = "SELECT * FROM tbl_usuarios $whereClause ORDER BY usu_nome ASC LIMIT :start, :length";
+         $stmt = $this->pdo->prepare($sqlData);
+         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+         if (!empty($searchValue)) {
+             $stmt->bindValue(':search', $queryParams[':search']);
+         }
+         $stmt->execute();
+         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+         return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+     } */
+
     public function findAllForDataTable(array $params): array
     {
-        $draw = $params['draw'] ?? 1;
-        $start = $params['start'] ?? 0;
-        $length = $params['length'] ?? 10;
-        $searchValue = $params['search']['value'] ?? '';
+        try {
+            $draw = $params['draw'] ?? 1;
+            $start = $params['start'] ?? 0;
+            $length = $params['length'] ?? 10;
+            $searchValue = $params['search']['value'] ?? '';
 
-        $totalRecords = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios")->fetchColumn();
+            $totalRecords = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios")->fetchColumn();
 
-        $whereClause = '';
-        $queryParams = [];
-        if (!empty($searchValue)) {
-            $whereClause = "WHERE usu_nome LIKE :search OR usu_login LIKE :search OR usu_tipo LIKE :search";
-            $queryParams[':search'] = '%' . $searchValue . '%';
+            $whereClause = '';
+            if (!empty($searchValue)) {
+                $whereClause = "WHERE usu_nome LIKE :search_nome OR usu_login LIKE :search_login OR usu_tipo LIKE :search_tipo";
+            }
+
+            $stmtFiltered = $this->pdo->prepare("SELECT COUNT(usu_codigo) FROM tbl_usuarios $whereClause");
+            if (!empty($searchValue)) {
+                $stmtFiltered->execute([
+                    ':search_nome' => '%' . $searchValue . '%',
+                    ':search_login' => '%' . $searchValue . '%',
+                    ':search_tipo' => '%' . $searchValue . '%'
+                ]);
+            } else {
+                $stmtFiltered->execute();
+            }
+            $totalFiltered = $stmtFiltered->fetchColumn();
+
+            $sqlData = "SELECT * FROM tbl_usuarios $whereClause ORDER BY usu_nome ASC LIMIT :start, :length";
+            $stmt = $this->pdo->prepare($sqlData);
+            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            if (!empty($searchValue)) {
+                $stmt->bindValue(':search_nome', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_login', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_tipo', '%' . $searchValue . '%');
+            }
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+        } catch (PDOException $e) {
+            error_log('Erro em findAllForDataTable: ' . $e->getMessage());
+            throw new Exception('Erro ao buscar usuários: ' . $e->getMessage());
         }
-
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(usu_codigo) FROM tbl_usuarios $whereClause");
-        $stmtFiltered->execute($queryParams);
-        $totalFiltered = $stmtFiltered->fetchColumn();
-
-        $sqlData = "SELECT * FROM tbl_usuarios $whereClause ORDER BY usu_nome ASC LIMIT :start, :length";
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-        if (!empty($searchValue)) {
-            $stmt->bindValue(':search', $queryParams[':search']);
-        }
-        $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
     }
 
     /**

@@ -34,7 +34,6 @@ $(document).ready(function () {
                 }
             }
         ],
-        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[2, 'desc']]
     });
@@ -72,7 +71,6 @@ $(document).ready(function () {
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log('AJAX Fail Details:', textStatus, errorThrown, jqXHR.responseText);
-            // notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template.');
             notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template. Detalhes: ' + (jqXHR.responseText || 'Resposta vazia'));
         });
     });

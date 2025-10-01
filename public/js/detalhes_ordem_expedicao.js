@@ -103,7 +103,7 @@ $(document).ready(function () {
 
         // LÓGICA DO BOTÃO DE RELATÓRIO
         if ($('#btn-relatorio-oe').length === 0) {
-            const btnRelatorio = `<a id="btn-relatorio-oe" href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" target="_blank" class="btn btn-info btn-sm me-2">
+            const btnRelatorio = `<a id="btn-relatorio-oe" href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" target="_blank" class="btn btn-success me-2">
                                 <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
             // Adiciona o botão DENTRO do novo container de botões
             $('#botoes-cabecalho-oe').prepend(btnRelatorio);
@@ -133,7 +133,7 @@ $(document).ready(function () {
 
                         // A célula de Ações do Item só é criada se NÃO estiver bloqueada
                         const acoesItemHtml = !estaBloqueada ?
-                            `<td class="text-center">
+                            `<td class="text-center align-middle">
                             <button class="btn btn-warning btn-xs me-1 btn-editar-item" data-oei-id="${item.oei_id}" title="Editar este item"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-danger btn-xs btn-remover-item" data-oei-id="${item.oei_id}" title="Remover este item"><i class="fas fa-times"></i></button>
                          </td>` : '';
@@ -163,7 +163,7 @@ $(document).ready(function () {
                 // Os botões de ação do pedido (cabeçalho) só são criados se NÃO estiver bloqueado
                 const botoesAcaoPedido = !estaBloqueada ?
                     `<button class="btn btn-info btn-adicionar-produto" data-oep-id="${pedido.oep_id}"><i class="fas fa-plus me-1"></i>Adicionar Produto</button>
-                 <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
+                     <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
 
                 // O cabeçalho da coluna Ações só é criado se NÃO estiver bloqueado
                 const thAcoes = !estaBloqueada ? '<th class="text-center align-middle small" style="width: 8%;">Ações</th>' : '';
@@ -174,32 +174,34 @@ $(document).ready(function () {
                         <h5 class="mb-0">
                             <i class="fas fa-grip-vertical me-3 text-muted drag-handle" style="cursor: grab;"></i>
                             Cliente: ${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})
-                            <small class="text-muted fw-normal d-block ps-4">
+                            <span class="text-muted fw-normal ps-1">
                                 - Total Caixas: <span id="total-caixas-${pedido.oep_id}">0</span>
                                 - Total Quilos: <span id="total-quilos-${pedido.oep_id}">0,000kg</span>
-                            </small>
+                            </span>
                         </h5>
                         <div>${botoesAcaoPedido}</div>
                     </div>
-                    <table class="table table-sm table-bordered table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center align-middle small" style="width: 5%;">Código</th>
-                                <th class="text-center align-middle small" style="width: 18%;">Produto</th>
-                                <th class="text-center align-middle small" style="width: 5%;">Emb. Prim.</th>
-                                <th class="text-center align-middle small" style="width: 5%;">Emb. Sec.</th>
-                                <th class="text-center align-middle small" style="width: 7%;">Indústria</th>
-                                <th class="text-center align-middle small" style="width: 10%;">Fazenda</th>
-                                <th class="text-center align-middle small" style="width: 10%;">Lote</th>
-                                <th class="text-center align-middle small" style="width: 10%;">Endereço</th>
-                                <th class="text-center align-middle small" style="width: 5%;">Qtd Caixas</th>
-                                <th class="text-center align-middle small" style="width: 5%;">Qtd Quilos</th>
-                                <th class="text-center align-middle small" style="width: 12%;">Obs.</th>
-                                ${thAcoes}
-                            </tr>
-                        </thead>
-                        <tbody>${itensHtml}</tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center align-middle small" style="width: 5%;">Código</th>
+                                    <th class="text-center align-middle small" style="width: 18%;">Produto</th>
+                                    <th class="text-center align-middle small" style="width: 5%;">Emb. Prim.</th>
+                                    <th class="text-center align-middle small" style="width: 5%;">Emb. Sec.</th>
+                                    <th class="text-center align-middle small" style="width: 7%;">Indústria</th>
+                                    <th class="text-center align-middle small" style="width: 10%;">Fazenda</th>
+                                    <th class="text-center align-middle small" style="width: 10%;">Lote</th>
+                                    <th class="text-center align-middle small" style="width: 10%;">Endereço</th>
+                                    <th class="text-center align-middle small" style="width: 5%;">Qtd Caixas</th>
+                                    <th class="text-center align-middle small" style="width: 5%;">Qtd Quilos</th>
+                                    <th class="text-center align-middle small" style="width: 12%;">Obs.</th>
+                                    ${thAcoes}
+                                </tr>
+                            </thead>
+                            <tbody>${itensHtml}</tbody>
+                        </table>
+                    </div>
                 </div>`;
                 $pedidosContainer.append(pedidoHtml);
             });
@@ -341,10 +343,6 @@ $(document).ready(function () {
 
             processResults: function (data) {
                 return {
-                    /* results: data.data.map(item => ({
-                         id: item.ent_codigo,
-                         text: `${item.nome_display} (Cód: ${item.ent_codigo_interno})`
-                     }))*/
                     results: data.data
 
                 };

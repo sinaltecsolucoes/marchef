@@ -1,4 +1,3 @@
-
 // /public/js/detalhes_carregamento.js
 $(document).ready(function () {
     const csrfToken = $('input[name="csrf_token"]').val();
@@ -139,7 +138,6 @@ $(document).ready(function () {
         }
     }
 
-
     // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
     function renderPlanejamento(planejamento) {
         $tabelaPlanejamentoBody.empty();
@@ -155,21 +153,24 @@ $(document).ready(function () {
             else { saldoClass = 'text-primary'; }
             const html = `
                 <tr data-oe-item-id="${item.oei_id}">
-                    <td class="text-center align-middle">${item.cliente_nome}</td>
-                    <td class="align-middle">${item.prod_descricao}</td>
-                    <td class="text-center align-middle">${item.lote_completo}</td>
-                    <td class="text-center align-middle">${item.endereco_completo}</td>
-                    <td class="text-center align-middle">${item.qtd_planejada}</td>
-                    <td class="text-center align-middle">${item.qtd_carregada}</td>
-                    <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
+                    <td>${item.cliente_nome}</td>
+                    <td>${item.prod_descricao}</td>
+                    <td>${item.lote_completo}</td>
+                    <td>${item.endereco_completo}</td>
+                    <td class="text-end">${item.qtd_planejada}</td>
+                    <td class="text-end">${item.qtd_carregada}</td>
+                    <td class="text-end fw-bold ${saldoClass}">${saldo}</td>
                 </tr>
             `;
             $tabelaPlanejamentoBody.append(html);
         });
     }
-   
+
     // --- RENDERIZAÇÃO DA EXECUÇÃO (Filas e Itens) ---
     function renderExecucao(filas, statusCarregamento) {
+
+
+
         let html = '<div>';
         filas.forEach((fila, index) => {
             const clientesNaFila = {};
@@ -190,59 +191,58 @@ $(document).ready(function () {
 
                 cliente.itens.forEach(item => {
                     const divergenciaBadge = item.motivo_divergencia ? `<span class="badge bg-danger" title="Divergência: ${item.motivo_divergencia}">D</span>` : '';
+
+                    // Lógica para os botões de AÇÃO DO ITEM (Editar/Excluir)
                     let itemAcoesHtml = '';
                     if (statusCarregamento === 'EM ANDAMENTO') {
                         itemAcoesHtml = `
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-warning btn-editar-item me-1" data-item-id="${item.car_item_id}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-danger btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </div>`;
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-warning btn-editar-item" data-item-id="${item.car_item_id}" title="Editar"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-danger btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir"><i class="fas fa-trash"></i></button>
+                            </div>`;
                     }
 
                     itensHtml += `
-                    <tr>
-                        <td class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
-                        <td class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
-                        <td class="text-center align-middle">${item.lote_completo || ''}</td>
-                        <td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
-                        <td class="text-center align-middle">${item.endereco_completo || ''}</td>
-                        <td class="text-center align-middle"">${item.qtd_carregada}</td>
-                        <td class="text-center align-middle"">${itemAcoesHtml}</td>
-                    </tr>`;
+                        <tr>
+                            <td>${item.prod_codigo_interno || ''}</td>
+                            <td>${item.prod_descricao} ${divergenciaBadge}</td>
+                            <td>${item.lote_completo || ''}</td>
+                            <td>${item.cliente_lote_nome || 'N/A'}</td>
+                            <td>${item.endereco_completo || ''}</td>
+                            <td class="text-end">${item.qtd_carregada}</td>
+                            <td class="text-center">${itemAcoesHtml}</td>
+                        </tr>`;
                 });
 
+                // Lógica para os botões de AÇÃO DO CLIENTE
                 let clienteBotoesHtml = '';
                 if (statusCarregamento === 'EM ANDAMENTO') {
                     clienteBotoesHtml = `
-                    <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}"><i class="fas fa-plus me-1"></i> Adicionar Item</button>
-                    <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}"><i class="fas fa-trash me-1"></i> Excluir Cliente</button>`;
+                        <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}"><i class="fas fa-plus me-1"></i> Adicionar Item</button>
+                        <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}"><i class="fas fa-trash me-1"></i> Excluir Cliente</button>`;
                 }
 
                 clientesHtml += `
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}"><i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}</span>
-                        <div>${clienteBotoesHtml}</div>
-                    </div>
-                    <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
-                        <table class="table table-sm table-bordered table-striped mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center align-middle">Cód. Interno</th>
-                                    <th class="text-center align-middle">Produto</th>
-                                    <th class="text-center align-middle">Lote</th>
-                                    <th class="text-center align-middle">Cliente do Lote</th>
-                                    <th class="text-center align-middle">Endereço</th>
-                                    <th class="text-center align-middle"">Qtd. Carregada</th>
-                                    <th class="text-center align-middle"">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>${itensHtml}</tbody>
-                        </table>
-                    </div>
-                </div>`;
+                    <div class="card mb-2 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}"><i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}</span>
+                            <div>${clienteBotoesHtml}</div>
+                        </div>
+                        <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
+                            <table class="table table-sm table-bordered table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Cód. Interno</th><th>Produto</th><th>Lote</th><th>Cliente do Lote</th>
+                                        <th>Endereço</th><th class="text-end">Qtd. Carregada</th><th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${itensHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>`;
             }
 
+            // Lógica para os botões de AÇÃO DA FILA
             let filaBotoesHtml = '';
             if (statusCarregamento === 'EM ANDAMENTO') {
                 let removerFilaBtnHtml = '';
@@ -252,24 +252,24 @@ $(document).ready(function () {
                     removerFilaBtnHtml = `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
                 }
                 filaBotoesHtml = `
-                <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
-                <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
-                <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
-                ${removerFilaBtnHtml}`;
+                    <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
+                    <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
+                    <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
+                    ${removerFilaBtnHtml}`;
             } else {
-                filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
+                filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
             }
 
             html += `
-            <div class="card mb-3 shadow-sm border-primary">
-                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <span class="toggle-btn" data-target=".fila-${fila.fila_id}"><i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}</span>
-                    <div class="d-flex align-items-center">${filaBotoesHtml}</div>
-                </div>
-                <div class="card-body fila-${fila.fila_id}" style="display: none;">
-                    ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
-                </div>
-            </div>`;
+                <div class="card mb-3 shadow-sm border-primary">
+                    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <span class="toggle-btn" data-target=".fila-${fila.fila_id}"><i class="fas fa-plus-square"></i> Fila ${fila.fila_numero_sequencial}</span>
+                        <div class="d-flex align-items-center">${filaBotoesHtml}</div>
+                    </div>
+                    <div class="card-body fila-${fila.fila_id}" style="display: none;">
+                        ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
+                    </div>
+                </div>`;
         });
         html += '</div>';
 
@@ -289,30 +289,41 @@ $(document).ready(function () {
         });
 
         // Lógica centralizada para habilitar/desabilitar os botões de Ação Principal
+
+        // Regra padrão: Se não há filas, pode criar a primeira, mas não pode finalizar.
         let podeCriarNovaFila = (filas.length === 0);
         let podeFinalizar = false;
 
         if (filas.length > 0) {
             const ultimaFila = filas[filas.length - 1];
+            // Buscamos os dados que o backend já nos enviou
             const temItens = ultimaFila.itens && ultimaFila.itens.length > 0;
             const temFotos = ultimaFila.total_fotos > 0;
+
+            // A última fila é considerada "completa" se tiver itens E fotos
             const ultimaFilaCompleta = temItens && temFotos;
+
+            // Só pode criar uma nova fila SE a última estiver completa
             podeCriarNovaFila = ultimaFilaCompleta;
+
+            // Só pode finalizar o carregamento SE a última fila estiver completa
             podeFinalizar = ultimaFilaCompleta;
         }
 
+        // 1. Aplica as regras ao botão "Adicionar Nova Fila"
         $('#btn-adicionar-fila').prop('disabled', !podeCriarNovaFila)
             .attr('title', podeCriarNovaFila ?
                 'Adicionar uma nova fila de carregamento' :
                 'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
 
+        // 2. Aplica as regras ao botão "Finalizar Carregamento"
         $('#btn-finalizar-detalhe').prop('disabled', !podeFinalizar)
             .attr('title', podeFinalizar ?
                 'Finalizar o carregamento e baixar o estoque' :
                 'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
+
+
     }
-
-
     // --- LÓGICA DO NOVO MODAL UNIFICADO ---
     function inicializarLogicaModalUnificado() {
 
@@ -631,9 +642,8 @@ $(document).ready(function () {
 
     // Remover Cliente da Fila
     $filasContainer.on('click', '.btn-remove-cliente-from-fila', function () {
-        const $button = $(this);
-        const filaId = $button.data('fila-id');
-        const clienteId = $button.data('cliente-id');
+        const filaId = $(this).data('fila-id');
+        const clienteId = $(this).data('cliente-id');
         Swal.fire({
             title: 'Remover Cliente da Fila?', text: "Todos os itens deste cliente serão removidos desta fila. Deseja continuar?",
             icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33',
@@ -645,30 +655,8 @@ $(document).ready(function () {
                 }, function (response) {
                     if (response.success) {
                         notificacaoSucesso('Removido!', 'Cliente e seus itens removidos da fila.');
-
-                        // Nova lógica: Verifica se era o último cliente da fila e se a fila é a última (para auto-remover a fila vazia)
-                        const numClients = $button.closest('.card-body').find('.card.mb-2').length;
-                        const $btnRemoverFila = $button.closest('.card.mb-3').find('.btn-remover-fila');
-
-                        if (numClients === 1 && !$btnRemoverFila.prop('disabled')) {
-                            // Auto-remover a fila pois ficou vazia e é a última
-                            $.post('ajax_router.php?action=removeFilaCarregamento', {
-                                fila_id: filaId,
-                                csrf_token: csrfToken
-                            }, function (remResponse) {
-                                if (remResponse.success) {
-                                    notificacaoSucesso('Fila removida', 'A fila foi removida automaticamente pois ficou vazia.');
-                                } else {
-                                    Swal.fire('Erro', remResponse.message, 'error');
-                                }
-                                loadDetalhesCarregamento();
-                            }, 'json');
-                        } else {
-                            loadDetalhesCarregamento();
-                        }
-                    } else {
-                        Swal.fire('Erro', response.message, 'error');
-                    }
+                        loadDetalhesCarregamento();
+                    } else { Swal.fire('Erro', response.message, 'error'); }
                 }, 'json');
             }
         });
@@ -862,6 +850,7 @@ $(document).ready(function () {
                     notificacaoSucesso('Sucesso!', response.message);
                     // Recarrega todos os dados do carregamento para reavaliar o botão "Adicionar Fila"
                     loadDetalhesCarregamento();
+
                     // Futuramente, podemos atualizar um contador de fotos no botão
                 } else {
                     Swal.fire('Erro no Upload', response.message, 'error');

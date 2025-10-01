@@ -5,6 +5,15 @@ $(document).ready(function () {
     const $modalAlocar = $('#modal-alocar-item');
     const $formAlocar = $('#form-alocar-item');
 
+    // Função auxiliar para formatar números
+    function formatarNumero(valor, decimal = false) {
+        const numero = parseFloat(valor) || 0;
+        return numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: decimal ? 3 : 0,
+            maximumFractionDigits: decimal ? 3 : 0
+        });
+    }
+
     // Inicialização do Select2 para o modal de alocação
     $('#select-item-para-alocar').select2({
         placeholder: "Busque por produto ou lote...",
@@ -57,10 +66,10 @@ $(document).ready(function () {
             <tr class="table-primary" style="border-top: 2px solid #a9c6e8; border-bottom: 1px solid #a9c6e8;">
                 <td><i class="fas fa-plus-square toggle-btn" data-target=".camara-${camaraId}"></i></td>
                 <td><strong>${camara.nome} (${camara.codigo})</strong></td>
-                <td class="text-center"><strong>${parseFloat(camara.total_caixas).toFixed(3)}</strong></td>
-                <td class="text-center text-danger"><strong>${parseFloat(camara.total_caixas_reservadas).toFixed(3)}</strong></td>
-                <td class="text-center text-success fw-bolder"><strong>${parseFloat(caixasDisponiveisCamara).toFixed(3)}</strong></td>
-                <td class="text-center"><strong>${parseFloat(camara.total_quilos).toFixed(3)}</strong></td>
+                <td class="text-center"><strong>${formatarNumero(camara.total_caixas)}</strong></td>
+                <td class="text-center text-danger"><strong>${formatarNumero(camara.total_caixas_reservadas)}</strong></td>
+                <td class="text-center text-success fw-bolder"><strong>${formatarNumero(caixasDisponiveisCamara)}</strong></td>
+                <td class="text-center"><strong>${formatarNumero(camara.total_quilos, true)}</strong></td>
                 <td></td>
             </tr>
         `;
@@ -77,10 +86,10 @@ $(document).ready(function () {
                     <tr class="camara-${camaraId}" style="display: none;">
                         <td></td>
                         <td class="ps-4"><i class="fas ${iconClass} ${toggleClass}" data-target=".endereco-${enderecoId}"></i> ${endereco.nome}</td>
-                        <td class="text-center">${parseFloat(endereco.total_caixas).toFixed(3)}</td>
-                        <td class="text-center text-danger">${parseFloat(endereco.total_caixas_reservadas).toFixed(3)}</td>
-                        <td class="text-center text-success fw-bolder">${parseFloat(caixasDisponiveisEndereco).toFixed(3)}</td>
-                        <td class="text-center">${parseFloat(endereco.total_quilos).toFixed(3)}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_caixas)}</td>
+                        <td class="text-center text-danger">${formatarNumero(endereco.total_caixas_reservadas)}</td>
+                        <td class="text-center text-success fw-bolder">${formatarNumero(caixasDisponiveisEndereco)}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_quilos, true)}</td>
                         <td class="text-center">
                             <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}"><i class="fas fa-download me-1"></i>Alocar Item</button>
                         </td>
@@ -89,46 +98,45 @@ $(document).ready(function () {
 
                     if (temItens) {
                         html += `
-                                <tr class="endereco-${enderecoId}" style="display: none;">
-                                    <td colspan="7">
-                                        <div class="ps-5 p-3 border rounded shadow-sm bg-white">
-                                            <table class="table table-sm table-bordered table-hover mb-0">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="text-center align-middle">Produto</th>
-                                                        <th class="text-center align-middle">Lote</th>
-                                                        <th class="text-center align-middle">Qtd. Física</th>
-                                                        <th class="text-center align-middle">Qtd. Reservada</th>
-                                                        <th class="text-center align-middle">Qtd. Disponível</th>
-                                                        <th class="text-center align-middle">Ação</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>`;
+                        <tr class="endereco-${enderecoId}" style="display: none;">
+                            <td colspan="7">
+                                <div class="ps-5 p-3 border rounded shadow-sm bg-white">
+                                    <table class="table table-sm table-bordered table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 40%; text-align: center; vertical-align: middle;">Produto</th>
+                                                <th style="width: 10%; text-align: center; vertical-align: middle;">Lote</th>
+                                                <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Física</th>
+                                                <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Reservada</th>
+                                                <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Disponível</th>
+                                                <th style="width: 10%; text-align: center; vertical-align: middle;">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
                         $.each(endereco.itens, function (i, item) {
                             const qtdDisponivel = item.quantidade_fisica - item.quantidade_reservada;
-                            // A quantidade reservada é um link se for maior que zero
-                            let reservadoHtml = parseFloat(item.quantidade_reservada).toFixed(3);
+                            let reservadoHtml = formatarNumero(item.quantidade_reservada);
                             if (item.quantidade_reservada > 0) {
                                 reservadoHtml = `<a href="#" class="link-reserva text-danger fw-bold" data-alocacao-id="${item.alocacao_id}">${reservadoHtml}</a>`;
                             }
 
                             html += `<tr>
-                                        <td class="align-middle">${item.produto}</td>
-                                        <td class="text-center align-middle">${item.lote}</td>
-                                        <td class="text-center align-middle">${parseFloat(item.quantidade_fisica).toFixed(3)}</td>
-                                        <td class="text-center align-middle">${reservadoHtml}</td>
-                                        <td class="text-center align-middle text-success fw-bolder">${parseFloat(qtdDisponivel).toFixed(3)}</td>
-                                        <td class="text-center align-middle">
-                                            <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                        </tr>`;
+                                    <td style="width: 40%;">${item.produto}</td>
+                                    <td style="width: 20%; text-align: center; vertical-align: middle;">${item.lote}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">${formatarNumero(item.quantidade_fisica)}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">${reservadoHtml}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle; text-success fw-bolder">${formatarNumero(qtdDisponivel)}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">
+                                        <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
                         });
                         html += `</tbody></table>
-                                    </div>
-                                </td>
-                            </tr>`;
+                                </div>
+                            </td>
+                        </tr>`;
                     }
 
                 });
@@ -154,6 +162,17 @@ $(document).ready(function () {
             }
         });
     }
+
+    function formatarNumero(valor, decimal = false) {
+        // Converte para número, se ainda não for
+        const numero = parseFloat(valor) || 0;
+        // Configuração para pt-BR
+        return numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: decimal ? 3 : 0,
+            maximumFractionDigits: decimal ? 3 : 0
+        });
+    }
+
     carregarDados();
 
     $container.on('click', '.toggle-btn', function () {
@@ -247,13 +266,12 @@ $(document).ready(function () {
                         </thead>
                         <tbody>`;
                 response.data.forEach(reserva => {
-                    tabelaHtml += `
-                        <tr>
-                            <td class="text-center align-middle">${reserva.oe_numero}</td>
-                            <td class="align-middle">${reserva.cliente_nome}</td>
-                            <td class="text-center align-middle">${reserva.oep_numero_pedido || 'N/A'}</td>
-                            <td class="text-center align-middle">${parseFloat(reserva.oei_quantidade).toFixed(3)}</td>
-                        </tr>`;
+                    tabelaHtml += `<tr>
+                                        <td class="text-center align-middle">${formatarNumero(reserva.oe_numero).padStart(4, '0')}</td>
+                                        <td class="align-middle">${reserva.cliente_nome}</td>
+                                        <td class="text-center align-middle">${reserva.oep_numero_pedido || 'N/A'}</td>
+                                        <td class="text-center align-middle">${formatarNumero(reserva.oei_quantidade, false)}</td>
+                                    </tr>`;
                 });
                 tabelaHtml += `</tbody></table>`;
                 $containerDetalhes.html(tabelaHtml);

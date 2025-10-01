@@ -12,7 +12,7 @@
             <button class="btn btn-warning btn-sm" id="btn-editar-header"><i class="fas fa-pencil-alt me-1"></i>
                 Editar</button>
             <button class="btn btn-success btn-sm" id="btn-salvar-header" style="display: none;"><i
-                    class="fas fa-save me-1"></i> Salvar</button>
+                    class="fas fa-save me-1"></i>Salvar</button>
             <button class="btn btn-secondary btn-sm" id="btn-cancelar-header" style="display: none;"><i
                     class="fas fa-times me-1"></i> Cancelar</button>
             <a href="index.php?page=carregamentos" class="btn btn-secondary btn-sm">
@@ -84,13 +84,13 @@
             <table class="table table-bordered table-sm" id="tabela-planejamento">
                 <thead class="table-light">
                     <tr>
-                        <th>Cliente</th>
-                        <th>Produto</th>
-                        <th>Lote</th>
-                        <th>Endereço</th>
-                        <th class="text-end">Qtd. Planejada (Caixas)</th>
-                        <th class="text-end">Qtd. Carregada (Caixas)</th>
-                        <th class="text-end fw-bold">Saldo (Caixas)</th>
+                        <th class="text-center align-middle">Cliente</th>
+                        <th class="text-center align-middle">Produto</th>
+                        <th class="text-center align-middle">Lote</th>
+                        <th class="text-center align-middle">Endereço</th>
+                        <th class="text-center align-middle">Qtd. Planejada (Caixas)</th>
+                        <th class="text-center align-middle">Qtd. Carregada (Caixas)</th>
+                        <th class="text-center align-middle fw-bold">Saldo (Caixas)</th>
                     </tr>
                 </thead>
                 <tbody id="tabela-planejamento-body">
@@ -103,8 +103,8 @@
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <h6 class="m-0 font-weight-bold text-primary">3. Execução (Filas de Carregamento)</h6>
-        <button class="btn btn-success btn-sm" id="btn-adicionar-fila">
-            <i class="fas fa-plus me-1"></i> Adicionar Nova Fila
+        <button class="btn btn-info btn-sm" id="btn-adicionar-fila">
+            <i class="fas fa-plus me-1"></i>Adicionar Nova Fila
         </button>
     </div>
     <div class="card-body">
@@ -143,8 +143,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salvar Alterações</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="fas fa-times me-1"></i>Cancelar</button>
                 </div>
             </form>
         </div>
@@ -217,9 +218,11 @@
 
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" id="btn-confirmar-add-item" class="btn btn-primary" disabled>Adicionar
+                    <button type="submit" id="btn-confirmar-add-item" class="btn btn-primary" disabled><i
+                            class="fas fa-plus me-1"></i>Adicionar
                         Item</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="fas fa-times me-1"></i>Cancelar</button>
                 </div>
             </form>
         </div>
@@ -251,8 +254,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Foto</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salvar Foto</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="fas fa-times me-1"></i>Cancelar</button>
+
                 </div>
             </form>
         </div>

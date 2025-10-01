@@ -33,7 +33,7 @@
                         <th class="text-center aling-middle">Data Fabricação</th>
                         <th class="text-center aling-middle">Status</th>
                         <th class="text-center aling-middle">Data Cadastro</th>
-                        <th class="text-center aling-middle">Ações</th>
+                        <th class="text-center aling-middle" width="16%">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -172,7 +172,7 @@
                                         <th class="text-center align-middle">Qtd.<br>Produzida</th>
                                         <th class="text-center align-middle">Saldo<br>(p/ Embalar)</th>
                                         <th class="text-center align-middle">Validade</th>
-                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações
+                                        <th class="text-center align-middle coluna-acoes" style="width: 20%;">Ações
                                         </th>
                                     </tr>
                                 </thead>
@@ -226,7 +226,7 @@
                                         <th class="text-center align-middle">Qtd. Embalagens</th>
                                         <th class="text-center align-middle">Consumido De (Produto Primário)</th>
                                         <th class="text-center align-middle">Qtd. Primária Consumida</th>
-                                        <th class="text-center align-middle coluna-acoes" style="width: 150px;">Ações
+                                        <th class="text-center align-middle coluna-acoes" style="width: 20%;">Ações
                                         </th>
                                     </tr>
                                 </thead>

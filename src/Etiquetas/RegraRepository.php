@@ -22,55 +22,77 @@ class RegraRepository
      */
     public function findAllForDataTable(array $params): array
     {
-        $baseQuery = "FROM tbl_etiqueta_regras r
-                      LEFT JOIN tbl_produtos p ON r.regra_produto_id = p.prod_codigo
-                      LEFT JOIN tbl_entidades e ON r.regra_cliente_id = e.ent_codigo
-                      JOIN tbl_etiqueta_templates t ON r.regra_template_id = t.template_id";
+        try {
+            $draw = $params['draw'] ?? 1;
+            $start = $params['start'] ?? 0;
+            $length = $params['length'] ?? 10;
+            $searchValue = $params['search']['value'] ?? '';
 
-        // Lógica de busca e paginação (simplificada por enquanto)
-        $totalRecords = $this->pdo->query("SELECT COUNT(r.regra_id) FROM tbl_etiqueta_regras r")->fetchColumn();
-        $totalFiltered = $totalRecords; // Simplificado
+            $baseQuery = "FROM tbl_etiqueta_regras r
+                          LEFT JOIN tbl_produtos p ON r.regra_produto_id = p.prod_codigo
+                          LEFT JOIN tbl_entidades e ON r.regra_cliente_id = e.ent_codigo
+                          JOIN tbl_etiqueta_templates t ON r.regra_template_id = t.template_id";
 
-        $sqlData = "SELECT 
-                        r.regra_id,
-                        COALESCE(p.prod_descricao, 'Todos os Produtos') AS produto_nome,
-                        COALESCE(e.ent_razao_social, 'Todos os Clientes') AS cliente_nome,
-                        t.template_nome,
-                        r.regra_prioridade
-                    $baseQuery 
-                    ORDER BY r.regra_prioridade ASC, cliente_nome ASC, produto_nome ASC
-                    LIMIT :start, :length";
+            $totalRecords = $this->pdo->query("SELECT COUNT(r.regra_id) FROM tbl_etiqueta_regras r")->fetchColumn();
 
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
-        $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $whereClause = '';
+            if (!empty($searchValue)) {
+                $whereClause = " WHERE p.prod_descricao LIKE :search_produto OR e.ent_razao_social LIKE :search_cliente OR t.template_nome LIKE :search_template";
+            }
 
-        return [
-            "draw" => intval($params['draw'] ?? 1),
-            "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalFiltered,
-            "data" => $data
-        ];
+            $stmtFiltered = $this->pdo->prepare("SELECT COUNT(r.regra_id) $baseQuery $whereClause");
+            if (!empty($searchValue)) {
+                $stmtFiltered->execute([
+                    ':search_produto' => '%' . $searchValue . '%',
+                    ':search_cliente' => '%' . $searchValue . '%',
+                    ':search_template' => '%' . $searchValue . '%'
+                ]);
+            } else {
+                $stmtFiltered->execute();
+            }
+            $totalFiltered = $stmtFiltered->fetchColumn();
+
+            $sqlData = "SELECT 
+                            r.regra_id,
+                            COALESCE(p.prod_descricao, 'Todos os Produtos') AS produto_nome,
+                            COALESCE(e.ent_razao_social, 'Todos os Clientes') AS cliente_nome,
+                            t.template_nome,
+                            r.regra_prioridade
+                        $baseQuery 
+                        $whereClause 
+                        ORDER BY r.regra_prioridade ASC, cliente_nome ASC, produto_nome ASC
+                        LIMIT :start, :length";
+
+            $stmt = $this->pdo->prepare($sqlData);
+            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            if (!empty($searchValue)) {
+                $stmt->bindValue(':search_produto', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_cliente', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_template', '%' . $searchValue . '%');
+            }
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                "draw" => (int) $draw,
+                "recordsTotal" => (int) $totalRecords,
+                "recordsFiltered" => (int) $totalFiltered,
+                "data" => $data
+            ];
+        } catch (PDOException $e) {
+            error_log('Erro em findAllForDataTable: ' . $e->getMessage());
+            throw new Exception('Erro ao buscar regras: ' . $e->getMessage());
+        }
     }
 
     /**
      * Busca uma única regra pelo seu ID.
      */
-    /*   public function find(int $id): ?array
-       {
-           $stmt = $this->pdo->prepare("SELECT * FROM tbl_etiqueta_regras WHERE regra_id = :id");
-           $stmt->execute([':id' => $id]);
-           return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-       } */
-
     public function find(int $id): ?array
     {
-        // Agora faz JOINs para buscar os nomes/textos para os Selects
         $sql = "SELECT 
                 r.*,
-                -- Usamos o CONCAT/COALESCE que já criamos para a função getClienteOptions
                 CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social), ' (Cód: ', COALESCE(e.ent_codigo_interno, 'N/A'), ')') AS cliente_text,
                 p.prod_descricao AS produto_text,
                 t.template_nome AS template_text

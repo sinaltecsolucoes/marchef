@@ -13,7 +13,7 @@ $(document).ready(function () {
         theme: "bootstrap-5",
         language: "pt-BR",
         ajax: {
-            url: 'ajax_router.php?action=getClienteOptions', // A rota que já corrigimos
+            url: 'ajax_router.php?action=getClienteOptions',
             dataType: 'json',
             delay: 250,
             data: function (params) {
@@ -22,8 +22,6 @@ $(document).ready(function () {
                 };
             },
             processResults: function (response) {
-                // A função no ajax_router.php (linha 865) retorna { "data": [...] }
-                // O Select2 espera { "results": [...] }
                 return {
                     results: response.data
                 };
@@ -38,20 +36,6 @@ $(document).ready(function () {
         dropdownParent: $modal,
         theme: "bootstrap-5"
     });
-
-    // Função para carregar Clientes no dropdown
-    /*  function carregarClientes() {
-          $.get('ajax_router.php?action=getClienteOptions', { term: '' }).done(function (response) {
-              if (response.data) {
-                  const $select = $('#regra_cliente_id');
-                  $select.empty().append('<option value="">Todos os Clientes</option>');
-                  response.data.forEach(function (cliente) {
-                      // O backend (EntidadeRepository) já formata o texto para nós
-                      $select.append(new Option(cliente.text, cliente.id));
-                  });
-              }
-          });
-      } */
 
     // Função para carregar Produtos no dropdown
     function carregarProdutos() {
@@ -89,14 +73,24 @@ $(document).ready(function () {
             "data": { csrf_token: csrfToken }
         },
         "columns": [
-            { "data": "cliente_nome" },
-            { "data": "produto_nome" },
-            { "data": "template_nome" },
-            { "data": "regra_prioridade", "className": "text-center" },
+            {
+                "data": "cliente_nome",
+                "className": "align-middle"
+            },
+            {
+                "data": "produto_nome",
+                "className": "align-middle"
+            },
+            { "data": "template_nome",
+                "className":"align-middle" },
+            {
+                "data": "regra_prioridade",
+                "className": "text-center align-middle"
+            },
             {
                 "data": "regra_id",
                 "orderable": false,
-                "className": "text-center actions-column",
+                "className": "text-center align-middle actions-column",
                 "render": function (data) {
                     return `
                         <button class="btn btn-warning btn-sm btn-editar-regra" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
@@ -105,7 +99,6 @@ $(document).ready(function () {
                 }
             }
         ],
-        // "language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[3, 'asc']]
     });
@@ -119,46 +112,12 @@ $(document).ready(function () {
         $('#regra_template_id').val(null).trigger('change');
         $('#modal-regra-label').text('Adicionar Nova Regra');
         $('#mensagem-regra-modal').html('');
-        //carregarClientes();
         carregarProdutos();
         carregarTemplates();
         $modal.modal('show');
     });
 
     // Abrir modal para EDITAR
-    /* $('#tabela-regras').on('click', '.btn-editar-regra', function () {
-         const id = $(this).data('id');
-         // Carrega todos os dropdowns primeiro
-         $.when(carregarClientes(), carregarProdutos(), carregarTemplates()).done(function () {
-             // Depois que todos carregaram, busca os dados da regra
-             $.ajax({
-                 url: 'ajax_router.php?action=getRegra',
-                 type: 'POST',
-                 data: { regra_id: id, csrf_token: csrfToken },
-                 dataType: 'json'
-             }).done(function (response) {
-                 if (response.success) {
-                     const data = response.data;
-                     $('#regra_id').val(data.regra_id);
-                     $('#regra_prioridade').val(data.regra_prioridade);
-                     // Define os valores e dispara o 'change' para o Select2 atualizar a exibição
-                     $('#regra_cliente_id').val(data.regra_cliente_id).trigger('change');
-                     $('#regra_produto_id').val(data.regra_produto_id).trigger('change');
-                     $('#regra_template_id').val(data.regra_template_id).trigger('change');
- 
-                     $('#modal-regra-label').text('Editar Regra');
-                     $('#mensagem-regra-modal').html('');
-                     $modal.modal('show');
-                 } else {
-                     notificacaoErro('Erro ao Carregar', response.message);
-                 }
-             }).fail(function () {
-                 notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados da regra.');
-             });
-         });
-     }); */
-
-
     $('#tabela-regras').on('click', '.btn-editar-regra', function () {
         const id = $(this).data('id');
 
@@ -192,7 +151,6 @@ $(document).ready(function () {
                         $selectCliente.val(null).trigger('change');
                     }
 
-                    // --- LÓGICA ANTIGA (Funciona para os outros selects estáticos) ---
                     $('#regra_id').val(data.regra_id);
                     $('#regra_prioridade').val(data.regra_prioridade);
                     $('#regra_produto_id').val(data.regra_produto_id).trigger('change');
@@ -208,7 +166,6 @@ $(document).ready(function () {
             });
         });
     });
-
 
     // EXCLUIR regra
     $('#tabela-regras').on('click', '.btn-excluir-regra', function () {
@@ -226,9 +183,9 @@ $(document).ready(function () {
                 }).done(function (response) {
                     table.ajax.reload(null, false);
                     if (response.success) {
-                        notificacaoSucesso('Excluída!', response.message); // << REATORADO
+                        notificacaoSucesso('Excluída!', response.message);
                     } else {
-                        notificacaoErro('Erro!', response.message); // << REATORADO
+                        notificacaoErro('Erro!', response.message);
                     }
                 }).fail(function () {
                     notificacaoErro('Erro de Comunicação', 'Não foi possível excluir a regra.');

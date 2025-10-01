@@ -1377,4 +1377,236 @@ class LoteNovoRepository
             throw $e; // Lança o erro para o Controller (AJAX Router)
         }
     }
+
+    /**
+     * Busca todas as caixas mistas para exibição no DataTables.
+     */
+    public function findAllCaixasMistasForDataTable(array $params): array
+    {
+        try {
+            $draw = (int) ($params['draw'] ?? 1);
+            $start = (int) ($params['start'] ?? 0);
+            $length = (int) ($params['length'] ?? 10);
+            $searchValue = trim($params['search']['value'] ?? '');
+
+            // Query base para COUNT e SELECT (sem WHERE para total)
+            $totalStmt = $this->pdo->query("SELECT COUNT(mh.mista_id) FROM tbl_caixas_mistas_header mh");
+            $totalRecords = (int) $totalStmt->fetchColumn();
+
+            $whereClause = '';
+            $searchBindings = [];
+            if (!empty($searchValue)) {
+                $whereClause = " WHERE p.prod_descricao LIKE :search_produto OR lh.lote_completo_calculado LIKE :search_lote";
+                $searchBindings = [
+                    ':search_produto' => '%' . $searchValue . '%',
+                    ':search_lote' => '%' . $searchValue . '%'
+                ];
+            }
+
+            // COUNT filtrado
+            $filteredSql = "SELECT COUNT(mh.mista_id) FROM tbl_caixas_mistas_header mh
+                        JOIN tbl_lotes_novo_header lh ON mh.mista_lote_destino_id = lh.lote_id
+                        JOIN tbl_produtos p ON mh.mista_produto_final_id = p.prod_codigo
+                        LEFT JOIN tbl_entidades f ON lh.lote_fornecedor_id = f.ent_codigo
+                        LEFT JOIN tbl_entidades c ON lh.lote_cliente_id = c.ent_codigo" . $whereClause;
+            $filteredStmt = $this->pdo->prepare($filteredSql);
+            $filteredStmt->execute($searchBindings);
+            $totalFiltered = (int) $filteredStmt->fetchColumn();
+
+            // SELECT com dados
+            $dataSql = "SELECT 
+                        mh.mista_id,
+                        p.prod_descricao AS produto_final,
+                        lh.lote_completo_calculado AS lote_destino,
+                        mh.mista_data_criacao AS data_criacao,
+                        COALESCE((SELECT SUM(mi.item_mista_qtd_consumida) FROM tbl_caixas_mistas_itens mi WHERE mi.item_mista_header_id = mh.mista_id), 0) AS total_qtd_consumida,
+                        mh.mista_item_embalagem_id_gerado
+                    FROM tbl_caixas_mistas_header mh
+                    JOIN tbl_lotes_novo_header lh ON mh.mista_lote_destino_id = lh.lote_id
+                    JOIN tbl_produtos p ON mh.mista_produto_final_id = p.prod_codigo
+                    LEFT JOIN tbl_entidades f ON lh.lote_fornecedor_id = f.ent_codigo
+                    LEFT JOIN tbl_entidades c ON lh.lote_cliente_id = c.ent_codigo" . $whereClause . "
+                    ORDER BY mh.mista_data_criacao DESC
+                    LIMIT :start, :length";
+
+            $dataStmt = $this->pdo->prepare($dataSql);
+            $dataStmt->bindValue(':start', $start, PDO::PARAM_INT);
+            $dataStmt->bindValue(':length', $length, PDO::PARAM_INT);
+            foreach ($searchBindings as $key => $value) {
+                $dataStmt->bindValue($key, $value);
+            }
+            $dataStmt->execute();
+            $data = $dataStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];  // Garante array vazio se null/false
+
+            error_log("DataTables Response: recordsTotal={$totalRecords}, recordsFiltered={$totalFiltered}, data_count=" . count($data));  // Log para debug
+
+            return [
+                "draw" => $draw,
+                "recordsTotal" => $totalRecords,
+                "recordsFiltered" => $totalFiltered,
+                "data" => $data
+            ];
+        } catch (PDOException $e) {
+            error_log('PDO Error em findAllCaixasMistasForDataTable: ' . $e->getMessage() . ' | Query: ' . $dataSql ?? 'N/A');
+            return [
+                "draw" => (int) ($params['draw'] ?? 1),
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "error" => 'Erro no banco: ' . $e->getMessage()
+            ];
+        } catch (Exception $e) {
+            error_log('General Error em findAllCaixasMistasForDataTable: ' . $e->getMessage());
+            return [
+                "draw" => (int) ($params['draw'] ?? 1),
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "error" => 'Erro interno: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Busca os detalhes dos itens consumidos de uma caixa mista específica.
+     */
+    public function getDetalhesCaixaMista(int $mistaId): array
+    {
+        try {
+            $sql = "SELECT 
+                    p.prod_descricao,
+                    lh.lote_completo_calculado,
+                    mi.item_mista_qtd_consumida AS qtd_consumida
+                FROM tbl_caixas_mistas_itens mi
+                JOIN tbl_lotes_novo_producao lp ON mi.item_prod_origem_id = lp.item_prod_id
+                JOIN tbl_produtos p ON lp.item_prod_produto_id = p.prod_codigo
+                JOIN tbl_lotes_novo_header lh ON lp.item_prod_lote_id = lh.lote_id
+                WHERE mi.item_mista_header_id = :mista_id
+                ORDER BY p.prod_descricao ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':mista_id' => $mistaId]);
+            $itens = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            return [
+                'success' => true,
+                'itens' => $itens,
+                'total_itens' => count($itens)
+            ];
+        } catch (PDOException $e) {
+            error_log('PDO Error em getDetalhesCaixaMista: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Erro no banco ao buscar detalhes: ' . $e->getMessage(),
+                'itens' => []
+            ];
+        } catch (Exception $e) {
+            error_log('General Error em getDetalhesCaixaMista: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Erro interno ao buscar detalhes: ' . $e->getMessage(),
+                'itens' => []
+            ];
+        }
+    }
+
+    /**
+     * Exclui uma caixa mista e reverte o saldo consumido de volta para os itens de produção de origem.
+     * Esta é uma operação crítica e é feita dentro de uma transação.
+     *
+     * @param int $mistaId O ID da caixa mista (da tabela tbl_caixas_mistas_header).
+     * @return bool Retorna true se a operação for bem-sucedida.
+     * @throws Exception Se a caixa mista não for encontrada ou se houver um erro no processo.
+     */
+    public function excluirCaixaMista(int $mistaId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Busca os detalhes dos itens consumidos para reverter o saldo
+            $stmtItens = $this->pdo->prepare(
+                "SELECT item_prod_origem_id, item_mista_qtd_consumida FROM tbl_caixas_mistas_itens WHERE item_mista_header_id = :mista_id"
+            );
+            $stmtItens->execute([':mista_id' => $mistaId]);
+            $itensConsumidos = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($itensConsumidos)) {
+                // Se não há itens consumidos, só remove o cabeçalho e o item de embalagem gerado
+                $this->pdo->rollBack();
+                return $this->deleteCaixaMistaWithoutReversion($mistaId);
+            }
+
+            // 2. Itera sobre os itens consumidos e reverte o saldo
+            $stmtReverterSaldo = $this->pdo->prepare(
+                "UPDATE tbl_lotes_novo_producao SET item_prod_saldo = item_prod_saldo + :qtd WHERE item_prod_id = :id"
+            );
+            foreach ($itensConsumidos as $item) {
+                $origemId = $item['item_prod_origem_id'];
+                $qtdConsumida = $item['item_mista_qtd_consumida'];
+                $stmtReverterSaldo->execute([
+                    ':qtd' => $qtdConsumida,
+                    ':id' => $origemId
+                ]);
+            }
+
+            // 3. Exclui o item de embalagem que foi gerado
+            $stmtItemEmbId = $this->pdo->prepare("SELECT mista_item_embalagem_id_gerado FROM tbl_caixas_mistas_header WHERE mista_id = :mista_id");
+            $stmtItemEmbId->execute([':mista_id' => $mistaId]);
+            $itemEmbIdGerado = $stmtItemEmbId->fetchColumn();
+
+            if ($itemEmbIdGerado) {
+                $stmtDeleteEmb = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_id = :id");
+                $stmtDeleteEmb->execute([':id' => $itemEmbIdGerado]);
+            }
+
+            // 4. Exclui os itens da caixa mista e o cabeçalho em cascata
+            // As chaves estrangeiras com ON DELETE CASCADE na tabela `tbl_caixas_mistas_itens` e `tbl_caixas_mistas_header`
+            // devem lidar com a exclusão dos itens automaticamente. Mas faremos a exclusão explícita por segurança.
+            $stmtDeleteItens = $this->pdo->prepare("DELETE FROM tbl_caixas_mistas_itens WHERE item_mista_header_id = :mista_id");
+            $stmtDeleteItens->execute([':mista_id' => $mistaId]);
+
+            $stmtDeleteHeader = $this->pdo->prepare("DELETE FROM tbl_caixas_mistas_header WHERE mista_id = :mista_id");
+            $stmtDeleteHeader->execute([':mista_id' => $mistaId]);
+
+            // 5. Log de auditoria (precisa buscar os dados antigos antes da exclusão)
+            $this->auditLogger->log('DELETE', $mistaId, 'tbl_caixas_mistas_header', ['mista_id' => $mistaId, 'itens' => $itensConsumidos], null, 'Exclusão de Caixa Mista e reversão de saldos.');
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e; // Relança a exceção para que o controlador possa capturá-la
+        }
+    }
+
+    /**
+     * Função auxiliar para deletar uma caixa mista que não tem itens consumidos.
+     * @param int $mistaId
+     * @return bool
+     * @throws Exception
+     */
+    private function deleteCaixaMistaWithoutReversion(int $mistaId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $stmtItemEmbId = $this->pdo->prepare("SELECT mista_item_embalagem_id_gerado FROM tbl_caixas_mistas_header WHERE mista_id = :mista_id");
+            $stmtItemEmbId->execute([':mista_id' => $mistaId]);
+            $itemEmbIdGerado = $stmtItemEmbId->fetchColumn();
+
+            if ($itemEmbIdGerado) {
+                $stmtDeleteEmb = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_id = :id");
+                $stmtDeleteEmb->execute([':id' => $itemEmbIdGerado]);
+            }
+
+            $stmtDeleteHeader = $this->pdo->prepare("DELETE FROM tbl_caixas_mistas_header WHERE mista_id = :mista_id");
+            $stmtDeleteHeader->execute([':mista_id' => $mistaId]);
+
+            $this->auditLogger->log('DELETE', $mistaId, 'tbl_caixas_mistas_header', ['mista_id' => $mistaId], null, 'Exclusão de Caixa Mista sem itens de origem.');
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
 }

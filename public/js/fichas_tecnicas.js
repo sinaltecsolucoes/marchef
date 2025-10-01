@@ -16,13 +16,24 @@ $(document).ready(function () {
             columns: [
                 {
                     data: "ficha_id",
+                    class: "text-center align-middle",
                     render: data => String(data).padStart(4, '0')
                 },
-                { data: "prod_descricao" },
-                { data: "prod_marca" },
-                { data: "prod_ncm" },
+                {
+                    data: "prod_descricao",
+                    class: "align-middle",
+                },
+                {
+                    data: "prod_marca",
+                    class: "text-center align-middle",
+                },
+                {
+                    data: "prod_ncm",
+                    class: "text-center align-middle",
+                },
                 {
                     data: "ficha_data_modificacao",
+                    class: "text-center align-middle",
                     render: data => data ? new Date(data).toLocaleString('pt-BR') : ''
                 },
                 {

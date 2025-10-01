@@ -156,17 +156,28 @@ $(document).ready(function () {
                 }
             },
             "columns": [
-                { "data": "end_tipo_endereco" },
-                { "data": "end_logradouro" },
+                {
+                    "data": "end_tipo_endereco",
+                    "className": "text-center align-middle"
+                },
+                {
+                    "data": "end_logradouro",
+                    "className": "align-middle"
+                },
                 {
                     "data": null,
+                    "className": "text-center align-middle",
                     "render": (data, type, row) => `${row.end_cidade || ''}/${row.end_uf || ''}`
                 },
                 {
                     "data": "end_codigo",
                     "orderable": false,
-                    "render": data => `<a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
-                                       <a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
+                    "className": "text-center align-middle",
+                    "render": (data) =>
+                        `<div class="btn-group" role="group">
+                                <a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
+                                <a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>
+                          </div>`
                 }
             ],
             paging: false,
@@ -315,8 +326,10 @@ $(document).ready(function () {
                 "className": "text-center align-middle ",
                 "width": "8%",
                 "render": (data, type, row) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>` +
-                    `<a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>`
+                    `<div class="btn-group" role="group">
+                            <a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
+                            <a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>
+                     </div>`
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }

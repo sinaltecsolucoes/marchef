@@ -22,26 +22,57 @@ class CondicaoPagamentoRepository
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
-
+  
     public function findAllForDataTable(array $params): array
     {
-        $totalRecords = $this->pdo->query("SELECT COUNT(cond_id) FROM tbl_condicoes_pagamento")->fetchColumn();
+        try {
+            $draw = $params['draw'] ?? 1;
+            $start = $params['start'] ?? 0;
+            $length = $params['length'] ?? 10;
+            $searchValue = $params['search']['value'] ?? '';
 
-        $sql = "SELECT * FROM tbl_condicoes_pagamento ORDER BY cond_descricao ASC LIMIT :start, :length";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
-        $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $baseQuery = "FROM tbl_condicoes_pagamento";
 
-        return [
-            "draw" => intval($params['draw'] ?? 1),
-            "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalRecords,
-            "data" => $data
-        ];
+            $totalRecords = $this->pdo->query("SELECT COUNT(cond_id) $baseQuery")->fetchColumn();
+
+            $whereClause = '';
+            if (!empty($searchValue)) {
+                $whereClause = " WHERE cond_codigo LIKE :search_codigo OR cond_descricao LIKE :search_descricao";
+            }
+
+            $stmtFiltered = $this->pdo->prepare("SELECT COUNT(cond_id) $baseQuery $whereClause");
+            if (!empty($searchValue)) {
+                $stmtFiltered->execute([
+                    ':search_codigo' => '%' . $searchValue . '%',
+                    ':search_descricao' => '%' . $searchValue . '%'
+                ]);
+            } else {
+                $stmtFiltered->execute();
+            }
+            $totalFiltered = $stmtFiltered->fetchColumn();
+
+            $sqlData = "SELECT * $baseQuery $whereClause ORDER BY cond_descricao ASC LIMIT :start, :length";
+            $stmt = $this->pdo->prepare($sqlData);
+            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            if (!empty($searchValue)) {
+                $stmt->bindValue(':search_codigo', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_descricao', '%' . $searchValue . '%');
+            }
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                "draw" => intval($draw),
+                "recordsTotal" => (int) $totalRecords,
+                "recordsFiltered" => (int) $totalFiltered,
+                "data" => $data
+            ];
+        } catch (PDOException $e) {
+            error_log('Erro em findAllForDataTable: ' . $e->getMessage());
+            throw new Exception('Erro ao buscar condições de pagamento: ' . $e->getMessage());
+        }
     }
-
     public function create(array $data): int
     {
         $sql = "INSERT INTO tbl_condicoes_pagamento (cond_codigo, cond_descricao, cond_dias_parcelas, cond_ativo) 

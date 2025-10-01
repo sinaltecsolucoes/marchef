@@ -22,7 +22,8 @@
             </ul>
 
             <div>
-                <button href="index.php?page=relatorio_ficha_tecnica" class="btn btn-success" id="btn-imprimir-ficha" style="display: none;">
+                <button href="index.php?page=relatorio_ficha_tecnica" class="btn btn-success" id="btn-imprimir-ficha"
+                    style="display: none;">
                     <i class="fas fa-print"></i> Imprimir Ficha
                 </button>
                 <button type="submit" form="form-ficha-geral" class="btn btn-primary" id="btn-salvar-ficha-geral">
@@ -31,7 +32,7 @@
                 <a href="index.php?page=fichas_tecnicas" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar para a Lista
                 </a>
-                
+
             </div>
 
         </div>
@@ -225,7 +226,7 @@
                             </div>
                             <div class="card-footer">
                                 <button class="btn btn-danger btn-sm btn-remover-foto" data-tipo="TABELA_NUTRICIONAL"
-                                    style="display: none;">Remover Imagem</button>
+                                    style="display: none;"><i class="fas fa-times me-2"></i>Remover Imagem</button>
                             </div>
                         </div>
                     </div>
@@ -244,7 +245,7 @@
                             </div>
                             <div class="card-footer">
                                 <button class="btn btn-danger btn-sm btn-remover-foto" data-tipo="EMBALAGEM_PRIMARIA"
-                                    style="display: none;">Remover Imagem</button>
+                                    style="display: none;"><i class="fas fa-times me-2"></i>Remover Imagem</button>
                             </div>
                         </div>
                     </div>
@@ -263,7 +264,7 @@
                             </div>
                             <div class="card-footer">
                                 <button class="btn btn-danger btn-sm btn-remover-foto" data-tipo="EMBALAGEM_SECUNDARIA"
-                                    style="display: none;">Remover Imagem</button>
+                                    style="display: none;"><i class="fas fa-times me-2"></i>Remover Imagem</button>
                             </div>
                         </div>
                     </div>
@@ -281,7 +282,7 @@
                             </div>
                             <div class="card-footer">
                                 <button class="btn btn-danger btn-sm btn-remover-foto" data-tipo="SIF"
-                                    style="display: none;">Remover Imagem</button>
+                                    style="display: none;"><i class="fas fa-times me-2"></i>Remover Imagem</button>
                             </div>
                         </div>
                     </div>

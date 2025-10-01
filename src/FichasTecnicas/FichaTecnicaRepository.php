@@ -5,7 +5,7 @@ namespace App\FichasTecnicas;
 use PDO;
 use App\Core\AuditLoggerService;
 
-// VERSÃO FINAL CORRIGIDA - Adotando o padrão de parâmetros únicos do LoteNovoRepository
+// Adotando o padrão de parâmetros únicos do LoteNovoRepository
 class FichaTecnicaRepository
 {
     private PDO $pdo;
@@ -26,7 +26,7 @@ class FichaTecnicaRepository
         $sqlWhereTerm = "";
 
         if (!empty($term)) {
-            // CORREÇÃO: Usando placeholders com nomes únicos (:term0, :term1)
+            // Usando placeholders com nomes únicos (:term0, :term1)
             $sqlWhereTerm = " AND (p.prod_descricao LIKE :term0 OR p.prod_codigo_interno LIKE :term1)";
             $params[':term0'] = '%' . $term . '%';
             $params[':term1'] = '%' . $term . '%';
@@ -62,7 +62,7 @@ class FichaTecnicaRepository
         $sqlWhereTerm = "";
 
         if (!empty($term)) {
-            // CORREÇÃO: Usando placeholders com nomes únicos (:term0, :term1, :term2)
+            // Usando placeholders com nomes únicos (:term0, :term1, :term2)
             $sqlWhereTerm = " AND (ent_nome_fantasia LIKE :term0 OR ent_razao_social LIKE :term1 OR ent_codigo LIKE :term2)";
             $params[':term0'] = '%' . $term . '%';
             $params[':term1'] = '%' . $term . '%';
@@ -89,34 +89,53 @@ class FichaTecnicaRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- Funções originais do arquivo que não estavam relacionadas ao problema ---
     public function findAllForDataTable(array $params): array
     {
-        $baseQuery = "FROM tbl_fichas_tecnicas ft JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo";
-        $totalRecords = $this->pdo->query("SELECT COUNT(ft.ficha_id) FROM tbl_fichas_tecnicas ft")->fetchColumn();
-        $sqlData = "SELECT ft.ficha_id, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery ORDER BY ft.ficha_id DESC LIMIT :start, :length";
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
-        $stmt->execute();
-        return ["draw" => intval($params['draw'] ?? 1), "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalRecords, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        try {
+            $draw = $params['draw'] ?? 1;
+            $start = $params['start'] ?? 0;
+            $length = $params['length'] ?? 10;
+            $searchValue = $params['search']['value'] ?? '';
+
+            $baseQuery = "FROM tbl_fichas_tecnicas ft JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo";
+
+            $totalRecords = $this->pdo->query("SELECT COUNT(ft.ficha_id) $baseQuery")->fetchColumn();
+
+            $whereClause = '';
+            if (!empty($searchValue)) {
+                $whereClause = " WHERE p.prod_descricao LIKE :search_descricao OR p.prod_marca LIKE :search_marca OR p.prod_ncm LIKE :search_ncm";
+            }
+
+            $stmtFiltered = $this->pdo->prepare("SELECT COUNT(ft.ficha_id) $baseQuery $whereClause");
+            if (!empty($searchValue)) {
+                $stmtFiltered->execute([
+                    ':search_descricao' => '%' . $searchValue . '%',
+                    ':search_marca' => '%' . $searchValue . '%',
+                    ':search_ncm' => '%' . $searchValue . '%'
+                ]);
+            } else {
+                $stmtFiltered->execute();
+            }
+            $totalFiltered = $stmtFiltered->fetchColumn();
+
+            $sqlData = "SELECT ft.ficha_id, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery $whereClause ORDER BY ft.ficha_id DESC LIMIT :start, :length";
+            $stmt = $this->pdo->prepare($sqlData);
+            $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+            if (!empty($searchValue)) {
+                $stmt->bindValue(':search_descricao', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_marca', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_ncm', '%' . $searchValue . '%');
+            }
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+        } catch (PDOException $e) {
+            error_log('Erro em findAllForDataTable: ' . $e->getMessage());
+            throw new Exception('Erro ao buscar fichas técnicas: ' . $e->getMessage());
+        }
     }
-    /* public function findCompletaById(int $fichaId): ?array
-     {
-         $stmtHeader = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
-         $stmtHeader->execute([':id' => $fichaId]);
-         $ficha['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-         if (!$ficha['header'])
-             return null;
-         $stmtCriterios = $this->pdo->prepare("SELECT * 
-                                                      FROM tbl_fichas_tecnicas_criterios 
-                                                      WHERE criterio_ficha_id = :id 
-                                                      ORDER BY criterio_id");
-         $stmtCriterios->execute([':id' => $fichaId]);
-         $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);
-         $ficha['fotos'] = [];
-         return $ficha;
-     } */
 
     public function findCompletaById(int $fichaId): ?array
     {
@@ -263,7 +282,6 @@ class FichaTecnicaRepository
         return $stmt->execute();
     }
 
-
     /**
      * Busca todos os critérios de uma ficha técnica específica.
      * @param int $fichaId
@@ -279,41 +297,6 @@ class FichaTecnicaRepository
         $stmt->execute([':ficha_id' => $fichaId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /**
-     * Salva (cria ou atualiza) um critério.
-     * @param array $data
-     * @return int ID do critério salvo.
-     */
-    /*    public function saveCriterio(array $data): int
-        {
-            $id = filter_var($data['criterio_id'] ?? null, FILTER_VALIDATE_INT);
-
-            $params = [
-                ':ficha_id' => $data['criterio_ficha_id'],
-                ':grupo' => $data['criterio_grupo'],
-                ':nome' => $data['criterio_nome'],
-                ':unidade' => $data['criterio_unidade'] ?: null,
-                ':valor' => $data['criterio_valor']
-            ];
-
-            if ($id) {
-                // Lógica de UPDATE (será implementada quando fizermos a edição)
-                // Por enquanto, o formulário não envia ID, então só criará novos.
-                throw new Exception("Funcionalidade de edição ainda não implementada.");
-            } else {
-                // Lógica de INSERT
-                $sql = "INSERT INTO tbl_fichas_tecnicas_criterios
-                            (criterio_ficha_id, criterio_grupo, criterio_nome, criterio_unidade, criterio_valor)
-                        VALUES
-                            (:ficha_id, :grupo, :nome, :unidade, :valor)";
-            }
-
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-
-            return $id ?: (int) $this->pdo->lastInsertId();
-        } */
 
     /**
      * Salva (cria ou atualiza) um critério.
@@ -356,8 +339,6 @@ class FichaTecnicaRepository
         return $id ?: (int) $this->pdo->lastInsertId();
     }
 
-
-
     /**
      * Exclui um critério específico.
      * @param int $criterioId
@@ -395,8 +376,6 @@ class FichaTecnicaRepository
      */
     public function saveFotoPath(int $fichaId, string $fotoTipo, string $filePath): bool
     {
-        // A lógica de apagar o registro antigo já foi movida para deleteFoto,
-        // então aqui só precisamos inserir o novo.
         $sql = "INSERT INTO tbl_fichas_tecnicas_fotos (foto_ficha_id, foto_tipo, foto_path)
                 VALUES (:ficha_id, :tipo, :path)";
         $stmt = $this->pdo->prepare($sql);

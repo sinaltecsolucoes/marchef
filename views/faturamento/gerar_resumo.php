@@ -40,13 +40,13 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
         <div>
             <?php if ($modoEdicao): ?>
                     <a href="index.php?page=relatorio_faturamento_excel&id=<?php echo htmlspecialchars($_GET['resumo_id']); ?>"
-                    id="btn-exportar-excel-link" class="btn btn-success btn-sm" target="_blank">
+                    id="btn-exportar-excel-link" class="btn btn-success" target="_blank">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </a>
-                <button id="btn-gerar-relatorio" class="btn btn-secondary btn-sm">
+                <button id="btn-gerar-relatorio" class="btn btn-info">
                     <i class="fas fa-print"></i> Imprimir Relatório
                 </button>
-                <a href="index.php?page=faturamentos_listar" class="btn btn-secondary btn-sm">
+                <a href="index.php?page=faturamentos_listar" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar para a Lista
                 </a>
             <?php endif; ?>

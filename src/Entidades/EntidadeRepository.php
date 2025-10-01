@@ -377,7 +377,6 @@ class EntidadeRepository
 
         $stmt = $this->pdo->prepare($sql);
         $params = [ /* ... params ... */];
-        // ... (código de params original) ...
         $params = [
             ':tipo' => $data['end_tipo_endereco'],
             ':cep' => $data['end_cep'],
@@ -432,8 +431,6 @@ class EntidadeRepository
 
     public function getFornecedorOptions(): array
     {
-        // ALTERAÇÃO: Adicionamos COALESCE para priorizar o nome fantasia
-        // e damos o apelido 'nome_display' para o resultado.
         $sql = "SELECT 
                     ent_codigo, 
                     ent_codigo_interno,
@@ -460,25 +457,7 @@ class EntidadeRepository
         $stmt->execute([':id' => $entidadeId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-
-    // public function getClienteOptions(): array
-    /* public function getClienteOptions(string $term = ''): array
-     {
-         // ALTERAÇÃO: A mesma lógica é aplicada aqui.
-         $sql = "SELECT 
-                     ent_codigo, 
-                     ent_codigo_interno,
-                     COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) AS nome_display 
-                 FROM tbl_entidades 
-                 WHERE (ent_tipo_entidade = 'Cliente' OR ent_tipo_entidade = 'Cliente e Fornecedor') 
-                 AND ent_situacao = 'A' 
-                 ORDER BY nome_display ASC";
-
-         $stmt = $this->pdo->prepare($sql);
-         $stmt->execute();
-         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-     } */
-
+   
     public function getClienteOptions(string $term = ''): array
     {
 

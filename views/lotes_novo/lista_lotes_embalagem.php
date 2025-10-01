@@ -141,7 +141,7 @@
                                 </div>
                             </div>
                             <div class="text-end mt-3">
-                                <button type="button" class="btn btn-success" id="btn-adicionar-item-producao">Adicionar
+                                <button type="button" class="btn btn-primary" id="btn-adicionar-item-producao">Adicionar
                                     Item</button>
                                 <button type="button" class="btn btn-secondary"
                                     id="btn-cancelar-edicao-producao">Limpar</button>
@@ -197,7 +197,7 @@
                             </div>
 
                             <div class="text-end mt-3">
-                                <button type="button" class="btn btn-success"
+                                <button type="button" class="btn btn-primary"
                                     id="btn-adicionar-item-embalagem"><i class="fas fa-plus me-1"></i>Adicionar Item</button>
                             </div>
                         </form>

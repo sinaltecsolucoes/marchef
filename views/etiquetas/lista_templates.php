@@ -2,27 +2,46 @@
 // /views/etiquetas/lista_templates.php
 ?>
 
-<h4 class="fw-bold mb-3">Gerenciamento de Templates de Etiqueta</h4>
+<h4 class="fw-bold mb-3">Gestão de Templates de Etiqueta</h4>
 
-<button class="btn btn-primary mb-3" id="btn-adicionar-template">
-    Adicionar Novo Template
-</button>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <p>Gerencie todos os templates de etiquetas</p>
+                <button class="btn btn-primary" id="btn-adicionar-template">
+                    <i class="fas fa-plus me-2"></i> Adicionar Novo Template
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="feedback-message-area" class="mt-3"></div>
 
-<div class="table-responsive">
-    <table id="tabela-templates" class="table table-hover my-4" style="width:100%">
-        <thead>
-            <tr>
-                <th>Nome do Template</th>
-                <th>Descrição</th>
-                <th>Data de Criação</th>
-                <th class="text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Templates</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="tabela-templates" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th class="text-center align-middle">Nome do Template</th>
+                        <th class="text-center align-middle">Descrição</th>
+                        <th class="text-center align-middle">Data de Criação</th>
+                        <th class="text-center align-middle">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="modal-template" tabindex="-1" aria-labelledby="modal-template-label" aria-hidden="true">
@@ -67,8 +86,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Template</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar
+                        Template</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="fas fa-times me-2"></i>Fechar</button>
                 </div>
             </form>
         </div>

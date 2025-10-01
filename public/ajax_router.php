@@ -278,6 +278,15 @@ switch ($action) {
     case 'salvarCaixaMista':
         salvarCaixaMista($loteNovoRepo, $_SESSION['codUsuario']);
         break;
+    case 'listarCaixasMistas':
+        listarCaixasMistas($loteNovoRepo);
+        break;
+    case 'getDetalhesCaixaMista':
+        getDetalhesCaixaMista($loteNovoRepo);
+        break;
+    case 'excluirCaixaMista':
+        excluirCaixaMista($loteNovoRepo);
+        break;
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -1511,6 +1520,46 @@ function getOpenLotsSelect(LoteNovoRepository $repo)
         echo json_encode(['results' => $lotes]);
     } catch (Exception $e) {
         echo json_encode(['results' => [], 'error' => $e->getMessage()]);
+    }
+}
+
+function listarCaixasMistas(LoteNovoRepository $repo)
+{
+    // A função do repositório já faz todo o trabalho, incluindo paginação e busca.
+    $output = $repo->findAllCaixasMistasForDataTable($_POST);
+    echo json_encode($output);
+}
+
+function getDetalhesCaixaMista(LoteNovoRepository $repo)
+{
+    $mistaId = filter_input(INPUT_POST, 'mista_id', FILTER_VALIDATE_INT);
+    if (!$mistaId) {
+        echo json_encode(['success' => false, 'message' => 'ID da caixa mista inválido.']);
+        return;
+    }
+
+    $detalhes = $repo->getDetalhesCaixaMista($mistaId);
+    echo json_encode($detalhes);
+}
+
+/**
+ * Controller para excluir uma caixa mista e reverter os saldos.
+ */
+function excluirCaixaMista(LoteNovoRepository $repo)
+{
+    $mistaId = filter_input(INPUT_POST, 'mista_id', FILTER_VALIDATE_INT);
+    if (!$mistaId) {
+        echo json_encode(['success' => false, 'message' => 'ID da caixa mista inválido.']);
+        return;
+    }
+
+    try {
+        // Implemente a lógica de exclusão no repositório.
+        // Essa função precisa reverter o consumo de saldo de cada item de origem.
+        $repo->excluirCaixaMista($mistaId);
+        echo json_encode(['success' => true, 'message' => 'Caixa mista excluída com sucesso e saldos revertidos.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 

@@ -89,6 +89,33 @@
     </div>
 </div>
 
+<!-- Listagem de Caixas Mistas Criadas -->
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Caixas Mistas Criadas</h6>
+    </div>
+    <div class="card-body">
+        <p>Abaixo está a lista de todas as caixas mistas que foram criadas no sistema. Você pode visualizar detalhes ou imprimir etiquetas novamente se necessário.</p>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="tabela-caixas-mistas" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th class="text-center align-middle">ID Caixa Mista</th>
+                        <th class="text-center align-middle">Produto Final</th>
+                        <th class="text-center align-middle">Lote de Destino</th>
+                        <th class="text-center align-middle">Data de Criação</th>
+                        <th class="text-center align-middle">Qtd. Total Consumida</th>
+                        <th class="text-center align-middle">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <template id="template-cart-row">
     <tr>
         <td class="align-middle small">

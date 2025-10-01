@@ -62,7 +62,7 @@
                             ?>
 
                             <?php // --- SUBMENU DE PRODUTOS ---
-                            $paginasProdutos = ['produtos', 'fichas_tecnicas'];
+                            $paginasProdutos = ['produtos', 'fichas_tecnicas', 'templates', 'regras'];
                             if (count(array_intersect($paginasProdutos, $paginasPermitidasUsuario)) > 0):
                                 ?>
                                 <li class="dropend">
@@ -75,6 +75,25 @@
                                         <?php if (in_array('fichas_tecnicas', $paginasPermitidasUsuario)): ?>
                                             <li><a class="dropdown-item" href="index.php?page=fichas_tecnicas">Fichas
                                                     Técnicas</a></li>
+                                        <?php endif; ?>
+                                        <?php // --- SUBSUBMENU DE ETIQUETAS ---
+                                            $paginasEtiquetas = ['templates', 'regras'];
+                                            if (count(array_intersect($paginasEtiquetas, $paginasPermitidasUsuario)) > 0):
+                                                ?>
+                                            <li class="dropend">
+                                                <a class="dropdown-item dropdown-toggle" href="#"
+                                                    data-bs-toggle="dropdown">Etiquetas</a>
+                                                <ul class="dropdown-menu dropdown-submenu">
+                                                    <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
+                                                        <li><a class="dropdown-item" href="index.php?page=templates">Templates de
+                                                                Etiqueta</a></li>
+                                                    <?php endif; ?>
+                                                    <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>
+                                                        <li><a class="dropdown-item" href="index.php?page=regras">Regras de
+                                                                Etiqueta</a></li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </li>
                                         <?php endif; ?>
                                     </ul>
                                 </li>
@@ -190,8 +209,10 @@
                     <?php endif; ?>
 
                     <?php
+
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
-                    $paginasConfig = ['permissoes', 'templates', 'regras'];
+                    // --- SUBMENU DE CONFIGURAÇÕES ---
+                    $paginasConfig = ['permissoes'];
                     if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
                         ?>
                         <li class="nav-item dropdown">
@@ -200,17 +221,6 @@
                             <ul class="dropdown-menu">
                                 <?php if (in_array('permissoes', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=permissoes">Gerenciar Permissões</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('templates', $paginasPermitidasUsuario) || in_array('regras', $paginasPermitidasUsuario)): ?>
-                                    <li>
-                                        <hr class="dropdown-divider">
-                                    </li>
-                                <?php endif; ?>
-                                <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=templates">Templates de Etiqueta</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=regras">Regras de Etiqueta</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -234,6 +244,13 @@
                             </ul>
                         </li>
                     <?php endif; ?>
+
+                    <?php
+                    // --- MENU SOBRE ---
+                    ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sobreModal">Sobre</a>
+                    </li>
 
                 </ul>
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
@@ -270,6 +287,40 @@
         }
         ?>
     </div>
+
+    <!-- Modal Sobre -->
+    <div class="modal fade" id="sobreModal" tabindex="-1" aria-labelledby="sobreModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div class="modal-content border-0 shadow-sm">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="sobreModalLabel">
+                        <i class="fas fa-circle-info me-2"></i>Sobre o Sistema
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-unstyled mb-3">
+                        <li><strong>🧭 Nome:</strong> SGI - Sistema de Gestão Industrial</li>
+                        <li><strong>📦 Versão:</strong> 1.0.0</li>
+                        <li><strong>👨‍💻 Desenvolvido por:</strong> MD Soluções Tecnológicas</li>
+                        <li><strong>📅 Atualização:</strong> 01/10/2025</li>
+                        <li><strong>📧 Contato:</strong> <a href="https://wa.me/5588992432756" target="_blank">(88)
+                                99243-2756</a></li>
+                    </ul>
+                    <p class="text-muted small">
+                        Sistema desenvolvido para otimizar o planejamento de carregamentos, rastreabilidade de
+                        produtos e controle de expedições.<br>
+                        Todos os dados são protegidos conforme as diretrizes da LGPD.<br>
+                        © 2025 MD Soluções Ltda. Todos os direitos reservados.
+                    </p>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
