@@ -141,6 +141,16 @@ $(document).ready(function () {
         }
     });
 
+    // Evento para definir o tipo de carregamento com base na seleção da OE
+    $('#car_ordem_expedicao_id').on('change', function () {
+        const oeId = $(this).val();
+        if (oeId) {
+            $('#car_tipo').val('ORDEM_EXPEDICAO');
+        } else {
+            $('#car_tipo').val('AVULSA');
+        }
+    });
+
     // *** Inicializar Máscaras (Placa e CPF) ***
 
     // Máscara de CPF

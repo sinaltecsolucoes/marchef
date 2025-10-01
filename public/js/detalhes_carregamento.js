@@ -139,35 +139,76 @@ $(document).ready(function () {
         }
     }
 
+    // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
+    /*  function renderPlanejamento(planejamento) {
+          $tabelaPlanejamentoBody.empty();
+          if (!planejamento || planejamento.length === 0) {
+              $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
+              return;
+          }
+          planejamento.forEach(item => {
+              const saldo = parseFloat(item.qtd_planejada) - parseFloat(item.qtd_carregada);
+              let saldoClass = '';
+              if (saldo === 0) { saldoClass = 'text-success'; }
+              else if (saldo < 0) { saldoClass = 'text-danger'; }
+              else { saldoClass = 'text-primary'; }
+              const html = `
+              <tr data-oe-item-id="${item.oei_id}">
+                  <td class="text-center align-middle">${item.cliente_nome}</td>
+                  <td class="align-middle">${item.prod_descricao}</td>
+                  <td class="text-center align-middle">${item.lote_completo}</td>
+                  <td class="text-center align-middle">${item.endereco_completo}</td>
+                  <td class="text-center align-middle">${item.qtd_planejada}</td>
+                  <td class="text-center align-middle">${item.qtd_carregada}</td>
+                  <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
+              </tr>
+          `;
+              $tabelaPlanejamentoBody.append(html);
+          });
+      } */
 
     // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
     function renderPlanejamento(planejamento) {
+        // 1. Limpa o corpo da tabela para evitar duplicatas
         $tabelaPlanejamentoBody.empty();
+
+        // 2. Verifica se há itens para renderizar
         if (!planejamento || planejamento.length === 0) {
             $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
             return;
         }
+
+        // 3. Itera sobre cada item do planejamento e cria a linha da tabela
         planejamento.forEach(item => {
-            const saldo = parseFloat(item.qtd_planejada) - parseFloat(item.qtd_carregada);
-            let saldoClass = '';
-            if (saldo === 0) { saldoClass = 'text-success'; }
-            else if (saldo < 0) { saldoClass = 'text-danger'; }
-            else { saldoClass = 'text-primary'; }
+            // A lógica do back-end já nos envia a quantidade carregada,
+            // então não precisamos recalcular. Apenas a usamos.
+            const qtdCarregada = parseFloat(item.qtd_carregada);
+            const qtdPlanejada = parseFloat(item.qtd_planejada);
+            const saldo = qtdPlanejada - qtdCarregada;
+
+            // Adiciona classes de cor para o saldo, o que é um toque visual ótimo
+            let saldoClass = 'text-danger';
+            if (saldo === 0) {
+                saldoClass = 'text-success'; // Saldo zero, 100% carregado
+            } else if (saldo > 0) {
+                saldoClass = 'text-primary'; // Saldo positivo, ainda falta carregar
+            }
+
             const html = `
-                <tr data-oe-item-id="${item.oei_id}">
-                    <td class="text-center align-middle">${item.cliente_nome}</td>
-                    <td class="align-middle">${item.prod_descricao}</td>
-                    <td class="text-center align-middle">${item.lote_completo}</td>
-                    <td class="text-center align-middle">${item.endereco_completo}</td>
-                    <td class="text-center align-middle">${item.qtd_planejada}</td>
-                    <td class="text-center align-middle">${item.qtd_carregada}</td>
-                    <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
-                </tr>
-            `;
+            <tr data-oe-item-id="${item.oei_id}">
+                <td class="text-center align-middle">${item.cliente_nome}</td>
+                <td class="align-middle">${item.prod_descricao}</td>
+                <td class="text-center align-middle">${item.lote_completo}</td>
+                <td class="text-center align-middle">${item.endereco_completo}</td>
+                <td class="text-center align-middle">${qtdPlanejada}</td>
+                <td class="text-center align-middle">${qtdCarregada}</td>
+                <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
+            </tr>
+        `;
             $tabelaPlanejamentoBody.append(html);
         });
     }
-   
+
     // --- RENDERIZAÇÃO DA EXECUÇÃO (Filas e Itens) ---
     function renderExecucao(filas, statusCarregamento) {
         let html = '<div>';
@@ -444,7 +485,8 @@ $(document).ready(function () {
             checkAgainstGabarito();
         });
 
-        // 4. Função que verifica o Gabarito (OE) 
+        // 4. Função que verifica o Gabarito (OE)
+        // 4. Função que verifica o Gabarito (OE)
         function checkAgainstGabarito() {
             const clienteId = $itemCliente.val();
             const produtoId = $itemProduto.val();
@@ -458,6 +500,7 @@ $(document).ready(function () {
             $itemMotivoInput.prop('required', false);
             $itemOeiId.val('');
             $itemBtnAdd.prop('disabled', true);
+            $itemQtd.removeClass('is-invalid');
 
             if (!clienteId || !produtoId || !alocacaoId) {
                 return;
@@ -468,81 +511,141 @@ $(document).ready(function () {
                 item.oei_alocacao_id == alocacaoId
             );
 
+            const $opcaoEndereco = $itemAlocacao.find('option:selected');
+            const saldoFisico = parseFloat($opcaoEndereco.data('saldo_fisico')) || 0;
+
+            let saldoPlano = 0;
+            let oeiId = '';
+
             if (itemGabarito) {
-                // --- CENÁRIO 1: ITEM ESTÁ NA OE (Lógica não muda) ---
-                const saldoOE = parseFloat(itemGabarito.qtd_planejada) - parseFloat(itemGabarito.qtd_carregada);
-                $itemHelper.text(`Item conforme a OE. Saldo no plano: ${saldoOE.toFixed(0)}`).css('color', 'green');
-                $itemSaldo.val(saldoOE.toFixed(0));
-                $itemQtd.attr('max', saldoOE).val(1).prop('disabled', false);
-                $itemOeiId.val(itemGabarito.oei_id);
-                $itemMotivoContainer.hide();
-                $itemMotivoInput.prop('required', false);
-
-            } else {
-                // --- CENÁRIO 2: ITEM É DIVERGÊNCIA (Lógica corrigida) ---
-                const $opcaoEndereco = $itemAlocacao.find('option:selected');
-                // Busca o saldo FÍSICO que guardamos no passo anterior
-                const saldoFisico = parseFloat($opcaoEndereco.data('saldo_fisico')) || 0;
-
-                $itemHelper.text('DIVERGÊNCIA: Item não planejado na OE. Motivo é obrigatório.').css('color', 'red');
-
-                // ### Usa o saldo FÍSICO para o campo e para o 'max' ###
-                $itemSaldo.val(saldoFisico.toFixed(0));
-                $itemQtd.attr('max', saldoFisico).val(1).prop('disabled', false);
-
-                $itemOeiId.val('');
-                $itemMotivoContainer.show();
-                $itemMotivoInput.prop('required', true);
+                saldoPlano = parseFloat(itemGabarito.qtd_planejada) - parseFloat(itemGabarito.qtd_carregada);
+                oeiId = itemGabarito.oei_id;
             }
 
-            $itemBtnAdd.prop('disabled', false);
-        }
+            // A linha abaixo já está correta, mas vamos reforçar a sua importância.
+            $itemSaldo.val(saldoPlano.toFixed(0));
 
-    } // Fim de inicializarLogicaModalUnificado()
+            // Agora, definimos o valor de oei_id para o campo oculto,
+            // que será enviado para o backend.
+            $itemOeiId.val(oeiId);
+            $itemQtd.val(1).prop('disabled', false);
 
-    // 5. Submit do Novo Formulário
-    $formAddItem.on('submit', function (e) {
-        e.preventDefault();
-        const $campoQtd = $('#item_quantidade');
-        const qtd = parseFloat($campoQtd.val());
-        const max = parseFloat($campoQtd.attr('max'));
+            $itemQtd.off('input').on('input', function () {
+                const qtdInserida = parseFloat($(this).val());
+                let needsMotivo = false;
+                let helperText = '';
+                let helperColor = 'black';
+                let isQtdInvalid = false;
 
-        if (isNaN(qtd) || qtd <= 0) {
-            Swal.fire('Erro', 'A quantidade deve ser maior que zero.', 'error');
-            return;
-        }
-        if (qtd > max) {
-            Swal.fire('Erro', `A quantidade (${qtd}) excede o saldo disponível (${max}).`, 'error');
-            return;
-        }
-        if ($itemMotivoContainer.is(':visible') && $itemMotivoInput.val().trim() === '') {
-            Swal.fire('Erro', 'O motivo da divergência é obrigatório.', 'error');
-            $itemMotivoInput.focus();
-            return;
-        }
-
-        // Re-habilita o cliente ANTES de serializar, caso ele esteja desabilitado
-        $itemCliente.prop('disabled', false);
-
-        $.ajax({
-            url: 'ajax_router.php?action=addItemCarregamento',
-            type: 'POST',
-            data: $(this).serialize() + '&carregamento_id=' + carregamentoId,
-            dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $modalAddItem.modal('hide');
-                    notificacaoSucesso('Sucesso!', 'Item adicionado ao carregamento.');
-                    loadDetalhesCarregamento(); // Recarrega TUDO
+                // A. Lógica para determinar o tipo de divergência
+                if (!itemGabarito) {
+                    // Divergência de item: não está na OE
+                    needsMotivo = true;
+                    helperText = 'DIVERGÊNCIA: Item não planejado na OE. Motivo é obrigatório.';
+                    helperColor = 'orange';
+                } else if (qtdInserida > saldoPlano) {
+                    // Divergência de quantidade: excede o plano da OE
+                    // Esta é a parte que foi corrigida na lógica
+                    needsMotivo = true;
+                    helperText = `ATENÇÃO: Quantidade (${qtdInserida}) excede o plano da OE (${saldoPlano.toFixed(0)}). Motivo da divergência obrigatório.`;
+                    helperColor = 'orange';
                 } else {
-                    Swal.fire('Erro ao adicionar', response.message, 'error');
+                    // Item conforme a OE
+                    helperText = `Item conforme a OE. Saldo no plano: ${saldoPlano.toFixed(0)}`;
+                    helperColor = 'green';
                 }
-            },
-            error: function () {
-                Swal.fire('Erro de Conexão', 'Não foi possível salvar o item.', 'error');
-            }
-        });
-    });
+
+                // B. Validação da quantidade em relação ao saldo FÍSICO
+                if (qtdInserida > saldoFisico && saldoFisico > 0) {
+                    // Se a quantidade excede o saldo FÍSICO, isso também é uma divergência
+                    needsMotivo = true;
+                    helperText = `ATENÇÃO: Quantidade (${qtdInserida}) excede o saldo físico (${saldoFisico.toFixed(0)}). Motivo da divergência obrigatório.`;
+                    helperColor = 'red';
+                }
+
+                // C. Verificação de quantidade inválida (menor ou igual a zero)
+                if (isNaN(qtdInserida) || qtdInserida <= 0) {
+                    isQtdInvalid = true;
+                    helperText = 'Erro: A quantidade deve ser maior que zero.';
+                    helperColor = 'red';
+                }
+
+                // D. Atualização dos elementos da interface
+                $itemHelper.text(helperText).css('color', helperColor);
+                $itemMotivoContainer.toggle(needsMotivo);
+                $itemMotivoInput.prop('required', needsMotivo);
+
+                // E. Habilitação/Desabilitação do botão de salvar
+                const isMotivoValid = !needsMotivo || $itemMotivoInput.val().trim() !== '';
+                const isButtonEnabled = !isQtdInvalid && isMotivoValid;
+
+                if (isButtonEnabled) {
+                    $itemBtnAdd.prop('disabled', false);
+                    $itemQtd.removeClass('is-invalid');
+                } else {
+                    $itemBtnAdd.prop('disabled', true);
+                    $itemQtd.toggleClass('is-invalid', isQtdInvalid);
+                }
+            });
+
+            // Aciona o evento de 'input' e também adiciona um evento para quando o motivo muda
+            $itemQtd.trigger('input');
+            $itemMotivoInput.on('input', function () {
+                $itemQtd.trigger('input'); // Reavalia a lógica ao digitar o motivo
+            });
+
+            // NOVO CÓDIGO AQUI
+            // Se o motivo de divergência está visível, o item é uma divergência.
+            // Se o item é uma divergência TOTAL, o oei_id_origem deve ser NULL.
+            // Se o item é uma divergência de QUANTIDADE, o oei_id_origem deve ser o ID do item da OE.
+            $formAddItem.on('submit', function (e) {
+                e.preventDefault();
+                const $campoQtd = $('#item_quantidade');
+                const qtd = parseFloat($campoQtd.val());
+
+                if (isNaN(qtd) || qtd <= 0) {
+                    Swal.fire('Erro', 'A quantidade deve ser maior que zero.', 'error');
+                    return;
+                }
+
+                if ($itemMotivoContainer.is(':visible') && $itemMotivoInput.val().trim() === '') {
+                    Swal.fire('Erro', 'O motivo da divergência é obrigatório.', 'error');
+                    $itemMotivoInput.focus();
+                    return;
+                }
+
+                const isDivergenciaTotal = !itemGabarito;
+                if (isDivergenciaTotal) {
+                    $itemOeiId.val(''); // Limpa o valor para que o back-end o interprete como null
+                }
+
+                // Se for divergência de quantidade, o ID da OE de origem já está no campo oculto
+                // e será enviado para o back-end.
+
+                // Re-habilita o cliente ANTES de serializar, caso ele esteja desabilitado
+                $itemCliente.prop('disabled', false);
+
+                $.ajax({
+                    url: 'ajax_router.php?action=addItemCarregamento',
+                    type: 'POST',
+                    data: $(this).serialize() + '&carregamento_id=' + carregamentoId,
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            $modalAddItem.modal('hide');
+                            notificacaoSucesso('Sucesso!', 'Item adicionado ao carregamento.');
+                            loadDetalhesCarregamento();
+                        } else {
+                            Swal.fire('Erro ao adicionar', response.message, 'error');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Erro de Conexão', 'Não foi possível salvar o item.', 'error');
+                    }
+                });
+            });
+        }
+    }
 
     // Helper: setSelect2Value
     function setSelect2Value(selector, id, text) {

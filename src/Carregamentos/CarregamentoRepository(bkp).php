@@ -344,6 +344,72 @@ class CarregamentoRepository
         }
     }
 
+    /**
+     * Adiciona um item (planejado ou divergente) ao carregamento.
+     *
+     * @param array $data Dados do formulário (incluindo quantidade e motivo de divergência)
+     * @param int $carregamentoId ID do carregamento pai
+     * @return int O ID do item de carregamento salvo.
+     * @throws \Exception
+     */
+    public function addItemCarregamento(array $data, int $carregamentoId): int
+    {
+        // 1. Coleta e Validação de Dados
+        $filaId = filter_var($data['item_fila_id'], FILTER_VALIDATE_INT);
+        $clienteId = filter_var($data['item_cliente_id'], FILTER_VALIDATE_INT);
+        $alocacaoId = filter_var($data['item_alocacao_id'], FILTER_VALIDATE_INT);
+        $quantidadeAdicionada = filter_var($data['item_quantidade'], FILTER_VALIDATE_FLOAT);
+        $motivo = trim($data['item_motivo_divergencia'] ?? '');
+        $oeiIdOrigem = filter_input(INPUT_POST, 'item_oei_id_origem', FILTER_VALIDATE_INT);
+        // Garante que o valor seja NULL se a validação falhar
+        if ($oeiIdOrigem === false) {
+            $oeiIdOrigem = null;
+        }
+
+        if (!$filaId || !$clienteId || !$alocacaoId || $quantidadeAdicionada <= 0) {
+            throw new \Exception("Dados inválidos. Cliente, Alocação e Quantidade são obrigatórios.");
+        }
+
+        // 2. Validação da regra de negócio: se é divergência, o motivo é obrigatório
+        if (is_null($oeiIdOrigem) && empty($motivo)) {
+            throw new \Exception("Item divergente requer um motivo obrigatório.");
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // 3. Busca o lote_novo_item_id
+            $stmtLote = $this->pdo->prepare("SELECT alocacao_lote_item_id FROM tbl_estoque_alocacoes WHERE alocacao_id = :id");
+            $stmtLote->execute([':id' => $alocacaoId]);
+            $loteNovoItemId = $stmtLote->fetchColumn();
+            if (!$loteNovoItemId) {
+                throw new \Exception("Lote correspondente à alocação não encontrado.");
+            }
+
+            // 4. Inserir um novo item no carregamento
+            $sql = "INSERT INTO tbl_carregamento_itens (car_item_carregamento_id, car_item_fila_id, car_item_cliente_id, car_item_lote_novo_item_id, car_item_alocacao_id, car_item_quantidade, car_item_oei_id_origem, car_item_motivo_divergencia)
+                    VALUES (:car_id, :fila_id, :cliente_id, :lote_item_id, :alocacao_id, :quantidade, :oei_id, :motivo)";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([
+                ':car_id' => $carregamentoId,
+                ':fila_id' => $filaId,
+                ':cliente_id' => $clienteId,
+                ':lote_item_id' => $loteNovoItemId,
+                ':alocacao_id' => $alocacaoId,
+                ':quantidade' => $quantidadeAdicionada,
+                ':oei_id' => $oeiIdOrigem,
+                ':motivo' => !empty($motivo) ? $motivo : null
+            ]);
+            $newId = (int) $this->pdo->lastInsertId();
+            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data);
+
+            $this->pdo->commit();
+            return $newId;
+        } catch (\Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function findFilaComClientesEItens(int $filaId): ?array
     {
         $stmtFila = $this->pdo->prepare(
