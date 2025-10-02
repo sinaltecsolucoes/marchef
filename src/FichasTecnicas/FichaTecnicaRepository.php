@@ -144,10 +144,23 @@ class FichaTecnicaRepository
             SELECT 
                 ft.*,
                 p.prod_descricao AS produto_nome,
-                CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social), ' (Cód: ', e.ent_codigo_interno, ')') AS fabricante_nome
+                p.prod_tipo AS produto_tipo,
+                p.prod_total_pecas AS produto_total_pecas,
+                p.prod_codigo_interno AS prod_codigo_interno,
+                p.prod_marca AS produto_marca,
+                p.prod_classe AS produto_denominacao,
+                p.prod_especie AS produto_especie,
+                p.prod_origem AS produto_origem,
+                p.prod_validade_meses AS produto_validade,
+                p.prod_classificacao AS produto_classificacao,
+                                
+                CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social), ' (Cód: ', e.ent_codigo_interno, ')') AS fabricante_nome,
+                CONCAT(COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social)) AS fabricante_unidade,
+                CONCAT(ee.end_cidade, ' - ', ee.end_uf) AS fabricante_endereco
             FROM tbl_fichas_tecnicas ft
             JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo
             LEFT JOIN tbl_entidades e ON ft.ficha_fabricante_id = e.ent_codigo
+            LEFT JOIN tbl_enderecos ee ON ft.ficha_fabricante_id = ee.end_entidade_id  
             WHERE ft.ficha_id = :id
         ");
         $stmtHeader->execute([':id' => $fichaId]);
