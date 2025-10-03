@@ -153,6 +153,7 @@ body {
     .page-break {
         page-break-after: always;
     }
+
 }
 
 /* Definindo a largura de cada coluna da .item-table */
@@ -210,15 +211,15 @@ body {
 .ficha-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 8pt;
+    font-size: 8px;
     table-layout: fixed;
-    margin-bottom: 15px;
+    margin-bottom: 4px;
 }
 
 .ficha-table th,
 .ficha-table td {
     border: 1px solid #000;
-    padding: 4px 6px;
+    padding: 1px 5px;
     vertical-align: top;
     text-align: left;
 }
@@ -233,14 +234,23 @@ table.ficha-table .section-header {
     background-color: #f2f2f2;
     text-align: center;
     font-weight: bold;
-    padding: 5px;
+    padding: 1px;
     border: 1px solid #000;
+}
+
+table.ficha-table .section-header-criterios {
+    font-size: 8px;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    border: 1px solid #000;
+    padding: 1px;
 }
 
 /* Estilos para a tabela de cabeçalho do relatório */
 .header-table {
     border: none !important;
-    margin-bottom: 10px;
+    margin-bottom:  3px;
 }
 
 /* Estilo para adicionar borda ao cabeçalho principal */
@@ -250,8 +260,28 @@ table.ficha-table .section-header {
 
 .criterios-table th,
 .criterios-table td {
-    border: none !important;
-    padding: 2px 4px;
+    font-size: 9px;
+    border: 1px solid #000 !important;
+    text-align: center;
+}
+
+.criterios-table th {
+    background-color: #e9e9e9;
+}
+
+.criterios-table .categoria-header {
+    font-size: 9px;
+    background-color: #f2f2f2;
+    font-weight: bold;
+    text-align: center;
+    padding: 1px;
+}
+
+.th-criterio {
+    font-size: 9px;
+    text-align: center;
+    padding: 1px;
+    border: 1px solid #000;
 }
 
 .image-section {
@@ -262,27 +292,23 @@ table.ficha-table .section-header {
 }
 
 .image-item {
-    width: 33%;
+    width: 33.33%;
+    /* 33.33% de largura para cada item */
     text-align: center;
-    padding: 5px;
+    padding: 2px;
     box-sizing: border-box;
 }
 
-.image-item:nth-child(4) {
-    width: 50%;
-    /* Ajuste para a imagem do Selo SIF */
-    margin: 0 auto;
-}
 
 .image-container {
     width: 100%;
-    height: 150px;
+    height: 220px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     border: 1px solid #ccc;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
 }
 
 .image-container img {
@@ -291,11 +317,56 @@ table.ficha-table .section-header {
     object-fit: contain;
 }
 
+/* Nova classe para a tabela de fotos, com bordas personalizadas */
+.fotos-produto-container {
+    border: 1px solid #000;
+    border-spacing: 0;
+}
+
+.fotos-produto-container th,
+.fotos-produto-container td {
+    border: none;
+    padding: 0;
+}
+
+/* Estilos específicos para as células e títulos da seção de fotos */
+.fotos-produto-title-th {
+    font-size: 9pt;
+    border-bottom: 1px solid #000;
+    text-align: center;
+    padding: 2px;
+}
+
+.fotos-produto-subtitle-th {
+    font-size: 9pt;
+    border-bottom: 1px solid #000;
+    text-align: center;
+    padding: 2px;
+}
+
+.foto-cell {
+    height: 200px;
+    padding: 0;
+    text-align: center;
+}
+
+.borda-direita {
+    border-right: 1px solid #000;
+}
+
+
+.tabela-nutricional-img {
+    width: 100%;
+    height: 250px;
+    object-fit: contain;
+    /* Garante que a imagem se ajuste sem ser cortada */
+}
+
 .assinatura-section {
-    margin-top: 30px;
+    margin-top: 1px;
     border: 1px solid #000;
     padding: 10px;
-    min-height: 100px;
+    min-height: 25px;
 }
 
 .text-center {
@@ -325,5 +396,5 @@ table.ficha-table .section-header {
 }
 
 .italico {
-  font-style: italic;
+    font-style: italic;
 }
