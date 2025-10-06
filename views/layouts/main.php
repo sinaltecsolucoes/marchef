@@ -245,14 +245,14 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php
-                    // --- MENU SOBRE ---
-                    ?>
+                    <?php // --- MENU SOBRE --- ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sobreModal">Sobre</a>
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sobreModal">
+                            <i class="fas fa-circle-info me-1"></i> Sobre
+                        </a>
                     </li>
-
                 </ul>
+
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -294,22 +294,40 @@
             <div class="modal-content border-0 shadow-sm">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="sobreModalLabel">
-                        <i class="fas fa-circle-info me-2"></i>Sobre o Sistema
+                        <i class="fas fa-circle-info me-2"></i> Sobre o Sistema
                     </h5>
                 </div>
                 <div class="modal-body">
                     <ul class="list-unstyled mb-3">
-                        <li><strong>🧭 Nome:</strong> SGI - Sistema de Gestão Industrial</li>
-                        <li><strong>📦 Versão:</strong> 1.0.0</li>
-                        <li><strong>👨‍💻 Desenvolvido por:</strong> MD Soluções Tecnológicas</li>
-                        <li><strong>📅 Atualização:</strong> 01/10/2025</li>
-                        <li><strong>📧 Contato:</strong> <a href="https://wa.me/5588992432756" target="_blank">(88)
-                                99243-2756</a></li>
+                        <li><strong>🧭 Nome:</strong> <span class="text-muted">SGI - Sistema de Gestão Industrial</span>
+                        </li>
+                        <li><strong>📦 Versão:</strong> <span class="text-muted">1.0.0</span></li>
+                        <li><strong>👨‍💻 Desenvolvido por:</strong> <span class="text-muted">MD Soluções
+                                Tecnológicas</span></li>
+                        <li><strong>📅 Atualização:</strong> <span class="text-muted">01/10/2025</span></li>
                     </ul>
-                    <p class="text-muted small">
+
+                    <hr class="my-3">
+
+                    <h6 class="fw-bold mb-2">📞 Contato</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>WhatsApp:</strong> <a href="https://wa.me/5588993576795" target="_blank">(88)
+                                99357-6795</a></li>
+                        <li><strong>E-mail:</strong> <a
+                                href="mailto:contato@mdsolucoestecnologicas.com.br">contato@mdsolucoestecnologicas.com.br</a>
+                        </li>
+                    </ul>
+
+                    <hr class="my-3">
+
+                    <p class="text-muted small mb-0">
                         Sistema desenvolvido para otimizar o planejamento de carregamentos, rastreabilidade de
-                        produtos e controle de expedições.<br>
-                        Todos os dados são protegidos conforme as diretrizes da LGPD.<br>
+                        produtos e controle de expedições.
+                    </p>
+                    <p class="text-muted small mb-0">
+                        Todos os dados são protegidos conforme as diretrizes da LGPD.
+                    </p>
+                    <p class="text-muted small">
                         © 2025 MD Soluções Ltda. Todos os direitos reservados.
                     </p>
                 </div>
@@ -437,6 +455,28 @@
             <script src="<?php echo BASE_URL; ?>/js/dashboard_producao.js"></script>
         <?php endif; ?>
     <?php endif; ?>
+
+    <!-- Scripts para recalcular Tamanhos de telas maiores para menores e vice-versa -->
+    <script>
+        function debounce(func, wait) {
+            let timeout;
+            return function () {
+                clearTimeout(timeout);
+                timeout = setTimeout(func, wait);
+            };
+        }
+
+        const recalcDataTables = () => {
+            $('.dataTable').each(function () {
+                const dt = $(this).DataTable();
+                if (dt.responsive) {
+                    dt.columns.adjust().responsive.recalc();
+                }
+            });
+        };
+
+        $(window).on('resize', debounce(recalcDataTables, 100));
+    </script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {

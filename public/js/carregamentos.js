@@ -13,6 +13,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive":true,
         "columns": [
             {
                 "data": "car_numero",
@@ -30,26 +31,28 @@ $(document).ready(function () {
             },
             {
                 "data": "oe_numero",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "car_motorista_nome",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "car_placas",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "car_status",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "car_id",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data, type, row) {
-                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" class="btn btn-warning btn-sm me-1" title="Detalhes/Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                "className": "col-centralizavel align-middle",
+                "render": (data, type, row) => {
+                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" 
+                                        class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center" 
+                                        title="Detalhes/Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
 
                     let btnExcluir = '';
                     let btnCancelar = '';
@@ -57,16 +60,21 @@ $(document).ready(function () {
 
 
                     if (row.car_status === 'EM ANDAMENTO' || row.car_status === 'AGUARDANDO CONFERENCIA') {
-                        btnCancelar = `<button class="btn btn-secondary btn-sm me-1 btn-cancelar" data-id="${data}" title="Cancelar"><i class="fas fa-times me-1"></i>Cancelar</button>`;
+                        btnCancelar = `<button class="btn btn-secondary btn-sm btn-cancelar me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}" title="Cancelar"><i class="fas fa-times me-1"></i>Cancelar</button>`;
                     }
 
                     if (row.car_status === 'FINALIZADO' || row.car_status === 'CANCELADO') {
-                        btnReabrir = `<button class="btn btn-warning btn-sm me-1 btn-reabrir" data-id="${data}" title="Reabrir"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
+                        btnReabrir = `<button class="btn btn-info btn-sm btn-reabrir me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}" 
+                                        title="Reabrir"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
                     }
 
                     // Só pode excluir se NÃO estiver finalizado
                     if (row.car_status !== 'FINALIZADO') {
-                        btnExcluir = `<button class="btn btn-danger btn-sm me-1 btn-excluir" data-id="${data}" title="Excluir Permanentemente"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                        btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}" 
+                                        title="Excluir Permanentemente"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
                     }
 
                     return `<div class="btn-group">${btnDetalhes}${btnReabrir}${btnExcluir}${btnCancelar}</div>`;

@@ -23,6 +23,7 @@ $(document).ready(function () {
                 return d;
             }
         },
+        "responsive": true,
         "columns": [
             { "data": "endereco_completo" },
             {
@@ -39,22 +40,22 @@ $(document).ready(function () {
             },
             {
                 "data": "vaga",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "descricao_simples",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "endereco_id",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data) {
-                    // Botões de ação simples, sem lógica condicional
-                    return `
-                        <button class="btn btn-warning btn-sm btn-editar-endereco" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
-                    `;
+                "className": "col-centralizavel align-middle",
+                "render": (data) => {
+                    let btnEditar = `<button class="btn btn-warning btn-sm btn-editar-endereco me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-endereco d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                 }
             }
         ],

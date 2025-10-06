@@ -13,6 +13,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             { "data": "template_nome" },
             { "data": "template_descricao" },
@@ -25,12 +26,11 @@ $(document).ready(function () {
             {
                 "data": "template_id",
                 "orderable": false,
-                "className": "text-center",
-                "render": function (data) {
-                    return `
-                        <button class="btn btn-warning btn-sm btn-editar-template" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir-template" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
-                    `;
+                "className": "col-centralizavel",
+                "render": (data) => {
+                    let btnEditar = `<button class="btn btn-warning btn-sm btn-editar-template me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-template d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                 }
             }
         ],
@@ -49,7 +49,7 @@ $(document).ready(function () {
 
     // Abrir modal para EDITAR
     $('#tabela-templates').on('click', '.btn-editar-template', function () {
-        
+
         const id = $(this).data('id');
         $.ajax({
             url: 'ajax_router.php?action=getTemplate',

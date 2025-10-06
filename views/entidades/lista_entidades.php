@@ -32,60 +32,59 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
         <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
     </div>
     <div class="card-body">
-        <div class="row align-items-center">
-            <p><?php echo $descricaoSubtitulo; ?></p>
+        <p><?php echo $descricaoSubtitulo; ?></p>
 
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <!-- Botão Adicionar -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 w-25">
-                <button class="btn btn-primary" id="btn-adicionar-entidade">
-                    <i class="fas fa-plus me-2"></i>Adicionar <?php echo $singular; ?>
-                </button>
-            </div>
+            <button class="btn btn-primary" id="btn-adicionar-entidade">
+                <i class="fas fa-plus me-2"></i>Adicionar <?php echo $singular; ?>
+            </button>
 
-            <!-- Espaço vazio (coluna 2) -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block w-25"></div>
+            <!-- Filtros agrupados -->
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <!-- Filtro por Tipo Específico -->
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora ?>
+                        <label for="filtro-tipo-entidade" class="form-label mb-0 text-nowrap">Filtrar por Tipo:</label>
+                        <select class="form-select" id="filtro-tipo-entidade">
+                            <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
+                            <?php if ($pageType === 'cliente'): ?>
+                                <option value="Cliente">Apenas Clientes</option>
+                            <?php else: ?>
+                                <option value="Fornecedor">Apenas Fornecedores</option>
+                            <?php endif; ?>
+                            <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
+                        </select>
+                    <?php endif; // Se for transportadora, este bloco inteiro fica vazio ?>
+                </div>
 
-            <!-- Filtro por Tipo Específico -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center w-25">
-                <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora ?>
-                    <label for="filtro-tipo-entidade" class="form-label me-2 text-nowrap">Filtrar por Tipo:</label>
-                    <select class="form-select flex-grow-1" id="filtro-tipo-entidade">
-                        <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
+                <!-- Filtro por Situação -->
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <label class="form-label mb-0 text-nowrap">Filtrar por Situação:</label>
 
-                        <?php if ($pageType === 'cliente'): ?>
-                            <option value="Cliente">Apenas Clientes</option>
-                        <?php else: // Estamos na página de fornecedores ?>
-                            <option value="Fornecedor">Apenas Fornecedores</option>
-                        <?php endif; ?>
-
-                        <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
-                    </select>
-                <?php endif; // Se for transportadora, este bloco inteiro fica vazio ?>
-            </div>
-
-            <!-- Filtro por Situação -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
-                <label class="form-label me-2 text-nowrap">Filtrar por Situação:</label>
-                <div class="d-flex flex-wrap">
-                    <div class="form-check form-check-inline me-3">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
-                            value="Todos" checked>
-                        <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
-                    </div>
-                    <div class="form-check form-check-inline me-3">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
-                            value="A">
-                        <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
-                            value="I">
-                        <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="filtro_situacao"
+                                id="filtro-situacao-todos" value="Todos" checked>
+                            <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="filtro_situacao"
+                                id="filtro-situacao-ativo" value="A">
+                            <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="filtro_situacao"
+                                id="filtro-situacao-inativo" value="I">
+                            <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
+
+
     </div>
 </div>
 
@@ -366,9 +365,11 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                         <div class="col-md-4 mb-3 d-flex align-items-end">
                                             <label class="form-label"> </label>
                                             <button type="submit" class="btn btn-primary mt-2 me-2"
-                                                id="btn-    alvar-endereco"><i class="fas fa-save me-1"></i>Salvar Endereço Adicional</button>
+                                                id="btn-    alvar-endereco"><i class="fas fa-save me-1"></i>Salvar
+                                                Endereço Adicional</button>
                                             <button type="button" class="btn btn-secondary mt-2"
-                                                id="btn-cancelar-edicao-endereco"><i class="fas fa-times me-2"></i>Cancelar</button>
+                                                id="btn-cancelar-edicao-endereco"><i
+                                                    class="fas fa-times me-2"></i>Cancelar</button>
                                         </div>
                                     </div>
                                     <small id="cep-feedback-adicional" class="form-text text-muted"></small>
@@ -381,8 +382,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                             <th class="text-center align-middle">Tipo</th>
                                             <th class="text-center align-middle">Logradouro</th>
                                             <th class="text-center align-middle">Cidade/UF</th>
-                                            <th class="text-center align-middle"
-                                            >Ações</th>
+                                            <th class="text-center align-middle">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -394,9 +394,11 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             </div>
 
             <div class="modal-footer">
-                <button type="submit" form="form-entidade" class="btn btn-primary" id="btn-salvar-entidade"><i class="fas fa-save me-2"></i>Salvar
+                <button type="submit" form="form-entidade" class="btn btn-primary" id="btn-salvar-entidade"><i
+                        class="fas fa-save me-2"></i>Salvar
                     <?php echo $singular; ?></button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Fechar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                        class="fas fa-times me-1"></i>Fechar</button>
             </div>
         </div>
 

@@ -9,6 +9,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             {
                 "data": "fat_id",
@@ -18,9 +19,10 @@ $(document).ready(function () {
                     return String(data).padStart(4, '0');
                 }
             },
-            { "data": "ordem_numero",
+            {
+                "data": "ordem_numero",
                 "className": "text-center align-middle"
-             },
+            },
             {
                 "data": "fat_data_geracao",
                 "className": "text-center align-middle",
@@ -31,25 +33,31 @@ $(document).ready(function () {
             },
             {
                 "data": "fat_status",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "usuario_nome",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "fat_id",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data, type, row) {
-                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-warning btn-sm me-1"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
-                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento me-1" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
-                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado me-1" data-id="${data}"><i class="fas fa-receipt me-1"></i>Faturar</button>`;
-                    let btnCancelar = `<button class="btn btn-secondary btn-sm btn-cancelar-faturamento me-1" data-id="${data}"><i class="fas fa-times me-1"></i>Cancelar</button>`;
-                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento me-1" data-id="${data}"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
+                "className": "col-centralizavel align-middle",
+                "render": (data, type, row) => {
+                    let btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" 
+                                        class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-faturamento me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    let btnFaturar = `<button class="btn btn-success btn-sm btn-marcar-faturado me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-receipt me-1"></i>Faturar</button>`;
+                    let btnCancelar = `<button class="btn btn-secondary btn-sm btn-cancelar-faturamento me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-times me-1"></i>Cancelar</button>`;
+                    let btnReabrir = `<button class="btn btn-primary btn-sm btn-reabrir-faturamento me-1 d-inline-flex align-items-center" 
+                                        data-id="${data}"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
 
                     if (row.fat_status === 'FATURADO') {
-                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" class="btn btn-info btn-sm me-2"><i class="fas fa-search me-1"></i>Visualizar</a>`;
+                        btnDetalhes = `<a href="index.php?page=faturamento_gerar&resumo_id=${data}" 
+                                        class="btn btn-info btn-sm  me-1 d-inline-flex align-items-center"><i class="fas fa-search me-1"></i>Visualizar</a>`;
                         return `<div class="btn-group">${btnDetalhes}${btnReabrir}</div>`;
                     }
 

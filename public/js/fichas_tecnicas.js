@@ -13,6 +13,7 @@ $(document).ready(function () {
                 type: "POST",
                 data: { csrf_token: csrfToken }
             },
+            responsive: true,
             columns: [
                 {
                     data: "ficha_id",
@@ -29,21 +30,21 @@ $(document).ready(function () {
                 },
                 {
                     data: "prod_ncm",
-                    class: "text-center align-middle",
+                    class: "col-centralizavel align-middle",
                 },
                 {
                     data: "ficha_data_modificacao",
-                    class: "text-center align-middle",
+                    class: "col-centralizavel align-middle",
                     render: data => data ? new Date(data).toLocaleString('pt-BR') : ''
                 },
                 {
                     data: "ficha_id",
                     orderable: false,
-                    className: "text-center",
+                    className: "col-centralizavel",
                     render: function (data, type, row) {
-                        let btnEditar = `<a href="index.php?page=ficha_tecnica_detalhes&id=${data}" class="btn btn-warning btn-sm me-1" title="Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
-                        let btnCopiar = `<button class="btn btn-info btn-sm btn-copiar-ficha me-1" data-id="${data}" title="Copiar"><i class="fas fa-copy me-1"></i>Copiar</button>`;
-                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-ficha" data-id="${data}" data-nome="${row.prod_descricao}" title="Excluir"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                        let btnEditar = `<a href="index.php?page=ficha_tecnica_detalhes&id=${data}" class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center" title="Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                        let btnCopiar = `<button class="btn btn-info btn-sm btn-copiar-ficha me-1 d-inline-flex align-items-center" data-id="${data}" title="Copiar"><i class="fas fa-copy me-1"></i>Copiar</button>`;
+                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-ficha d-inline-flex align-items-center" data-id="${data}" data-nome="${row.prod_descricao}" title="Excluir"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
                         return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}</div>`;
                     }
                 }

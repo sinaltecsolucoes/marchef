@@ -46,6 +46,7 @@ $(document).ready(function () {
             "type": "GET",
             "dataSrc": "data"
         },
+        "responsive": true,
         "columns": [
             {
                 "data": null,
@@ -63,12 +64,12 @@ $(document).ready(function () {
             },
             {
                 "data": "fornecedor_nome",
-                "className": "align-middle",
+                "className": "col-centralizavel align-middle",
                 "defaultContent": "<i>N/A</i>"
             },
             {
                 "data": "lote_data_fabricacao",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
@@ -77,7 +78,7 @@ $(document).ready(function () {
             },
             {
                 "data": "item_prod_saldo",
-                "className": "text-center align-middle fw-bold",
+                "className": "col-centralizavel align-middle fw-bold",
                 "render": function (data) { return formatarNumeroBR(data, 3); }
             }
         ],
@@ -127,11 +128,6 @@ $(document).ready(function () {
     });
 
     // Funções de template para o Select2 (exemplo, ajuste conforme necessário)
-    /* function formatarOpcaoProduto(produto) {
-         if (!produto.id) return produto.text;
-         return $(`<span>${produto.text}</span>`);
-     } */
-
     function formatarOpcaoProduto(produto) {
         if (produto.loading) {
             return produto.text;
@@ -141,10 +137,6 @@ $(document).ready(function () {
         // Retorna um objeto jQuery formatado (assim como no módulo de Lotes)
         return $(`<span>${produto.text} (Cód: ${codigoInterno})</span>`);
     }
-
-    /*  function formatarSelecaoProduto(produto) {
-          return produto.text || produto.id;
-      } */
 
     // Função para formatar o item DEPOIS DE SELECIONADO (na caixa principal)
     function formatarSelecaoProduto(produto) {
@@ -361,13 +353,14 @@ $(document).ready(function () {
                 notificacaoErro('Erro ao Carregar Tabela de Caixas Mistas', errorMsg);
             }
         },
+        "responsive": true,
         "columns": [
             { "data": "mista_id", "className": "text-center align-middle" },
             { "data": "produto_final", "className": "align-middle" },
             { "data": "lote_destino", "className": "text-center align-middle" },
             {
                 "data": "data_criacao",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data) {
                     if (!data) return 'N/A';
                     const date = new Date(data);
@@ -376,7 +369,7 @@ $(document).ready(function () {
             },
             {
                 "data": "total_qtd_consumida",
-                "className": "text-center align-middle fw-bold",
+                "className": "col-centralizavel align-middle fw-bold",
                 "render": function (data) {
                     if (data === null || data === undefined) return '0.000';
                     return formatarNumeroBR(parseFloat(data), 3);
@@ -385,23 +378,24 @@ $(document).ready(function () {
             {
                 "data": null,
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data, type, row) {
+                "className": "col-centralizavel align-middle",
+                "render": (data, type, row) => {
                     const mistaId = row.mista_id || '';
                     const itemEmbId = row.mista_item_embalagem_id_gerado || '';
-                    return `
-                    <button class="btn btn-info btn-sm btn-detalhes-caixa me-1" data-id="${mistaId}" title="Ver Detalhes">
+
+                    let btnVerDetalhes = `<button class="btn btn-info btn-sm btn-detalhes-caixa me-1 d-inline-flex align-items-center" data-id="${mistaId}" title="Ver Detalhes">
                         <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-primary btn-sm btn-imprimir-etiqueta" data-item-id="${itemEmbId}" title="Imprimir Etiqueta">
+                    </button>`;
+                    let btnImprimir = `<button class="btn btn-primary btn-sm btn-imprimir-etiqueta me-1 d-inline-flex align-items-center" data-item-id="${itemEmbId}" title="Imprimir Etiqueta">
                         <i class="fas fa-print"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm btn-excluir-caixa" data-id="${mistaId}" title="Excluir Caixa Mista">
+                    </button>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-caixa d-inline-flex align-items-center" data-id="${mistaId}" title="Excluir Caixa Mista">
                         <i class="fas fa-trash"></i>
-                    </button>
-                `;
+                    </button>`;
+                    return `<div class="btn-group">${btnVerDetalhes}${btnImprimir}${btnExcluir}</div>`;
                 }
             }
+
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[3, 'desc']],

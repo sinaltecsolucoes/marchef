@@ -1,7 +1,7 @@
 $(document).ready(function () {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $selectOrdem = $('#select-ordem-expedicao');
-    const $container = $('#faturamento-resultado-container');
+    const $container = $('#faturamento-resultado-container'); // O ID CORRETO DO CONTAINER
     const $btnGerarContainer = $('#container-btn-gerar');
     const $btnGerar = $('#btn-gerar-resumo');
     const $modalEditarItem = $('#modal-editar-faturamento');
@@ -46,7 +46,7 @@ $(document).ready(function () {
         carregarPreview(ordemId);
     });
 
-    $btnGerar.on('click', function () { 
+    $btnGerar.on('click', function () {
         const ordemId = $selectOrdem.val();
         if (!ordemId) {
             notificacaoErro('Erro', 'Nenhuma Ordem de Expedição selecionada.');
@@ -108,6 +108,9 @@ $(document).ready(function () {
                     const header = response.data.header;
                     const gruposFazenda = response.data.grupos_fazenda;
 
+                    // Verifica o status APENAS UMA VEZ
+                    const isFaturado = header.fat_status === 'FATURADO';
+
                     // 1. Preenche o subtítulo e o card de transporte (sem alteração)
                     if (header && header.ordem_expedicao_numero) {
                         $('#ordem-origem-display')
@@ -128,19 +131,17 @@ $(document).ready(function () {
                         $('#select-transportadora').val(null).trigger('change');
                     }
 
-                    // 2. Constrói a tabela principal PRIMEIRO
-                    construirTabelaFaturamentoEdicao(gruposFazenda);
+                    // 2. Constrói a tabela principal, passando o status
+                    construirTabelaFaturamentoEdicao(gruposFazenda, isFaturado);
 
                     // 3. APLICA O BLOQUEIO DEPOIS QUE TUDO FOI RENDERIZADO
-                    if (header.fat_status === 'FATURADO') {
-                        // ### INÍCIO DA CORREÇÃO ###
-                        // Esconde o botão de salvar do transporte E desabilita os campos
+                    if (isFaturado) {
+                        // BLOQUEIO DO TRANSPORTE: Esconde o botão de salvar E desabilita os campos
                         $('#form-transporte button[type="submit"]').hide();
                         $('#form-transporte').find('input, select').prop('disabled', true);
-                        // ### FIM DA CORREÇÃO ###
 
-                        // Esconde os botões de edição dos itens
-                        $container.find('.btn-editar-nota, .btn-editar-item-faturamento').hide();
+                        // BLOQUEIO GERAL: Oculta botões de nota que foram gerados (além do HTML)
+                        $container.find('.btn-editar-nota').hide();
 
                         // Adiciona a mensagem de aviso
                         $('.card-header:contains("2. Resumo Agrupado")').closest('.card')
@@ -188,7 +189,9 @@ $(document).ready(function () {
         data.forEach(item => {
             if (item.fazenda_nome !== fazendaAtual) {
                 fazendaAtual = item.fazenda_nome;
-                html += `<tr class="table-group-divider"><td colspan="6" class="bg-light-subtle fw-bold"><i class="fas fa-tractor me-2"></i> FAZENDA: ${fazendaAtual || 'N/A'}</td></tr>`;
+                html += `<tr class="table-group-divider">
+                         <td colspan="6" class="bg-light-subtle fw-bold">
+                         <i class="fas fa-tractor me-2"></i> FAZENDA: ${fazendaAtual || 'N/A'}</td></tr>`;
             }
             html += `<tr>
                         <td></td>
@@ -203,7 +206,17 @@ $(document).ready(function () {
         $container.html(html);
     }
 
-    function construirTabelaFaturamentoEdicao(gruposFazenda) {
+    /**
+     * Constrói e exibe a tabela de faturamento agrupada por fazenda,
+     * aplicando DataTables em cada tabela de itens de nota.
+     *
+     * @param {object} gruposFazenda - Dados de faturamento agrupados por nome da fazenda.
+     * @param {boolean} isFaturado - Indica se o resumo está no status 'FATURADO'.
+     */
+    function construirTabelaFaturamentoEdicao(gruposFazenda, isFaturado) {
+        // Usa a variável $container definida no escopo superior (linha 4)
+        // e as funções formatCurrency e formatarNumeroBrasileiro definidas abaixo.
+
         if (!gruposFazenda || Object.keys(gruposFazenda).length === 0) {
             $container.html('<p class="text-muted text-center">Nenhum item encontrado neste resumo.</p>');
             return;
@@ -212,131 +225,200 @@ $(document).ready(function () {
         let html = '';
         let granTotalCaixas = 0, granTotalQuilos = 0, granTotalValor = 0;
 
-        // Loop Nível 1: FAZENDAS
+        // Define a classe CSS para ocultar o botão Ação (Preço) se for FATURADO
+        const btnAcaoPrecoClass = isFaturado ? 'd-none' : '';
+
         for (const nomeFazenda in gruposFazenda) {
             const notasDaFazenda = gruposFazenda[nomeFazenda];
             let subTotalFazendaCaixas = 0, subTotalFazendaQuilos = 0, subTotalFazendaValor = 0;
 
-            // Cabeçalho da Fazenda
             html += `<div class="fazenda-group border rounded shadow-sm mb-4">
-                        <div class="fazenda-header bg-light-subtle p-2 fw-bold border-bottom">
-                            <i class="fas fa-tractor me-2"></i> FAZENDA: ${nomeFazenda}
-                        </div>
-                     <div class="fazenda-body p-2">`;
+                <div class="fazenda-header bg-light-subtle p-2 fw-bold border-bottom">
+                    <i class="fas fa-tractor me-2"></i> FAZENDA: ${nomeFazenda}
+                </div>
+                <div class="fazenda-body p-2">`;
 
-            // Loop Nível 2: NOTAS (Cliente/Pedido)
-            notasDaFazenda.forEach(nota => {
+            notasDaFazenda.forEach((nota, notaIndex) => {
                 let subTotalNotaCaixas = 0, subTotalNotaQuilos = 0, subTotalNotaValor = 0;
 
-                // CABEÇALHO DA TABELA DE ITENS (ESTAS LARGURAS SÃO A NOSSA REFERÊNCIA)
-                const condPagHtml = nota.condicao_pagamento ? `<span class="badge bg-info">${nota.condicao_pagamento}</span>` : '<span class="badge bg-warning text-dark">Cond. Pagto. a definir</span>';
-                const obsHtml = nota.observacao ? `<small class="d-block text-muted fst-italic">Obs: ${nota.observacao}</small>` : '';
+                const condPagHtml = nota.condicao_pagamento
+                    ? `<span class="badge bg-info">${nota.condicao_pagamento}</span>`
+                    : '<span class="badge bg-warning text-dark">Cond. Pagto. a definir</span>';
+                const obsHtml = nota.observacao
+                    ? `<small class="d-block text-muted fw-bold fst-italic">Obs: ${nota.observacao}</small>` : '';
+                const tabelaId = `tabela-faturamento-${nomeFazenda.replace(/\s+/g, '-')}-${notaIndex}`;
 
-                html += `<table class="table table-sm table-bordered table-hover mb-3">
-                            <thead class="table-light">
-                                <tr>
-                                    <th colspan="5" class="align-middle">
-                                        Cliente: <strong class="text-primary">${nota.cliente_nome}</strong> 
-                                        (Pedido: ${nota.numero_pedido})
-                                        <div class="mt-1">${condPagHtml}</div>
-                                        ${obsHtml}
-                                    </th>
-                                    <th colspan="3" class="text-end align-middle">
-                                        <button class="btn btn-secondary btn-xs btn-editar-nota" data-fatn-id="${nota.fatn_id}">
-                                            <i class="fas fa-cog me-1"></i> Editar Pedido (Cond/Obs)
-                                        </button>
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th style="width: 25%;">Produto</th>
-                                    <th style="width: 15%;">Lote</th>
-                                    <th class="text-end" style="width: 10%;">Qtd. Caixas</th>
-                                    <th class="text-end" style="width: 10%;">Qtd. Quilos</th>
-                                    <th class="text-end" style="width: 15%;">Preço Unit.</th>
-                                    <th class="text-end" style="width: 15%;">Valor Total</th>
-                                    <th class="text-center" style="width: 10%;">Ação (Preço)</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
+                // CORREÇÃO: Ajusta a estrutura para alinhamento horizontal (Cliente/Pedido + Botão de Editar Nota)
+                html += `
+                <div class="mb-2 border-top pt-2 d-flex justify-content-between align-items-start">
+                    <!-- Bloco de Informações do Cliente -->
+                    <div class="me-3">
+                        <strong class="text-primary">Cliente:</strong> <strong>${nota.cliente_nome}</strong>
+                        <span class="ms-1 fw-bold">(Pedido: ${nota.numero_pedido})</span>
+                        <div class="mt-1">${condPagHtml}</div>
+                        ${obsHtml}
+                    </div>
+                    <!-- Botão de Editar Nota -->
+                    <div class="text-end flex-shrink-0">
+                        <button class="btn btn-secondary btn-xs btn-editar-nota" data-fatn-id="${nota.fatn_id}">
+                            <i class="fas fa-cog me-1"></i> Editar Pedido (Cond/Obs)
+                        </button>
+                    </div>
+                </div>
 
-                // Loop Nível 3: ITENS
+                <table class="table table-sm table-bordered table-hover mb-3 w-100 tabela-faturamento" id="${tabelaId}">
+                    <thead class="table-light">
+                        <tr>
+                            <!-- LARGURAS FIXAS SERÃO DEFINIDAS PELO DATATABLES -->
+                            <th class="text-center align-middle">Produto</th>
+                            <th class="text-center align-middle">Lote</th>
+                            <th class="text-center align-middle">Qtd. Caixas</th>
+                            <th class="text-center align-middle">Qtd. Quilos</th>
+                            <th class="text-center align-middle">Preço Unit.</th>
+                            <th class="text-center align-middle">Valor Total</th>
+                            <th class="text-center align-middle">Ação (Preço)</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
                 nota.itens.forEach(item => {
-                    // ... (lógica de cálculo de totais dos itens - sem alteração) ...
                     const qtdCaixas = parseFloat(item.fati_qtd_caixas) || 0;
                     const qtdQuilos = parseFloat(item.fati_qtd_quilos) || 0;
                     const preco = parseFloat(item.fati_preco_unitario) || 0;
                     let valorTotalItem = 0;
+
                     if (item.fati_preco_unidade_medida === 'CX') {
                         valorTotalItem = preco * qtdCaixas;
                     } else {
                         valorTotalItem = preco * qtdQuilos;
                     }
+
                     subTotalNotaCaixas += qtdCaixas;
                     subTotalNotaQuilos += qtdQuilos;
                     subTotalNotaValor += valorTotalItem;
-                    const precoFormatado = item.fati_preco_unitario ? formatCurrency(preco) + ` /${item.fati_preco_unidade_medida}` : '-';
-                    const valorTotalFormatado = valorTotalItem > 0 ? formatCurrency(valorTotalItem) : '-';
+
+                    const precoFormatado = item.fati_preco_unitario
+                        ? formatCurrency(preco) + ` /${item.fati_preco_unidade_medida}` : '-';
+                    const valorTotalFormatado = valorTotalItem > 0
+                        ? formatCurrency(valorTotalItem) : '-';
 
                     html += `<tr>
-                                <td>${item.produto_descricao}</td>
-                                <td>${item.lote_completo_calculado}</td>
-                                <td class="text-end">${formatarNumeroBrasileiro(qtdCaixas)}</td>
-                                <td class="text-end">${formatarNumeroBrasileiro(qtdQuilos)}</td>
-                                <td class="text-end">${precoFormatado}</td>
-                                <td class="text-end">${valorTotalFormatado}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-warning btn-xs btn-editar-item-faturamento" data-fati-id="${item.fati_id}">
-                                        <i class="fas fa-pencil-alt"></i>
-                                    </button>
-                                </td>
-                            </tr>`;
+                        <td class="align-middle">${item.produto_descricao}</td>
+                        <td class="text-center align-middle">${item.lote_completo_calculado}</td>
+                        <td class="text-center align-middle">${formatarNumeroBrasileiro(qtdCaixas)}</td>
+                        <td class="text-center align-middle">${formatarNumeroBrasileiro(qtdQuilos)}</td>
+                        <td class="text-center align-middle">${precoFormatado}</td>
+                        <td class="text-center align-middle">${valorTotalFormatado}</td>
+                        <td class="text-center align-middle">
+                            <button class="btn btn-warning btn-xs btn-editar-item-faturamento ${btnAcaoPrecoClass}" data-fati-id="${item.fati_id}">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                        </td>
+                    </tr>`;
                 });
 
-                // RODAPÉ DA NOTA (COLSPANS AJUSTADOS PARA ALINHAR)
-                html += `<tr class="table-light fw-bold" style="font-style: italic;">
-                            <td colspan="2" class="text-end">Subtotal (Nota):</td>
-                            <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaCaixas)}</td>
-                            <td class="text-end">${formatarNumeroBrasileiro(subTotalNotaQuilos)}</td>
-                            <td></td> <td class="text-end">${formatCurrency(subTotalNotaValor)}</td>
-                            <td></td> </tr></tbody></table>`;
+                html += `</tbody>
+                    <tfoot>
+                    <tr class="table-light fw-bold" style="font-style: italic;">
+                        <td colspan="2" class="text-end">Subtotal (Nota):</td>
+                        <td class="text-center align-middle">${formatarNumeroBrasileiro(subTotalNotaCaixas)}</td>
+                        <td class="text-center align-middle">${formatarNumeroBrasileiro(subTotalNotaQuilos)}</td>
+                        <td class="text-center align-middle">&nbsp;</td>
+                        <td class="text-center align-middle">${formatCurrency(subTotalNotaValor)}</td>
+                        <td class="text-center align-middle">&nbsp;</td>
+                    </tr>
+                    </tfoot>
+                </table>`;
 
-                // Acumula totais da FAZENDA
                 subTotalFazendaCaixas += subTotalNotaCaixas;
                 subTotalFazendaQuilos += subTotalNotaQuilos;
                 subTotalFazendaValor += subTotalNotaValor;
             });
 
-            // RODAPÉ DA FAZENDA (CORRIGIDO PARA ALINHAR AS COLUNAS)
-            html += `<table class="table table-sm table-bordered mt-2">
-                        <tr class="table-dark fw-bold">
-                            <td class="text-end" style="width: 40%;">TOTAL FAZENDA (${nomeFazenda}):</td> <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaCaixas)}</td>
-                            <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaQuilos)}</td>
-                            <td style="width: 15%;"></td> <td class="text-end" style="width: 15%;">${formatCurrency(subTotalFazendaValor)}</td>
-                            <td style="width: 10%;"></td> </tr>
-                     </table></div></div>`;
+            // CORREÇÃO: Ajustando as larguras e colspans para as colunas de total
+            // Largura Total = 100%
+            // Coluna 1 (Label): colspan="2" (40% + 10%) -> 50%
+            // Coluna 2 (Caixas): 10%
+            // Coluna 3 (Quilos): 10%
+            // Coluna 4 (Preço Unit. Vazio): 10%
+            // Coluna 5 (Valor Total): 10%
+            // Coluna 6 (Ação Vazio): 10%
+            html += `<table class="table table-sm table-bordered mt-2 w-100">
+                <tr class="table-dark fw-bold">
+                    <td colspan="2" class="text-end align-middle" style="width: 50%;">TOTAL FAZENDA (${nomeFazenda}):</td>
+                    <td class="text-center align-middle" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaCaixas)}</td>
+                    <td class="text-center align-middle" style="width: 10%;">${formatarNumeroBrasileiro(subTotalFazendaQuilos)}</td>
+                    <td style="width: 10%;"></td> 
+                    <td class="text-center align-middle" style="width: 10%;">${formatCurrency(subTotalFazendaValor)}</td>
+                    <td style="width: 10%;"></td>
+                </tr>
+            </table>
+            </div>
+            </div>`;
 
-            // Acumula TOTAIS GERAIS
             granTotalCaixas += subTotalFazendaCaixas;
             granTotalQuilos += subTotalFazendaQuilos;
             granTotalValor += subTotalFazendaValor;
         }
 
-        // TOTAL GERAL (CORRIGIDO PARA ALINHAR AS COLUNAS)
-        html += `<table class="table table-bordered mt-4">
-                    <tr class="table-primary fw-bolder">
-                        <td class="text-end" style="width: 40%;">TOTAL GERAL DO RESUMO:</td>
-                        <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(granTotalCaixas)}</td>
-                        <td class="text-end" style="width: 10%;">${formatarNumeroBrasileiro(granTotalQuilos)}</td>
-                        <td style="width: 15%;"></td> <td class="text-end" style="width: 15%;">${formatCurrency(granTotalValor)}</td>
-                        <td style="width: 10%;"></td> </tr>
-                 </table>`;
+        // CORREÇÃO: Ajustando as larguras e colspans para a tabela de TOTAL GERAL
+        html += `<table class="table table-bordered mt-4 w-100">
+            <tr class="table-primary fw-bolder">
+                <td colspan="2" class="text-end align-middle" style="width: 50%;">TOTAL GERAL DO RESUMO:</td>
+                <td class="text-center align-middle" style="width: 10%;">${formatarNumeroBrasileiro(granTotalCaixas)}</td>
+                <td class="text-center align-middle" style="width: 10%;">${formatarNumeroBrasileiro(granTotalQuilos)}</td>
+                <td style="width: 10%;"></td>
+                <td class="text-center align-middle" style="width: 10%;">${formatCurrency(granTotalValor)}</td>
+                <td style="width: 10%;"></td>
+            </tr>
+        </table>`;
 
         $container.html(html);
+
+        // CONFIGURAÇÃO DAS LARGURAS DE COLUNA NO DATATABLES (7 colunas, 100%)
+        const columnWidths = [
+            { "width": "40%", "targets": 0 }, // Produto
+            { "width": "10%", "targets": 1 }, // Lote
+            { "width": "10%", "targets": 2 }, // Qtd. Caixas
+            { "width": "10%", "targets": 3 }, // Qtd. Quilos
+            { "width": "10%", "targets": 4 }, // Preço Unit.
+            { "width": "10%", "targets": 5 }, // Valor Total
+            { "width": "10%", "targets": 6 }  // Ação (Preço)
+        ];
+
+        // Inicialização do DataTables
+        $('.tabela-faturamento').each(function () {
+            const $tabela = $(this);
+            // Destrói instância existente, se houver, antes de inicializar uma nova
+            if ($.fn.DataTable.isDataTable($tabela)) {
+                $tabela.DataTable().destroy();
+            }
+            $tabela.DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                ordering: false,
+                // APLICA AS LARGURAS FIXAS PARA GARANTIR CONSISTÊNCIA
+                columnDefs: columnWidths,
+                language: {
+                    emptyTable: "Nenhum item nesta nota.",
+                    loadingRecords: "Carregando..."
+                }
+            });
+        });
     }
+
 
     // Função helper para formatar moeda
     function formatCurrency(val) {
         return (parseFloat(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // FUNÇÃO: Adicionada para garantir que o formato brasileiro esteja disponível
+    function formatarNumeroBrasileiro(value, decimals = 3) {
+        if (typeof value !== 'number' || isNaN(value)) return '0,000';
+        return value.toFixed(decimals).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
     // --- EVENTOS DOS MODAIS DE EDIÇÃO ---
@@ -510,7 +592,6 @@ $(document).ready(function () {
     $('#btn-gerar-relatorio').on('click', function () {
         if (resumoIdParaCarregar) {
 
-            // !! JÁ APLIQUE A CORREÇÃO DA URL QUE DISCUTIMOS !!
             const urlRelatorio = `index.php?page=relatorio_faturamento&id=${resumoIdParaCarregar}`;
 
             window.open(urlRelatorio, '_blank');
@@ -537,8 +618,8 @@ $(document).ready(function () {
         const nomeArquivo = `Faturamento_OE_${ordemNum}_Resumo_${resumoIdParaCarregar}.xls`;
 
         // Monta o template HTML com o encoding correto para Excel
-        const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" 
-                                xmlns:x="urn:schemas-microsoft-com:office:excel" 
+        const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+                                xmlns:x="urn:schemas-microsoft-com:office:excel"
                                 xmlns="http://www.w3.org/TR/REC-html40">
                           <head><meta charset="UTF-8"></head>
                           <body>${$tabelaHtml}</body>
@@ -580,7 +661,7 @@ $(document).ready(function () {
             field.val(val.toUpperCase());
 
             // 2. Lógica para pular a barra '/'
-            // Se o usuário terminar a primeira placa (7 chars) e digitar uma letra/número 
+            // Se o usuário terminar a primeira placa (7 chars) e digitar uma letra/número
             // em vez de espaço, nós adicionamos o " / " automaticamente.
             if (val.length === 8) {
                 // Se o 8º char não for um espaço (indicando que ele não digitou a barra)

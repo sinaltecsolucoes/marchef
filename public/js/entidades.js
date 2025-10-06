@@ -155,6 +155,7 @@ $(document).ready(function () {
                     showFeedbackMessage('Erro ao carregar endereços: ' + (xhr.responseJSON?.message || 'Erro desconhecido'), 'danger', '#mensagem-endereco');
                 }
             },
+            "responsive": true,
             "columns": [
                 {
                     "data": "end_tipo_endereco",
@@ -172,12 +173,18 @@ $(document).ready(function () {
                 {
                     "data": "end_codigo",
                     "orderable": false,
-                    "className": "text-center align-middle",
-                    "render": (data) =>
-                        `<div class="btn-group" role="group">
-                                <a href="#" class="btn btn-warning btn-sm btn-editar-endereco me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
-                                <a href="#" class="btn btn-danger btn-sm btn-excluir-endereco" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>
-                          </div>`
+                    "className": "col-centralizavel align-middle",
+                    "render": (data) => {
+                        let btnEditar = `
+                                <button class="btn btn-warning btn-sm btn-editar-endereco me-1 d-inline-flex align-items-center" 
+                                data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+
+                        let btnExcluir = `
+                                <button class="btn btn-danger btn-sm btn-excluir-endereco d-inline-flex align-items-center" 
+                                data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+
+                        return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
+                    }
                 }
             ],
             paging: false,
@@ -304,7 +311,7 @@ $(document).ready(function () {
             },
             {
                 "data": null,
-                "className": "text-center align-middle font-small",
+                "className": "col-centralizavel align-middle font-small",
                 "width": "8%",
                 "render": function (data, type, row) {
                     if (row.ent_tipo_pessoa === 'F') {
@@ -323,13 +330,17 @@ $(document).ready(function () {
             {
                 "data": "ent_codigo",
                 "orderable": false,
-                "className": "text-center align-middle ",
+                "className": "col-centralizavel align-middle ",
                 "width": "8%",
-                "render": (data, type, row) =>
-                    `<div class="btn-group" role="group">
-                            <a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
-                            <a href="#" class="btn btn-danger btn-sm btn-inativar-entidade" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>
-                     </div>`
+                "render": (data, type, row) => {
+                    let btnEditar = `
+                                <a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+
+                    let btnInativar = `
+                                <a href="#" class="btn btn-danger btn-sm btn-inativar-entidade d-inline-flex align-items-center" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>`;
+
+                    return `<div class="btn-group">${btnEditar}${btnInativar}</div>`;
+                }
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }

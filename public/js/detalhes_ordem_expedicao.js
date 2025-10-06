@@ -103,8 +103,12 @@ $(document).ready(function () {
 
         // LÓGICA DO BOTÃO DE RELATÓRIO
         if ($('#btn-relatorio-oe').length === 0) {
-            const btnRelatorio = `<a id="btn-relatorio-oe" href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" target="_blank" class="btn btn-success me-2">
-                                <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
+            const btnRelatorio = `
+                <a id="btn-relatorio-oe" 
+                href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" 
+                target="_blank" 
+                class="btn btn-success me-2 d-inline-flex align-items-center flex-shrink-0">
+                <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
             // Adiciona o botão DENTRO do novo container de botões
             $('#botoes-cabecalho-oe').prepend(btnRelatorio);
         }

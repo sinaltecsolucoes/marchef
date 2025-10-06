@@ -8,24 +8,27 @@
     </div>
     <div class="card-body">
         <p>Crie e gerencie as Fichas Técnicas para cada produto do sistema.</p>
-       <a href="index.php?page=ficha_tecnica_detalhes" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i> Criar Nova Ficha Técnica
-    </a>
+        <a href="index.php?page=ficha_tecnica_detalhes" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i> Criar Nova Ficha Técnica
+        </a>
     </div>
 </div>
 
-<div class="card shadow card-custom">
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Fichas Técnicas</h6>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-fichas-tecnicas" class="table table-hover my-4" style="width:100%">
+            <table class="table table-bordered table-hover" id="tabela-fichas-tecnicas" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>ID Ficha</th>
-                        <th>Produto</th>
-                        <th>Marca</th>
-                        <th>NCM</th>
-                        <th>Data Modificação</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">ID Ficha</th>
+                        <th class="text-center align-middle">Produto</th>
+                        <th class="text-center align-middle">Marca</th>
+                        <th class="text-center align-middle">NCM</th>
+                        <th class="text-center align-middle">Data Modificação</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

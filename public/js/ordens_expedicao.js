@@ -9,6 +9,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             {
                 "data": "oe_numero",
@@ -24,10 +25,13 @@ $(document).ready(function () {
                     return date.toLocaleDateString('pt-BR');
                 }
             },
-            { "data": "oe_status" },
+            {
+                "data": "oe_status",
+                "className": "col-centralizavel align-middle"
+            },
             {
                 "data": "carregamento_numero",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data, type, row) {
                     if (!data) return 'N/A';
                     // Cria o link para o futuro relatório
@@ -37,13 +41,13 @@ $(document).ready(function () {
             },
             {
                 "data": "usuario_nome",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "oe_id",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data, type, row) {
+                "className": "col-centralizavel align-middle",
+                "render": (data, type, row) => {
                     // ### INÍCIO DA NOVA LÓGICA DE BOTÕES ###
                     if (row.oe_status === 'GEROU CARREGAMENTO') {
                         // Se já gerou carregamento, mostra apenas o botão "Visualizar"
@@ -54,8 +58,8 @@ $(document).ready(function () {
                             </a>`;
                     } else {
                         // Senão, mostra os botões "Editar" e "Excluir"
-                        let btnEditar = `<a href="index.php?page=ordem_expedicao_detalhes&id=${data}" class="btn btn-warning btn-sm me-1"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
-                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-oe" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                        let btnEditar = `<a href="index.php?page=ordem_expedicao_detalhes&id=${data}" class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-oe d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
                         return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                     }
                     // ### FIM DA NOVA LÓGICA DE BOTÕES ###

@@ -19,6 +19,7 @@ $(document).ready(function () {
 
     // Containers (cache)
     const $filasContainer = $('#filas-container');
+    const $tabela = $('#tabela-planejamento');
     const $tabelaPlanejamentoBody = $('#tabela-planejamento-body');
 
     // Nossos dados-mestres
@@ -140,34 +141,6 @@ $(document).ready(function () {
     }
 
     // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
-    /*  function renderPlanejamento(planejamento) {
-          $tabelaPlanejamentoBody.empty();
-          if (!planejamento || planejamento.length === 0) {
-              $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
-              return;
-          }
-          planejamento.forEach(item => {
-              const saldo = parseFloat(item.qtd_planejada) - parseFloat(item.qtd_carregada);
-              let saldoClass = '';
-              if (saldo === 0) { saldoClass = 'text-success'; }
-              else if (saldo < 0) { saldoClass = 'text-danger'; }
-              else { saldoClass = 'text-primary'; }
-              const html = `
-              <tr data-oe-item-id="${item.oei_id}">
-                  <td class="text-center align-middle">${item.cliente_nome}</td>
-                  <td class="align-middle">${item.prod_descricao}</td>
-                  <td class="text-center align-middle">${item.lote_completo}</td>
-                  <td class="text-center align-middle">${item.endereco_completo}</td>
-                  <td class="text-center align-middle">${item.qtd_planejada}</td>
-                  <td class="text-center align-middle">${item.qtd_carregada}</td>
-                  <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
-              </tr>
-          `;
-              $tabelaPlanejamentoBody.append(html);
-          });
-      } */
-
-    // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
     function renderPlanejamento(planejamento) {
         // 1. Limpa o corpo da tabela para evitar duplicatas
         $tabelaPlanejamentoBody.empty();
@@ -175,6 +148,24 @@ $(document).ready(function () {
         // 2. Verifica se há itens para renderizar
         if (!planejamento || planejamento.length === 0) {
             $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
+
+            if ($.fn.DataTable.isDataTable($tabela)) {
+                $tabela.DataTable().destroy();
+            }
+
+            // Inicializa a tabela vazia com responsividade
+            $tabela.DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                ordering: false,
+                language: {
+                    emptyTable: "Nenhum item encontrado na Ordem de Expedição base.",
+                    loadingRecords: "Carregando..."
+                }
+            });
+
             return;
         }
 
@@ -186,7 +177,7 @@ $(document).ready(function () {
             const qtdPlanejada = parseFloat(item.qtd_planejada);
             const saldo = qtdPlanejada - qtdCarregada;
 
-            // Adiciona classes de cor para o saldo, o que é um toque visual ótimo
+            // Adiciona classes de cor para o saldo
             let saldoClass = 'text-danger';
             if (saldo === 0) {
                 saldoClass = 'text-success'; // Saldo zero, 100% carregado
@@ -196,16 +187,33 @@ $(document).ready(function () {
 
             const html = `
             <tr data-oe-item-id="${item.oei_id}">
-                <td class="text-center align-middle">${item.cliente_nome}</td>
-                <td class="align-middle">${item.prod_descricao}</td>
-                <td class="text-center align-middle">${item.lote_completo}</td>
-                <td class="text-center align-middle">${item.endereco_completo}</td>
-                <td class="text-center align-middle">${qtdPlanejada}</td>
-                <td class="text-center align-middle">${qtdCarregada}</td>
-                <td class="text-center align-middle fw-bold ${saldoClass}">${saldo}</td>
+                <td class="text-center align-middle font-small">${item.cliente_nome}</td>
+                <td class="align-middle font-small">${item.prod_descricao}</td>
+                <td class="text-center align-middle font-small">${item.lote_completo}</td>
+                <td class="text-center align-middle font-small">${item.endereco_completo}</td>
+                <td class="text-center align-middle font-small">${qtdPlanejada}</td>
+                <td class="text-center align-middle font-small">${qtdCarregada}</td>
+                <td class="text-center align-middle fw-bold ${saldoClass} font-small">${saldo}</td>
             </tr>
         `;
             $tabelaPlanejamentoBody.append(html);
+        });
+
+        // 4. Recria a DataTable com responsividade
+        if ($.fn.DataTable.isDataTable($tabela)) {
+            $tabela.DataTable().destroy();
+        }
+
+        $tabela.DataTable({
+            responsive: true,
+            paging: false,
+            searching: false,
+            info: false,
+            ordering: false,
+            language: {
+                emptyTable: "Nenhum item encontrado na Ordem de Expedição base.",
+                loadingRecords: "Carregando..."
+            }
         });
     }
 
@@ -242,13 +250,13 @@ $(document).ready(function () {
 
                     itensHtml += `
                     <tr>
-                        <td class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
-                        <td class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
-                        <td class="text-center align-middle">${item.lote_completo || ''}</td>
-                        <td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
-                        <td class="text-center align-middle">${item.endereco_completo || ''}</td>
-                        <td class="text-center align-middle"">${item.qtd_carregada}</td>
-                        <td class="text-center align-middle"">${itemAcoesHtml}</td>
+                        <td style="width:10%" class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
+                        <td style="width:45%" class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
+                        <td style="width:10%" class="text-center align-middle">${item.lote_completo || ''}</td>
+                        <td style="width:10%" class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
+                        <td style="width:10%" class="text-center align-middle">${item.endereco_completo || ''}</td>
+                        <td style="width:10%" class="text-center align-middle"">${item.qtd_carregada}</td>
+                        <td style="width:5%" class="text-center align-middle"">${itemAcoesHtml}</td>
                     </tr>`;
                 });
 
@@ -266,16 +274,16 @@ $(document).ready(function () {
                         <div>${clienteBotoesHtml}</div>
                     </div>
                     <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
-                        <table class="table table-sm table-bordered table-striped mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-bordered table-striped mb-0 w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
+                            <thead>
                                 <tr>
-                                    <th class="text-center align-middle">Cód. Interno</th>
-                                    <th class="text-center align-middle">Produto</th>
-                                    <th class="text-center align-middle">Lote</th>
-                                    <th class="text-center align-middle">Cliente do Lote</th>
-                                    <th class="text-center align-middle">Endereço</th>
-                                    <th class="text-center align-middle"">Qtd. Carregada</th>
-                                    <th class="text-center align-middle"">Ações</th>
+                                    <th style="width:10%" class="text-center align-middle">Cód. Interno</th>
+                                    <th style="width:45%" class="text-center align-middle">Produto</th>
+                                    <th style="width:10%" class="text-center align-middle">Lote</th>
+                                    <th style="width:10%" class="text-center align-middle">Cliente do Lote</th>
+                                    <th style="width:10%" class="text-center align-middle">Endereço</th>
+                                    <th style="width:10%" class="text-center align-middle"">Qtd. Carregada</th>
+                                    <th style="width:5%" class="text-center align-middle"">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>${itensHtml}</tbody>
@@ -293,9 +301,9 @@ $(document).ready(function () {
                     removerFilaBtnHtml = `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
                 }
                 filaBotoesHtml = `
-                <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
-                <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
-                <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
+                            <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
+                            <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
+                            <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
                 ${removerFilaBtnHtml}`;
             } else {
                 filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
@@ -327,6 +335,25 @@ $(document).ready(function () {
                 $content.show();
                 $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
             }
+        });
+
+        // Inicializa DataTables responsivo para cada tabela de cliente
+        $('.tabela-execucao').each(function () {
+            const $tabela = $(this);
+            if ($.fn.DataTable.isDataTable($tabela)) {
+                $tabela.DataTable().destroy();
+            }
+            $tabela.DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                ordering: false,
+                language: {
+                    emptyTable: "Nenhum item nesta fila.",
+                    loadingRecords: "Carregando..."
+                }
+            });
         });
 
         // Lógica centralizada para habilitar/desabilitar os botões de Ação Principal

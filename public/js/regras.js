@@ -72,6 +72,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             {
                 "data": "cliente_nome",
@@ -81,21 +82,22 @@ $(document).ready(function () {
                 "data": "produto_nome",
                 "className": "align-middle"
             },
-            { "data": "template_nome",
-                "className":"align-middle" },
+            {
+                "data": "template_nome",
+                "className": "align-middle"
+            },
             {
                 "data": "regra_prioridade",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "regra_id",
                 "orderable": false,
-                "className": "text-center align-middle actions-column",
-                "render": function (data) {
-                    return `
-                        <button class="btn btn-warning btn-sm btn-editar-regra" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir-regra" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
-                    `;
+                "className": "col-centralizavel align-middle actions-column",
+                "render": (data) => {
+                    let btnEditar = `<button class="btn btn-warning btn-sm btn-editar-regra me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-regra d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                 }
             }
         ],

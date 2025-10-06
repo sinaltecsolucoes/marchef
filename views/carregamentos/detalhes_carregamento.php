@@ -80,8 +80,7 @@
     <div class="card-body">
         <p class="text-muted">Resumo dos itens planejados na Ordem de Expedição. Use esta tabela como referência para o
             carregamento.</p>
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm" id="tabela-planejamento">
+            <table class="table table-bordered table-sm w-100" id="tabela-planejamento">
                 <thead class="table-light">
                     <tr>
                         <th class="text-center align-middle">Cliente</th>
@@ -96,7 +95,7 @@
                 <tbody id="tabela-planejamento-body">
                 </tbody>
             </table>
-        </div>
+        
     </div>
 </div>
 

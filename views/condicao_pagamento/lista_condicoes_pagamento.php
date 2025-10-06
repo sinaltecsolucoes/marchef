@@ -18,10 +18,13 @@
     </div>
 </div>
 
-<div class="card shadow card-custom">
+<div class="card shadow mb-4 card-custom">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Condições de Pagamento</h6>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="tabela-condicoes" class="table table-hover table-bordered my-4" style="width:100%">
+            <table class="table table-bordered table-hover" id="tabela-condicoes" width="100%" cellspacing="0">
                 <thead>
                     <tr>
                         <th class="text-center align-middle">Status</th>

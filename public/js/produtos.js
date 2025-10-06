@@ -197,26 +197,26 @@ $(document).ready(function () {
             },
             {
                 "data": "prod_tipo",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "prod_tipo_embalagem",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "prod_peso_embalagem",
-                "className": "text-center align-middle"
+                "className": "col-centralizavel align-middle"
             },
             {
                 "data": "prod_codigo",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": (data) =>
-                    `<div class="btn-group" role="group">
-                        <a href="#" class="btn btn-warning btn-sm btn-editar-produto me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>
-                        <a href="#" class="btn btn-info btn-sm btn-copiar-produto me-1" data-id="${data}" title="Copiar/Duplicar"><i class="fas fa-copy me-1"></i>Copiar</a> 
-                        <a href="#" class="btn btn-danger btn-sm btn-excluir-produto me-1" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>
-                    </div>`
+                "className": "col-centralizavel align-middle",
+                "render": (data) => {
+                    let btnEditar = `<a href="#" class="btn btn-warning btn-sm btn-editar-produto me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                    let btnCopiar = `<a href="#" class="btn btn-info btn-sm btn-copiar-produto me-1 d-inline-flex align-items-center" data-id="${data}" title="Copiar/Duplicar"><i class="fas fa-copy me-1"></i>Copiar</a>`;
+                    let btnExcluir = `<a href="#" class="btn btn-danger btn-sm btn-excluir-produto me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`;
+                    return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}</div>`;
+                }
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }

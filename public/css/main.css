@@ -97,12 +97,6 @@ body {
     /* Ajuste o valor conforme necessário */
 }
 
-/*
-#tabela-composicao-carregamento th:nth-child(2),
-#tabela-composicao-carregamento td:nth-child(2) {
-    display: table-cell !important;
-}*/
-
 qtd-a-finalizar {
     padding-top: .5rem;
     padding-bottom: .5rem;
@@ -138,7 +132,82 @@ qtd-a-finalizar {
     /* Alinha verticalmente os itens */
 }
 
+
+/* Garante que a coluna de ações nas tabelas do modal de lote tenha espaço suficiente */
+.coluna-acoes-lote {
+    min-width: 230px;
+    /* Ajuste este valor se necessário */
+    white-space: nowrap;
+    /* Impede que os botões quebrem a linha */
+}
+
+/* Adiciona um pequeno espaçamento entre os botões de ação */
+.coluna-acoes-lote .btn {
+    margin-right: 4px;
+}
+
+/* Estilos para o submenu aninhado no navbar */
+.dropdown-menu .dropdown-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -7px;
+}
+
+.dropdown-menu>li:hover>.dropdown-submenu {
+    display: block;
+}
+
+.bg-menu-azul {
+    background-color: #a1c8f0;
+}
+
+.modal-body ul li {
+    margin-bottom: 6px;
+}
+
+.modal-body a {
+    text-decoration: none;
+    color: #0d6efd;
+}
+
+.modal-body a:hover {
+    text-decoration: underline;
+}
+
+.modal-body hr {
+    border-top: 1px solid #ccc;
+}
+
+.modal-title i {
+    color: #fff;
+}
+
+.modal-footer {
+    border-top: none;
+}
+
 @media (max-width: 768px) {
+    .card-body .d-flex.flex-wrap {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #botoes-cabecalho-oe {
+        width: 100%;
+        justify-content: flex-start;
+        
+    }
+
+    table.dataTable td.col-centralizavel {
+        text-align: left;
+    }
+
     .card-custom .card-body .row {
         flex-direction: column;
         /* Empilha todas as colunas */
@@ -172,33 +241,12 @@ qtd-a-finalizar {
         width: 100%;
         /* Botão ocupa toda a largura em telas menores */
     }
+
 }
 
-/* Garante que a coluna de ações nas tabelas do modal de lote tenha espaço suficiente */
-.coluna-acoes-lote {
-    min-width: 230px;
-    /* Ajuste este valor se necessário */
-    white-space: nowrap;
-    /* Impede que os botões quebrem a linha */
-}
-
-/* Adiciona um pequeno espaçamento entre os botões de ação */
-.coluna-acoes-lote .btn {
-    margin-right: 4px;
-}
-
-/* Estilos para o submenu aninhado no navbar */
-.dropdown-menu .dropdown-submenu {
-    display: none;
-    position: absolute;
-    left: 100%;
-    top: -7px;
-}
-
-.dropdown-menu>li:hover>.dropdown-submenu {
-    display: block;
-}
-
-.bg-menu-azul {
-    background-color: #a1c8f0;
+/* Telas grandes: centraliza */
+@media (min-width: 769px) {
+    table.dataTable td.col-centralizavel {
+        text-align: center;
+    }
 }

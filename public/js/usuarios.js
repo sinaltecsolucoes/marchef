@@ -17,29 +17,47 @@ $(document).ready(function () {
         "responsive": true,
         "columns": [
             {
-                "data": "usu_situacao", "className": "text-center align-middle",
+                "data": "usu_situacao",
+                "className": "text-center align-middle",
                 "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
             },
             {
-                "data": "usu_nome", "className": "text-center align-middle",
-            },
-            {
-                "data": "usu_login", "className": "text-center align-middle",
-            },
-            {
-                "data": "usu_tipo", "className": "text-center align-middle",
-            },
-            {
-                "data": "usu_codigo", "orderable": false,
+                "data": "usu_nome",
                 "className": "text-center align-middle",
-                "render": (data, type, row) =>
-                    `<a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>` +
-                    `<a href="#" class="btn btn-danger btn-sm btn-excluir-usuario" data-id="${data}" data-nome="${row.usu_nome}"><i class="fas fa-trash-alt me-1"></i>Excluir</a>`
+            },
+            {
+                "data": "usu_login",
+                "className": "text-center align-middle",
+            },
+            {
+                "data": "usu_tipo",
+                "className": "col-centralizavel align-middle"
+            },
+            {
+                "data": "usu_codigo",
+                "orderable": false,
+                "className": "col-centralizavel align-middle",
+                "render": (data, type, row) => {
+                    let btnEditar = `
+                                <a href="#" class="btn btn-warning btn-sm btn-editar-usuario me-1 d-inline-flex align-items-center" data-id="${data}">
+                                <i class="fas fa-pencil-alt me-1"></i>Editar
+                                </a>`;
+
+                    let btnExcluir = `
+                                <a href="#" class="btn btn-danger btn-sm btn-excluir-usuario d-inline-flex align-items-center" data-id="${data}" data-nome="${row.usu_nome}">
+                                <i class="fas fa-trash-alt me-1"></i>Excluir
+                                </a>`;
+
+                    return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
+                }
             }
         ],
         //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
+
+
+
 
     // Abrir modal para Adicionar
     $('#btn-adicionar-usuario').on('click', function () {
@@ -108,9 +126,9 @@ $(document).ready(function () {
                 $.post('ajax_router.php?action=excluirUsuario', { usu_codigo: id, csrf_token: csrfToken }, function (response) {
                     tableUsuarios.ajax.reload();
                     if (response.success) {
-                        notificacaoSucesso('Excluído!', response.message); // << REATORADO
+                        notificacaoSucesso('Excluído!', response.message);
                     } else {
-                        notificacaoErro('Erro!', response.message); // << REATORADO
+                        notificacaoErro('Erro!', response.message);
                     }
                 }, 'json').fail(function () {
                     notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o usuário.');

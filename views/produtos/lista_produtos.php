@@ -14,29 +14,21 @@
         <div class="row align-items-center">
             <p>Gerencie todos os produtos</p>
 
-            <!-- Botão Adicionar -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <!-- Botão Adicionar Produto -->
                 <button class="btn btn-primary" id="btn-adicionar-produto-main">
                     <i class="fas fa-plus me-2"></i> Adicionar Produto
                 </button>
-            </div>
 
-            <!-- Espaço vazio (coluna 2) -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
-
-            <!-- Espaço vazio (coluna 3) -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-none d-md-block"></div>
-
-            <!-- Filtro por Situação -->
-            <div class="col-12 col-md-3 mb-3 mb-md-0 d-flex align-items-center">
-                <label class="form-label me-2" style="white-space: nowrap;">Filtrar por Situação:</label>
-                <div class="d-flex flex-wrap">
-                    <div class="form-check form-check-inline me-3">
+                <!-- Filtro por Situação -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <label class="form-label mb-0 text-nowrap">Filtrar por Situação:</label>
+                    <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
                             value="Todos" checked>
                         <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
                     </div>
-                    <div class="form-check form-check-inline me-3">
+                    <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
                             value="A">
                         <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
@@ -62,13 +54,13 @@
             <table class="table table-bordered table-hover" id="tabela-produtos" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center">Situação</th>
-                        <th class="text-center">Cód. Interno</th>
-                        <th class="text-center">Descrição</th>
-                        <th class="text-center">Tipo</th>
-                        <th class="text-center">Embalagem</th>
-                        <th class="text-center">Peso</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center align-middle">Situação</th>
+                        <th class="text-center align-middle">Cód. Interno</th>
+                        <th class="text-center align-middle">Descrição</th>
+                        <th class="text-center align-middle">Tipo</th>
+                        <th class="text-center align-middle">Embalagem</th>
+                        <th class="text-center align-middle">Peso</th>
+                        <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -279,8 +271,10 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="submit" form="form-produto" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar Produto</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Fechar</button>
+                <button type="submit" form="form-produto" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar
+                    Produto</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                        class="fas fa-times me-2"></i>Fechar</button>
             </div>
         </div>
     </div>

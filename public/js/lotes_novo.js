@@ -21,6 +21,7 @@ $(document).ready(function () {
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             {
                 "data": "lote_completo_calculado",
@@ -32,7 +33,7 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_data_fabricacao",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data + 'T00:00:00');
@@ -41,7 +42,7 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_status",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data) {
                     let badgeClass = 'bg-secondary';
                     if (data === 'EM ANDAMENTO') badgeClass = 'bg-warning text-dark';
@@ -53,7 +54,7 @@ $(document).ready(function () {
             },
             {
                 "data": "lote_data_cadastro",
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
                 "render": function (data) {
                     if (!data) return '';
                     const date = new Date(data);
@@ -63,67 +64,64 @@ $(document).ready(function () {
             {
                 "data": "lote_id",
                 "orderable": false,
-                "className": "text-center align-middle",
+                "className": "col-centralizavel align-middle",
 
                 "render": function (data, type, row) {
                     const status = row.lote_status;
                     const loteId = row.lote_id;
                     const loteNome = row.lote_completo_calculado;
-                    let acoesHtml = '';
+                    let btnHtml = ''; // ← Botões principais
                     let menuItens = '';
 
-                    // Captura o pageType no início para ser usado em toda a função
                     const pageType = $('body').data('page-type');
 
-                    // Define os botões principais com base no status
                     if (status === 'EM ANDAMENTO' || status === 'PARCIALMENTE FINALIZADO') {
-                        acoesHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Editar Lote"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+                        btnHtml += `<button class="btn btn-warning btn-sm btn-editar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" title="Editar Lote"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
 
                         if (pageType === 'lotes_embalagem') {
-                            acoesHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote"><i class="fas fa-check-circle me-1"></i>Finalizar</button>`;
+                            btnHtml += `<button class="btn btn-success btn-sm btn-finalizar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" data-nome="${loteNome}" title="Finalizar Lote"><i class="fas fa-check-circle me-1"></i>Finalizar</button>`;
                         }
 
-                        // Apenas adiciona o item "Cancelar" na tela de Produção
                         if (pageType === 'lotes_producao') {
-                            menuItens += `<li><a class="dropdown-item btn-cancelar-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
+                            menuItens += `<li><a class="dropdown-item btn-cancelar-lote d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Cancelar Lote</a></li>`;
                         }
 
                     } else if (status === 'FINALIZADO') {
-                        acoesHtml += `<button class="btn btn-info btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
+                        btnHtml += `<button class="btn btn-info btn-sm btn-editar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
 
                         if (pageType === 'lotes_embalagem') {
-                            menuItens += `<li><a class="dropdown-item btn-reabrir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
+                            menuItens += `<li><a class="dropdown-item btn-reabrir-lote d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
                         }
 
-
                     } else if (status === 'CANCELADO') {
-                        acoesHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
-                        menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
+                        btnHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
+                        menuItens += `<li><a class="dropdown-item text-success btn-reativar-lote-novo d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Reativar Lote</a></li>`;
                     }
 
-                    // Apenas adiciona o item "Excluir" na tela de Produção
                     if (pageType === 'lotes_producao') {
                         if (menuItens !== '') {
                             menuItens += `<li><hr class="dropdown-divider"></li>`;
                         }
-                        menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
+                        menuItens += `<li><a class="dropdown-item text-danger btn-excluir-lote d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Excluir Permanentemente</a></li>`;
                     }
 
-                    // Constrói o menu dropdown APENAS se houver itens nele
+                    // Agrupa os botões principais
+                    let acoesHtml = `<div class="btn-group">${btnHtml}</div>`;
+
+                    // Adiciona o dropdown se houver itens
                     if (menuItens) {
                         acoesHtml += `
-                    <div class="btn-group d-inline-block">
-                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            Mais
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            ${menuItens}
-                        </ul>
-                    </div>`;
+                                    <div class="btn-group d-inline-block">
+                                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Mais
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                        ${menuItens}
+                                        </ul>
+                                    </div>`;
                     }
                     return acoesHtml;
                 }
-
             }
         ],
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },

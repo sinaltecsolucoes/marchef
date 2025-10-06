@@ -9,11 +9,13 @@ $(document).ready(function () {
     // =================================================================
     const table = $('#tabela-condicoes').DataTable({
         "serverSide": true,
+        "processing": true,
         "ajax": {
             "url": "ajax_router.php?action=listarCondicoesPagamento",
             "type": "POST",
             "data": { csrf_token: csrfToken }
         },
+        "responsive": true,
         "columns": [
             {
                 "data": "cond_ativo",
@@ -32,18 +34,17 @@ $(document).ready(function () {
             },
             {
                 "data": "cond_dias_parcelas",
-                "className": "text-center align-middle",
-
+                "className": "col-centralizavel align-middle font-small"
             },
             {
                 "data": "cond_id",
                 "orderable": false,
-                "className": "text-center align-middle",
-                "render": function (data) {
-                    return `
-                        <button class="btn btn-warning btn-sm btn-editar" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
-                        <button class="btn btn-danger btn-sm btn-excluir" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
-                    `;
+                "className": "col-centralizavel align-middle",
+                "render": (data) => {
+                    let btnEditar = `<button class="btn btn-warning btn-sm btn-editar me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</button>`;
+                    let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+
+                    return `<div class="btn-group">${btnEditar}${btnExcluir}</div>`;
                 }
             }
         ],
