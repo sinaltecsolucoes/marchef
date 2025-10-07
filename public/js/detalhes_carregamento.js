@@ -217,7 +217,172 @@ $(document).ready(function () {
         });
     }
 
+
+
     // --- RENDERIZAÇÃO DA EXECUÇÃO (Filas e Itens) ---
+    /*   function renderExecucao(filas, statusCarregamento) {
+           let html = '<div>';
+           filas.forEach((fila, index) => {
+               const clientesNaFila = {};
+               if (fila.itens && fila.itens.length > 0) {
+                   fila.itens.forEach(item => {
+                       const clienteKey = item.car_item_cliente_id;
+                       if (!clientesNaFila[clienteKey]) {
+                           clientesNaFila[clienteKey] = { id: item.car_item_cliente_id, nome: item.cliente_nome, itens: [] };
+                       }
+                       clientesNaFila[clienteKey].itens.push(item);
+                   });
+               }
+   
+               let clientesHtml = '';
+               for (const clienteId in clientesNaFila) {
+                   const cliente = clientesNaFila[clienteId];
+                   let itensHtml = '';
+   
+                   cliente.itens.forEach(item => {
+                       const divergenciaBadge = item.motivo_divergencia ? `<span class="badge bg-danger" title="Divergência: ${item.motivo_divergencia}">D</span>` : '';
+                       let itemAcoesHtml = '';
+                       if (statusCarregamento === 'EM ANDAMENTO') {
+                           itemAcoesHtml = `
+                           <div class="btn-group btn-group-sm">
+                               <button class="btn btn-warning btn-editar-item me-1" data-item-id="${item.car_item_id}" title="Editar"><i class="fas fa-edit"></i></button>
+                               <button class="btn btn-danger btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir"><i class="fas fa-trash"></i></button>
+                           </div>`;
+                       }
+   
+                       itensHtml += `
+                       <tr>
+                           <td style="width:10%" class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
+                           <td style="width:45%" class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
+                           <td style="width:10%" class="text-center align-middle">${item.lote_completo || ''}</td>
+                           <td style="width:10%" class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
+                           <td style="width:10%" class="text-center align-middle">${item.endereco_completo || ''}</td>
+                           <td style="width:10%" class="text-center align-middle"">${item.qtd_carregada}</td>
+                           <td style="width:5%" class="text-center align-middle"">${itemAcoesHtml}</td>
+                       </tr>`;
+                   });
+   
+                   let clienteBotoesHtml = '';
+                   if (statusCarregamento === 'EM ANDAMENTO') {
+                       clienteBotoesHtml = `
+                       <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}"><i class="fas fa-plus me-1"></i> Adicionar Item</button>
+                       <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}"><i class="fas fa-trash me-1"></i> Excluir Cliente</button>`;
+                   }
+   
+                   clientesHtml += `
+                   <div class="card mb-2 shadow-sm">
+                       <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                           <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}"><i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}</span>
+                           <div>${clienteBotoesHtml}</div>
+                       </div>
+                       <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
+                           <table class="table table-sm table-bordered table-striped mb-0 w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
+                               <thead>
+                                   <tr>
+                                       <th style="width:10%" class="text-center align-middle">Cód. Interno</th>
+                                       <th style="width:45%" class="text-center align-middle">Produto</th>
+                                       <th style="width:10%" class="text-center align-middle">Lote</th>
+                                       <th style="width:10%" class="text-center align-middle">Cliente do Lote</th>
+                                       <th style="width:10%" class="text-center align-middle">Endereço</th>
+                                       <th style="width:10%" class="text-center align-middle"">Qtd. Carregada</th>
+                                       <th style="width:5%" class="text-center align-middle"">Ações</th>
+                                   </tr>
+                               </thead>
+                               <tbody>${itensHtml}</tbody>
+                           </table>
+                       </div>
+                   </div>`;
+               }
+   
+               let filaBotoesHtml = '';
+               if (statusCarregamento === 'EM ANDAMENTO') {
+                   let removerFilaBtnHtml = '';
+                   if (index === filas.length - 1) {
+                       removerFilaBtnHtml = `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
+                   } else {
+                       removerFilaBtnHtml = `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
+                   }
+                   filaBotoesHtml = `
+                               <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
+                               <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
+                               <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
+                   ${removerFilaBtnHtml}`;
+               } else {
+                   filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
+               }
+   
+               html += `
+               <div class="card mb-3 shadow-sm border-primary">
+                   <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                       <span class="toggle-btn" data-target=".fila-${fila.fila_id}"><i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}</span>
+                       <div class="d-flex align-items-center">${filaBotoesHtml}</div>
+                   </div>
+                   <div class="card-body fila-${fila.fila_id}" style="display: none;">
+                       ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
+                   </div>
+               </div>`;
+           });
+           html += '</div>';
+   
+           $filasContainer.html(html);
+   
+           $('.toggle-btn').on('click', function () {
+               const targetClass = $(this).data('target');
+               const $content = $(targetClass);
+               const $icon = $(this).find('i');
+               if ($content.is(':visible')) {
+                   $content.hide();
+                   $icon.removeClass('fa-minus-square').addClass('fa-plus-square');
+               } else {
+                   $content.show();
+                   $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
+               }
+           });
+   
+           // Inicializa DataTables responsivo para cada tabela de cliente
+           $('.tabela-execucao').each(function () {
+               const $tabela = $(this);
+               if ($.fn.DataTable.isDataTable($tabela)) {
+                   $tabela.DataTable().destroy();
+               }
+               $tabela.DataTable({
+                   responsive: true,
+                   paging: false,
+                   searching: false,
+                   info: false,
+                   ordering: false,
+                   language: {
+                       emptyTable: "Nenhum item nesta fila.",
+                       loadingRecords: "Carregando..."
+                   }
+               });
+           });
+   
+           // Lógica centralizada para habilitar/desabilitar os botões de Ação Principal
+           let podeCriarNovaFila = (filas.length === 0);
+           let podeFinalizar = false;
+   
+           if (filas.length > 0) {
+               const ultimaFila = filas[filas.length - 1];
+               const temItens = ultimaFila.itens && ultimaFila.itens.length > 0;
+               const temFotos = ultimaFila.total_fotos > 0;
+               const ultimaFilaCompleta = temItens && temFotos;
+               podeCriarNovaFila = ultimaFilaCompleta;
+               podeFinalizar = ultimaFilaCompleta;
+           }
+   
+           $('#btn-adicionar-fila').prop('disabled', !podeCriarNovaFila)
+               .attr('title', podeCriarNovaFila ?
+                   'Adicionar uma nova fila de carregamento' :
+                   'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
+   
+           $('#btn-finalizar-detalhe').prop('disabled', !podeFinalizar)
+               .attr('title', podeFinalizar ?
+                   'Finalizar o carregamento e baixar o estoque' :
+                   'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
+       } */
+
+
     function renderExecucao(filas, statusCarregamento) {
         let html = '<div>';
         filas.forEach((fila, index) => {
@@ -226,7 +391,11 @@ $(document).ready(function () {
                 fila.itens.forEach(item => {
                     const clienteKey = item.car_item_cliente_id;
                     if (!clientesNaFila[clienteKey]) {
-                        clientesNaFila[clienteKey] = { id: item.car_item_cliente_id, nome: item.cliente_nome, itens: [] };
+                        clientesNaFila[clienteKey] = {
+                            id: item.car_item_cliente_id,
+                            nome: item.cliente_nome,
+                            itens: []
+                        };
                     }
                     clientesNaFila[clienteKey].itens.push(item);
                 });
@@ -238,106 +407,154 @@ $(document).ready(function () {
                 let itensHtml = '';
 
                 cliente.itens.forEach(item => {
-                    const divergenciaBadge = item.motivo_divergencia ? `<span class="badge bg-danger" title="Divergência: ${item.motivo_divergencia}">D</span>` : '';
+                    const divergenciaBadge = item.motivo_divergencia
+                        ? `<span class="badge bg-danger" title="Divergência: ${item.motivo_divergencia}">D</span>` : '';
                     let itemAcoesHtml = '';
                     if (statusCarregamento === 'EM ANDAMENTO') {
                         itemAcoesHtml = `
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-warning btn-editar-item me-1" data-item-id="${item.car_item_id}" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-danger btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </div>`;
+                    <div class="d-inline-flex gap-1">
+                        <button class="btn btn-warning btn-xs btn-editar-item" data-item-id="${item.car_item_id}" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-xs btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>`;
                     }
 
                     itensHtml += `
-                    <tr>
-                        <td style="width:10%" class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
-                        <td style="width:45%" class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
-                        <td style="width:10%" class="text-center align-middle">${item.lote_completo || ''}</td>
-                        <td style="width:10%" class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
-                        <td style="width:10%" class="text-center align-middle">${item.endereco_completo || ''}</td>
-                        <td style="width:10%" class="text-center align-middle"">${item.qtd_carregada}</td>
-                        <td style="width:5%" class="text-center align-middle"">${itemAcoesHtml}</td>
-                    </tr>`;
+                <tr>
+                    <td class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
+                    <td class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
+                    <td class="text-center align-middle">${item.lote_completo || ''}</td>
+                    <td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
+                    <td class="text-center align-middle">${item.endereco_completo || ''}</td>
+                    <td class="text-center align-middle">${item.qtd_carregada}</td>
+                    <td class="text-center align-middle">${itemAcoesHtml}</td>
+                </tr>`;
                 });
 
                 let clienteBotoesHtml = '';
                 if (statusCarregamento === 'EM ANDAMENTO') {
                     clienteBotoesHtml = `
-                    <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}"><i class="fas fa-plus me-1"></i> Adicionar Item</button>
-                    <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}"><i class="fas fa-trash me-1"></i> Excluir Cliente</button>`;
+                <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}">
+                    <i class="fas fa-plus me-1"></i> Adicionar Item
+                </button>
+                <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}">
+                    <i class="fas fa-trash me-1"></i> Excluir Cliente
+                </button>`;
                 }
 
                 clientesHtml += `
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}"><i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}</span>
-                        <div>${clienteBotoesHtml}</div>
-                    </div>
-                    <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
-                        <table class="table table-sm table-bordered table-striped mb-0 w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
-                            <thead>
-                                <tr>
-                                    <th style="width:10%" class="text-center align-middle">Cód. Interno</th>
-                                    <th style="width:45%" class="text-center align-middle">Produto</th>
-                                    <th style="width:10%" class="text-center align-middle">Lote</th>
-                                    <th style="width:10%" class="text-center align-middle">Cliente do Lote</th>
-                                    <th style="width:10%" class="text-center align-middle">Endereço</th>
-                                    <th style="width:10%" class="text-center align-middle"">Qtd. Carregada</th>
-                                    <th style="width:5%" class="text-center align-middle"">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>${itensHtml}</tbody>
-                        </table>
-                    </div>
-                </div>`;
+            <div class="card mb-2 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}">
+                        <i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}
+                    </span>
+                    <div>${clienteBotoesHtml}</div>
+                </div>
+                <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
+                    <table class="table table-sm table-bordered table-striped w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
+                        <thead>
+                            <tr>
+                                <th class="text-center align-middle">Cód. Interno</th>
+                                <th class="text-center align-middle">Produto</th>
+                                <th class="text-center align-middle">Lote</th>
+                                <th class="text-center align-middle">Cliente do Lote</th>
+                                <th class="text-center align-middle">Endereço</th>
+                                <th class="text-center align-middle">Qtd. Carregada</th>
+                                <th class="text-center align-middle">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itensHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
             }
 
             let filaBotoesHtml = '';
             if (statusCarregamento === 'EM ANDAMENTO') {
-                let removerFilaBtnHtml = '';
-                if (index === filas.length - 1) {
-                    removerFilaBtnHtml = `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
-                } else {
-                    removerFilaBtnHtml = `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
-                }
+                const ultimaFila = index === filas.length - 1;
                 filaBotoesHtml = `
-                            <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
-                            <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
-                            <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
-                ${removerFilaBtnHtml}`;
+                <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}">
+                    <i class="fas fa-plus me-1"></i> Adicionar Cliente
+                </button>
+                <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}">
+                    <i class="fas fa-camera me-1"></i> Adicionar Foto
+                </button>
+                <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}">
+                    <i class="fas fa-images me-1"></i> Ver Fotos
+                </button>
+                ${ultimaFila
+                        ? `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}">
+                        <i class="fas fa-trash me-1"></i> Excluir Fila
+                    </button>`
+                        : `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores">
+                        <i class="fas fa-trash me-1"></i> Excluir Fila
+                    </button>`}`;
             } else {
-                filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
+                filaBotoesHtml = `
+                <button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}">
+                    <i class="fas fa-images me-1"></i> Ver Fotos
+                </button>`;
             }
 
             html += `
-            <div class="card mb-3 shadow-sm border-primary">
-                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <span class="toggle-btn" data-target=".fila-${fila.fila_id}"><i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}</span>
-                    <div class="d-flex align-items-center">${filaBotoesHtml}</div>
-                </div>
-                <div class="card-body fila-${fila.fila_id}" style="display: none;">
-                    ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
-                </div>
-            </div>`;
+        <div class="card mb-3 shadow-sm border-primary">
+            <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                <span class="toggle-btn" data-target=".fila-${fila.fila_id}">
+                    <i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}
+                </span>
+                <div class="d-flex align-items-center">${filaBotoesHtml}</div>
+            </div>
+            <div class="card-body fila-${fila.fila_id}" style="display: none;">
+                ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
+            </div>
+        </div>`;
         });
         html += '</div>';
 
         $filasContainer.html(html);
 
+        // Toggle de colapso
+        /*  $('.toggle-btn').on('click', function () {
+              const targetClass = $(this).data('target');
+              const $content = $(targetClass);
+              const $icon = $(this).find('i');
+              if ($content.is(':visible')) {
+                  $content.hide();
+                  $icon.removeClass('fa-minus-square').addClass('fa-plus-square');
+              } else {
+                  $content.show();
+                  $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
+              }
+          }); */
+
+
         $('.toggle-btn').on('click', function () {
             const targetClass = $(this).data('target');
             const $content = $(targetClass);
             const $icon = $(this).find('i');
+
             if ($content.is(':visible')) {
                 $content.hide();
                 $icon.removeClass('fa-minus-square').addClass('fa-plus-square');
             } else {
                 $content.show();
                 $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
+
+                // Aguarda a transição visual e ajusta o DataTables
+                setTimeout(() => {
+                    $content.find('.tabela-execucao').each(function () {
+                        const table = $(this).DataTable();
+                        table.columns.adjust().responsive.recalc();
+                    });
+                }, 150); // tempo suficiente para o DOM aplicar o display
             }
         });
 
-        // Inicializa DataTables responsivo para cada tabela de cliente
+
+        // Inicializa DataTables responsivo
         $('.tabela-execucao').each(function () {
             const $tabela = $(this);
             if ($.fn.DataTable.isDataTable($tabela)) {
@@ -356,7 +573,7 @@ $(document).ready(function () {
             });
         });
 
-        // Lógica centralizada para habilitar/desabilitar os botões de Ação Principal
+        // Botões principais
         let podeCriarNovaFila = (filas.length === 0);
         let podeFinalizar = false;
 
@@ -369,16 +586,21 @@ $(document).ready(function () {
             podeFinalizar = ultimaFilaCompleta;
         }
 
-        $('#btn-adicionar-fila').prop('disabled', !podeCriarNovaFila)
-            .attr('title', podeCriarNovaFila ?
-                'Adicionar uma nova fila de carregamento' :
-                'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
+        $('#btn-adicionar-fila')
+            .prop('disabled', !podeCriarNovaFila)
+            .attr('title', podeCriarNovaFila
+                ? 'Adicionar uma nova fila de carregamento'
+                : 'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
 
-        $('#btn-finalizar-detalhe').prop('disabled', !podeFinalizar)
-            .attr('title', podeFinalizar ?
-                'Finalizar o carregamento e baixar o estoque' :
-                'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
+        $('#btn-finalizar-detalhe')
+            .prop('disabled', !podeFinalizar)
+            .attr('title', podeFinalizar
+                ? 'Finalizar o carregamento e baixar o estoque'
+                : 'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
     }
+
+
+
 
 
     // --- LÓGICA DO NOVO MODAL UNIFICADO ---

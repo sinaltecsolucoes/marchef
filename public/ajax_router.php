@@ -560,6 +560,9 @@ switch ($action) {
     case 'getVisaoEstoqueHierarquico':
         getVisaoEstoqueHierarquico($enderecoRepo);
         break;
+    case 'getVisaoEstoqueHierarquicoFiltrada':
+        getVisaoEstoqueHierarquicoFiltrada($enderecoRepo);
+        break;
 
     // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---
     case 'listarOrdensExpedicao':
@@ -2689,6 +2692,30 @@ function getVisaoEstoqueHierarquico(EnderecoRepository $repo)
 {
     try {
         $data = $repo->getVisaoHierarquicaEstoque();
+        echo json_encode(['success' => true, 'data' => $data]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Função para buscar a visão hierárquica do estoque filtrada.
+ */
+function getVisaoEstoqueHierarquicoFiltrada(EnderecoRepository $repo)
+{
+    try {
+        // Captura o termo de busca enviado via GET
+        $term = trim($_GET['term'] ?? '');
+
+        if (empty($term)) {
+            // Se o termo estiver vazio, chama a função não filtrada
+            $data = $repo->getVisaoHierarquicaEstoque();
+        } else {
+            // Se houver termo, chama a função filtrada (que você precisará criar)
+            // Assumo que você irá criar o método getVisaoHierarquicaEstoqueFiltrada no EnderecoRepository
+            $data = $repo->getVisaoHierarquicaEstoqueFiltrada($term);
+        }
+
         echo json_encode(['success' => true, 'data' => $data]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);

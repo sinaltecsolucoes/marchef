@@ -4,6 +4,23 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-body">
+
+        <!-- NOVO CAMPO DE PESQUISA -->
+        <div class="mb-4">
+            <label for="input-search-estoque" class="form-label fw-bold"><i class="fas fa-search me-1"></i> Pesquisar
+                Estoque por Item</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="input-search-estoque"
+                    placeholder="Digite a descrição do produto ou número do lote...">
+                <button class="btn btn-primary" type="button" id="btn-search-estoque">Buscar</button>
+                <button class="btn btn-secondary" type="button" id="btn-clear-search" style="display: none;"><i
+                        class="fas fa-times me-1"></i> Limpar</button>
+            </div>
+            <small class="form-text text-muted">A pesquisa irá exibir apenas a câmara e endereço onde o item for
+                encontrado.</small>
+        </div>
+        <!-- FIM DO CAMPO DE PESQUISA -->
+
         <p>Clique no ícone <i class="fas fa-plus-square text-primary"></i> para expandir uma câmara e visualizar seus
             endereços e itens alocados.</p>
         <div id="tree-container" class="mt-3">
@@ -47,8 +64,10 @@
 
                 </div>
                 <div class="modal-footer">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Confirmar Alocação</button>    
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>                    
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Confirmar
+                        Alocação</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="fas fa-times me-2"></i>Cancelar</button>
                 </div>
             </form>
         </div>
@@ -69,7 +88,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Fechar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                        class="fas fa-times me-2"></i>Fechar</button>
             </div>
         </div>
     </div>

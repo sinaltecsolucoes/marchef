@@ -79,6 +79,10 @@ $(document).ready(function () {
         $('#destinos-geral').val(Array.from(destinos).sort().join(', '));
     }
 
+
+
+
+
     function renderizarDetalhes(ordem) {
         if (!ordem || !ordem.header) return;
 
@@ -138,9 +142,15 @@ $(document).ready(function () {
                         // A célula de Ações do Item só é criada se NÃO estiver bloqueada
                         const acoesItemHtml = !estaBloqueada ?
                             `<td class="text-center align-middle">
-                            <button class="btn btn-warning btn-xs me-1 btn-editar-item" data-oei-id="${item.oei_id}" title="Editar este item"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="btn btn-danger btn-xs btn-remover-item" data-oei-id="${item.oei_id}" title="Remover este item"><i class="fas fa-times"></i></button>
-                         </td>` : '';
+                                    <div class="d-inline-flex gap-1">
+                                        <button class="btn btn-warning btn-xs me-1 btn-editar-item" 
+                                                        data-oei-id="${item.oei_id}" 
+                                                        title="Editar este item"><i class="fas fa-pencil-alt"></i></button>
+                                        <button class="btn btn-danger btn-xs btn-remover-item" 
+                                                        data-oei-id="${item.oei_id}" 
+                                                        title="Remover este item"><i class="fas fa-times"></i></button>
+                                    </div>
+                            </td>` : '';
 
                         itensHtml += `
                         <tr>
@@ -185,8 +195,8 @@ $(document).ready(function () {
                         </h5>
                         <div>${botoesAcaoPedido}</div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered table-hover">
+                    <div>
+                        <table class="table table-sm table-bordered table-hover tabela-pedido">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center align-middle small" style="width: 5%;">Código</th>
@@ -212,7 +222,29 @@ $(document).ready(function () {
         }
 
         atualizarTotais(ordem.pedidos);
+
+        $('.tabela-pedido').each(function () {
+            const $tabela = $(this);
+            if ($.fn.DataTable.isDataTable($tabela)) {
+                $tabela.DataTable().destroy();
+            }
+            $tabela.DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                ordering: false,
+                language: {
+                    emptyTable: "Nenhum produto adicionado a este pedido.",
+                    loadingRecords: "Carregando..."
+                }
+            });
+        });
     }
+
+
+
+
 
     function carregarOrdemCompleta(id) {
         $.ajax({

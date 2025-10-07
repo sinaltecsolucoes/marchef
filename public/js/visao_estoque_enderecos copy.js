@@ -49,13 +49,14 @@ $(document).ready(function () {
      */
     function construirArvore(data) {
         $container.empty();
-
-        // Verifica se estamos em modo de busca ativa
-        const isSearching = !!currentSearchTerm;
+        /* if (Object.keys(data).length === 0) {
+             $container.html('<p class="text-muted">Nenhuma câmara cadastrada.</p>');
+             return;
+         }*/
 
         if (Object.keys(data).length === 0) {
             // Se houver termo de busca e nenhum resultado
-            if (isSearching) {
+            if (currentSearchTerm) {
                 $container.html(`<div class="alert alert-warning text-center">Nenhum item encontrado para a busca: <strong>${currentSearchTerm}</strong>.</div>`);
             } else {
                 $container.html('<p class="text-muted text-center">Nenhuma câmara cadastrada ou estoque encontrado.</p>');
@@ -69,63 +70,80 @@ $(document).ready(function () {
             <thead class="table-light">
                 <tr>
                     <th style="width: 40px;"></th>
-                    <th>Descrição (Câmara / Endereço)</th> 
-                    <th class="text-center align-middle" style="width: 10%;">Caixas Físicas</th>
-                    <th class="text-center align-middle" style="width: 10%;">Caixas Reserv.</th>
-                    <th class="text-center align-middle" style="width: 10%;">Caixas Disp.</th>
-                    <th class="text-center align-middle" style="width: 10%;">Quilos (kg)</th>
-                    <th class="text-center align-middle" style="width: 10%;">Ação</th>
+                    <th class="align-middle">Descrição (Câmara / Endereço)</th>
+                    <th class="text-center align-middle" style="width: 120px;">Caixas Físicas</th>
+                    <th class="text-center align-middle" style="width: 120px;">Caixas Reserv.</th>
+                    <th class="text-center align-middle" style="width: 120px;">Caixas Disp.</th>
+                    <th class="text-center align-middle" style="width: 120px;">Quilos (kg)</th>
+                    <th class="text-center align-middle" style="width: 150px;">Ação</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-        $.each(data, function (camaraId, camara) {
+        // Váriavel para rastrear se o primeiro item foi expandido (apenas para o modo de busca)
+        let firstItemExpanded = false;
 
+        $.each(data, function (camaraId, camara) {
             // 2. CÂMARAS
             const caixasDisponiveisCamara = camara.total_caixas - camara.total_caixas_reservadas;
 
-            // Ícone da CÂMARA: Se estiver pesquisando, começa aberto (fa-minus-square)
-            const camaraIconClass = isSearching ? 'fa-minus-square' : 'fa-plus-square';
-
+            // Define o ícone inicial da CÂMARA
+            const camaraIconClass = (currentSearchTerm && Object.keys(camara.enderecos).length > 0) ? 'fa-minus-square' : 'fa-plus-square';
+                        
             html += `
             <tr class="table-primary" style="border-top: 2px solid #a9c6e8; border-bottom: 1px solid #a9c6e8;">
-                <td><i class="fas ${camaraIconClass} toggle-btn" data-target=".camara-${camaraId}"></i></td>
+                <td><i class="fas fa-plus-square toggle-btn" data-target=".camara-${camaraId}"></i></td>
                 <td><strong>${camara.nome} (${camara.codigo})</strong></td>
-                <td class="text-center" style="width: 10%;"><strong>${formatarNumero(camara.total_caixas)}</strong></td>
-                <td class="text-center text-danger" style="width: 10%;"><strong>${formatarNumero(camara.total_caixas_reservadas)}</strong></td>
-                <td class="text-center text-success fw-bolder" style="width: 10%;"><strong>${formatarNumero(caixasDisponiveisCamara)}</strong></td>
-                <td class="text-center" style="width: 10%;"><strong>${formatarNumero(camara.total_quilos, true)}</strong></td>
-                <td style="width: 10%;"></td>
+                <td class="text-center"><strong>${formatarNumero(camara.total_caixas)}</strong></td>
+                <td class="text-center text-danger"><strong>${formatarNumero(camara.total_caixas_reservadas)}</strong></td>
+                <td class="text-center text-success fw-bolder"><strong>${formatarNumero(caixasDisponiveisCamara)}</strong></td>
+                <td class="text-center"><strong>${formatarNumero(camara.total_quilos, true)}</strong></td>
+                <td></td>
             </tr>
         `;
 
             if (Object.keys(camara.enderecos).length > 0) {
                 $.each(camara.enderecos, function (enderecoId, endereco) {
                     const temItens = endereco.itens.length > 0;
-
-                    // Ícone do ENDEREÇO: Se estiver pesquisando E tiver itens, começa aberto (fa-minus-square)
-                    let enderecoIconClass = temItens ? 'fa-plus-square' : 'fa-square text-muted';
-                    if (isSearching && temItens) {
-                        enderecoIconClass = 'fa-minus-square';
-                    }
-
+                    const iconClass = temItens ? 'fa-plus-square' : 'fa-square text-muted';
                     const toggleClass = temItens ? 'toggle-btn' : '';
                     const caixasDisponiveisEndereco = endereco.total_caixas - endereco.total_caixas_reservadas;
 
-                    // Estilo de exibição: Se estiver pesquisando, TODAS as linhas de endereço devem vir abertas.
-                    const displayStyle = isSearching ? 'display: table-row;' : 'display: none;';
-
+                    // Condição para expandir o primeiro endereço na busca
+                    let displayStyle = 'display: none;';
+                    let enderecoIconClass = iconClass; // Inicializa com o ícone normal (+)
+                    
+                    if (currentSearchTerm && !firstItemExpanded) {
+                        displayStyle = 'display: table-row;';
+                        if (temItens) {
+                            enderecoIconClass = 'fa-minus-square'; // Troca para o ícone de recolher (-)
+                        }
+                    }
+                    
                     // 3. ENDEREÇOS
-                    html += `
+                  /*  html += `
+                    <tr class="camara-${camaraId}" style="display: none;">
+                        <td></td>
+                        <td class="ps-4"><i class="fas ${iconClass} ${toggleClass}" data-target=".endereco-${enderecoId}"></i> ${endereco.nome}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_caixas)}</td>
+                        <td class="text-center text-danger">${formatarNumero(endereco.total_caixas_reservadas)}</td>
+                        <td class="text-center text-success fw-bolder">${formatarNumero(caixasDisponiveisEndereco)}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_quilos, true)}</td>
+                        <td class="text-center">
+                            <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}"><i class="fas fa-download me-1"></i>Alocar Item</button>
+                        </td>
+                    </tr>
+                `;*/
+                html += `
                     <tr class="camara-${camaraId}" style="${displayStyle}">
-                        <td style="width: 40px;"></td>
-                        <td><i class="fas ${enderecoIconClass} ${toggleClass}" data-target=".endereco-${enderecoId}"></i> ${endereco.nome}</td>
-                        <td class="text-center" style="width: 10%;">${formatarNumero(endereco.total_caixas)}</td>
-                        <td class="text-center text-danger" style="width: 10%;">${formatarNumero(endereco.total_caixas_reservadas)}</td>
-                        <td class="text-center text-success fw-bolder" style="width: 10%;">${formatarNumero(caixasDisponiveisEndereco)}</td>
-                        <td class="text-center" style="width: 10%;">${formatarNumero(endereco.total_quilos, true)}</td>
-                        <td class="text-center" style="width: 10%;">
+                        <td></td>
+                        <td class="ps-4"><i class="fas ${enderecoIconClass} ${toggleClass}" data-target=".endereco-${enderecoId}"></i> ${endereco.nome}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_caixas)}</td>
+                        <td class="text-center text-danger">${formatarNumero(endereco.total_caixas_reservadas)}</td>
+                        <td class="text-center text-success fw-bolder">${formatarNumero(caixasDisponiveisEndereco)}</td>
+                        <td class="text-center">${formatarNumero(endereco.total_quilos, true)}</td>
+                        <td class="text-center">
                             <button class="btn btn-success btn-sm btn-alocar-item" data-id="${endereco.endereco_id}" data-nome="${endereco.nome}"><i class="fas fa-download me-1"></i>Alocar Item</button>
                         </td>
                     </tr>
@@ -133,29 +151,42 @@ $(document).ready(function () {
 
                     if (temItens) {
 
-                        // Estilo de exibição da TABELA DE ITENS: Se estiver pesquisando, TODOS os itens devem vir abertos.
-                        const itemTableDisplayStyle = isSearching ? 'display: table-row;' : 'display: none;';
+                        // Determinar se a tabela de itens deve ser exibida (apenas na busca)
+                        const itemTableDisplayStyle = (currentSearchTerm && !firstItemExpanded) ? 'display: table-row;' : 'display: none;';
 
-                        html += `
-                        <tr class="endereco-${enderecoId}" style="${itemTableDisplayStyle}">
+                      /*  html += `
+                        <tr class="endereco-${enderecoId}" style="display: none;">
                             <td colspan="7">
                                 <div class="ps-5 p-3 border rounded shadow-sm bg-white">
-                                    <table class="table table-sm table-bordered table-hover mb-0" style="width: 100%;">
+                                    <table class="table table-sm table-bordered table-hover mb-0">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width: 40%; text-align: left; padding-left: 20px;">Produto</th>
+                                                <th style="width: 40%; text-align: center; vertical-align: middle;">Produto</th>
                                                 <th style="width: 10%; text-align: center; vertical-align: middle;">Lote</th>
-                                                
                                                 <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Física</th>
                                                 <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Reservada</th>
                                                 <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Disponível</th>
-                                                
-                                                <th style="width: 10%; text-align: center; vertical-align: middle;"></th> 
-                                                
                                                 <th style="width: 10%; text-align: center; vertical-align: middle;">Ação</th>
                                             </tr>
                                         </thead>
-                                        <tbody>`;
+                                        <tbody>`;*/
+                         html += `
+                            <tr class="endereco-${enderecoId}" style="${itemTableDisplayStyle}">
+                                <td colspan="7">
+                                    <div class="ps-5 p-3 border rounded shadow-sm bg-white">
+                                        <table class="table table-sm table-bordered table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 40%; text-align: center; vertical-align: middle;">Produto</th>
+                                                    <th style="width: 10%; text-align: center; vertical-align: middle;">Lote</th>
+                                                    <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Física</th>
+                                                    <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Reservada</th>
+                                                    <th style="width: 10%; text-align: center; vertical-align: middle;">Qtd. Disponível</th>
+                                                    <th style="width: 10%; text-align: center; vertical-align: middle;">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>`;
+                                                                
                         $.each(endereco.itens, function (i, item) {
                             const qtdDisponivel = item.quantidade_fisica - item.quantidade_reservada;
                             let reservadoHtml = formatarNumero(item.quantidade_reservada);
@@ -164,14 +195,12 @@ $(document).ready(function () {
                             }
 
                             html += `<tr>
-                                    <td style="width: 40%; padding-left: 20px;">${item.produto}</td>
-                                    <td style="width: 10%; text-align: center; vertical-align: middle;">${item.lote}</td>
-                                    
-                                    <td class="text-center align-middle" style="width: 10%;">${formatarNumero(item.quantidade_fisica)}</td>
-                                    <td class="text-center align-middle" style="width: 10%;">${reservadoHtml}</td>
-                                    <td class="text-center align-middle text-success fw-bolder" style="width: 10%;">${formatarNumero(qtdDisponivel)}</td>
-                                    
-                                    <td style="width: 10%;"></td> <td class="text-center align-middle" style="width: 10%;">
+                                    <td style="width: 40%;">${item.produto}</td>
+                                    <td style="width: 20%; text-align: center; vertical-align: middle;">${item.lote}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">${formatarNumero(item.quantidade_fisica)}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">${reservadoHtml}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle; text-success fw-bolder">${formatarNumero(qtdDisponivel)}</td>
+                                    <td style="width: 10%; text-align: center; vertical-align: middle;">
                                         <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -182,8 +211,12 @@ $(document).ready(function () {
                                 </div>
                             </td>
                         </tr>`;
-                    }
 
+                        // Marca que o primeiro item foi expandido após a primeira iteração em modo de busca
+                        if (currentSearchTerm && !firstItemExpanded) {
+                            firstItemExpanded = true;
+                        }
+                    }
                 });
             } else {
                 html += `<tr class="camara-${camaraId}" style="display: none;"><td colspan="7" class="text-muted ps-5">Nenhum endereço cadastrado nesta câmara.</td></tr>`;
@@ -192,12 +225,15 @@ $(document).ready(function () {
 
         html += '</tbody></table>';
         $container.html(html);
+
+        // Atualiza ícones de expansão se estiver em modo de busca
+       /* if (currentSearchTerm) {
+            // Expande o ícone da primeira câmara e endereço
+            $container.find('.toggle-btn:first').removeClass('fa-plus-square').addClass('fa-minus-square');
+            $container.find('.camara-' + Object.keys(data)[0] + ' .toggle-btn:first').removeClass('fa-plus-square').addClass('fa-minus-square');
+        }*/
     }
 
-    /**
-     * Carrega os dados do estoque, aceitando um termo de busca opcional.
-     * @param {string} termoBusca - Termo para filtrar por produto ou lote.
-     */
     function carregarDados(termoBusca = '') {
         currentSearchTerm = termoBusca; // Atualiza a variável de controle
 
@@ -212,6 +248,7 @@ $(document).ready(function () {
         $btnClearSearch.prop('disabled', true);
 
         $.ajax({
+            // url: 'ajax_router.php?action=getVisaoEstoqueHierarquico',
             url: url,
             type: 'GET',
             dataType: 'json'
@@ -242,7 +279,6 @@ $(document).ready(function () {
     }
 
     // --- LÓGICA DE PESQUISA ---
-
     $btnSearch.on('click', function () {
         const term = $inputSearch.val().trim();
         if (term.length >= 3) {
@@ -251,7 +287,8 @@ $(document).ready(function () {
             // Se o usuário clicar em buscar com o campo vazio, carrega tudo
             carregarDados('');
         } else {
-            notificacaoAviso('Atenção', 'Por favor, digite pelo menos 3 caracteres para a busca.');
+            // Usei uma notificação de erro ou um tooltip aqui seria ideal
+            alert('Por favor, digite pelo menos 3 caracteres para a busca.');
         }
     });
 
@@ -269,9 +306,17 @@ $(document).ready(function () {
         carregarDados(''); // Recarrega o estoque completo
     });
 
-    // --- FIM DA LÓGICA DE PESQUISA ---
 
-    // Inicialização
+    /* function formatarNumero(valor, decimal = false) {
+         // Converte para número, se ainda não for
+         const numero = parseFloat(valor) || 0;
+         // Configuração para pt-BR
+         return numero.toLocaleString('pt-BR', {
+             minimumFractionDigits: decimal ? 3 : 0,
+             maximumFractionDigits: decimal ? 3 : 0
+         });
+     }*/
+
     carregarDados();
 
     $container.on('click', '.toggle-btn', function () {
@@ -306,14 +351,14 @@ $(document).ready(function () {
             if (response.success) {
                 $modalAlocar.modal('hide');
                 notificacaoSucesso('Sucesso!', response.message);
-                carregarDados(currentSearchTerm); // Recarrega com ou sem filtro
+                carregarDados();
             } else {
                 notificacaoErro('Erro ao Alocar', response.message);
             }
         });
     });
 
-    // --- EVENTO PARA DESALOCAR UM ITEM ESPECÍFICO ---
+    // --- NOVO EVENTO PARA DESALOCAR UM ITEM ESPECÍFICO ---
     $container.on('click', '.btn-desalocar-item-especifico', function () {
         const alocacaoId = $(this).data('alocacao-id');
         confirmacaoAcao('Desalocar Item?', 'Tem a certeza que deseja remover este item do endereço?')
@@ -327,7 +372,7 @@ $(document).ready(function () {
                     }).done(function (response) {
                         if (response.success) {
                             notificacaoSucesso('Sucesso!', response.message);
-                            carregarDados(currentSearchTerm); // Recarrega com ou sem filtro
+                            carregarDados(); // Recarrega a árvore para refletir a mudança
                         } else {
                             notificacaoErro('Erro!', response.message);
                         }

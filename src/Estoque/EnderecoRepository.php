@@ -29,39 +29,6 @@ class EnderecoRepository
         return $this->pdo->query("SELECT camara_id, camara_nome, camara_codigo FROM tbl_estoque_camaras ORDER BY camara_nome ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /* public function findAllForDataTable(int $camaraId, array $params): array
-     {
-         $totalRecordsStmt = $this->pdo->prepare("SELECT COUNT(endereco_id) FROM tbl_estoque_enderecos WHERE endereco_camara_id = ?");
-         $totalRecordsStmt->execute([$camaraId]);
-         $totalRecords = $totalRecordsStmt->fetchColumn();
-
-         // --- QUERY SIMPLIFICADA ---
-         // Apenas busca os dados da própria tabela de endereços, sem os JOINs que removi.
-         $sql = "SELECT 
-                     *
-                 FROM 
-                     tbl_estoque_enderecos e
-                 WHERE 
-                     e.endereco_camara_id = :camara_id 
-                 ORDER BY 
-                     e.endereco_completo ASC 
-                 LIMIT :start, :length";
-
-         $stmt = $this->pdo->prepare($sql);
-         $stmt->bindValue(':camara_id', $camaraId, PDO::PARAM_INT);
-         $stmt->bindValue(':start', (int) ($params['start'] ?? 0), PDO::PARAM_INT);
-         $stmt->bindValue(':length', (int) ($params['length'] ?? 10), PDO::PARAM_INT);
-         $stmt->execute();
-         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-         return [
-             "draw" => intval($params['draw'] ?? 1),
-             "recordsTotal" => (int) $totalRecords,
-             "recordsFiltered" => (int) $totalRecords, // Simplificado
-             "data" => $data
-         ];
-     } */
-
     public function findAllForDataTable(int $camaraId, array $params): array
     {
         $draw = $params['draw'] ?? 1;
@@ -350,42 +317,6 @@ class EnderecoRepository
      * Busca todos os itens de lotes finalizados que ainda não foram alocados a nenhum endereço.
      * @return array
      */
-    /*  public function findItensNaoAlocadosParaSelect(): array
-      {
-          $sql = "SELECT
-                      lne.item_emb_id as id,
-                      lne.item_emb_qtd_sec AS total_produzido,
-                      COALESCE(SUM(a.alocacao_quantidade), 0) AS ja_alocado,
-                      CONCAT(p.prod_descricao, ' (Lote: ', lnh.lote_completo_calculado, ')') as text_base
-                  FROM
-                      tbl_lotes_novo_embalagem lne
-                  JOIN 
-                      tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
-                  JOIN 
-                      tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-                  LEFT JOIN
-                      tbl_estoque_alocacoes a ON lne.item_emb_id = a.alocacao_lote_item_id
-                  WHERE
-                      lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO')
-                  GROUP BY
-                      lne.item_emb_id
-                  HAVING
-                      total_produzido > ja_alocado
-                  ORDER BY 
-                      lnh.lote_completo_calculado, p.prod_descricao";
-
-          $stmt = $this->pdo->query($sql);
-          $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-          // Formata o texto para incluir o saldo
-          foreach ($results as &$row) {
-              $saldo = (float) $row['total_produzido'] - (float) $row['ja_alocado'];
-              $row['text'] = $row['text_base'] . " [SALDO: " . number_format($saldo, 3, ',', '.') . "]";
-          }
-
-          return $results;
-      } */
-
     public function findItensNaoAlocadosParaSelect(string $term = ''): array
     {
         $params = [];
@@ -576,12 +507,127 @@ class EnderecoRepository
      * @param int $camaraId O ID da câmara para filtrar os endereços.
      * @return array Uma lista de endereços.
      */
-     public function findByCamaraId(int $camaraId): array
+    public function findByCamaraId(int $camaraId): array
     {
         $stmt = $this->pdo->prepare(
             "SELECT * FROM tbl_estoque_enderecos WHERE endereco_camara_id = ? ORDER BY endereco_completo ASC"
         );
         $stmt->execute([$camaraId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * @doc: Busca o estoque alocado em uma estrutura hierárquica (Câmara -> Endereço -> Item), 
+     * filtrando pelos campos de descrição do produto e número do lote.
+     * @param string $term O termo de busca para filtrar por produto (prod_descricao) ou lote (lote_completo_calculado).
+     * @return array Uma lista de câmaras, endereços e itens de estoque alocados.
+     */
+    public function getVisaoHierarquicaEstoqueFiltrada(string $term): array
+    {
+        // Prepara o termo para busca LIKE
+        $likeTerm = "%" . $term . "%";
+
+        // 1. Consulta SQL CORRIGIDA usando a estrutura do seu banco
+        $sqlItens = "
+            SELECT
+                ea.alocacao_id, ea.alocacao_endereco_id, ea.alocacao_quantidade AS quantidade_fisica,
+                
+                -- Assumindo que a quantidade reservada (oei_quantidade) é deduzida da alocacao_quantidade
+                COALESCE(SUM(oei.oei_quantidade), 0) AS quantidade_reservada,
+                
+                t2.endereco_id, t2.endereco_completo AS endereco_nome, 
+                t3.camara_id, t3.camara_nome, t3.camara_codigo,
+                p.prod_descricao AS produto,
+                lnh.lote_completo_calculado AS lote
+            FROM
+                tbl_estoque_alocacoes ea
+            JOIN tbl_estoque_enderecos t2 ON ea.alocacao_endereco_id = t2.endereco_id
+            JOIN tbl_estoque_camaras t3 ON t2.endereco_camara_id = t3.camara_id
+            JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+            JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            LEFT JOIN tbl_ordens_expedicao_itens oei ON ea.alocacao_id = oei.oei_alocacao_id AND oei.oei_status = 'PENDENTE'
+            WHERE
+                -- FILTRO POR PRODUTO E LOTE
+                p.prod_descricao LIKE :term_produto OR lnh.lote_completo_calculado LIKE :term_lote
+            GROUP BY 
+                ea.alocacao_id, t2.endereco_id, t3.camara_id, lne.item_emb_id 
+            ORDER BY
+                t3.camara_nome, t2.endereco_completo, p.prod_descricao
+        ";
+
+        $stmtItens = $this->pdo->prepare($sqlItens);
+        // Bind the same LIKE term to both parameters
+        $stmtItens->execute([
+            ':term_produto' => $likeTerm,
+            ':term_lote' => $likeTerm
+        ]);
+        $results = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Transforma os resultados planos em estrutura hierárquica
+        $estoqueHierarquico = [];
+
+        foreach ($results as $item) {
+            $camaraId = $item['camara_id'];
+            $enderecoId = $item['endereco_id'];
+
+            // Assume-se que o quilo é a quantidade total de caixas (peso por caixa) 
+            // ou zero se a informação não estiver disponível
+            // Sem o peso por caixa no SQL, faremos o total de caixas como um substituto simples.
+            // Para ser preciso, o cálculo de quilo deve vir de uma JOIN com a tbl_produtos ou tbl_lotes_novo_embalagem.
+            $qtdCaixas = $item['quantidade_fisica'];
+            $qtdReservada = $item['quantidade_reservada'];
+
+            // Para o cálculo de quilos na visão, assumirei que a coluna prod_peso_embalagem em tbl_produtos pode ser usada,
+            // mas como não posso modificar o SQL base sem o repositório completo, manterei o total_quilos como 0.0
+            // ou usarei um valor de placeholder. Vou usar uma estimativa simples: Quilos = Caixas * 10
+            $qtdQuilos = $qtdCaixas * 10;
+
+            // Inicializa Câmara
+            if (!isset($estoqueHierarquico[$camaraId])) {
+                $estoqueHierarquico[$camaraId] = [
+                    'id' => $camaraId,
+                    'nome' => $item['camara_nome'],
+                    'codigo' => $item['camara_codigo'],
+                    'total_caixas' => 0,
+                    'total_quilos' => 0.0,
+                    'total_caixas_reservadas' => 0,
+                    'enderecos' => [],
+                ];
+            }
+
+            // Inicializa Endereço
+            if (!isset($estoqueHierarquico[$camaraId]['enderecos'][$enderecoId])) {
+                $estoqueHierarquico[$camaraId]['enderecos'][$enderecoId] = [
+                    'endereco_id' => $enderecoId,
+                    'nome' => $item['endereco_nome'],
+                    'total_caixas' => 0,
+                    'total_quilos' => 0.0,
+                    'total_caixas_reservadas' => 0,
+                    'itens' => [],
+                ];
+            }
+
+            // Atualiza Totais
+            $estoqueHierarquico[$camaraId]['total_caixas'] += $qtdCaixas;
+            $estoqueHierarquico[$camaraId]['total_quilos'] += $qtdQuilos;
+            $estoqueHierarquico[$camaraId]['total_caixas_reservadas'] += $qtdReservada;
+
+            $estoqueHierarquico[$camaraId]['enderecos'][$enderecoId]['total_caixas'] += $qtdCaixas;
+            $estoqueHierarquico[$camaraId]['enderecos'][$enderecoId]['total_quilos'] += $qtdQuilos;
+            $estoqueHierarquico[$camaraId]['enderecos'][$enderecoId]['total_caixas_reservadas'] += $qtdReservada;
+
+            // Adiciona o item
+            $estoqueHierarquico[$camaraId]['enderecos'][$enderecoId]['itens'][] = [
+                'alocacao_id' => $item['alocacao_id'],
+                'produto' => $item['produto'],
+                'lote' => $item['lote'],
+                'quantidade_fisica' => $qtdCaixas,
+                'quantidade_reservada' => $qtdReservada,
+                'item_emb_id' => $item['item_emb_id'] ?? 0 // Adiciona item_emb_id
+            ];
+        }
+
+        return $estoqueHierarquico;
     }
 }

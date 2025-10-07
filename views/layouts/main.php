@@ -153,6 +153,26 @@
                     <?php endif; ?>
 
                     <?php
+                    // Verifica se o usuário tem permissão para ver a página de estoque
+                    $paginasConsulta = ['estoque'];
+                    if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Estoques</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('visao_estoque_enderecos', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
+                                            Endereços</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php
                     $paginasExpedicao = ['ordens_expedicao', 'carregamentos'];
                     if (count(array_intersect($paginasExpedicao, $paginasPermitidasUsuario)) > 0):
                         ?>
@@ -183,26 +203,6 @@
                                 <?php if (in_array('faturamentos_listar', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=faturamentos_listar">Gerenciar
                                             Faturamentos</a></li>
-                                <?php endif; ?>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
-
-                    <?php
-                    // Verifica se o usuário tem permissão para ver a página de estoque
-                    $paginasConsulta = ['estoque'];
-                    if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
-                        ?>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button"
-                                data-bs-toggle="dropdown">Consultas</a>
-                            <ul class="dropdown-menu">
-                                <?php if (in_array('estoque', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=estoque">Visão Geral do Estoque</a></li>
-                                <?php endif; ?>
-                                <?php if (in_array('visao_estoque_enderecos', $paginasPermitidasUsuario)): ?>
-                                    <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
-                                            Endereços</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
