@@ -1,4 +1,3 @@
-
 $(document).ready(function () {
     // --- Variáveis e Modais (sem alterações) ---
     const csrfToken = $('input[name="csrf_token"]').val();
@@ -79,22 +78,16 @@ $(document).ready(function () {
         $('#destinos-geral').val(Array.from(destinos).sort().join(', '));
     }
 
-
-
-
-
     function renderizarDetalhes(ordem) {
         if (!ordem || !ordem.header) return;
 
         const estaBloqueada = ordem.header.oe_status === 'GEROU CARREGAMENTO';
 
-        // Desabilita o Sortable e esconde os ícones de arrastar se a OE estiver bloqueada
         if (sortableInstance) {
             sortableInstance.option("disabled", estaBloqueada);
         }
         $('.drag-handle').toggle(!estaBloqueada);
 
-        // Atualiza o título e desabilita o formulário do cabeçalho
         $('#ordem_id').val(ordem.header.oe_id);
         $('#oe_numero').val(ordem.header.oe_numero);
         $('#oe_data').val(ordem.header.oe_data);
@@ -105,22 +98,18 @@ $(document).ready(function () {
 
         $pedidosContainer.empty();
 
-        // LÓGICA DO BOTÃO DE RELATÓRIO
         if ($('#btn-relatorio-oe').length === 0) {
             const btnRelatorio = `
-                <a id="btn-relatorio-oe" 
-                href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" 
-                target="_blank" 
-                class="btn btn-success me-2 d-inline-flex align-items-center flex-shrink-0">
-                <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
-            // Adiciona o botão DENTRO do novo container de botões
+            <a id="btn-relatorio-oe" 
+            href="index.php?page=ordem_expedicao_relatorio&id=${ordem.header.oe_id}" 
+            target="_blank" 
+            class="btn btn-success me-2 d-inline-flex align-items-center flex-shrink-0">
+            <i class="fas fa-print me-1"></i>Imprimir Relatório</a>`;
             $('#botoes-cabecalho-oe').prepend(btnRelatorio);
         }
 
-        // LÓGICA PARA OS BOTÕES DE AÇÃO GLOBAIS
         if (estaBloqueada) {
             $('#btn-adicionar-pedido-cliente').hide();
-            // Garante que o aviso não seja duplicado
             if ($('#aviso-bloqueio-oe').length === 0) {
                 $('.card-header:contains("2. Detalhes")').append(
                     '<span id="aviso-bloqueio-oe" class="badge bg-warning text-dark ms-3">Esta OE está bloqueada pois já gerou um carregamento.</span>'
@@ -128,7 +117,7 @@ $(document).ready(function () {
             }
         } else {
             $('#btn-adicionar-pedido-cliente').show();
-            $('#aviso-bloqueio-oe').remove();// Remove o aviso se a OE for reaberta
+            $('#aviso-bloqueio-oe').remove();
         }
 
         if (ordem.pedidos && ordem.pedidos.length > 0) {
@@ -138,85 +127,80 @@ $(document).ready(function () {
                 if (pedido.itens && pedido.itens.length > 0) {
                     pedido.itens.forEach(item => {
                         const qtdQuilos = (parseFloat(item.oei_quantidade) || 0) * (parseFloat(item.peso_secundario) || 0);
-
-                        // A célula de Ações do Item só é criada se NÃO estiver bloqueada
                         const acoesItemHtml = !estaBloqueada ?
                             `<td class="text-center align-middle">
-                                    <div class="d-inline-flex gap-1">
-                                        <button class="btn btn-warning btn-xs me-1 btn-editar-item" 
-                                                        data-oei-id="${item.oei_id}" 
-                                                        title="Editar este item"><i class="fas fa-pencil-alt"></i></button>
-                                        <button class="btn btn-danger btn-xs btn-remover-item" 
-                                                        data-oei-id="${item.oei_id}" 
-                                                        title="Remover este item"><i class="fas fa-times"></i></button>
-                                    </div>
-                            </td>` : '';
+                            <div class="d-inline-flex gap-1">
+                                <button class="btn btn-warning btn-xs me-1 btn-editar-item" 
+                                                data-oei-id="${item.oei_id}" 
+                                                title="Editar este item"><i class="fas fa-pencil-alt"></i></button>
+                                <button class="btn btn-danger btn-xs btn-remover-item" 
+                                                data-oei-id="${item.oei_id}" 
+                                                title="Remover este item"><i class="fas fa-times"></i></button>
+                            </div>
+                        </td>` : '';
 
                         itensHtml += `
-                        <tr>
-                            <td class="text-center align-middle small">${item.prod_codigo_interno || 'N/A'}</td>
-                            <td class="align-middle small">${item.prod_descricao || 'N/A'}</td>
-                            <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.peso_primario)}</td>
-                            <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.peso_secundario)}</td>
-                            <td class="text-center align-middle small">${item.industria || 'N/A'}</td>
-                            <td class="text-center align-middle small">${item.cliente_lote_nome || 'N/A'}</td>
-                            <td class="text-center align-middle small">${item.lote_completo_calculado || 'N/A'}</td>
-                            <td class="text-center align-middle small">${item.endereco_completo || 'N/A'}</td> 
-                            <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.oei_quantidade)}</td>
-                            <td class="text-center align-middle small">${formatarNumeroBrasileiro(qtdQuilos)}</td>
-                            <td class="text-center align-middle small">${item.oei_observacao || ''}</td>
-                            ${acoesItemHtml}
-                        </tr>`;
+                    <tr>
+                        <td class="text-center align-middle small">${item.prod_codigo_interno || 'N/A'}</td>
+                        <td class="align-middle small">${item.prod_descricao || 'N/A'}</td>
+                        <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.peso_primario)}</td>
+                        <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.peso_secundario)}</td>
+                        <td class="text-center align-middle small">${item.industria || 'N/A'}</td>
+                        <td class="text-center align-middle small">${item.cliente_lote_nome || 'N/A'}</td>
+                        <td class="text-center align-middle small">${item.lote_completo_calculado || 'N/A'}</td>
+                        <td class="text-center align-middle small">${item.endereco_completo || 'N/A'}</td> 
+                        <td class="text-center align-middle small">${formatarNumeroBrasileiro(item.oei_quantidade)}</td>
+                        <td class="text-center align-middle small">${formatarNumeroBrasileiro(qtdQuilos)}</td>
+                        <td class="text-center align-middle small">${item.oei_observacao || ''}</td>
+                        ${acoesItemHtml}
+                    </tr>`;
                     });
                 } else {
-                    // Se não há itens, o colspan depende se a coluna Ações existe
                     const colspan = estaBloqueada ? 11 : 12;
                     itensHtml = `<tr><td colspan="${colspan}" class="text-center text-muted">Nenhum produto adicionado a este pedido.</td></tr>`;
                 }
 
-                // Os botões de ação do pedido (cabeçalho) só são criados se NÃO estiver bloqueado
                 const botoesAcaoPedido = !estaBloqueada ?
                     `<button class="btn btn-info btn-adicionar-produto" data-oep-id="${pedido.oep_id}"><i class="fas fa-plus me-1"></i>Adicionar Produto</button>
-                     <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
+                 <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
 
-                // O cabeçalho da coluna Ações só é criado se NÃO estiver bloqueado
                 const thAcoes = !estaBloqueada ? '<th class="text-center align-middle small" style="width: 8%;">Ações</th>' : '';
 
                 const pedidoHtml = `
-                <div class="pedido-group border border-primary-subtle rounded p-3 mb-3 shadow-sm" data-oep-id="${pedido.oep_id}">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0">
-                            <i class="fas fa-grip-vertical me-3 text-muted drag-handle" style="cursor: grab;"></i>
-                            Cliente: ${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})
-                            <span class="text-muted fw-normal ps-1">
-                                - Total Caixas: <span id="total-caixas-${pedido.oep_id}">0</span>
-                                - Total Quilos: <span id="total-quilos-${pedido.oep_id}">0,000kg</span>
-                            </span>
-                        </h5>
-                        <div>${botoesAcaoPedido}</div>
-                    </div>
-                    <div>
-                        <table class="table table-sm table-bordered table-hover tabela-pedido">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center align-middle small" style="width: 5%;">Código</th>
-                                    <th class="text-center align-middle small" style="width: 18%;">Produto</th>
-                                    <th class="text-center align-middle small" style="width: 5%;">Emb. Prim.</th>
-                                    <th class="text-center align-middle small" style="width: 5%;">Emb. Sec.</th>
-                                    <th class="text-center align-middle small" style="width: 7%;">Indústria</th>
-                                    <th class="text-center align-middle small" style="width: 10%;">Fazenda</th>
-                                    <th class="text-center align-middle small" style="width: 10%;">Lote</th>
-                                    <th class="text-center align-middle small" style="width: 10%;">Endereço</th>
-                                    <th class="text-center align-middle small" style="width: 5%;">Qtd Caixas</th>
-                                    <th class="text-center align-middle small" style="width: 5%;">Qtd Quilos</th>
-                                    <th class="text-center align-middle small" style="width: 12%;">Obs.</th>
-                                    ${thAcoes}
-                                </tr>
-                            </thead>
-                            <tbody>${itensHtml}</tbody>
-                        </table>
-                    </div>
-                </div>`;
+            <div class="pedido-group border border-primary-subtle rounded p-3 mb-3 shadow-sm" data-oep-id="${pedido.oep_id}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">
+                        <i class="fas fa-grip-vertical me-3 text-muted drag-handle" style="cursor: grab;"></i>
+                        Cliente: ${pedido.ent_razao_social || 'N/A'} (Pedido: ${pedido.oep_numero_pedido || 'N/A'})
+                        <span class="text-muted fw-normal ps-1">
+                            - Total Caixas: <span id="total-caixas-${pedido.oep_id}">0</span>
+                            - Total Quilos: <span id="total-quilos-${pedido.oep_id}">0,000kg</span>
+                        </span>
+                    </h5>
+                    <div>${botoesAcaoPedido}</div>
+                </div>
+                <div>
+                    <table class="table table-sm table-bordered table-hover tabela-pedido" style="width: 100%;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center align-middle small" style="width: 5%;">Código</th>
+                                <th class="text-center align-middle small" style="width: 18%;">Produto</th>
+                                <th class="text-center align-middle small" style="width: 5%;">Emb. Prim.</th>
+                                <th class="text-center align-middle small" style="width: 5%;">Emb. Sec.</th>
+                                <th class="text-center align-middle small" style="width: 7%;">Indústria</th>
+                                <th class="text-center align-middle small" style="width: 10%;">Fazenda</th>
+                                <th class="text-center align-middle small" style="width: 10%;">Lote</th>
+                                <th class="text-center align-middle small" style="width: 10%;">Endereço</th>
+                                <th class="text-center align-middle small" style="width: 5%;">Qtd Caixas</th>
+                                <th class="text-center align-middle small" style="width: 5%;">Qtd Quilos</th>
+                                <th class="text-center align-middle small" style="width: 12%;">Obs.</th>
+                                ${thAcoes}
+                            </tr>
+                        </thead>
+                        <tbody>${itensHtml}</tbody>
+                    </table>
+                </div>
+            </div>`;
                 $pedidosContainer.append(pedidoHtml);
             });
         }
@@ -240,12 +224,30 @@ $(document).ready(function () {
                 }
             });
         });
+
+        $(window).trigger('resize');
     }
 
 
+    function ajustarResponsividadeTabelas() {
+        $('.tabela-pedido').each(function () {
+            const $tabela = $(this);
+            if ($.fn.DataTable.isDataTable($tabela)) {
+                // Comando que faz a mágica: forçar o ajuste e recálculo
+                $tabela.DataTable().columns.adjust().responsive.recalc();
+            }
+        });
+    }
 
-
-
+    // Debounce para evitar múltiplas execuções rápidas
+    let resizeTimeout;
+    $(window).on('resize', function () {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            ajustarResponsividadeTabelas();
+        }, 100); // tempo ideal para evitar sobrecarga
+    });
+   
     function carregarOrdemCompleta(id) {
         $.ajax({
             url: 'ajax_router.php?action=getOrdemExpedicaoCompleta',
@@ -274,13 +276,16 @@ $(document).ready(function () {
     }
 
     // ### INICIALIZAÇÃO DO DRAG AND DROP ###
-    const pedidosContainerEl = document.getElementById('pedidos-container');
-    if (pedidosContainerEl) {
-        sortableInstance = new Sortable(pedidosContainerEl, {
+    // Variável 'pedidosContainerEl' já está definida acima para o ResizeObserver.
+    // Usaremos a variável local para evitar duplicação (que você já tinha feito)
+    const containerParaSortable = document.getElementById('pedidos-container');
+
+    if (containerParaSortable) {
+        sortableInstance = new Sortable(containerParaSortable, {
             animation: 150,
             handle: '.drag-handle',
             onEnd: function () {
-                const cards = pedidosContainerEl.querySelectorAll('.pedido-group');
+                const cards = containerParaSortable.querySelectorAll('.pedido-group');
                 const novaOrdemIds = Array.from(cards).map(card => card.dataset.oepId);
 
                 $.ajax({
