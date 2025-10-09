@@ -2,7 +2,7 @@
 // criar_admin_inicial.php - Script para ser executado UMA ÚNICA VEZ para configurar o admin inicial.
 // Não deve ser mantido em login.php!
 
-require_once("conexao.php"); // Certifique-se de que o caminho para conexao.php está correto.
+require_once("conexao.php"); 
 
 try {
     $query = $pdo->query("SELECT * FROM tbl_usuarios WHERE usu_tipo = 'Admin'");

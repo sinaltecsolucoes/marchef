@@ -18,7 +18,7 @@ class CarregamentoRepository
     }
 
     /**
-     * Busca carregamentos para a DataTable (REFATORADO)
+     * Busca carregamentos para a DataTable
      */
     public function findAllForDataTable(array $params): array
     {
@@ -53,7 +53,7 @@ class CarregamentoRepository
 
 
         // --- Ordenação ---
-        $order = " ORDER BY c.car_data DESC, c.car_id DESC "; // Padrão
+        $order = " ORDER BY c.car_data DESC, c.car_id DESC ";
         if (isset($params['order'][0]) && $params['columns'][$params['order'][0]['column']]['data']) {
             $colIndex = $params['order'][0]['column'];
             $colName = $params['columns'][$colIndex]['data'];
@@ -139,12 +139,12 @@ class CarregamentoRepository
             ':car_numero' => $data['car_numero'],
             ':car_data' => $data['car_data'],
             ':car_entidade_id_organizador' => $data['car_entidade_id_organizador'],
-            ':car_transportadora_id' => $data['car_transportadora_id'] ?? null, // Agora seguro
+            ':car_transportadora_id' => $data['car_transportadora_id'] ?? null,
             ':car_ordem_expedicao_id' => $ordemExpedicaoId,
-            ':car_motorista_nome' => $data['car_motorista_nome'] ?? null, // Agora seguro
-            ':car_motorista_cpf' => $data['car_motorista_cpf_limpo'] ?? null, // Agora seguro
-            ':car_placas' => $data['car_placas'] ?? null, // Agora seguro
-            ':car_lacres' => $data['car_lacres'] ?? null, // Agora seguro
+            ':car_motorista_nome' => $data['car_motorista_nome'] ?? null,
+            ':car_motorista_cpf' => $data['car_motorista_cpf_limpo'] ?? null,
+            ':car_placas' => $data['car_placas'] ?? null,
+            ':car_lacres' => $data['car_lacres'] ?? null,
             ':usuario_id' => $usuarioId,
             ':tipo' => $tipo
         ]);
@@ -158,9 +158,6 @@ class CarregamentoRepository
     {
         $stmt = $this->pdo->query("SELECT MAX(CAST(SUBSTRING_INDEX(car_numero, '.', 1) AS UNSIGNED)) FROM tbl_carregamentos");
         $lastNum = ($stmt->fetchColumn() ?: 0) + 1;
-        //$sequence = str_pad($lastNum, 4, '0', STR_PAD_LEFT);
-        //$datePart = date('m.Y');
-        //return $sequence . '.' . $datePart;
         return str_pad($lastNum, 4, '0', STR_PAD_LEFT);
 
     }
@@ -187,10 +184,6 @@ class CarregamentoRepository
      */
     public function removeFila(int $filaId): bool
     {
-        // O banco de dados está configurado com ON DELETE CASCADE,
-        // então só precisamos excluir a fila.
-        // Mas vamos fazer na mão para garantir a reversão de estoque se necessário (embora itens de carregamento não revertam)
-
         $this->pdo->beginTransaction();
         try {
             // Exclui itens
@@ -285,8 +278,7 @@ class CarregamentoRepository
         $filaId = $data['div_fila_id'];
         $motivo = $data['div_motivo'];
 
-        // Valida saldo (copiado da OrdemExpedicaoRepository)
-        // $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id)";
+        // Valida saldo
         $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
         $query = "SELECT (ea.alocacao_quantidade - {$subQueryReservado}) AS saldo_disponivel
                   FROM tbl_estoque_alocacoes ea
@@ -465,12 +457,12 @@ class CarregamentoRepository
                 }
             }
 
-            // ### INÍCIO DA NOVA LÓGICA ###
+            // ### INÍCIO DA LÓGICA ###
             // Se o carregamento tinha uma OE base, desvincula ela
             if (!empty($dadosAntigos['car_ordem_expedicao_id'])) {
                 $ordemExpedicaoRepo->unlinkCarregamento($dadosAntigos['car_ordem_expedicao_id']);
             }
-            // ### FIM DA NOVA LÓGICA ###
+            // ### FIM DA LÓGICA ###
 
             // Atualiza o status do carregamento para 'EM ANDAMENTO'
             $this->updateStatus($carregamentoId, 'EM ANDAMENTO');
@@ -600,9 +592,6 @@ class CarregamentoRepository
         // Precisamos buscar o oei_id também para o JS
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // O Select2 precisa que os dados estejam no 'data-attribute'
-        // Mas a nossa função JS já está pegando 'saldo_disponivel'
-        // Vamos modificar o retorno para incluir o OEI_ID
         return array_map(function ($row) {
             return [
                 'id' => $row['id'], // ID da Alocação
@@ -623,9 +612,6 @@ class CarregamentoRepository
         $alocacaoId = $data['cascata_alocacao_id']; // Este é o ID do Lote/Endereço
         $quantidade = $data['cascata_quantidade'];
         $oeiIdOrigem = $data['cascata_oei_id_origem']; // O ID do item da OE
-
-        // TODO: Validação de Saldo (crucial)
-        // (O JS já fez, mas sempre valide no backend)
 
         // Busca o lote_novo_item_id
         $stmtLote = $this->pdo->prepare("SELECT alocacao_lote_item_id FROM tbl_estoque_alocacoes WHERE alocacao_id = :id");
@@ -687,8 +673,6 @@ class CarregamentoRepository
         $ordemExpedicaoId = $header['oe_id']; // Pega o ID da OE
 
         // 2. Buscar Execução (Filas e Itens já carregados)
-        // $sqlFilas = "SELECT * FROM tbl_carregamento_filas WHERE fila_carregamento_id = :id ORDER BY fila_numero_sequencial";
-
         $sqlFilas = "SELECT 
                         f.*, 
                         (SELECT COUNT(foto_id) 
@@ -988,7 +972,6 @@ class CarregamentoRepository
 
     /**
      * Adiciona um item (planejado ou divergente) ao carregamento.
-     * Esta função está corrigida para lidar com divergências e somar quantidades.
      * * @param array $data Dados do formulário (incluindo quantidade e motivo de divergência)
      * @param int $carregamentoId ID do carregamento pai
      * @return int O ID do item de carregamento salvo.
@@ -1070,7 +1053,10 @@ class CarregamentoRepository
      */
     public function getEnderecosParaCarregamentoPorLoteItem(int $loteId, int $produtoId): array
     {
-        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) FROM tbl_ordens_expedicao_itens WHERE oei_alocacao_id = ea.alocacao_id AND oei_status = 'PENDENTE')";
+        $subQueryReservado = "(SELECT COALESCE(SUM(oei_quantidade), 0) 
+                                FROM tbl_ordens_expedicao_itens 
+                                WHERE oei_alocacao_id = ea.alocacao_id 
+                                AND oei_status = 'PENDENTE')";
 
         $sql = "SELECT 
                     ea.alocacao_id AS id,
@@ -1086,7 +1072,7 @@ class CarregamentoRepository
                 AND ea.alocacao_quantidade > 0";
 
         $stmt = $this->pdo->prepare($sql);
-        // ### MUDANÇA: Passa os dois parâmetros ###
+        // ### Passa os dois parâmetros ###
         $stmt->execute([':lote_id' => $loteId, ':produto_id' => $produtoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -1098,8 +1084,8 @@ class CarregamentoRepository
     public function getLotesParaCarregamentoPorProduto(int $produtoId): array
     {
         $sql = "SELECT DISTINCT
-                    lnh.lote_id AS id, -- <-- MUDANÇA: O ID agora é o 'lote_id'
-                    lnh.lote_completo_calculado AS text -- <-- MUDANÇA: O texto é SÓ o lote
+                    lnh.lote_id AS id, -- <-- O ID agora é o 'lote_id'
+                    lnh.lote_completo_calculado AS text -- <-- O texto é SÓ o lote
                 FROM tbl_estoque_alocacoes ea
                 JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
                 JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
@@ -1260,7 +1246,9 @@ class CarregamentoRepository
      */
     public function countForToday(): int
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(car_id) FROM tbl_carregamentos WHERE car_data = CURDATE()");
+        $stmt = $this->pdo->prepare("SELECT COUNT(car_id) 
+                                            FROM tbl_carregamentos 
+                                            WHERE car_data = CURDATE()");
         $stmt->execute();
         return (int) $stmt->fetchColumn();
     }
@@ -1383,18 +1371,18 @@ class CarregamentoRepository
 
         // Consulta SQL para encontrar o item
         $sql = "
-    SELECT 
-        lne.item_emb_id as lote_item_id,
-        p.prod_descricao,
-        p.prod_codigo as produtoId, 
-        lnh.lote_id as loteIdHeader 
-    FROM tbl_produtos p
-    JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
-    JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
-    WHERE p.prod_codigo_interno = :codigo_produto
-      AND lnh.lote_completo_calculado = :lote
-    LIMIT 1;
-    ";
+                SELECT 
+                        lne.item_emb_id as lote_item_id,
+                        p.prod_descricao,
+                        p.prod_codigo as produtoId, 
+                        lnh.lote_id as loteIdHeader 
+                    FROM tbl_produtos p
+                    JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
+                    JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                    WHERE p.prod_codigo_interno = :codigo_produto
+                    AND lnh.lote_completo_calculado = :lote
+                    LIMIT 1;
+                ";
 
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -1442,7 +1430,7 @@ class CarregamentoRepository
         LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
         WHERE c.car_status IN ('EM ANDAMENTO', 'EM SEPARACAO')
         ORDER BY c.car_data DESC, c.car_id DESC
-    ";
+        ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1455,19 +1443,19 @@ class CarregamentoRepository
     public function findFinalizados(): array
     {
         $sql = "
-        SELECT 
-            c.car_id AS carregamentoId,
-            c.car_numero AS numero, 
-            c.car_data AS data, 
-            c.car_status AS status,
-            e.ent_nome_fantasia AS cliente_nome,
-            u.usu_nome AS responsavel
-        FROM tbl_carregamentos c
-        LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
-        LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
-        WHERE c.car_status = 'FINALIZADO' 
-        ORDER BY c.car_data DESC, c.car_id DESC
-        ";
+            SELECT 
+                c.car_id AS carregamentoId,
+                c.car_numero AS numero, 
+                c.car_data AS data, 
+                c.car_status AS status,
+                e.ent_nome_fantasia AS cliente_nome,
+                u.usu_nome AS responsavel
+            FROM tbl_carregamentos c
+            LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo
+            LEFT JOIN tbl_usuarios u ON c.car_usuario_id_responsavel = u.usu_codigo
+            WHERE c.car_status = 'FINALIZADO' 
+            ORDER BY c.car_data DESC, c.car_id DESC
+            ";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1559,5 +1547,4 @@ class CarregamentoRepository
         $fila['clientes'] = array_values($clientes);
         return $fila;
     }
-
 }

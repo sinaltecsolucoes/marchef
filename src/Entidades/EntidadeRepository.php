@@ -103,7 +103,19 @@ class EntidadeRepository
      */
     public function find(int $id): ?array
     {
-        $query = $this->pdo->prepare("SELECT ent.*, end.end_cep, end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf FROM tbl_entidades ent LEFT JOIN (SELECT *, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 ELSE 2 END) as rn FROM tbl_enderecos) end ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1 WHERE ent.ent_codigo = :id");
+        $query = $this->pdo->prepare("SELECT ent.*, end.end_cep, end.end_logradouro, end.end_numero, 
+                                                    end.end_complemento, end.end_bairro, end.end_cidade, 
+                                                    end.end_uf 
+                                             FROM tbl_entidades ent 
+                                             LEFT JOIN (SELECT *, ROW_NUMBER() 
+                                                        OVER(PARTITION BY end_entidade_id 
+                                                             ORDER BY CASE end_tipo_endereco 
+                                                             WHEN 'Principal' 
+                                                             THEN 1 ELSE 2 END) as rn 
+                                                             FROM tbl_enderecos) end 
+                                                             ON ent.ent_codigo = end.end_entidade_id 
+                                                             AND end.rn = 1 
+                                                             WHERE ent.ent_codigo = :id");
         $query->execute([':id' => $id]);
         $result = $query->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
@@ -370,9 +382,28 @@ class EntidadeRepository
         }
 
         if ($id) { // Atualiza
-            $sql = "UPDATE tbl_enderecos SET end_tipo_endereco = :tipo, end_cep = :cep, end_logradouro = :log, end_numero = :num, end_complemento = :comp, end_bairro = :bairro, end_cidade = :cidade, end_uf = :uf WHERE end_codigo = :id";
+            $sql = "UPDATE tbl_enderecos 
+                    SET 
+                        end_tipo_endereco = :tipo, 
+                        end_cep = :cep, 
+                        end_logradouro = :log, 
+                        end_numero = :num, 
+                        end_complemento = :comp, 
+                        end_bairro = :bairro, 
+                        end_cidade = :cidade, 
+                        end_uf = :uf 
+                    WHERE end_codigo = :id";
         } else { // Cria
-            $sql = "INSERT INTO tbl_enderecos (end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, end_numero, end_complemento, end_bairro, end_cidade, end_uf, end_usuario_cadastro_id) VALUES (:ent_id, :tipo, :cep, :log, :num, :comp, :bairro, :cidade, :uf, :user_id)";
+            $sql = "INSERT INTO tbl_enderecos (
+                                end_entidade_id, end_tipo_endereco, 
+                                end_cep, end_logradouro, end_numero, 
+                                end_complemento, end_bairro, end_cidade, end_uf, 
+                                end_usuario_cadastro_id) 
+                    VALUES (
+                    :ent_id, :tipo, 
+                    :cep, :log, :num, 
+                    :comp, :bairro, :cidade, :uf, 
+                    :user_id)";
         }
 
         $stmt = $this->pdo->prepare($sql);
@@ -453,11 +484,15 @@ class EntidadeRepository
      */
     public function findEnderecoPrincipal(int $entidadeId)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM tbl_enderecos WHERE end_entidade_id = :id AND end_tipo_endereco = 'Principal' LIMIT 1");
+        $stmt = $this->pdo->prepare("SELECT * 
+                                            FROM tbl_enderecos 
+                                            WHERE end_entidade_id = :id 
+                                            AND end_tipo_endereco = 'Principal' 
+                                            LIMIT 1");
         $stmt->execute([':id' => $entidadeId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-   
+
     public function getClienteOptions(string $term = ''): array
     {
 

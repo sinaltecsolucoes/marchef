@@ -8,10 +8,6 @@ if (session_status() == PHP_SESSION_NONE) {
 
 require_once("../src/bootstrap.php");
 
-// REMOVEMOS AQUI O BLOCO QUE VERIFICAVA E INSERIA O USUÁRIO ADM INICIAL
-// Essa lógica deve ser executada apenas uma vez, durante a configuração inicial do sistema.
-// Por exemplo, em um script de instalação ou manualmente em um ambiente novo.
-
 // Lógica para obter a mensagem de erro da sessão e limpá-la
 $mensagem_erro_login = '';
 if (isset($_SESSION['erro_login'])) {

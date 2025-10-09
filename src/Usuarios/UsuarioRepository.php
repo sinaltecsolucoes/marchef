@@ -20,39 +20,6 @@ class UsuarioRepository
     /**
      * Busca dados para o DataTables com paginação, busca e ordenação.
      */
-    /* public function findAllForDataTable(array $params): array
-     {
-         $draw = $params['draw'] ?? 1;
-         $start = $params['start'] ?? 0;
-         $length = $params['length'] ?? 10;
-         $searchValue = $params['search']['value'] ?? '';
-
-         $totalRecords = $this->pdo->query("SELECT COUNT(usu_codigo) FROM tbl_usuarios")->fetchColumn();
-
-         $whereClause = '';
-         $queryParams = [];
-         if (!empty($searchValue)) {
-             $whereClause = "WHERE usu_nome LIKE :search OR usu_login LIKE :search OR usu_tipo LIKE :search";
-             $queryParams[':search'] = '%' . $searchValue . '%';
-         }
-
-         $stmtFiltered = $this->pdo->prepare("SELECT COUNT(usu_codigo) FROM tbl_usuarios $whereClause");
-         $stmtFiltered->execute($queryParams);
-         $totalFiltered = $stmtFiltered->fetchColumn();
-
-         $sqlData = "SELECT * FROM tbl_usuarios $whereClause ORDER BY usu_nome ASC LIMIT :start, :length";
-         $stmt = $this->pdo->prepare($sqlData);
-         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-         if (!empty($searchValue)) {
-             $stmt->bindValue(':search', $queryParams[':search']);
-         }
-         $stmt->execute();
-         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-         return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
-     } */
-
     public function findAllForDataTable(array $params): array
     {
         try {
@@ -118,7 +85,8 @@ class UsuarioRepository
         $senha_hashed = password_hash($data['usu_senha'], PASSWORD_DEFAULT);
         $situacao = isset($data['usu_situacao']) ? 'A' : 'I';
 
-        $stmt = $this->pdo->prepare("INSERT INTO tbl_usuarios (usu_nome, usu_login, usu_senha, usu_tipo, usu_situacao) VALUES (:nome, :login, :senha, :tipo, :situacao)");
+        $stmt = $this->pdo->prepare("INSERT INTO tbl_usuarios (usu_nome, usu_login, usu_senha, usu_tipo, usu_situacao) 
+                                            VALUES (:nome, :login, :senha, :tipo, :situacao)");
         return $stmt->execute([
             ':nome' => $data['usu_nome'],
             ':login' => $data['usu_login'],
@@ -204,8 +172,6 @@ class UsuarioRepository
         // PASSO 4: Retornar o resultado da operação de UPDATE.
         // ====================================================================
         return $success;
-
-        // return $stmt->execute($params);
     }
 
     /**

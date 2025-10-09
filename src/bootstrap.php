@@ -48,13 +48,6 @@ if (session_status() == PHP_SESSION_NONE) {
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
-/* header("Content-Security-Policy: default-src 'self'; " .
-    "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://cdnjs.cloudflare.com; " .
-    "img-src 'self' data: https://cdn.jsdelivr.net; " .
-    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " .
-    "connect-src 'self' https://viacep.com.br https://cdn.datatables.net https://brasilapi.com.br https://cdn.jsdelivr.net; " .
-    "form-action 'self';"); */
 header("Content-Security-Policy: default-src 'self'; " .
     "script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.datatables.net; " .
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://cdnjs.cloudflare.com; " .

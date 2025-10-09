@@ -16,9 +16,9 @@ $(document).ready(function () {
             responsive: true,
             columns: [
                 {
-                    data: "ficha_id",
+                    data: "prod_codigo_interno",
                     class: "text-center align-middle",
-                    render: data => String(data).padStart(4, '0')
+                    render: data => data || 'N/A'
                 },
                 {
                     data: "prod_descricao",
@@ -44,8 +44,12 @@ $(document).ready(function () {
                     render: function (data, type, row) {
                         let btnEditar = `<a href="index.php?page=ficha_tecnica_detalhes&id=${data}" class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center" title="Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
                         let btnCopiar = `<button class="btn btn-info btn-sm btn-copiar-ficha me-1 d-inline-flex align-items-center" data-id="${data}" title="Copiar"><i class="fas fa-copy me-1"></i>Copiar</button>`;
-                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-ficha d-inline-flex align-items-center" data-id="${data}" data-nome="${row.prod_descricao}" title="Excluir"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
-                        return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}</div>`;
+                        let btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir-ficha me-1 d-inline-flex align-items-center" data-id="${data}" data-nome="${row.prod_descricao}" title="Excluir"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                        let btnImprimir = `<button class="btn btn-success btn-sm btn-imprimir-lista d-inline-flex align-items-center" data-id="${data}" title="Imprimir"><i class="fas fa-print me-1"></i>Imprimir</button>`;
+
+                        return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}${btnImprimir}</div>`;
+
+                        //return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}</div>`;
                     }
                 }
             ],
@@ -62,10 +66,41 @@ $(document).ready(function () {
                 (response) => {
                     if (response.success) {
                         sessionStorage.setItem('fichaTecnicaCopiada',
-                            JSON.stringify(response.data));
+                            JSON.stringify({
+                                header: response.data.header,
+                                criterios: response.data.criterios
+                            }));
                         window.location.href = 'index.php?page=ficha_tecnica_detalhes';
-                    } else { Swal.fire('Erro', response.message, 'error'); }
+                    } else {
+                        Swal.fire('Erro', response.message, 'error');
+                    }
                 }, 'json');
+        });
+
+        // LÓGICA PARA IMPRIMIR NA LISTAGEM
+        $('#tabela-fichas-tecnicas').on('click', '.btn-imprimir-lista', function () {
+            const fichaId = $(this).data('id');
+            const $btn = $(this);
+            const originalHtml = $btn.html();
+
+            $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+
+            $.post('ajax_router.php?action=gerarPdfFichaTecnica', {
+                ficha_id: fichaId,
+                csrf_token: csrfToken
+            },
+                (response) => {
+                    $btn.html(originalHtml).prop('disabled', false);
+
+                    if (response.success) {
+                        // Abre o PDF em nova aba
+                        window.open(response.pdfUrl, '_blank');
+                    } else { Swal.fire('Erro', response.message, 'error'); }
+                }, 'json')
+                .fail(() => {
+                    $btn.html(originalHtml).prop('disabled', false);
+                    Swal.fire('Erro', 'Não foi possível se comunicar com o servidor para gerar o PDF.', 'error');
+                });
         });
 
         $('#tabela-fichas-tecnicas').on('click', '.btn-excluir-ficha', function () {
@@ -140,16 +175,26 @@ $(document).ready(function () {
             }
             if (header.ficha_produto_id && header.produto_nome) {
                 const $selectProduto = $('#ficha_produto_id');
-                $selectProduto.select2('destroy').prop('disabled', true);
+                if (!isCopy) {
+                    $selectProduto.select2('destroy').prop('disabled', true);
+                }
                 $selectProduto.html(new Option(
                     header.produto_nome,
                     header.ficha_produto_id,
                     true, true)).trigger('change');
             }
+
             $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
             $('#main-title').text(isCopy ? 'Nova Ficha Técnica (Cópia)' : 'Editar Ficha Técnica #' + header.ficha_id);
+
             if (isCopy) {
                 $('#ficha_produto_id').prop('disabled', false).select2(select2ProdutoConfig);
+                if (fichaData.criterios && fichaData.criterios.length > 0) {
+                    // Armazena os critérios copiados em uma variável global temporária
+                    // para serem processados após o salvamento dos dados gerais
+                    sessionStorage.setItem('criteriosCopiados', JSON.stringify(fichaData.criterios));
+                    Swal.fire('Critérios Copiados', 'Os critérios laboratoriais foram copiados. Salve os dados gerais para ativá-los.', 'info');
+                }
             }
         }
 
@@ -186,6 +231,31 @@ $(document).ready(function () {
                     $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum critério adicionado.</td></tr>');
                 }
             }, 'json');
+        }
+
+        // FUNÇÃO PARA SALVAR CRITÉRIOS EM MASSA APÓS A CÓPIA
+        function salvarCriteriosCopiados(novaFichaId, criterios) {
+            criterios.forEach(criterio => {
+                // Prepara os dados do critério para o novo ID da ficha
+                const formData = {
+                    criterio_ficha_id: novaFichaId,
+                    criterio_id: '', // Sempre cria um novo
+                    criterio_grupo: criterio.criterio_grupo,
+                    criterio_nome: criterio.criterio_nome,
+                    criterio_unidade: criterio.criterio_unidade,
+                    criterio_valor: criterio.criterio_valor,
+                    csrf_token: csrfToken
+                };
+                // Salva o critério (pode ser assíncrono, mas para a cópia é ok)
+                $.post('ajax_router.php?action=salvarCriterioFicha', formData);
+            });
+            Swal.fire({
+                icon: 'success',
+                title: 'Critérios Copiados!',
+                text: 'Critérios transferidos com sucesso.',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
 
         $('#ficha_produto_id').select2(select2ProdutoConfig);
@@ -257,12 +327,25 @@ $(document).ready(function () {
                     $('#main-title').text('Editar Ficha Técnica #' + response.ficha_id);
                     $('#ficha_produto_id').prop('disabled', true);
                     $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
+
+                    // LÓGICA DE PERSISTÊNCIA DE CRITÉRIOS COPIADOS
+                    const criteriosCopiados = sessionStorage.getItem('criteriosCopiados');
+                    if (criteriosCopiados) {
+                        // Se houver critérios copiados, salva-os para o novo ID de ficha
+                        const criterios = JSON.parse(criteriosCopiados);
+                        salvarCriteriosCopiados(response.ficha_id, criterios);
+                        sessionStorage.removeItem('criteriosCopiados');
+                    }
+
                     new bootstrap.Tab($('#criterios-tab')).show();
-                } else { Swal.fire('Erro', response.message, 'error'); }
+                } else {
+                    Swal.fire('Erro', response.message, 'error');
+                }
             }, 'json')
                 .fail(() => Swal.fire('Erro', 'Não foi possível se comunicar com o servidor.', 'error'))
                 .always(() => $btn.html(originalHtml).prop('disabled', false));
         });
+
 
         $('#criterios-tab').on('shown.bs.tab', () => {
             const id = $('#ficha_id').val();
@@ -522,11 +605,12 @@ $(document).ready(function () {
                 }, 'json');
         } else if (dadosCopiados) {
             sessionStorage.removeItem('fichaTecnicaCopiada');
-            preencherFormularioFicha(JSON.parse(dadosCopiados), true);
+            const data = JSON.parse(dadosCopiados);
+            preencherFormularioFicha(data, true);
             Swal.fire({
                 icon: 'info',
                 title: 'Ficha Copiada',
-                text: 'Selecione um novo produto antes de salvar.',
+                text: 'Selecione um novo produto antes de salvar. Os critérios serão salvos após o cabeçalho.',
                 showConfirmButton: true
             });
         }

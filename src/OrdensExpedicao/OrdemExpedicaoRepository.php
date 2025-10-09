@@ -759,7 +759,7 @@ class OrdemExpedicaoRepository
             oe.oe_id, oe.oe_numero, oe.oe_data
         ORDER BY 
             oe.oe_data DESC, oe.oe_numero DESC
-    ";
+        ";
 
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -795,5 +795,3 @@ class OrdemExpedicaoRepository
     }
 
 }
-
-

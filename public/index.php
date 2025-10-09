@@ -56,7 +56,7 @@ if (!isset($_SESSION['codUsuario'])) {
     exit();
 }
 
-// ### NOVO BLOCO DE VERIFICAÇÃO DE SESSÃO ÚNICA ###
+// ### BLOCO DE VERIFICAÇÃO DE SESSÃO ÚNICA ###
 try {
     $pdo = Database::getConnection();
 
@@ -77,7 +77,7 @@ try {
     // Tratar erro de banco de dados
     die("Erro ao verificar a sessão do usuário.");
 }
-// ### FIM DO NOVO BLOCO ###
+// ### FIM DO BLOCO ###
 
 try {
     $pdo = Database::getConnection();

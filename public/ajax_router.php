@@ -1,13 +1,13 @@
 <?php
 // /public/ajax_router.php
 // Ponto de entrada para todas as requisições AJAX do sistema.
-// ADICIONE ESTAS 3 LINHAS PARA DEBUG
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 
 require_once __DIR__ . '/../src/bootstrap.php';
+require_once __DIR__ . '/libs/dompdf/vendor/autoload.php'; 
 
 // Usaremos um Autoloader simples por enquanto. No futuro, o Composer fará isso.
 spl_autoload_register(function ($class) {
@@ -366,11 +366,7 @@ switch ($action) {
     case 'reativarCarregamento':
         reativarCarregamento($carregamentoRepo);
         break;
-    /* case 'reabrirCarregamento':
-        reabrirCarregamento($carregamentoRepo);
-        break;*/
     case 'reabrirCarregamento':
-        // Adicionamos o $ordemExpedicaoRepo
         reabrirCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'getOrdensParaCarregamentoSelect':
@@ -443,7 +439,6 @@ switch ($action) {
         addItemCarregamentoFromOE($carregamentoRepo);
         break;
     case 'finalizarCarregamento':
-        // Adicionamos o $ordemExpedicaoRepo como segundo parâmetro
         finalizarCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'updateCarregamentoHeader':
@@ -723,6 +718,9 @@ switch ($action) {
         break;
     case 'excluirFotoFicha':
         excluirFotoFicha($fichaTecnicaRepo);
+        break;
+    case 'gerarPdfFichaTecnica':
+        gerarPdfFichaTecnica($fichaTecnicaRepo);
         break;
 
     default:
@@ -3301,54 +3299,6 @@ function listarFotosFicha(FichaTecnicaRepository $repo)
             throw new Exception("Dados insuficientes para o upload.");
         }
 
-        $arquivo = $_FILES['foto_arquivo'];
-
-        // Validação do arquivo
-        if ($arquivo['error'] !== UPLOAD_ERR_OK) throw new Exception("Erro no upload do arquivo.");
-        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
-        if (!in_array($arquivo['type'], $tiposPermitidos)) throw new Exception("Formato de arquivo não permitido.");
-        if ($arquivo['size'] > 5 * 1024 * 1024) throw new Exception("O arquivo excede o limite de 5MB.");
-
-        // Lógica para salvar o arquivo
-        $uploadDir = __DIR__ . '/uploads/fichas_tecnicas/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
-
-        $extensao = pathinfo($arquivo['name'], PATHINFO_EXTENSION);
-        $nomeArquivo = "ficha_" . $fichaId . "_" . $fotoTipo . "_" . time() . "." . $extensao;
-        $caminhoCompleto = $uploadDir . $nomeArquivo;
-        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomeArquivo;
-
-        // Antes de salvar o novo, remove um antigo do mesmo tipo, se houver
-        $caminhoAntigo = $repo->deleteFoto($fichaId, $fotoTipo);
-        if ($caminhoAntigo && file_exists(__DIR__ . '/' . $caminhoAntigo)) {
-            unlink(__DIR__ . '/' . $caminhoAntigo);
-        }
-
-        if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
-            throw new Exception("Falha ao mover o arquivo para o destino.");
-        }
-
-        // Salva o novo caminho no banco de dados
-        $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
-
-        echo json_encode(['success' => true]);
-
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-} */
-
-function uploadFotoFicha(FichaTecnicaRepository $repo)
-{
-    try {
-        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
-        $fotoTipo = $_POST['foto_tipo'] ?? '';
-
-        if (!$fichaId || empty($fotoTipo) || empty($_FILES['foto_arquivo'])) {
-            throw new Exception("Dados insuficientes para o upload.");
-        }
-
         // --- LÓGICA DE ORGANIZAÇÃO DE PASTAS RESTAURADA ---
         $codigoInternoProduto = $repo->getCodigoInternoProdutoByFichaId($fichaId);
         if (!$codigoInternoProduto) {
@@ -3398,6 +3348,66 @@ function uploadFotoFicha(FichaTecnicaRepository $repo)
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+} */
+
+function uploadFotoFicha(FichaTecnicaRepository $repo)
+{
+    try {
+        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+        $fotoTipo = $_POST['foto_tipo'] ?? '';
+
+        if (!$fichaId || empty($fotoTipo) || empty($_FILES['foto_arquivo'])) {
+            throw new Exception("Dados insuficientes para o upload.");
+        }
+
+        // --- LÓGICA DE ORGANIZAÇÃO DE PASTAS ---
+        $codigoInternoProduto = $repo->getCodigoInternoProdutoByFichaId($fichaId);
+        if (!$codigoInternoProduto) {
+            throw new Exception("Não foi possível encontrar o produto associado a esta ficha.");
+        }
+        $nomePasta = preg_replace('/[^a-zA-Z0-9_-]/', '', $codigoInternoProduto);
+
+        $arquivo = $_FILES['foto_arquivo'];
+
+        // Validações do arquivo
+        if ($arquivo['error'] !== UPLOAD_ERR_OK)
+            throw new Exception("Erro no upload do arquivo.");
+        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($arquivo['type'], $tiposPermitidos))
+            throw new Exception("Formato de arquivo não permitido.");
+
+        // Cria a pasta do produto se não existir
+        $pastaProdutoDir = __DIR__ . '/uploads/fichas_tecnicas/' . $nomePasta . '/';
+        if (!is_dir($pastaProdutoDir)) {
+            mkdir($pastaProdutoDir, 0775, true);
+        }
+
+        $extensao = strtolower(pathinfo($arquivo['name'], PATHINFO_EXTENSION));
+        if (empty($extensao) && $arquivo['type'] == 'image/jpeg')
+            $extensao = 'jpg';
+
+        // Cria o nome do arquivo com o código interno e o tipo da foto
+        $nomeArquivo = $nomePasta . "_" . $fotoTipo . "." . $extensao;
+        $caminhoCompleto = $pastaProdutoDir . $nomeArquivo;
+        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomePasta . '/' . $nomeArquivo;
+        // --- FIM DA LÓGICA DE ORGANIZAÇÃO ---
+
+        // Deleta o registro antigo, mas o UNLINK só ocorrerá se o arquivo existir, 
+        // e se o novo upload for BEM SUCEDIDO. A função deleteFoto já apaga o registro no BD.
+        $repo->deleteFoto($fichaId, $fotoTipo);
+        
+        if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
+            throw new Exception("Falha ao mover o arquivo para o destino.");
+        }
+
+        $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
+
+        echo json_encode(['success' => true]);
+
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }
 
 function excluirFotoFicha(FichaTecnicaRepository $repo)
@@ -3422,3 +3432,29 @@ function excluirFotoFicha(FichaTecnicaRepository $repo)
     }
 }
 
+
+/**
+ * Rota para gerar o relatório PDF, salvar na pasta e retornar o caminho.
+ */
+function gerarPdfFichaTecnica(FichaTecnicaRepository $repo)
+{
+    $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
+    if (!$fichaId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'ID da ficha inválido.']);
+        return;
+    }
+
+    try {
+        // A lógica de geração e salvamento está no Repositório.
+        $caminhoRelatorio = $repo->gerarRelatorioPdf($fichaId);
+        
+        // Retorna o caminho público para que o JS possa abrir.
+        echo json_encode(['success' => true, 'pdfUrl' => $caminhoRelatorio]);
+
+    } catch (Exception $e) {
+        error_log("Erro ao gerar PDF da Ficha Técnica: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro ao gerar o PDF: ' . $e->getMessage()]);
+    }
+}

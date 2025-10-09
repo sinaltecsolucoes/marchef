@@ -49,10 +49,7 @@ class AuthService
                 $_SESSION['sitUsuario'] = $userData['usu_situacao'];
                 $_SESSION['tipoUsuario'] = $userData['usu_tipo'];
 
-                // Limpa qualquer mensagem de erro antiga
-                // unset($_SESSION['erro_login']);
-
-                // --- NOVA LÓGICA DO TOKEN ---
+                // --- LÓGICA DO TOKEN ---
                 // 1. Gerar um token único e seguro
                 $token = bin2hex(random_bytes(32));
 
@@ -62,7 +59,7 @@ class AuthService
 
                 // 3. Salvar o mesmo token na sessão do navegador
                 $_SESSION['session_token'] = $token;
-                // --- FIM DA NOVA LÓGICA ---
+                // --- FIM DA LÓGICA ---
 
                 return true; // Sucesso!
             }

@@ -23,7 +23,7 @@
             <table class="table table-bordered table-hover" id="tabela-fichas-tecnicas" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center align-middle">ID Ficha</th>
+                        <th class="text-center align-middle">Cód. Produto</th>
                         <th class="text-center align-middle">Produto</th>
                         <th class="text-center align-middle">Marca</th>
                         <th class="text-center align-middle">NCM</th>

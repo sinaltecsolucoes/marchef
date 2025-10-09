@@ -4,6 +4,8 @@ namespace App\FichasTecnicas;
 
 use PDO;
 use App\Core\AuditLoggerService;
+use App\Core\RelatorioService;
+use App\FichasTecnicas\FichaTecnicaHtmlService;
 
 // Adotando o padrão de parâmetros únicos do LoteNovoRepository
 class FichaTecnicaRepository
@@ -89,6 +91,54 @@ class FichaTecnicaRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /* public function findAllForDataTable(array $params): array
+     {
+         try {
+             $draw = $params['draw'] ?? 1;
+             $start = $params['start'] ?? 0;
+             $length = $params['length'] ?? 10;
+             $searchValue = $params['search']['value'] ?? '';
+
+             $baseQuery = "FROM tbl_fichas_tecnicas ft JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo";
+
+             $totalRecords = $this->pdo->query("SELECT COUNT(ft.ficha_id) $baseQuery")->fetchColumn();
+
+             $whereClause = '';
+             if (!empty($searchValue)) {
+                 $whereClause = " WHERE p.prod_descricao LIKE :search_descricao OR p.prod_marca LIKE :search_marca OR p.prod_ncm LIKE :search_ncm";
+             }
+
+             $stmtFiltered = $this->pdo->prepare("SELECT COUNT(ft.ficha_id) $baseQuery $whereClause");
+             if (!empty($searchValue)) {
+                 $stmtFiltered->execute([
+                     ':search_descricao' => '%' . $searchValue . '%',
+                     ':search_marca' => '%' . $searchValue . '%',
+                     ':search_ncm' => '%' . $searchValue . '%'
+                 ]);
+             } else {
+                 $stmtFiltered->execute();
+             }
+             $totalFiltered = $stmtFiltered->fetchColumn();
+
+             $sqlData = "SELECT ft.ficha_id, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery $whereClause ORDER BY ft.ficha_id DESC LIMIT :start, :length";
+             $stmt = $this->pdo->prepare($sqlData);
+             $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+             $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+             if (!empty($searchValue)) {
+                 $stmt->bindValue(':search_descricao', '%' . $searchValue . '%');
+                 $stmt->bindValue(':search_marca', '%' . $searchValue . '%');
+                 $stmt->bindValue(':search_ncm', '%' . $searchValue . '%');
+             }
+             $stmt->execute();
+             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+             return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+         } catch (PDOException $e) {
+             error_log('Erro em findAllForDataTable: ' . $e->getMessage());
+             throw new Exception('Erro ao buscar fichas técnicas: ' . $e->getMessage());
+         }
+     } */
+
     public function findAllForDataTable(array $params): array
     {
         try {
@@ -118,7 +168,17 @@ class FichaTecnicaRepository
             }
             $totalFiltered = $stmtFiltered->fetchColumn();
 
-            $sqlData = "SELECT ft.ficha_id, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery $whereClause ORDER BY ft.ficha_id DESC LIMIT :start, :length";
+            // $sqlData = "SELECT ft.ficha_id, p.prod_codigo_interno, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery $whereClause ORDER BY ft.ficha_id DESC LIMIT :start, :length";
+            $sqlData = "SELECT 
+                ft.ficha_id, 
+                p.prod_codigo_interno, 
+                p.prod_descricao, 
+                p.prod_marca, 
+                p.prod_ncm, 
+                ft.ficha_data_modificacao 
+            $baseQuery $whereClause 
+            ORDER BY ft.ficha_id DESC 
+            LIMIT :start, :length";
             $stmt = $this->pdo->prepare($sqlData);
             $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
             $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
@@ -452,5 +512,59 @@ class FichaTecnicaRepository
         ");
         $stmt->execute([':id' => $fichaId]);
         return $stmt->fetchColumn() ?: null;
+    }
+
+    /**
+     * Gera o relatório PDF (chamando os serviços), salva na pasta de mídias e retorna o caminho público.
+     * @param int $fichaId
+     * @return string Caminho relativo público do arquivo PDF salvo.
+     * @throws \Exception
+     */
+    public function gerarRelatorioPdf(int $fichaId): string
+    {
+        // 1. Busca os dados da ficha para obter o código do produto
+        $fichaData = $this->findCompletaById($fichaId);
+        if (!$fichaData || !$fichaData['header']) {
+            throw new \Exception("Ficha Técnica não encontrada.");
+        }
+        $codigoInternoProduto = $fichaData['header']['prod_codigo_interno'];
+
+        if (empty($codigoInternoProduto)) {
+            throw new \Exception("O produto associado não possui código interno para salvar o relatório.");
+        }
+
+        // 2. Geração do HTML (usando o Template Service)
+        $htmlService = new FichaTecnicaHtmlService($this); // $this é a instância do Repository
+        $htmlContent = $htmlService->renderHtml($fichaId);
+
+        // 3. Conversão de HTML para PDF (usando o Serviço Global)
+        $relatorioService = new RelatorioService();
+
+        try {
+            $pdfContent = $relatorioService->generatePdfContent($htmlContent);
+        } catch (\Exception $e) {
+            // Captura erros específicos de DomPDF
+            throw new \Exception("Erro na conversão para PDF: " . $e->getMessage());
+        }
+
+        // 4. Define o caminho de armazenamento
+        $nomePasta = preg_replace('/[^a-zA-Z0-9_-]/', '', $codigoInternoProduto);
+        $pastaProdutoDir = __DIR__ . '/../../public/uploads/fichas_tecnicas/' . $nomePasta . '/';
+
+        // Cria a pasta se não existir
+        if (!is_dir($pastaProdutoDir)) {
+            mkdir($pastaProdutoDir, 0775, true);
+        }
+
+        $nomeArquivo = "RELATORIO_" . $nomePasta . ".pdf";
+        $caminhoCompleto = $pastaProdutoDir . $nomeArquivo;
+        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomePasta . '/' . $nomeArquivo;
+
+        // 5. Salva o conteúdo binário no disco (CACHE)
+        if (file_put_contents($caminhoCompleto, $pdfContent) === false) {
+            throw new \Exception("Falha ao salvar o arquivo PDF em disco. Verifique as permissões da pasta: {$pastaProdutoDir}");
+        }
+
+        return $caminhoPublico;
     }
 }

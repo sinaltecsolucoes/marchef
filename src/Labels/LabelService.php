@@ -24,48 +24,6 @@ class LabelService
         $this->produtoRepo = new ProdutoRepository($pdo);
     }
 
-    /**
-     * NOVA FUNÇÃO UNIVERSAL: Gera o ZPL de um item de lote (produção ou embalagem).
-     */
-    /* public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
-     {
-         // 1. Buscar os dados do item com base no seu tipo.
-         $dados = null;
-         if ($itemType === 'producao') {
-             $dados = $this->findDadosItemProducao($itemId, $clienteId);
-         } elseif ($itemType === 'embalagem') {
-             $dados = $this->findDadosItemEmbalagem($itemId, $clienteId);
-         }
-
-         if (!$dados) {
-             throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
-         }
-
-         // 2. Usar o RegraRepository para descobrir qual template usar.
-         $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteId);
-         if ($templateId === null) {
-             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
-         }
-
-         // 3. Buscar o conteúdo ZPL do template encontrado.
-         $template = $this->templateRepo->find($templateId);
-         if (!$template || empty($template['template_conteudo_zpl'])) {
-             throw new Exception("O template de etiqueta (ID: {$templateId}) definido pela regra não foi encontrado ou está vazio.");
-         }
-
-         // 4. USAR A LÓGICA EXISTENTE para substituir os placeholders.
-         $zplFinal = $this->substituirPlaceholders($template['template_conteudo_zpl'], $dados);
-
-         // 5. Gerar um nome de arquivo.
-         $nomeArquivo = sprintf(
-             'etiqueta_%s_%s.pdf',
-             preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['prod_codigo_interno'] ?? 'produto'),
-             preg_replace('/[^a-zA-Z0-9_-]/', '', $dados['lote_num_completo'] ?? 'lote')
-         );
-
-         return ['zpl' => $zplFinal, 'filename' => $nomeArquivo];
-     } */
-
     public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
     {
         // 1. Buscar os dados do item com base no seu tipo.
@@ -98,7 +56,7 @@ class LabelService
             throw new Exception("O template de etiqueta (ID: {$templateId}) definido pela regra não foi encontrado ou está vazio.");
         }
 
-        // 4. USAR A LÓGICA EXISTENTE para substituir os placeholders.
+        // 4. LÓGICA PARA SUBSTITUIR OS PLACEHOLDERS.
         $zplFinal = $this->substituirPlaceholders($template['template_conteudo_zpl'], $dados);
 
         // 5. Gerar um nome de arquivo.
