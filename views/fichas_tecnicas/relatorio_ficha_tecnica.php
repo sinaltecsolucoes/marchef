@@ -217,10 +217,6 @@ function formatarPesoBrasileiro(?float $valor): string
                 </td>
 
             </tr>
-
-
-
-
             <tr>
                 <th rowspan="3" colspan="2">Embalagem secundária</th>
                 <td colspan="1">Material</td>
@@ -240,8 +236,6 @@ function formatarPesoBrasileiro(?float $valor): string
                     <?php echo formatarTextoTabela($ficha['header']['ficha_medidas_emb_secundaria'] ?? null); ?>
                 </td>
             </tr>
-
-
             <tr>
                 <th colspan="3">Paletização</th>
                 <td colspan="7"><?php echo formatarTextoTabela($ficha['header']['ficha_paletizacao'] ?? null); ?></td>
