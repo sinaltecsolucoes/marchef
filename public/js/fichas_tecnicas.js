@@ -48,8 +48,6 @@ $(document).ready(function () {
                         let btnImprimir = `<button class="btn btn-success btn-sm btn-imprimir-lista d-inline-flex align-items-center" data-id="${data}" title="Imprimir"><i class="fas fa-print me-1"></i>Imprimir</button>`;
 
                         return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}${btnImprimir}</div>`;
-
-                        //return `<div class="btn-group">${btnEditar}${btnCopiar}${btnExcluir}</div>`;
                     }
                 }
             ],
@@ -146,6 +144,7 @@ $(document).ready(function () {
                 processResults: d => d
             }
         };
+
         function formatarPeso(peso) {
             if (peso === null || peso === undefined) return 'N/A';
             const numero = parseFloat(peso);
@@ -185,7 +184,7 @@ $(document).ready(function () {
             }
 
             $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
-            $('#main-title').text(isCopy ? 'Nova Ficha Técnica (Cópia)' : 'Editar Ficha Técnica #' + header.ficha_id);
+            $('#main-title').text(isCopy ? 'Nova Ficha Técnica (Cópia)' : 'Editar Ficha Técnica');
 
             if (isCopy) {
                 $('#ficha_produto_id').prop('disabled', false).select2(select2ProdutoConfig);
@@ -233,32 +232,28 @@ $(document).ready(function () {
             }, 'json');
         }
 
-        // FUNÇÃO PARA SALVAR CRITÉRIOS EM MASSA APÓS A CÓPIA
         function salvarCriteriosCopiados(novaFichaId, criterios) {
-            criterios.forEach(criterio => {
-                // Prepara os dados do critério para o novo ID da ficha
+            // 1. Coleta todas as requisições AJAX em um array de objetos Deferred (Promises do jQuery)
+            const promises = criterios.map(criterio => {
                 const formData = {
                     criterio_ficha_id: novaFichaId,
-                    criterio_id: '', // Sempre cria um novo
+                    criterio_id: '',
                     criterio_grupo: criterio.criterio_grupo,
                     criterio_nome: criterio.criterio_nome,
                     criterio_unidade: criterio.criterio_unidade,
                     criterio_valor: criterio.criterio_valor,
                     csrf_token: csrfToken
                 };
-                // Salva o critério (pode ser assíncrono, mas para a cópia é ok)
-                $.post('ajax_router.php?action=salvarCriterioFicha', formData);
+                // Retorna a Promise/Deferred de cada requisição $.post
+                return $.post('ajax_router.php?action=salvarCriterioFicha', formData);
             });
-            Swal.fire({
-                icon: 'success',
-                title: 'Critérios Copiados!',
-                text: 'Critérios transferidos com sucesso.',
-                timer: 2000,
-                showConfirmButton: false
-            });
+
+            // 2. Usa $.when.apply() para esperar APENAS quando todas as Promises do jQuery terminarem.
+            return $.when.apply($, promises);
         }
 
         $('#ficha_produto_id').select2(select2ProdutoConfig);
+        
         $('#ficha_fabricante_id').select2({
             placeholder: "Selecione um fabricante...",
             theme: "bootstrap-5",
@@ -316,28 +311,42 @@ $(document).ready(function () {
 
             $.post('ajax_router.php?action=salvarFichaTecnicaGeral', formSerialized, function (response) {
                 if (response.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Sucesso!',
-                        text: response.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                    $('#ficha_id').val(response.ficha_id);
-                    $('#main-title').text('Editar Ficha Técnica #' + response.ficha_id);
-                    $('#ficha_produto_id').prop('disabled', true);
-                    $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
+                    const novaFichaId = response.ficha_id;
 
                     // LÓGICA DE PERSISTÊNCIA DE CRITÉRIOS COPIADOS
                     const criteriosCopiados = sessionStorage.getItem('criteriosCopiados');
+                    // Inicializa a Promise/Deferred com o jQuery
+                    let criteriosPromise = $.Deferred().resolve().promise();
+
                     if (criteriosCopiados) {
-                        // Se houver critérios copiados, salva-os para o novo ID de ficha
                         const criterios = JSON.parse(criteriosCopiados);
-                        salvarCriteriosCopiados(response.ficha_id, criterios);
+                        // Atribui à promise o resultado da Promise.all (agora $.when)
+                        criteriosPromise = salvarCriteriosCopiados(novaFichaId, criterios);
                         sessionStorage.removeItem('criteriosCopiados');
                     }
 
-                    new bootstrap.Tab($('#criterios-tab')).show();
+                    // Espera a Promise dos critérios ser resolvida para finalizar o processo
+                    criteriosPromise.then(() => {
+                        // Recarrega os dados após TODOS os critérios serem salvos
+                        carregarCriterios(novaFichaId);
+
+
+                        // Exibe a mensagem de sucesso da FICHA GERAL APÓS TUDO SER GRAVADO
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: response.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+
+                        $('#ficha_id').val(novaFichaId);
+                        $('#main-title').text('Editar Ficha Técnica #' + novaFichaId);
+                        $('#ficha_produto_id').prop('disabled', true);
+                        $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
+                        new bootstrap.Tab($('#criterios-tab')).show();
+                    });
+
                 } else {
                     Swal.fire('Erro', response.message, 'error');
                 }
@@ -345,7 +354,6 @@ $(document).ready(function () {
                 .fail(() => Swal.fire('Erro', 'Não foi possível se comunicar com o servidor.', 'error'))
                 .always(() => $btn.html(originalHtml).prop('disabled', false));
         });
-
 
         $('#criterios-tab').on('shown.bs.tab', () => {
             const id = $('#ficha_id').val();
@@ -412,7 +420,7 @@ $(document).ready(function () {
                 });
         });
 
-        // --- LÓGICA DA ABA DE MÍDIA (COM CROPPER.JS) ---
+        // --- LÓGICA DA ABA DE MÍDIA ---
         const placeholderImg = 'assets/img/placeholder.png';
         if ($('#modal-crop-image').length) {
             const modalCropElement = document.getElementById('modal-crop-image');
@@ -576,43 +584,74 @@ $(document).ready(function () {
             const $btnImprimir = $('#btn-imprimir-ficha');
 
             if (fichaIdParaImpressao) {
-                // Esconda o botão atual
+                // Remove a URL antiga que apontava para o HTML/View
+                // Vamos usar o botão DOMPDF da listagem.
                 $btnImprimir.hide();
 
-                if ($('#btn-relatorio-ft').length === 0) {
-                    const btnRelatorio = `<a id="btn-relatorio-ft" href="index.php?page=relatorio_ficha_tecnica&id=${fichaIdParaImpressao}" target="_blank" class="btn btn-success">
-                                <i class="fas fa-print me-2"></i>Imprimir Ficha</a>`;
+                const btnRelatorioID = 'btn-relatorio-ft'; // ID do botão que substitui o original
+                if ($('#' + btnRelatorioID).length === 0) {
+                    // Cria o botão, mas sem URL, vamos usar o click listener
+                    const btnRelatorio = `<button id="${btnRelatorioID}" class="btn btn-success">
+                            <i class="fas fa-print me-2"></i>Imprimir Ficha (PDF)</button>`;
+                    // Encontra o div que contém o original e insere o novo botão
                     $('.card-body .d-flex.justify-content-between.align-items-center.mb-3 > div').prepend(btnRelatorio);
                 }
+
+                // NOVO: Adiciona o listener para a chamada AJAX (DOMPDF)
+                $('#' + btnRelatorioID).on('click', function () {
+                    const $btn = $(this);
+                    const originalHtml = $btn.html();
+
+                    $btn.html('<i class="fas fa-spinner fa-spin"></i> Gerando...').prop('disabled', true);
+
+                    // Chamada AJAX idêntica à usada na listagem
+                    $.post('ajax_router.php?action=gerarPdfFichaTecnica', {
+                        ficha_id: fichaIdParaImpressao,
+                        csrf_token: csrfToken
+                    },
+                        (response) => {
+                            $btn.html(originalHtml).prop('disabled', false);
+
+                            if (response.success) {
+                                // Abre o PDF em nova aba
+                                window.open(response.pdfUrl, '_blank');
+                            } else { Swal.fire('Erro', response.message, 'error'); }
+                        }, 'json')
+                        .fail(() => {
+                            $btn.html(originalHtml).prop('disabled', false);
+                            Swal.fire('Erro', 'Não foi possível se comunicar com o servidor para gerar o PDF.', 'error');
+                        });
+                });
+
             }
 
-        }
 
-        // --- LÓGICA DE CARREGAMENTO INICIAL ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const fichaId = urlParams.get('id');
-        const dadosCopiados = sessionStorage.getItem('fichaTecnicaCopiada');
-        if (fichaId) {
-            $.post('ajax_router.php?action=getFichaTecnicaCompleta', {
-                ficha_id: fichaId,
-                csrf_token: csrfToken
-            },
-                (response) => {
-                    if (response.success) {
-                        preencherFormularioFicha(response.data, false);
-                    }
-                    else { Swal.fire('Erro', 'Não foi possível carregar os dados desta ficha.', 'error'); }
-                }, 'json');
-        } else if (dadosCopiados) {
-            sessionStorage.removeItem('fichaTecnicaCopiada');
-            const data = JSON.parse(dadosCopiados);
-            preencherFormularioFicha(data, true);
-            Swal.fire({
-                icon: 'info',
-                title: 'Ficha Copiada',
-                text: 'Selecione um novo produto antes de salvar. Os critérios serão salvos após o cabeçalho.',
-                showConfirmButton: true
-            });
+            // --- LÓGICA DE CARREGAMENTO INICIAL ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const fichaId = urlParams.get('id');
+            const dadosCopiados = sessionStorage.getItem('fichaTecnicaCopiada');
+            if (fichaId) {
+                $.post('ajax_router.php?action=getFichaTecnicaCompleta', {
+                    ficha_id: fichaId,
+                    csrf_token: csrfToken
+                },
+                    (response) => {
+                        if (response.success) {
+                            preencherFormularioFicha(response.data, false);
+                        }
+                        else { Swal.fire('Erro', 'Não foi possível carregar os dados desta ficha.', 'error'); }
+                    }, 'json');
+            } else if (dadosCopiados) {
+                sessionStorage.removeItem('fichaTecnicaCopiada');
+                const data = JSON.parse(dadosCopiados);
+                preencherFormularioFicha(data, true);
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Ficha Copiada',
+                    text: 'Selecione um novo produto antes de salvar. Os critérios serão salvos após o cabeçalho.',
+                    showConfirmButton: true
+                });
+            }
         }
     }
 });

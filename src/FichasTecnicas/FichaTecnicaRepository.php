@@ -556,7 +556,7 @@ class FichaTecnicaRepository
             mkdir($pastaProdutoDir, 0775, true);
         }
 
-        $nomeArquivo = "RELATORIO_" . $nomePasta . ".pdf";
+        $nomeArquivo = "FICHA_TECNICA_" . $nomePasta . ".pdf";
         $caminhoCompleto = $pastaProdutoDir . $nomeArquivo;
         $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomePasta . '/' . $nomeArquivo;
 

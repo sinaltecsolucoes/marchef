@@ -41,7 +41,21 @@ class FichaTecnicaHtmlService
             if (empty($texto)) {
                 return 'N/A';
             }
-            return htmlspecialchars($texto); // Removido nl2br para DomPDF
+
+            // 1. Substitui os caracteres especiais por tags HTML
+            $texto = str_replace('₂', '<sub>2</sub>', $texto);
+            $texto = str_replace('³', '<sup>3</sup>', $texto);
+            $texto = str_replace('¹', '<sup>1</sup>', $texto);
+
+            // 2. Escapa HTML, mas preserva as tags <sub> e <sup>
+            $textoSeguro = htmlspecialchars($texto, ENT_NOQUOTES, 'UTF-8');
+            $textoSeguro = str_replace(
+                ['&lt;sub', '&lt;/sub&gt;', '&lt;sup&gt;', '&lt;/sup&gt;'],
+                ['<sub', '</sub>', '<sup>', '</sup>'],
+                $textoSeguro
+            );
+
+            return $textoSeguro;
         };
 
         $formatarPesoBrasileiro = function (?float $valor): string {
@@ -70,7 +84,7 @@ class FichaTecnicaHtmlService
 
                 @page {
                     size: A4 portrait;
-                    margin: 1cm;
+                    margin: 0.5cm;
 
                     @top-left {
                         content: "";
@@ -101,8 +115,16 @@ class FichaTecnicaHtmlService
                 }
 
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: 'DejaVu Sans', sans-serif; 
                     font-size: 8pt;
+                }
+
+                .linha-dados {
+                    /* Define uma altura mínima para a linha. */
+                    height: 12px;
+                    /* Garante que o conteúdo fique centralizado verticalmente */
+                    vertical-align: middle !important;
+                    /* O !important ajuda a sobrepor o vertical-align: top da regra geral do .ficha-table td/th */
                 }
 
                 .ficha-table {
@@ -184,8 +206,8 @@ class FichaTecnicaHtmlService
                 }
 
                 .tabela-nutricional-img {
-                    width: 70%;
-                    max-height: 200px;
+                    width: 78%;
+                    max-height: 230px;
                     object-fit: contain;
                 }
 
@@ -234,15 +256,15 @@ class FichaTecnicaHtmlService
         <body>
             <div class="container">
                 <table class="ficha-table header-table bordered-header" style="width: 100%;">
-                    <tr style="height: 30px;">
-                        <td colspan="3" style="vertical-align: middle; text-align: center; width: 81%;">
+                    <tr style="height: 25px;">
+                        <td colspan="12" style="vertical-align: middle; text-align: center; width: 81%;">
                             <h4 style="font-size: 10pt; font-weight: bold; margin: 0;">FICHA TÉCNICA
                                 <?php echo htmlspecialchars($ficha['header']['produto_tipo'] ?? 'N/A'); ?> MARCHEF PESCADOS
                             </h4>
                         </td>
-                        <td style="text-align: center; width: 19%;">
+                        <td colspan="2" style="text-align: center; width: 19%;">
                             <img src="<?php echo BASE_URL; ?>/img/logo_marchef.png" alt="Logo Marchef"
-                                style="max-height: 50px;">
+                                style="max-height: 60px;">
                         </td>
                     </tr>
                 </table>
@@ -253,23 +275,32 @@ class FichaTecnicaHtmlService
                             GERAIS</td>
                     </tr>
                     <tr>
-                        <th colspan="2">FABRICANTE:</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['fabricante_unidade'] ?? 'N/A'); ?>
+                        <th colspan="2" class="linha-dados">FABRICANTE:</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['fabricante_unidade'] ?? 'N/A'); ?>
                         </td>
-                        <th colspan="3">UNIDADE PRODUTORA:</th>
-                        <td colspan="2"><?php echo htmlspecialchars($ficha['header']['fabricante_endereco'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">UNIDADE PRODUTORA:</th>
+                        <td colspan="2" class=" linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['fabricante_endereco'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="2">PRODUTO:</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['produto_nome'] ?? 'N/A'); ?></td>
-                        <th colspan="3">FICHA TÉCNICA REV.:</th>
-                        <td colspan="2">rev00</td>
+                        <th colspan="2" class="linha-dados">PRODUTO:</th>
+                        <td colspan="7" class=" linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['produto_nome'] ?? 'N/A'); ?>
+                        </td>
+                        <th colspan="3" class="linha-dados">FICHA TÉCNICA REV.:</th>
+                        <td colspan="2" class=" linha-dados">rev00</td>
                     </tr>
                     <tr>
-                        <th colspan="2">CLASSIFICAÇÃO:</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['produto_classificacao'] ?? 'N/A'); ?></td>
-                        <th colspan="3">CÓDIGO INTERNO PRODUTO:</th>
-                        <td colspan="2"><?php echo htmlspecialchars($ficha['header']['prod_codigo_interno'] ?? 'N/A'); ?></td>
+                        <th colspan="2" class="linha-dados">CLASSIFICAÇÃO:</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['produto_classificacao'] ?? 'N/A'); ?>
+                        </td>
+                        <th colspan="3" class="linha-dados">CÓDIGO INTERNO PRODUTO:</th>
+                        <td colspan="2" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['prod_codigo_interno'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                 </table>
 
@@ -279,116 +310,139 @@ class FichaTecnicaHtmlService
                             ESPECIFICAÇÕES TÉCNICAS</td>
                     </tr>
                     <tr>
-                        <th colspan="3">Marca</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['produto_marca'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">Marca</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['produto_marca'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Denominação de Venda</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['produto_denominacao'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">Denominação de Venda</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['produto_denominacao'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Classificação (unidades na embalagem)</th>
-                        <td colspan="7" class="uppercase">
+                        <th colspan="3" class="linha-dados">Classificação (unidades na embalagem)</th>
+                        <td colspan="7" class="uppercase linha-dados">
                             <?php echo htmlspecialchars($ficha['header']['produto_total_pecas'] ?? 'N/A'); ?> UNIDADES NA
                             EMBALAGEM
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Espécie</th>
-                        <td colspan="7"><span
+                        <th colspan="3" class="linha-dados">Espécie</th>
+                        <td colspan="7" class="linha-dados"><span
                                 class="italico"><?php echo htmlspecialchars($ficha['header']['produto_especie'] ?? 'N/A'); ?></span>
                             - <?php echo htmlspecialchars($ficha['header']['produto_tipo'] ?? 'N/A'); ?> DE
                             <?php echo htmlspecialchars($ficha['header']['produto_origem'] ?? 'N/A'); ?>
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Conservantes</th>
-                        <td colspan="7"><?php echo $formatarTextoTabela($ficha['header']['ficha_conservantes'] ?? null); ?></td>
+                        <th colspan="3" class="linha-dados">Conservantes</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarTextoTabela($ficha['header']['ficha_conservantes'] ?? null); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Alergênicos</th>
-                        <td colspan="7"><?php echo $formatarTextoTabela($ficha['header']['ficha_alergenicos'] ?? null); ?></td>
+                        <th colspan="3" class="linha-dados">Alergênicos</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarTextoTabela($ficha['header']['ficha_alergenicos'] ?? null); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Validade</th>
-                        <td colspan="7">
+                        <th colspan="3" class="linha-dados">Validade</th>
+                        <td colspan="7" class="linha-dados">
                             <?php echo htmlspecialchars($ficha['header']['produto_validade'] ?? 'N/A') . ' MESES'; ?>
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Temperatura de estocagem e transporte</th>
-                        <td colspan="7">
+                        <th colspan="3" class="linha-dados">Temperatura de estocagem e transporte</th>
+                        <td colspan="7" class="linha-dados">
                             <?php echo $formatarTextoTabela($ficha['header']['ficha_temp_estocagem_transporte'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Registro no MAPA/SIF/DIPOA</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['ficha_registro_embalagem'] ?? 'N/A'); ?>
+                        <th colspan="3" class="linha-dados">Registro no MAPA/SIF/DIPOA</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['ficha_registro_embalagem'] ?? 'N/A'); ?>
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Origem</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['ficha_origem'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">Origem</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['ficha_origem'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th rowspan="3" colspan="2">Embalagem primária</th>
+                        <th rowspan="3" colspan="2" class="linha-dados">Embalagem primária</th>
                         <td>Material</td>
-                        <td colspan="7"><?php echo $formatarTextoTabela($ficha['header']['ficha_desc_emb_primaria'] ?? null); ?>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarTextoTabela($ficha['header']['ficha_desc_emb_primaria'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <td>Peso Líquido</td>
-                        <td colspan="7">
+                        <td class="linha-dados">Peso Líquido</td>
+                        <td colspan="7" class="linha-dados">
                             <?php echo $formatarPesoBrasileiro($ficha['header']['prod_peso_embalagem_primaria'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <td>Medidas</td>
-                        <td colspan="7">
+                        <td class="linha-dados">Medidas</td>
+                        <td colspan="7" class="linha-dados">
                             <?php echo $formatarTextoTabela($ficha['header']['ficha_medidas_emb_primaria'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <th rowspan="3" colspan="2">Embalagem secundária</th>
-                        <td>Material</td>
-                        <td colspan="7">
+                        <th rowspan="3" colspan="2" class="linha-dados">Embalagem secundária</th>
+                        <td class="linha-dados">Material</td>
+                        <td colspan="7" class="linha-dados">
                             <?php echo $formatarTextoTabela($ficha['header']['ficha_desc_emb_secundaria'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <td>Peso Líquido</td>
-                        <td colspan="7"><?php echo $formatarPesoBrasileiro($ficha['header']['peso_embalagem'] ?? null); ?></td>
+                        <td class="linha-dados">Peso Líquido</td>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarPesoBrasileiro($ficha['header']['peso_embalagem'] ?? null); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <td>Medidas</td>
-                        <td colspan="7">
+                        <td class="linha-dados">Medidas</td>
+                        <td colspan="7" class="linha-dados">
                             <?php echo $formatarTextoTabela($ficha['header']['ficha_medidas_emb_secundaria'] ?? null); ?>
                         </td>
                     </tr>
                     <tr>
-                        <th colspan="3">Paletização</th>
-                        <td colspan="7"><?php echo $formatarTextoTabela($ficha['header']['ficha_paletizacao'] ?? null); ?></td>
+                        <th colspan="3" class="linha-dados">Paletização</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarTextoTabela($ficha['header']['ficha_paletizacao'] ?? null); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">G-TIN - EAN 13</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['ean13'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">G-TIN - EAN 13</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['ean13'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">G-TIN - EAN 14</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['prod_dun14'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">G-TIN - EAN 14</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['prod_dun14'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">NCM</th>
-                        <td colspan="7"><?php echo htmlspecialchars($ficha['header']['produto_ncm'] ?? 'N/A'); ?></td>
+                        <th colspan="3" class="linha-dados">NCM</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo htmlspecialchars($ficha['header']['produto_ncm'] ?? 'N/A'); ?>
+                        </td>
                     </tr>
                     <tr>
-                        <th colspan="3">GESTÃO DA QUALIDADE</th>
-                        <td colspan="7"><?php echo $formatarTextoTabela($ficha['header']['ficha_gestao_qualidade'] ?? null); ?>
+                        <th colspan="3" class="linha-dados">GESTÃO DA QUALIDADE</th>
+                        <td colspan="7" class="linha-dados">
+                            <?php echo $formatarTextoTabela($ficha['header']['ficha_gestao_qualidade'] ?? null); ?>
                         </td>
                     </tr>
                 </table>
 
-                <table class="ficha-table no-break" style="width: 100%; margin-top: 5px;">
+                <table class="ficha-table no-break" style="width: 100%;">
                     <tr>
                         <td colspan="3"
                             style="vertical-align: middle; text-align: center; border: 1px solid #000; padding: 1px;">
@@ -409,17 +463,23 @@ class FichaTecnicaHtmlService
                                             $categoriaAtual = $categoria;
                                             ?>
                                             <tr>
-                                                <td colspan="6" class="categoria-header"><?php echo $categoriaAtual; ?></td>
+                                                <td colspan="6" class="categoria-header" style="height: 12px;">
+                                                    <?php echo $categoriaAtual; ?>
+                                                </td>
                                             </tr>
                                             <?php
                                         endif;
                                         ?>
                                         <tr>
-                                            <td colspan="3"><?php echo htmlspecialchars($criterio['criterio_nome']); ?></td>
-                                            <td colspan="1">
+                                            <td colspan="3" class="linha-dados">
+                                                <?php echo htmlspecialchars($criterio['criterio_nome']); ?>
+                                            </td>
+                                            <td colspan="1" class="linha-dados">
                                                 <?php echo htmlspecialchars($criterio['criterio_unidade'] ?? 'N/A'); ?>
                                             </td>
-                                            <td colspan="2"><?php echo htmlspecialchars($criterio['criterio_valor']); ?></td>
+                                            <td colspan="2" class="linha-dados">
+                                                <?php echo htmlspecialchars($criterio['criterio_valor']); ?>
+                                            </td>
                                         </tr>
                                         <?php
                                     endforeach;
@@ -431,7 +491,8 @@ class FichaTecnicaHtmlService
                                     </tr>
                                 <?php endif; ?>
                                 <tr>
-                                    <td colspan="6" class="categoria-header categoria-header-italic">(*) Seguimos padrões
+                                    <td colspan="6" style="height: 12px;" class="categoria-header categoria-header-italic">(*)
+                                        Seguimos padrões
                                         estabelecidos em legislação vigente.</td>
                                 </tr>
                             </table>
@@ -439,32 +500,37 @@ class FichaTecnicaHtmlService
                     </tr>
                 </table>
 
-                <table class="fotos-table no-break" style="margin-top: 5px;">
+                <table class="fotos-table no-break">
                     <tr>
                         <td style="vertical-align: middle; border-right: 1px solid #000;">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>
-                                    <th colspan="2" class="section-header-criterios" style="border: 1px solid #000;">FOTOS DO PRODUTO</th>
+                                    <th colspan="2" class="section-header-criterios" style="border: 1px solid #000;">FOTOS DO
+                                        PRODUTO</th>
                                 </tr>
                                 <tr>
-                                    <th class="categoria-header" style="vertical-align: middle; text-align: center; border: 1px solid #000;">EMBALAGEM
+                                    <th class="categoria-header"
+                                        style="vertical-align: middle; text-align: center; border: 1px solid #000;">EMBALAGEM
                                         PRIMÁRIA</th>
-                                    <th class="categoria-header" style="vertical-align: middle; text-align: center; border: 1px solid #000;">EMBALAGEM
+                                    <th class="categoria-header"
+                                        style="vertical-align: middle; text-align: center; border: 1px solid #000;">EMBALAGEM
                                         SECUNDÁRIA</th>
                                 </tr>
                                 <tr>
-                                    <td class="foto-cell" style="vertical-align: middle; text-align: center; border: 1px solid #000;">
+                                    <td class="foto-cell"
+                                        style="vertical-align: middle; text-align: center; border: 1px solid #000; width: 50%; padding: 5px;">
                                         <img src="<?php echo htmlspecialchars($caminhosFotos['EMBALAGEM_PRIMARIA'] ?? BASE_URL . '/assets/img/placeholder.png'); ?>"
                                             alt="Embalagem Primária" class="img-fluid">
                                     </td>
-                                    <td class="foto-cell" style="vertical-align: middle; text-align: center; border: 1px solid #000;">
+                                    <td class="foto-cell"
+                                        style="vertical-align: middle; text-align: center; border: 1px solid #000; width: 50%; padding: 5px;">
                                         <img src="<?php echo htmlspecialchars($caminhosFotos['EMBALAGEM_SECUNDARIA'] ?? BASE_URL . '/assets/img/placeholder.png'); ?>"
                                             alt="Embalagem Secundária" class="img-fluid">
                                     </td>
                                 </tr>
                             </table>
                         </td>
-                        <td style="vertical-align: middle; text-align: center;">
+                        <td style="vertical-align: middle; text-align: center; border: 1px solid #000;">
                             <img src="<?php echo htmlspecialchars($caminhosFotos['SIF'] ?? BASE_URL . '/assets/img/placeholder.png'); ?>"
                                 alt="Selo SIF" class="img-fluid">
                         </td>
