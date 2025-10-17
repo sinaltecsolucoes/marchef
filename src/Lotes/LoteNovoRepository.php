@@ -273,7 +273,6 @@ class LoteNovoRepository
 
             $this->pdo->commit();
             return $success;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -767,7 +766,7 @@ class LoteNovoRepository
         $queryParams = [];
         if (!empty($searchValue)) {
             $searchTerm = '%' . $searchValue . '%';
-            
+
             $whereClause = " WHERE (l.lote_completo_calculado LIKE :search0 OR f.ent_razao_social LIKE :search1)";
             $queryParams[':search0'] = $searchTerm;
             $queryParams[':search1'] = $searchTerm;
@@ -785,7 +784,7 @@ class LoteNovoRepository
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-     
+
         if (!empty($queryParams)) {
             foreach ($queryParams as $key => $value) {
                 $stmt->bindValue($key, $value);
@@ -1038,7 +1037,7 @@ class LoteNovoRepository
         $stmt->execute([':status' => $sqlStatus]);
         return (int) $stmt->fetchColumn();
     }
-   
+
     /**
      * Retorna a contagem de lotes finalizados por dia nos últimos X dias.
      * Usado pelo gráfico do dashboard.
@@ -1104,7 +1103,7 @@ class LoteNovoRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     public function findSaldosDeProducaoFinalizados(): array
     {
         $sql = "SELECT 
@@ -1262,7 +1261,6 @@ class LoteNovoRepository
 
             // 8. Retorna o ID da etiqueta
             return $novoItemEmbIdGerado;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e; // Lança o erro para o Controller (AJAX Router)
@@ -1337,7 +1335,7 @@ class LoteNovoRepository
                 "recordsFiltered" => $totalFiltered,
                 "data" => $data
             ];
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             error_log('PDO Error em findAllCaixasMistasForDataTable: ' . $e->getMessage() . ' | Query: ' . $dataSql ?? 'N/A');
             return [
                 "draw" => (int) ($params['draw'] ?? 1),
@@ -1384,7 +1382,7 @@ class LoteNovoRepository
                 'itens' => $itens,
                 'total_itens' => count($itens)
             ];
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             error_log('PDO Error em getDetalhesCaixaMista: ' . $e->getMessage());
             return [
                 'success' => false,
@@ -1498,6 +1496,112 @@ class LoteNovoRepository
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * Gera um relatório completo dos lotes com dados de Produção, Cliente, Fornecedor e status da Ficha Técnica.
+     * @return array
+     * @throws Exception
+     */
+    public function getRelatorioLotesCompleto(): array
+    {
+        $sql = "
+            SELECT
+                lote.lote_numero AS 'Numero Lote',
+                lote.lote_data_fabricacao AS 'Data de Fabricacao',
+                prod.item_prod_data_validade AS 'Data de Validade',
+                cli.ent_razao_social AS 'Cliente',
+                forn.ent_razao_social AS 'Fornecedor / Fazenda',
+                lote.lote_viveiro AS 'Viveiro',
+                produt.prod_descricao AS 'Descricao Produto',
+                CASE 
+                    WHEN ficha.ficha_id IS NOT NULL THEN 'COM FICHA TECNICA' 
+                    ELSE 'SEM FICHA TECNICA' 
+                END AS 'Ficha Tecnica'
+            FROM
+                tbl_lotes_novo_header lote
+            INNER JOIN
+                tbl_lotes_novo_producao prod ON lote.lote_id = prod.item_prod_lote_id
+            INNER JOIN
+                tbl_produtos produt ON prod.item_prod_produto_id = produt.prod_codigo
+            LEFT JOIN
+                tbl_entidades cli ON lote.lote_cliente_id = cli.ent_codigo
+            LEFT JOIN
+                tbl_entidades forn ON lote.lote_fornecedor_id = forn.ent_codigo
+            LEFT JOIN
+                tbl_fichas_tecnicas ficha ON produt.prod_codigo = ficha.ficha_produto_id
+            ORDER BY
+                lote.lote_numero DESC, prod.item_prod_data_validade ASC
+        ";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+
+            // Retorna todos os resultados como um array associativo
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+
+            // Registramos o erro e lançamos uma exceção genérica.
+            error_log("Erro no SQL do Relatório de Lotes: " . $e->getMessage());
+            throw new Exception("Ocorreu um erro ao gerar o relatório. Detalhes: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Gera um relatório detalhado das Caixas Mistas, listando o produto final 
+     * e todos os itens (lotes/sobras) que foram consumidos para a sua criação.
+     * @return array
+     * @throws Exception
+     */
+    public function getRelatorioCaixasMistasDetalhado(): array
+    {
+        $sql = "
+            SELECT
+                -- DADOS DA CAIXA MISTA (PRODUTO FINAL)
+                mh.mista_id AS 'ID Caixa Mista',
+                p_final.prod_descricao AS 'Produto Final Gerado',
+                lh_destino.lote_completo_calculado AS 'Lote Destino',
+                mh.mista_data_criacao AS 'Data Criacao',
+                
+                -- DADOS DA SOBRA CONSUMIDA (ITEM DE ORIGEM)
+                p_origem.prod_descricao AS 'Produto de Origem (Sobra)',
+                lh_origem.lote_completo_calculado AS 'Lote de Origem',
+                mi.item_mista_qtd_consumida AS 'Qtd Consumida (Kg)'
+            FROM
+                tbl_caixas_mistas_header mh
+            -- 1. Junta com o PRODUTO FINAL (o produto que foi gerado)
+            INNER JOIN
+                tbl_produtos p_final ON mh.mista_produto_final_id = p_final.prod_codigo
+            -- 2. Junta com o LOTE DESTINO (o lote ao qual pertence a Caixa Mista)
+            INNER JOIN
+                tbl_lotes_novo_header lh_destino ON mh.mista_lote_destino_id = lh_destino.lote_id
+            -- 3. Junta com os ITENS CONSUMIDOS (as sobras)
+            INNER JOIN
+                tbl_caixas_mistas_itens mi ON mh.mista_id = mi.item_mista_header_id
+            -- 4. Junta com a PRODUCAO ORIGINAL do item consumido (para o produto/lote)
+            INNER JOIN
+                tbl_lotes_novo_producao lp_origem ON mi.item_prod_origem_id = lp_origem.item_prod_id
+            -- 5. Junta com o PRODUTO de ORIGEM
+            INNER JOIN
+                tbl_produtos p_origem ON lp_origem.item_prod_produto_id = p_origem.prod_codigo
+            -- 6. Junta com o LOTE de ORIGEM
+            INNER JOIN
+                tbl_lotes_novo_header lh_origem ON lp_origem.item_prod_lote_id = lh_origem.lote_id
+            ORDER BY
+                mh.mista_id DESC, mi.item_mista_qtd_consumida DESC;
+        ";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+
+            // Retorna todos os resultados como um array associativo
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            error_log("Erro no SQL do Relatório de Caixas Mistas: " . $e->getMessage());
+            throw new Exception("Ocorreu um erro ao gerar o relatório de caixas mistas.");
         }
     }
 }
