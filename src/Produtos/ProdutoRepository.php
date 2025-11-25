@@ -3,7 +3,7 @@
 namespace App\Produtos;
 
 use PDO;
-use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 
 class ProdutoRepository
@@ -29,7 +29,10 @@ class ProdutoRepository
         $searchValue = $params['search']['value'] ?? '';
         $orderColumnIndex = $params['order'][0]['column'] ?? 1;
         $orderDir = $params['order'][0]['dir'] ?? 'asc';
-        $filtroSituacao = $params['filtro_situacao'] ?? 'Todos';
+
+        // Filtros
+        $filtroSituacao = !empty($params['filtro_situacao']) ? $params['filtro_situacao'] : 'Todos';
+        $filtroTipo = !empty($params['filtro_tipo']) ? $params['filtro_tipo'] : 'Todos';
 
         // Colunas para ordenação e busca
         $columns = ['prod_situacao', 'prod_codigo_interno', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_peso_embalagem'];
@@ -41,18 +44,29 @@ class ProdutoRepository
         // --- Contagem Total de Registros ---
         $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
 
-        // --- Construção da Cláusula WHERE e Parâmetros ---
+        // --- Construção da Query base, Cláusula WHERE e Parâmetros ---
+        $sqlBase = "FROM tbl_produtos";
         $whereConditions = [];
         $queryParams = [];
 
         // Filtro por Situação
-        if ($filtroSituacao !== 'Todos') {
-            $whereConditions[] = "prod_situacao = :filtro_situacao";
-            $queryParams[':filtro_situacao'] = $filtroSituacao;
+        if ($filtroSituacao !== 'TODOS') {
+            $situacao = ($filtroSituacao === 'Ativo' || $filtroSituacao === 'A') ? 'A' : (($filtroSituacao === 'Inativo' || $filtroSituacao === 'I') ? 'I' : '');
+            if ($situacao) {
+                $whereConditions[] = "prod_situacao = :situacao";
+                $queryParams[':situacao'] = $situacao;
+            }
         }
 
-        // Filtro por Busca (USANDO A SUA LÓGICA DE MÚLTIPLOS PARÂMETROS)
+        // Filtro de Tipo de Embalagem 
+        if ($filtroTipo !== 'TODOS') {
+            $whereConditions[] = "prod_tipo_embalagem = :tipo";
+            $queryParams[':tipo'] = $filtroTipo;
+        }
+
+        // Filtro por Busca
         if (!empty($searchValue)) {
+            $searchableColumns = ['prod_codigo_interno', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
             $searchConditions = [];
             $searchTerm = '%' . $searchValue . '%';
             foreach ($searchableColumns as $index => $column) {
@@ -66,14 +80,26 @@ class ProdutoRepository
         $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
         // --- Contagem de Registros Filtrados ---
+        /*   $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
         $sqlFiltered = "SELECT COUNT(prod_codigo) FROM tbl_produtos $whereClause";
         $stmtFiltered = $this->pdo->prepare($sqlFiltered);
+        $stmtFiltered->execute($queryParams);
+        $totalFiltered = $stmtFiltered->fetchColumn();*/
+
+        $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
+
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(prod_codigo) $sqlBase $whereClause");
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
         // --- Busca dos Dados da Página Atual ---
-        $sql = "SELECT * FROM tbl_produtos $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
+        /*  $sql = "SELECT * FROM tbl_produtos $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
+        $stmt = $this->pdo->prepare($sql);*/
+        $sql = "SELECT * $sqlBase $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
         $stmt = $this->pdo->prepare($sql);
+
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
 
         // Vincula os parâmetros da cláusula WHERE (agora com múltiplos :searchX)
         foreach ($queryParams as $key => &$value) {
@@ -81,10 +107,11 @@ class ProdutoRepository
         }
 
         // Vincula os parâmetros do LIMIT com tipo explícito
-        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+        /* $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);*/
 
         $stmt->execute();
+
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
@@ -122,7 +149,7 @@ class ProdutoRepository
             $stmtCheckCod->execute([':cod' => $codInterno]);
             if ($stmtCheckCod->fetchColumn() > 0) {
                 // Lança uma Exceção que será capturada pelo ajax_router
-                throw new Exception("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
+                throw new ("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
             }
         }
 
@@ -154,7 +181,7 @@ class ProdutoRepository
 
         if ($success) {
             $novoId = (int) $this->pdo->lastInsertId();
-            $this->auditLogger->log('CREATE', $novoId, 'tbl_produtos', null, $data);
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_produtos', null, $data, "");
         }
 
         return $success;
@@ -186,7 +213,7 @@ class ProdutoRepository
         $success = $stmt->execute($this->prepareData($data));
 
         if ($success) {
-            $this->auditLogger->log('UPDATE', $id, 'tbl_produtos', $dadosAntigos, $data);
+            $this->auditLogger->log('UPDATE', $id, 'tbl_produtos', $dadosAntigos, $data, "");
         }
 
         return $success;
@@ -206,7 +233,7 @@ class ProdutoRepository
         $success = $stmt->rowCount() > 0;
 
         if ($success) {
-            $this->auditLogger->log('DELETE', $id, 'tbl_produtos', $dadosAntigos, null);
+            $this->auditLogger->log('DELETE', $id, 'tbl_produtos', $dadosAntigos, null, "");
         }
 
         return $success;
@@ -247,7 +274,7 @@ class ProdutoRepository
             ':prod_codigo' => $data['prod_codigo'] ?? null,
         ];
     }
-    
+
     public function findPrimarios(): ?array
     {
         $stmt = $this->pdo->query("SELECT 
@@ -329,5 +356,67 @@ class ProdutoRepository
     {
         $stmt = $this->pdo->query("SELECT COUNT(*) FROM tbl_produtos");
         return (int) $stmt->fetchColumn();
+    }
+
+    public function getDadosRelatorioGeral(string $filtroSituacao = 'Todos', string $search = '', string $filtroTipo = 'Todos'): array
+    {
+        $filtroSituacao = !empty($filtroSituacao) ? $filtroSituacao : 'Todos';
+        $filtroTipo = !empty($filtroTipo) ? $filtroTipo : 'Todos';
+
+        $searchableColumns = ['p.prod_codigo_interno', 'p.prod_descricao', 'p.prod_tipo', 'p.prod_tipo_embalagem'];
+        $whereConditions = [];
+        $queryParams = [];
+
+        // Filtro Situação
+        if ($filtroSituacao !== 'Todos') {
+            $situacao = ($filtroSituacao === 'Ativo' || $filtroSituacao === 'A') ? 'A' : (($filtroSituacao === 'Inativo' || $filtroSituacao === 'I') ? 'I' : '');
+            if ($situacao) {
+                $whereConditions[] = "p.prod_situacao = :situacao";
+                $queryParams[':situacao'] = $situacao;
+            }
+        }
+
+        // Filtro Tipo (CORREÇÃO)
+        if ($filtroTipo !== 'Todos') {
+            $whereConditions[] = "p.prod_tipo_embalagem = :tipo_emb";
+            $queryParams[':tipo_emb'] = $filtroTipo;
+        }
+
+        // Busca
+        if (!empty($search)) {
+            $searchConditions = [];
+            $searchTerm = '%' . $search . '%';
+            foreach ($searchableColumns as $index => $column) {
+                $key = ":search_rel_" . $index;
+                $searchConditions[] = "$column LIKE $key";
+                $queryParams[$key] = $searchTerm;
+            }
+            $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
+        }
+
+        $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        // Query Principal com JOIN
+        $sql = "SELECT 
+                    p.prod_codigo, 
+                    p.prod_codigo_interno, 
+                    p.prod_descricao, 
+                    p.prod_tipo_embalagem, 
+                    p.prod_ean13, 
+                    p.prod_dun14, 
+                    p.prod_ncm,
+                    p.prod_situacao,
+                    -- Dados do Primário (Pai)
+                    prim.prod_descricao AS nome_primario,
+                    prim.prod_codigo_interno AS codigo_primario,
+                    prim.prod_ean13 AS ean_primario
+                FROM tbl_produtos p
+                LEFT JOIN tbl_produtos prim ON p.prod_primario_id = prim.prod_codigo
+                $whereClause
+                ORDER BY p.prod_tipo_embalagem ASC, p.prod_descricao ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($queryParams);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

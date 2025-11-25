@@ -3,9 +3,12 @@
 namespace App\FichasTecnicas;
 
 use PDO;
+use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 use App\Core\RelatorioService;
 use App\FichasTecnicas\FichaTecnicaHtmlService;
+
 
 // Adotando o padrão de parâmetros únicos do LoteNovoRepository
 class FichaTecnicaRepository
@@ -268,7 +271,7 @@ class FichaTecnicaRepository
         $fichaId = !empty($data['ficha_id']) ? (int) $data['ficha_id'] : null;
 
         if (empty($data['ficha_produto_id'])) {
-            throw new \Exception("O campo 'Produto' é obrigatório.");
+            throw new Exception("O campo 'Produto' é obrigatório.");
         }
 
         $this->pdo->beginTransaction();
@@ -337,10 +340,10 @@ class FichaTecnicaRepository
 
             $this->pdo->commit();
             return $fichaId;
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             $this->pdo->rollBack();
             error_log("Erro em saveHeader FichaTecnica: " . $e->getMessage());
-            throw new \Exception("Erro ao salvar os dados no banco. Verifique os logs do servidor.");
+            throw new Exception("Erro ao salvar os dados no banco. Verifique os logs do servidor.");
         }
     }
 
@@ -349,14 +352,14 @@ class FichaTecnicaRepository
      *
      * @param int $fichaId O ID da ficha a ser excluída.
      * @return bool
-     * @throws \Exception
+     * @throws Exception
      */
     public function delete(int $fichaId): bool
     {
         // Log de auditoria antes de deletar, para termos o registro do que foi apagado
         $dadosAntigos = $this->findCompletaById($fichaId)['header'] ?? null;
         if ($dadosAntigos) {
-            $this->auditLogger->log('DELETE', $fichaId, 'tbl_fichas_tecnicas', $dadosAntigos, null);
+            $this->auditLogger->log('DELETE', $fichaId, 'tbl_fichas_tecnicas', $dadosAntigos, null,"");
         }
 
         $stmt = $this->pdo->prepare("DELETE FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
@@ -518,19 +521,19 @@ class FichaTecnicaRepository
      * Gera o relatório PDF (chamando os serviços), salva na pasta de mídias e retorna o caminho público.
      * @param int $fichaId
      * @return string Caminho relativo público do arquivo PDF salvo.
-     * @throws \Exception
+     * @throws Exception
      */
     public function gerarRelatorioPdf(int $fichaId): string
     {
         // 1. Busca os dados da ficha para obter o código do produto
         $fichaData = $this->findCompletaById($fichaId);
         if (!$fichaData || !$fichaData['header']) {
-            throw new \Exception("Ficha Técnica não encontrada.");
+            throw new Exception("Ficha Técnica não encontrada.");
         }
         $codigoInternoProduto = $fichaData['header']['prod_codigo_interno'];
 
         if (empty($codigoInternoProduto)) {
-            throw new \Exception("O produto associado não possui código interno para salvar o relatório.");
+            throw new Exception("O produto associado não possui código interno para salvar o relatório.");
         }
 
         // 2. Geração do HTML (usando o Template Service)
@@ -542,9 +545,9 @@ class FichaTecnicaRepository
 
         try {
             $pdfContent = $relatorioService->generatePdfContent($htmlContent);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Captura erros específicos de DomPDF
-            throw new \Exception("Erro na conversão para PDF: " . $e->getMessage());
+            throw new Exception("Erro na conversão para PDF: " . $e->getMessage());
         }
 
         // 4. Define o caminho de armazenamento
@@ -562,7 +565,7 @@ class FichaTecnicaRepository
 
         // 5. Salva o conteúdo binário no disco (CACHE)
         if (file_put_contents($caminhoCompleto, $pdfContent) === false) {
-            throw new \Exception("Falha ao salvar o arquivo PDF em disco. Verifique as permissões da pasta: {$pastaProdutoDir}");
+            throw new Exception("Falha ao salvar o arquivo PDF em disco. Verifique as permissões da pasta: {$pastaProdutoDir}");
         }
 
         return $caminhoPublico;

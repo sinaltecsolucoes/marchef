@@ -15,10 +15,34 @@
             <p>Gerencie todos os produtos</p>
 
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <!-- Botão Adicionar Produto -->
-                <button class="btn btn-primary" id="btn-adicionar-produto-main">
-                    <i class="fas fa-plus me-2"></i> Adicionar Produto
-                </button>
+                <!-- Botões Adicionar Produto e Imprimir Listagem de Produtos -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" id="btn-adicionar-produto-main">
+                        <i class="fas fa-plus me-2"></i> Adicionar Produto
+                    </button>
+
+                    <button class="btn btn-secondary" id="btn-imprimir-relatorio">
+                        <i class="fas fa-print me-2"></i> Imprimir Listagem
+                    </button>
+                </div>
+
+                  <!-- Filtro por Tipo de Embalagem -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <label class="form-label mb-0 text-nowrap">Tipo:</label>
+
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-todos" value="Todos" checked>
+                        <label class="form-check-label" for="filtro-tipo-todos">Todos</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-prim" value="PRIMARIA">
+                        <label class="form-check-label" for="filtro-tipo-prim">Primário</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-sec" value="SECUNDARIA">
+                        <label class="form-check-label" for="filtro-tipo-sec">Secundário</label>
+                    </div>
+                </div>
 
                 <!-- Filtro por Situação -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -39,6 +63,7 @@
                         <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>

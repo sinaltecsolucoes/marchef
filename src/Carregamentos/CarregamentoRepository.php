@@ -3,6 +3,7 @@
 namespace App\Carregamentos;
 
 use PDO;
+use Exception;
 use App\Core\AuditLoggerService;
 use App\OrdensExpedicao\OrdemExpedicaoRepository;
 
@@ -118,7 +119,7 @@ class CarregamentoRepository
             $stmtCheck->execute([':oe_id' => $ordemExpedicaoId]);
 
             if ($stmtCheck->fetchColumn()) {
-                throw new \Exception("Esta Ordem de Expedição já está sendo usada em outro carregamento.");
+                throw new Exception("Esta Ordem de Expedição já está sendo usada em outro carregamento.");
             }
         }
 
@@ -196,7 +197,7 @@ class CarregamentoRepository
 
             $this->pdo->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }
@@ -226,7 +227,7 @@ class CarregamentoRepository
         $itemOE = $stmtOE->fetch(PDO::FETCH_ASSOC);
 
         if (!$itemOE)
-            throw new \Exception("Item da Ordem de Expedição não encontrado.");
+            throw new Exception("Item da Ordem de Expedição não encontrado.");
 
         $alocacaoId = $itemOE['oei_alocacao_id'];
         $qtdPlanejada = $itemOE['oei_quantidade'];
@@ -288,7 +289,7 @@ class CarregamentoRepository
         $saldo = $stmtSaldo->fetchColumn();
 
         if ($saldo === false || $saldo < $quantidade) {
-            throw new \Exception("Quantidade solicitada (" . $quantidade . ") excede o saldo disponível (" . $saldo . ") no endereço.");
+            throw new Exception("Quantidade solicitada (" . $quantidade . ") excede o saldo disponível (" . $saldo . ") no endereço.");
         }
 
         // Busca o carregamento_id (a partir da fila)
@@ -350,7 +351,7 @@ class CarregamentoRepository
             $carregamento = $stmtStatus->fetch(PDO::FETCH_ASSOC);
 
             if (!$carregamento || $carregamento['car_status'] !== 'EM ANDAMENTO') {
-                throw new \Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser finalizados.");
+                throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser finalizados.");
             }
 
             // 2. Busca todos os itens do carregamento para dar baixa no estoque
@@ -364,7 +365,7 @@ class CarregamentoRepository
             $itensParaBaixar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($itensParaBaixar)) {
-                throw new \Exception("Não é possível finalizar um carregamento sem itens.");
+                throw new Exception("Não é possível finalizar um carregamento sem itens.");
             }
 
             // Prepara as queries que serão usadas dentro do loop
@@ -404,13 +405,13 @@ class CarregamentoRepository
             }
 
             // 6. Registra na auditoria
-            $this->auditLogger->log('FINALIZE', $carregamentoId, 'tbl_carregamentos', ['status_anterior' => 'EM ANDAMENTO'], ['status_novo' => 'FINALIZADO']);
+            $this->auditLogger->log('FINALIZE', $carregamentoId, 'tbl_carregamentos', ['status_anterior' => 'EM ANDAMENTO'], ['status_novo' => 'FINALIZADO'], "");
 
             // 7. Se tudo deu certo, confirma a transação
             $this->pdo->commit();
             return true;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Se qualquer passo falhar, desfaz tudo
             $this->pdo->rollBack();
             throw $e; // Re-lança a exceção para o controller mostrar o erro
@@ -428,7 +429,7 @@ class CarregamentoRepository
         $status = $stmt->fetchColumn();
 
         if ($status === 'FINALIZADO') {
-            throw new \Exception("Não é possível cancelar um carregamento que já foi finalizado.");
+            throw new Exception("Não é possível cancelar um carregamento que já foi finalizado.");
         }
 
         return $this->updateStatus($carregamentoId, 'CANCELADO');
@@ -667,7 +668,7 @@ class CarregamentoRepository
         $header = $stmtHeader->fetch(PDO::FETCH_ASSOC);
 
         if (!$header) {
-            throw new \Exception("Carregamento não encontrado.");
+            throw new Exception("Carregamento não encontrado.");
         }
         $data['header'] = $header;
         $ordemExpedicaoId = $header['oe_id']; // Pega o ID da OE
@@ -799,7 +800,7 @@ class CarregamentoRepository
             $stmtHeader = $this->pdo->prepare("DELETE FROM tbl_carregamentos WHERE car_id = :id");
             $stmtHeader->execute([':id' => $carregamentoId]);
 
-            $this->auditLogger->log('DELETE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, null);
+            $this->auditLogger->log('DELETE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, null,"");
 
             $this->pdo->commit();
             return true;
@@ -866,11 +867,11 @@ class CarregamentoRepository
         ]);
 
         if (!$success || $stmt->rowCount() == 0) {
-            throw new \Exception("Nenhum item encontrado para este cliente nesta fila.");
+            throw new Exception("Nenhum item encontrado para este cliente nesta fila.");
         }
 
         // Adicionar log de auditoria
-        $this->auditLogger->log('DELETE', $filaId, 'tbl_carregamento_itens', null, ['cliente_id_removido' => $clienteId]);
+        $this->auditLogger->log('DELETE', $filaId, 'tbl_carregamento_itens', null, ['cliente_id_removido' => $clienteId],"");
 
         return true;
     }
@@ -912,7 +913,7 @@ class CarregamentoRepository
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$data) {
-            throw new \Exception("Item não encontrado.");
+            throw new Exception("Item não encontrado.");
         }
 
         // 2. Decide qual saldo usar
@@ -958,11 +959,11 @@ class CarregamentoRepository
         $detalhes = $this->getCarregamentoItemDetalhes($carItemId);
 
         if ($novaQuantidade <= 0) {
-            throw new \Exception("A quantidade deve ser maior que zero.");
+            throw new Exception("A quantidade deve ser maior que zero.");
         }
 
         if ($novaQuantidade > $detalhes['max_quantidade_disponivel']) {
-            throw new \Exception("A quantidade ({$novaQuantidade}) excede o saldo disponível ({$detalhes['max_quantidade_disponivel']}).");
+            throw new Exception("A quantidade ({$novaQuantidade}) excede o saldo disponível ({$detalhes['max_quantidade_disponivel']}).");
         }
 
         $sql = "UPDATE tbl_carregamento_itens SET car_item_quantidade = :qtd WHERE car_item_id = :id";
@@ -975,7 +976,7 @@ class CarregamentoRepository
      * * @param array $data Dados do formulário (incluindo quantidade e motivo de divergência)
      * @param int $carregamentoId ID do carregamento pai
      * @return int O ID do item de carregamento salvo.
-     * @throws \Exception
+     * @throws Exception
      */
     public function addItemCarregamento(array $data, int $carregamentoId): int
     {
@@ -991,7 +992,7 @@ class CarregamentoRepository
         }
 
         if (!$filaId || !$clienteId || !$alocacaoId || $quantidadeAdicionada <= 0) {
-            throw new \Exception("Dados inválidos. Cliente, Alocação e Quantidade são obrigatórios.");
+            throw new Exception("Dados inválidos. Cliente, Alocação e Quantidade são obrigatórios.");
         }
 
         // 2. Transação para garantir a integridade dos dados
@@ -1002,7 +1003,7 @@ class CarregamentoRepository
 
             // Validação da regra de negócio: se é divergência, o motivo é obrigatório
             if ($isDivergencia && empty($motivo)) {
-                throw new \Exception("Item divergente requer um motivo obrigatório.");
+                throw new Exception("Item divergente requer um motivo obrigatório.");
             }
 
             // 4. Lógica para Inserir um novo item no carregamento
@@ -1010,7 +1011,7 @@ class CarregamentoRepository
             $stmtLote->execute([':id' => $alocacaoId]);
             $loteNovoItemId = $stmtLote->fetchColumn();
             if (!$loteNovoItemId) {
-                throw new \Exception("Lote correspondente à alocação não encontrado.");
+                throw new Exception("Lote correspondente à alocação não encontrado.");
             }
 
             $sql = "INSERT INTO tbl_carregamento_itens (car_item_carregamento_id, car_item_fila_id, car_item_cliente_id, car_item_lote_novo_item_id, car_item_alocacao_id, car_item_quantidade, car_item_oei_id_origem, car_item_motivo_divergencia)
@@ -1027,11 +1028,11 @@ class CarregamentoRepository
                 ':motivo' => !empty($motivo) ? $motivo : null
             ]);
             $newId = (int) $this->pdo->lastInsertId();
-            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data);
+            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data,"");
 
             $this->pdo->commit();
             return $newId;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
         }
@@ -1106,12 +1107,12 @@ class CarregamentoRepository
     {
         $filaId = filter_var($postData['foto_fila_id'], FILTER_VALIDATE_INT);
         if (!$filaId) {
-            throw new \Exception("ID da fila inválido.");
+            throw new Exception("ID da fila inválido.");
         }
 
         // 1. Validação inicial do array de arquivos
         if (!isset($fileData['foto_upload']) || !is_array($fileData['foto_upload']['name'])) {
-            throw new \Exception("Nenhum arquivo enviado ou formato de dados incorreto.");
+            throw new Exception("Nenhum arquivo enviado ou formato de dados incorreto.");
         }
 
         $this->pdo->beginTransaction();
@@ -1161,12 +1162,12 @@ class CarregamentoRepository
             $this->pdo->commit();
 
             if ($successCount == 0 && $totalFiles > 0) {
-                throw new \Exception("Nenhuma das fotos enviadas era válida (verifique o tipo ou tamanho).");
+                throw new Exception("Nenhuma das fotos enviadas era válida (verifique o tipo ou tamanho).");
             }
 
             return $successCount;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e; // Re-lança a exceção para o controller
         }
@@ -1546,5 +1547,5 @@ class CarregamentoRepository
 
         $fila['clientes'] = array_values($clientes);
         return $fila;
-    }
+    } 
 }

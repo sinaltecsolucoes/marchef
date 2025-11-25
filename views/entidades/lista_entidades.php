@@ -312,7 +312,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                                 <option value="Comercial">Comercial</option>
                                                 <option value="Entrega">Entrega</option>
                                                 <option value="Cobrança">Cobrança</option>
-                                                <option value="Outros">Outros</option>
+                                                <option value="Outro">Outro</option>
                                             </select>
                                         </div>
                                         <div class="col-md-4 mb-3">

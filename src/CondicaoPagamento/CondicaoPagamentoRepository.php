@@ -3,6 +3,8 @@
 namespace App\CondicaoPagamento;
 
 use PDO;
+use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 
 class CondicaoPagamentoRepository
@@ -85,7 +87,7 @@ class CondicaoPagamentoRepository
             ':ativo' => isset($data['cond_ativo']) ? 1 : 0
         ]);
         $newId = (int) $this->pdo->lastInsertId();
-        $this->auditLogger->log('CREATE', $newId, 'tbl_condicoes_pagamento', null, $data);
+        $this->auditLogger->log('CREATE', $newId, 'tbl_condicoes_pagamento', null, $data,"");
         return $newId;
     }
 
@@ -106,7 +108,7 @@ class CondicaoPagamentoRepository
             ':dias' => $data['cond_dias_parcelas'] ?: null,
             ':ativo' => isset($data['cond_ativo']) ? 1 : 0
         ]);
-        $this->auditLogger->log('UPDATE', $id, 'tbl_condicoes_pagamento', $dadosAntigos, $data);
+        $this->auditLogger->log('UPDATE', $id, 'tbl_condicoes_pagamento', $dadosAntigos, $data,"");
         return $success;
     }
 
@@ -116,13 +118,13 @@ class CondicaoPagamentoRepository
         $stmtCheck = $this->pdo->prepare("SELECT COUNT(*) FROM tbl_faturamento_notas_grupo WHERE fatn_condicao_pag_id = ?");
         $stmtCheck->execute([$id]);
         if ($stmtCheck->fetchColumn() > 0) {
-            throw new \Exception("Esta condição não pode ser excluída pois está em uso por um resumo de faturamento.");
+            throw new Exception("Esta condição não pode ser excluída pois está em uso por um resumo de faturamento.");
         }
 
         $dadosAntigos = $this->find($id);
         $stmt = $this->pdo->prepare("DELETE FROM tbl_condicoes_pagamento WHERE cond_id = :id");
         $success = $stmt->execute([':id' => $id]);
-        $this->auditLogger->log('DELETE', $id, 'tbl_condicoes_pagamento', $dadosAntigos, null);
+        $this->auditLogger->log('DELETE', $id, 'tbl_condicoes_pagamento', $dadosAntigos, null,"");
         return $success;
     }
 }

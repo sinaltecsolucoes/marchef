@@ -33,12 +33,39 @@ class EntidadeRepository
         $pageType = $params['tipo_entidade'] ?? 'cliente';
         $filtroTipoEntidade = $params['filtro_tipo_entidade'] ?? 'Todos';
 
-        $columns = ['ent_situacao', 'ent_tipo_entidade', 'ent_codigo_interno', 'ent_razao_social', 'ent_nome_fantasia', 'ent_cpf', 'end_logradouro'];
+        $columns = [
+            'ent_situacao',
+            'ent_tipo_entidade',
+            'ent_codigo_interno',
+            'ent_razao_social',
+            'ent_nome_fantasia',
+            'ent_cpf',
+            'end_logradouro'
+        ];
         $orderColumn = $columns[$orderColumnIndex] ?? 'ent_razao_social';
 
-        $searchableColumns = ['ent_razao_social', 'ent_nome_fantasia', 'ent_cpf', 'ent_cnpj', 'ent_codigo_interno'];
+        $searchableColumns = [
+            'ent_razao_social',
+            'ent_nome_fantasia',
+            'ent_cpf',
+            'ent_cnpj',
+            'ent_codigo_interno'
+        ];
 
-        $sqlBase = "FROM tbl_entidades ent LEFT JOIN (SELECT end_entidade_id, end_logradouro, end_numero, ROW_NUMBER() OVER(PARTITION BY end_entidade_id ORDER BY CASE end_tipo_endereco WHEN 'Principal' THEN 1 WHEN 'Comercial' THEN 2 ELSE 3 END, end_codigo ASC) as rn FROM tbl_enderecos) end ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1";
+        $sqlBase = "FROM tbl_entidades ent 
+                    LEFT JOIN (
+                        SELECT 
+                            end_entidade_id, 
+                            end_logradouro, 
+                            end_numero, 
+                            ROW_NUMBER() OVER(PARTITION BY end_entidade_id 
+                            ORDER BY CASE end_tipo_endereco 
+                            WHEN 'Principal' THEN 1 
+                            WHEN 'Comercial' THEN 2 
+                            ELSE 3 END, 
+                            end_codigo ASC) AS rn 
+                            FROM tbl_enderecos) 
+                            END ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1";
 
         $conditions = [];
         $queryParams = [];
@@ -49,10 +76,12 @@ class EntidadeRepository
         } else {
             switch (strtolower($pageType)) {
                 case 'cliente':
-                    $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                    $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR 
+                                      ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
                     break;
                 case 'fornecedor':
-                    $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                    $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR 
+                                      ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
                     break;
                 case 'transportadora':
                     $conditions[] = "ent.ent_tipo_entidade = 'Transportadora'";
@@ -85,7 +114,12 @@ class EntidadeRepository
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
-        $sqlData = "SELECT ent.*, end.end_logradouro, end.end_numero $sqlBase $whereClause ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
+        $sqlData = "SELECT ent.*, 
+                           end.end_logradouro, 
+                           end.end_numero 
+                           $sqlBase 
+                           $whereClause 
+                           ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
@@ -103,8 +137,13 @@ class EntidadeRepository
      */
     public function find(int $id): ?array
     {
-        $query = $this->pdo->prepare("SELECT ent.*, end.end_cep, end.end_logradouro, end.end_numero, 
-                                                    end.end_complemento, end.end_bairro, end.end_cidade, 
+        $query = $this->pdo->prepare("SELECT ent.*, 
+                                                    end.end_cep, 
+                                                    end.end_logradouro, 
+                                                    end.end_numero, 
+                                                    end.end_complemento, 
+                                                    end.end_bairro, 
+                                                    end.end_cidade, 
                                                     end.end_uf 
                                              FROM tbl_entidades ent 
                                              LEFT JOIN (SELECT *, ROW_NUMBER() 
@@ -136,13 +175,26 @@ class EntidadeRepository
 
             // 2. Insere na tabela principal 'tbl_entidades'
             $sqlEntidade = "INSERT INTO tbl_entidades (
-                                ent_tipo_pessoa, ent_cpf, ent_cnpj, ent_razao_social, 
-                                ent_nome_fantasia, ent_codigo_interno, ent_inscricao_estadual,
-                                ent_tipo_entidade, ent_situacao, ent_usuario_cadastro_id
+                                ent_tipo_pessoa, 
+                                ent_cpf, ent_cnpj, 
+                                ent_razao_social, 
+                                ent_nome_fantasia, 
+                                ent_codigo_interno, 
+                                ent_inscricao_estadual,
+                                ent_tipo_entidade, 
+                                ent_situacao, 
+                                ent_usuario_cadastro_id
                             ) VALUES (
-                                :tipo_pessoa, :cpf, :cnpj, :razao_social,
-                                :nome_fantasia, :codigo_interno, :inscricao_estadual,
-                                :tipo_entidade, :situacao, :user_id
+                                :tipo_pessoa, 
+                                :cpf, 
+                                :cnpj, 
+                                :razao_social,
+                                :nome_fantasia, 
+                                :codigo_interno, 
+                                :inscricao_estadual,
+                                :tipo_entidade, 
+                                :situacao, 
+                                :user_id
                             )";
 
             $stmtEntidade = $this->pdo->prepare($sqlEntidade);
@@ -170,12 +222,26 @@ class EntidadeRepository
             // 4. Se um endereço foi fornecido, insere na 'tbl_enderecos' como 'Principal'
             if (!empty($data['end_cep'])) {
                 $sqlEndereco = "INSERT INTO tbl_enderecos (
-                                    end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, 
-                                    end_numero, end_complemento, end_bairro, end_cidade, end_uf, 
+                                    end_entidade_id, 
+                                    end_tipo_endereco, 
+                                    end_cep, 
+                                    end_logradouro, 
+                                    end_numero, 
+                                    end_complemento, 
+                                    end_bairro, 
+                                    end_cidade, 
+                                    end_uf, 
                                     end_usuario_cadastro_id
                                 ) VALUES (
-                                    :ent_id, 'Principal', :cep, :logradouro,
-                                    :numero, :complemento, :bairro, :cidade, :uf,
+                                    :ent_id, 
+                                    'Principal', 
+                                    :cep, 
+                                    :logradouro,
+                                    :numero, 
+                                    :complemento, 
+                                    :bairro, 
+                                    :cidade, 
+                                    :uf,
                                     :user_id
                                 )";
                 $stmtEndereco = $this->pdo->prepare($sqlEndereco);
@@ -231,10 +297,15 @@ class EntidadeRepository
             $situacao = isset($data['ent_situacao']) && $data['ent_situacao'] === 'A' ? 'A' : 'I';
 
             $sqlEntidade = "UPDATE tbl_entidades SET
-                                ent_tipo_pessoa = :tipo_pessoa, ent_cpf = :cpf, ent_cnpj = :cnpj, 
-                                ent_razao_social = :razao_social, ent_nome_fantasia = :nome_fantasia, 
-                                ent_codigo_interno = :codigo_interno, ent_inscricao_estadual = :inscricao_estadual,
-                                ent_tipo_entidade = :tipo_entidade, ent_situacao = :situacao
+                                ent_tipo_pessoa = :tipo_pessoa,
+                                ent_cpf = :cpf, 
+                                ent_cnpj = :cnpj, 
+                                ent_razao_social = :razao_social, 
+                                ent_nome_fantasia = :nome_fantasia, 
+                                ent_codigo_interno = :codigo_interno,
+                                ent_inscricao_estadual = :inscricao_estadual,
+                                ent_tipo_entidade = :tipo_entidade, 
+                                ent_situacao = :situacao
                             WHERE ent_codigo = :id";
 
             $stmtEntidade = $this->pdo->prepare($sqlEntidade);
@@ -274,19 +345,39 @@ class EntidadeRepository
                 if ($existingEnderecoId) {
                     // ATUALIZA o endereço principal existente
                     $sqlEndereco = "UPDATE tbl_enderecos SET
-                                        end_cep = :cep, end_logradouro = :logradouro, 
-                                        end_numero = :numero, end_complemento = :complemento, 
-                                        end_bairro = :bairro, end_cidade = :cidade, end_uf = :uf
+                                        end_cep = :cep, 
+                                        end_logradouro = :logradouro, 
+                                        end_numero = :numero,
+                                        end_complemento = :complemento, 
+                                        end_bairro = :bairro, 
+                                        end_cidade = :cidade,
+                                        end_uf = :uf
                                     WHERE end_codigo = :end_id";
                     $params[':end_id'] = $existingEnderecoId;
                 } else {
                     // CRIA um novo endereço principal se não existir
                     $sqlEndereco = "INSERT INTO tbl_enderecos (
-                                        end_entidade_id, end_tipo_endereco, end_cep, end_logradouro, end_numero, 
-                                        end_complemento, end_bairro, end_cidade, end_uf, end_usuario_cadastro_id
+                                        end_entidade_id, 
+                                        end_tipo_endereco, 
+                                        end_cep, 
+                                        end_logradouro, 
+                                        end_numero, 
+                                        end_complemento, 
+                                        end_bairro, 
+                                        end_cidade, 
+                                        end_uf, 
+                                        end_usuario_cadastro_id
                                     ) VALUES (
-                                        :ent_id, 'Principal', :cep, :logradouro, :numero, 
-                                        :complemento, :bairro, :cidade, :uf, :user_id
+                                        :ent_id, 
+                                        'Principal', 
+                                        :cep, 
+                                        :logradouro, 
+                                        :numero, 
+                                        :complemento, 
+                                        :bairro, 
+                                        :cidade, 
+                                        :uf, 
+                                        :user_id
                                     )";
                     $params[':ent_id'] = $id;
                     $params[':user_id'] = $userId;
@@ -395,19 +486,30 @@ class EntidadeRepository
                     WHERE end_codigo = :id";
         } else { // Cria
             $sql = "INSERT INTO tbl_enderecos (
-                                end_entidade_id, end_tipo_endereco, 
-                                end_cep, end_logradouro, end_numero, 
-                                end_complemento, end_bairro, end_cidade, end_uf, 
+                                end_entidade_id, 
+                                end_tipo_endereco, 
+                                end_cep, 
+                                end_logradouro,
+                                end_numero, 
+                                end_complemento,
+                                end_bairro,
+                                end_cidade,
+                                end_uf, 
                                 end_usuario_cadastro_id) 
                     VALUES (
-                    :ent_id, :tipo, 
-                    :cep, :log, :num, 
-                    :comp, :bairro, :cidade, :uf, 
+                    :ent_id, 
+                    :tipo, 
+                    :cep, 
+                    :log, 
+                    :num, 
+                    :comp, 
+                    :bairro, 
+                    :cidade, 
+                    :uf, 
                     :user_id)";
         }
 
         $stmt = $this->pdo->prepare($sql);
-        $params = [ /* ... params ... */];
         $params = [
             ':tipo' => $data['end_tipo_endereco'],
             ':cep' => $data['end_cep'],
@@ -546,5 +648,33 @@ class EntidadeRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca todos os dados de uma entidade para o relatório detalhado (Ficha Cadastral)
+     */
+    public function getDadosRelatorio(int $id): array
+    {
+        // 1. Dados Principais
+        $stmt = $this->pdo->prepare("SELECT * FROM tbl_entidades WHERE ent_codigo = :id");
+        $stmt->execute([':id' => $id]);
+        $entidade = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$entidade) {
+            return [];
+        }
+
+        // 2. Endereços (Todos os tipos)
+        $stmtEnd = $this->pdo->prepare("SELECT * 
+                                               FROM tbl_enderecos 
+                                               WHERE end_entidade_id = :id 
+                                               ORDER BY end_tipo_endereco ASC");
+        $stmtEnd->execute([':id' => $id]);
+        $enderecos = $stmtEnd->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'entidade' => $entidade,
+            'enderecos' => $enderecos
+        ];
     }
 }

@@ -334,12 +334,21 @@ $(document).ready(function () {
                 "width": "8%",
                 "render": (data, type, row) => {
                     let btnEditar = `
-                                <a href="#" class="btn btn-warning btn-sm btn-editar-entidade me-1 d-inline-flex align-items-center" data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                                <a href="#" 
+                                class="btn btn-warning btn-sm btn-editar-entidade me-1 d-inline-flex align-items-center" 
+                                data-id="${data}"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
 
                     let btnInativar = `
-                                <a href="#" class="btn btn-danger btn-sm btn-inativar-entidade d-inline-flex align-items-center" data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>`;
+                                <a href="#" 
+                                class="btn btn-danger btn-sm btn-inativar-entidade me-1 d-inline-flex align-items-center" 
+                                data-id="${data}" data-nome="${row.ent_razao_social}"><i class="fa fa-ban me-1"></i>Inativar</a>`;
+                    let btnRelatorio = `
+                                <a href="index.php?page=relatorio_entidade&id=${row.ent_codigo}" 
+                                target="_blank" 
+                                class="btn btn-sm btn-info d-inline-flex align-items-center"  
+                                title="Imprimir Ficha"><i class="fas fa-print me-1"></i>Imprimir</a>`;
 
-                    return `<div class="btn-group">${btnEditar}${btnInativar}</div>`;
+                    return `<div class="d-flex justify-content-center">${btnEditar}${btnInativar}${btnRelatorio}</div>`;
                 }
             }
         ],

@@ -4,6 +4,7 @@ namespace App\Etiquetas;
 
 use PDO;
 use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 
 class TemplateRepository

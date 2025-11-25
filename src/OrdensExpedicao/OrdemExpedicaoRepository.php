@@ -3,6 +3,8 @@
 namespace App\OrdensExpedicao;
 
 use PDO;
+use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 
 class OrdemExpedicaoRepository
@@ -72,7 +74,7 @@ class OrdemExpedicaoRepository
             ':usuario_id' => $usuarioId
         ]);
         $newId = (int) $this->pdo->lastInsertId();
-        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_header', null, $data);
+        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_header', null, $data,"");
         return $newId;
     }
 
@@ -155,7 +157,7 @@ class OrdemExpedicaoRepository
             ':numero_pedido' => $data['oep_numero_pedido'] ?: null
         ]);
         $newId = (int) $this->pdo->lastInsertId();
-        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_pedidos', null, $data);
+        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_pedidos', null, $data,"");
         return $newId;
     }
 
@@ -251,7 +253,7 @@ class OrdemExpedicaoRepository
                 ':oei_id' => $existingItem['oei_id']
             ]);
             $newId = $existingItem['oei_id'];  // Retorna o ID existente
-            $this->auditLogger->log('UPDATE', $newId, 'tbl_ordens_expedicao_itens', $existingItem, $data);
+            $this->auditLogger->log('UPDATE', $newId, 'tbl_ordens_expedicao_itens', $existingItem, $data,"");
         } else {
             // Se não existir, insere novo
             $sql = "INSERT INTO tbl_ordens_expedicao_itens (oei_pedido_id, oei_alocacao_id, oei_quantidade, oei_observacao)
@@ -264,7 +266,7 @@ class OrdemExpedicaoRepository
                 ':observacao' => $data['oei_observacao'] ?? null
             ]);
             $newId = (int) $this->pdo->lastInsertId();
-            $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_itens', null, $data);
+            $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_itens', null, $data,"");
         }
 
         return $newId;
@@ -357,7 +359,7 @@ class OrdemExpedicaoRepository
             $deletePedidoStmt->execute([':pedido_id' => $pedidoId]);
 
             // Registrar no log de auditoria
-            $this->auditLogger->log('DELETE', $pedidoId, 'tbl_ordens_expedicao_pedidos', null, null);
+            $this->auditLogger->log('DELETE', $pedidoId, 'tbl_ordens_expedicao_pedidos', null, null,"");
             $this->pdo->commit();
         } catch (Exception $e) {
             $this->pdo->rollBack();
@@ -386,7 +388,7 @@ class OrdemExpedicaoRepository
         $stmt->execute([':item_id' => $itemId]);
 
         // Registrar no log de auditoria
-        $this->auditLogger->log('DELETE', $itemId, 'tbl_ordens_expedicao_itens', null, null);
+        $this->auditLogger->log('DELETE', $itemId, 'tbl_ordens_expedicao_itens', null, null,"");
     }
 
     /**
@@ -507,7 +509,7 @@ class OrdemExpedicaoRepository
         ]);
 
         // 5. Registra na auditoria
-        $this->auditLogger->log('UPDATE', $oeiId, 'tbl_ordens_expedicao_itens', $itemAtual, $data);
+        $this->auditLogger->log('UPDATE', $oeiId, 'tbl_ordens_expedicao_itens', $itemAtual, $data,"");
 
         return $success;
     }
@@ -659,7 +661,7 @@ class OrdemExpedicaoRepository
         $status = $stmtCheck->fetchColumn();
 
         if ($status !== 'EM ELABORAÇÃO') {
-            throw new \Exception("Apenas Ordens de Expedição 'EM ELABORAÇÃO' podem ser excluídas.");
+            throw new Exception("Apenas Ordens de Expedição 'EM ELABORAÇÃO' podem ser excluídas.");
         }
 
         // 2. Inicia uma transação para garantir que tudo seja excluído
@@ -689,11 +691,11 @@ class OrdemExpedicaoRepository
 
             $this->pdo->commit();
             return true;
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             $this->pdo->rollBack();
             // Captura o erro de chave estrangeira específico do faturamento
             if ($e->getCode() == '23000' && strpos($e->getMessage(), 'fk_fat_resumo_oe') !== false) {
-                throw new \Exception("Esta OE não pode ser excluída pois possui um Resumo de Faturamento associado. Por favor, exclua primeiro o resumo na tela de Faturamentos.");
+                throw new Exception("Esta OE não pode ser excluída pois possui um Resumo de Faturamento associado. Por favor, exclua primeiro o resumo na tela de Faturamentos.");
             }
             // Para outros erros, lança a mensagem original
             throw $e; // Re-lança a exceção para o controller

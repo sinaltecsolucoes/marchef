@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 
 
 require_once __DIR__ . '/../src/bootstrap.php';
-require_once __DIR__ . '/libs/dompdf/vendor/autoload.php'; 
+//require_once __DIR__ . '/libs/dompdf/vendor/autoload.php'; 
 
 // Usaremos um Autoloader simples por enquanto. No futuro, o Composer fará isso.
 spl_autoload_register(function ($class) {
@@ -44,12 +44,23 @@ use App\OrdensExpedicao\OrdemExpedicaoRepository;
 use App\Faturamento\FaturamentoRepository;
 use App\CondicaoPagamento\CondicaoPagamentoRepository;
 use App\FichasTecnicas\FichaTecnicaRepository;
+use App\Core\RelatorioService;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
+// ============================================================================
+// 1. SANITIZAÇÃO GLOBAL
+// ============================================================================
+// Converte todo o POST para maiúsculo automaticamente antes de qualquer processamento
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST)) {
+    // A função sanitize_upper() já está disponível via helpers.php (carregado no bootstrap)
+    $_POST = sanitize_upper($_POST);
+}
+// ============================================================================
 
 // --- Roteamento Simples ---
 // Pegamos a ação da URL, ex: /ajax_router.php?action=cadastrarProduto
@@ -363,66 +374,66 @@ switch ($action) {
     case 'excluirCarregamento':
         excluirCarregamento($carregamentoRepo);
         break;
-    case 'reativarCarregamento':
+    /*case 'reativarCarregamento':
         reativarCarregamento($carregamentoRepo);
-        break;
+        break;*/
     case 'reabrirCarregamento':
         reabrirCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'getOrdensParaCarregamentoSelect':
         getOrdensParaCarregamentoSelect($ordemExpedicaoRepo);
         break;
-    case 'adicionarItemCarregamento':
+  /*  case 'adicionarItemCarregamento':
         adicionarItemCarregamento($carregamentoRepo);
-        break;
-    case 'getCarregamentoDetalhes':
+        break;*/
+    /*case 'getCarregamentoDetalhes':
         getCarregamentoDetalhes($carregamentoRepo);
-        break;
-    case 'adicionarFila':
+        break;*/
+   /* case 'adicionarFila':
         adicionarFila($carregamentoRepo);
-        break;
-    case 'adicionarItemAFila':
+        break;*/
+   /* case 'adicionarItemAFila':
         adicionarItemAFila($carregamentoRepo);
-        break;
-    case 'getDadosConferencia':
+        break;*/
+   /* case 'getDadosConferencia':
         getDadosConferencia($carregamentoRepo);
-        break;
-    case 'confirmarBaixaEstoque':
+        break;*/
+   /* case 'confirmarBaixaEstoque':
         confirmarBaixaEstoque($carregamentoRepo);
-        break;
-    case 'salvarFilaComposta':
+        break;*/
+    /*case 'salvarFilaComposta':
         salvarFilaComposta($carregamentoRepo);
-        break;
-    case 'removerFilaCompleta':
+        break;*/
+   /* case 'removerFilaCompleta':
         removerFilaCompleta($carregamentoRepo);
-        break;
+        break;*/
     case 'getFilaDetalhes':
         getFilaDetalhes($carregamentoRepo);
         break;
-    case 'atualizarFilaComposta':
+    /*case 'atualizarFilaComposta':
         atualizarFilaComposta($carregamentoRepo);
-        break;
-    case 'getItensDeEstoqueParaCarregamento':
+        break;*/
+    /*case 'getItensDeEstoqueParaCarregamento':
         getItensDeEstoqueParaCarregamento($carregamentoRepo);
-        break;
-    case 'getLotesComSaldoPorProduto':
+        break;*/
+    /*case 'getLotesComSaldoPorProduto':
         getLotesComSaldoPorProduto($carregamentoRepo);
-        break;
-    case 'getProdutosDisponiveisEmEstoque':
+        break;*/
+   /* case 'getProdutosDisponiveisEmEstoque':
         getProdutosDisponiveisEmEstoque($carregamentoRepo);
-        break;
+        break;*/
     case 'getFotosDaFila':
         getFotosDaFila($carregamentoRepo);
         break;
     case 'addFotoFila':
         addFotoFila($carregamentoRepo);
         break;
-    case 'salvarFilaDoPool':
+    /*case 'salvarFilaDoPool':
         salvarFilaDoPool($carregamentoRepo);
-        break;
-    case 'atualizarFilaDoPool':
+        break;*/
+   /* case 'atualizarFilaDoPool':
         atualizarFilaDoPool($carregamentoRepo);
-        break;
+        break;*/
     case 'getCarregamentoDetalhesCompletos':
         getCarregamentoDetalhesCompletos($carregamentoRepo);
         break;
@@ -731,7 +742,7 @@ switch ($action) {
 // --- FUNÇÕES DE CONTROLE PARA PRODUTOS ---
 function listarProdutos(ProdutoRepository $repo)
 {
-    $output = $repo->findAllForDataTable($_POST);
+    $output = $repo->findAllForDataTable($_POST); 
     echo json_encode($output);
 }
 
@@ -1797,7 +1808,7 @@ function criarBackup()
         $filename = $backupService->gerarBackup();
 
         echo json_encode(['success' => true, 'filename' => $filename]);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         error_log("Erro ao criar backup: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -1837,7 +1848,7 @@ function getOrdensParaCarregamentoSelect(OrdemExpedicaoRepository $repo)
     echo json_encode(['results' => $repo->findOrdensParaCarregamentoSelect($term)]);
 }
 
-function adicionarItemCarregamento(CarregamentoRepository $repo)
+/*function adicionarItemCarregamento(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -1851,9 +1862,9 @@ function adicionarItemCarregamento(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function getDadosConferencia(CarregamentoRepository $repo)
+/*function getDadosConferencia(CarregamentoRepository $repo)
 {
     $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
     if (!$carregamentoId) {
@@ -1866,9 +1877,9 @@ function getDadosConferencia(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function confirmarBaixaEstoque(CarregamentoRepository $repo)
+/*function confirmarBaixaEstoque(CarregamentoRepository $repo)
 {
     $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
     $forcarBaixa = isset($_POST['forcar_baixa']) && $_POST['forcar_baixa'] === 'true';
@@ -1884,9 +1895,9 @@ function confirmarBaixaEstoque(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function getCarregamentoDetalhes(CarregamentoRepository $repo)
+/*function getCarregamentoDetalhes(CarregamentoRepository $repo)
 {
     $carregamentoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
     if (!$carregamentoId) {
@@ -1895,9 +1906,9 @@ function getCarregamentoDetalhes(CarregamentoRepository $repo)
     }
     $data = $repo->findCarregamentoComFilasEItens($carregamentoId);
     echo json_encode(['success' => !!$data, 'data' => $data]);
-}
+}*/
 
-function adicionarFila(CarregamentoRepository $repo)
+/*function adicionarFila(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -1912,9 +1923,9 @@ function adicionarFila(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function adicionarItemAFila(CarregamentoRepository $repo)
+/*function adicionarItemAFila(CarregamentoRepository $repo)
 {
     try {
         $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
@@ -1931,9 +1942,9 @@ function adicionarItemAFila(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function salvarFilaComposta(CarregamentoRepository $repo)
+/*function salvarFilaComposta(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -1949,9 +1960,9 @@ function salvarFilaComposta(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function removerFilaCompleta(CarregamentoRepository $repo)
+/*function removerFilaCompleta(CarregamentoRepository $repo)
 {
     try {
         // Valida o ID recebido via POST
@@ -1964,7 +1975,7 @@ function removerFilaCompleta(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
 function getFilaDetalhes(CarregamentoRepository $repo)
 {
@@ -1980,7 +1991,7 @@ function getFilaDetalhes(CarregamentoRepository $repo)
     }
 }
 
-function atualizarFilaComposta(CarregamentoRepository $repo)
+/*function atualizarFilaComposta(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -1997,7 +2008,7 @@ function atualizarFilaComposta(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
 function cancelarCarregamento(CarregamentoRepository $repo)
 {
@@ -2027,7 +2038,7 @@ function excluirCarregamento(CarregamentoRepository $repo)
     }
 }
 
-function reativarCarregamento(CarregamentoRepository $repo)
+/*function reativarCarregamento(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -2039,9 +2050,9 @@ function reativarCarregamento(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, \App\OrdensExpedicao\OrdemExpedicaoRepository $ordemExpedicaoRepo)
+function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, $ordemExpedicaoRepo)
 {
     try {
         $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -2057,15 +2068,15 @@ function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, \App\Orde
     }
 }
 
-function getItensDeEstoqueParaCarregamento(CarregamentoRepository $repo)
+/*function getItensDeEstoqueParaCarregamento(CarregamentoRepository $repo)
 {
     $term = $_GET['term'] ?? ''; // Termo de busca vindo do Select2
     $itens = $repo->getItensDeEstoqueDisponivelParaSelecao($term);
     // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
     echo json_encode(['results' => $itens]);
-}
+}*/
 
-function getLotesComSaldoPorProduto(CarregamentoRepository $repo)
+/*function getLotesComSaldoPorProduto(CarregamentoRepository $repo)
 {
     $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
     if (!$produtoId) {
@@ -2074,13 +2085,13 @@ function getLotesComSaldoPorProduto(CarregamentoRepository $repo)
     }
     $lotes = $repo->findLotesComSaldoPorProduto($produtoId);
     echo json_encode(['results' => $lotes]);
-}
+}*/
 
-function getProdutosDisponiveisEmEstoque(CarregamentoRepository $repo)
+/*function getProdutosDisponiveisEmEstoque(CarregamentoRepository $repo)
 {
     $produtos = $repo->getProdutosDisponiveisEmEstoque();
     echo json_encode(['results' => $produtos]);
-}
+}*/
 
 function getFotosDaFila(CarregamentoRepository $repo)
 {
@@ -2122,7 +2133,7 @@ function addFotoFila(CarregamentoRepository $repo)
     }
 }
 
-function salvarFilaDoPool(CarregamentoRepository $repo)
+/*function salvarFilaDoPool(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -2139,9 +2150,9 @@ function salvarFilaDoPool(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
-function atualizarFilaDoPool(CarregamentoRepository $repo)
+/*function atualizarFilaDoPool(CarregamentoRepository $repo)
 {
     try {
         $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
@@ -2159,7 +2170,7 @@ function atualizarFilaDoPool(CarregamentoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-}
+}*/
 
 function getCarregamentoItemDetalhes(CarregamentoRepository $repo)
 {

@@ -75,9 +75,9 @@ class LoteNovoRepository
 
         // Lógica de Auditoria
         if ($id) { // Log de UPDATE
-            $this->auditLogger->log('UPDATE', $resultId, 'tbl_lotes_novo_header', $dadosAntigos, $data);
+            $this->auditLogger->log('UPDATE', $resultId, 'tbl_lotes_novo_header', $dadosAntigos, $data,"");
         } else { // Log de CREATE
-            $this->auditLogger->log('CREATE', $resultId, 'tbl_lotes_novo_header', null, $data);
+            $this->auditLogger->log('CREATE', $resultId, 'tbl_lotes_novo_header', null, $data,"");
         }
 
         return $resultId;
@@ -123,7 +123,7 @@ class LoteNovoRepository
 
         // Lógica de Auditoria
         if ($novoId > 0) {
-            $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_producao', null, $params);
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_producao', null, $params,"");
         }
 
         return $novoId;
@@ -212,8 +212,8 @@ class LoteNovoRepository
             $novoId = (int) $this->pdo->lastInsertId();
 
             // 8. Lógica de Auditoria
-            $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_embalagem', null, $params);
-            $this->auditLogger->log('UPDATE', $prodPrimId, 'tbl_lotes_novo_producao', ['item_prod_saldo' => $saldoAtualPrimario], ['item_prod_saldo' => $novoSaldo]);
+            $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_embalagem', null, $params,"");
+            $this->auditLogger->log('UPDATE', $prodPrimId, 'tbl_lotes_novo_producao', ['item_prod_saldo' => $saldoAtualPrimario], ['item_prod_saldo' => $novoSaldo],"");
 
             // 9. Se tudo correu bem, confirma as operações
             $this->pdo->commit();
@@ -306,7 +306,7 @@ class LoteNovoRepository
         $success = $stmtDelete->execute([':id' => $itemProdId]);
 
         if ($success) {
-            $this->auditLogger->log('DELETE', $itemProdId, 'tbl_lotes_novo_producao', $item, null);
+            $this->auditLogger->log('DELETE', $itemProdId, 'tbl_lotes_novo_producao', $item, null,"");
         }
 
         return $success;
@@ -346,8 +346,8 @@ class LoteNovoRepository
             $stmtDelete = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_id = :id");
             $stmtDelete->execute([':id' => $itemEmbId]);
 
-            $this->auditLogger->log('DELETE', $itemEmbId, 'tbl_lotes_novo_embalagem', $item, null);
-            $this->auditLogger->log('UPDATE', $prodPrimItemId, 'tbl_lotes_novo_producao', ['saldo_revertido' => $qtdAReverter], null);
+            $this->auditLogger->log('DELETE', $itemEmbId, 'tbl_lotes_novo_embalagem', $item, null,"");
+            $this->auditLogger->log('UPDATE', $prodPrimItemId, 'tbl_lotes_novo_producao', ['saldo_revertido' => $qtdAReverter], null,"");
 
             $this->pdo->commit();
             return true;
@@ -409,7 +409,7 @@ class LoteNovoRepository
         $success = $stmtUpdate->execute($params);
 
         if ($success) {
-            $this->auditLogger->log('UPDATE', $itemProdId, 'tbl_lotes_novo_producao', $itemAtual, $data);
+            $this->auditLogger->log('UPDATE', $itemProdId, 'tbl_lotes_novo_producao', $itemAtual, $data,"");
         }
 
         return $success;
@@ -481,7 +481,7 @@ class LoteNovoRepository
             $stmtUpdate = $this->pdo->prepare($sqlUpdate);
             $stmtUpdate->execute($paramsUpdate);
 
-            $this->auditLogger->log('UPDATE', $itemEmbId, 'tbl_lotes_novo_embalagem', $itemAtual, $data);
+            $this->auditLogger->log('UPDATE', $itemEmbId, 'tbl_lotes_novo_embalagem', $itemAtual, $data,"");
 
             $this->pdo->commit();
             return true;
@@ -543,7 +543,7 @@ class LoteNovoRepository
             $stmtUpdateHeader = $this->pdo->prepare("UPDATE tbl_lotes_novo_header SET lote_status = 'CANCELADO' WHERE lote_id = :id");
             $stmtUpdateHeader->execute([':id' => $loteId]);
 
-            $this->auditLogger->log('CANCEL', $loteId, 'tbl_lotes_novo_header', ['lote_status' => $loteAtual['lote_status']], ['lote_status' => 'CANCELADO']);
+            $this->auditLogger->log('CANCEL', $loteId, 'tbl_lotes_novo_header', ['lote_status' => $loteAtual['lote_status']], ['lote_status' => 'CANCELADO'],"");
 
             $this->pdo->commit();
             return true;
@@ -581,7 +581,7 @@ class LoteNovoRepository
         $success = $stmtUpdate->execute([':id' => $loteId]);
 
         if ($success) {
-            $this->auditLogger->log('REACTIVATE', $loteId, 'tbl_lotes_novo_header', ['lote_status' => 'CANCELADO'], ['lote_status' => 'EM ANDAMENTO']);
+            $this->auditLogger->log('REACTIVATE', $loteId, 'tbl_lotes_novo_header', ['lote_status' => 'CANCELADO'], ['lote_status' => 'EM ANDAMENTO'],"");
         }
 
         return $success;
@@ -734,7 +734,7 @@ class LoteNovoRepository
             $stmt_update_header = $this->pdo->prepare($sql_update_header);
             $stmt_update_header->execute($params_update_header);
 
-            $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['novo_status' => $novoStatus]);
+            $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['novo_status' => $novoStatus],"");
 
             $this->pdo->commit();
             return true;

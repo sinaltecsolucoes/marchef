@@ -150,6 +150,8 @@ try {
         'fichas_tecnicas' => 'fichas_tecnicas/lista_fichas_tecnicas.php',
         'ficha_tecnica_detalhes' => 'fichas_tecnicas/detalhes_ficha_tecnica.php',
         'relatorio_ficha_tecnica' => 'fichas_tecnicas/relatorio_ficha_tecnica.php',
+        'relatorio_entidade' => 'entidades/relatorio_ficha.php',
+        'relatorio_produtos' => 'produtos/relatorio_lista.php',
 
     ];
 
@@ -208,7 +210,8 @@ try {
         'carregamento_relatorio',
         'ordem_expedicao_relatorio',
         'relatorio_ficha_tecnica',
-        // Futuramente, 'relatorio_estoque', etc. poderão ser adicionados aqui
+        'relatorio_entidade',
+        'relatorio_produtos',
     ];
 
     if (in_array($paginaAtual, $paginasSemLayout)) {
@@ -218,7 +221,6 @@ try {
         // Senão, carrega o layout principal (com menu, navbar, etc.)
         require_once __DIR__ . '/../views/layouts/main.php';
     }
-
 } catch (PDOException $e) {
     error_log("Erro no Front Controller: " . $e->getMessage());
     die("Ocorreu um erro crítico na aplicação. Verifique os logs do servidor.");

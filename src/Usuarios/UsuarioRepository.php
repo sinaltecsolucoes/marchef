@@ -4,6 +4,7 @@ namespace App\Usuarios;
 
 use PDO;
 use PDOException;
+use Exception;
 use App\Core\AuditLoggerService;
 
 class UsuarioRepository
@@ -164,7 +165,8 @@ class UsuarioRepository
                 $id,                    // ID do registo afetado
                 'tbl_usuarios',         // Tabela afetada
                 $dadosAntigos,          // Como os dados eram ANTES
-                $dadosNovos             // Como os dados ficaram DEPOIS
+                $dadosNovos,             // Como os dados ficaram DEPOIS
+                ""
             );
         }
 
@@ -195,7 +197,8 @@ class UsuarioRepository
                 $id,                // ID do registo apagado
                 'tbl_usuarios',     // Tabela afetada
                 $dadosAntigos,      // Como os dados eram ANTES
-                null                // Dados novos (não existem na exclusão)
+                null,                // Dados novos (não existem na exclusão)
+                ""
             );
             return true;
         }

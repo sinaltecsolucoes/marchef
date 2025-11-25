@@ -37,8 +37,83 @@ function render_menu_items(array $paginasPermitidas, array $paginasPermitidasUsu
     return $html;
 }
 
-// Suas outras funções de validação continuam aqui, sem alterações...
-function validate_string($value, $minLength = 1, $maxLength = 255, $allowedCharsRegex = null) { /* ... */ }
-function validate_selection($value, array $allowedValues) { /* ... */ }
+/**
+ * Converte recursivamente os valores de um array para maiúsculas,
+ * ignorando campos sensíveis e parâmetros de controlo do DataTables.
+ * * @param array $data O array de dados (ex: $_POST)
+ * @return array O array processado
+ */
+function sanitize_upper(array $data): array
+{
+    // Campos que NÃO devem ser alterados (Senhas, E-mails, Arquivos, Controlos)
+    $camposIgnorados = [
+        // 1. Segurança e Dados Sensíveis
+        'usu_senha',
+        'senha',
+        'confirmar_senha',
+        'password',
+        'email',
+        'ent_email',
 
-?>
+        // 2. Arquivos e Caminhos
+        'config_logo_path',
+        'fila_foto_path',
+        'foto',
+        'arquivo',
+        'caminho',
+
+        // 3. Tokens e Sistema
+        'csrf_token',
+        'token',
+        'action',
+        'page',
+        'controller',
+        'id',
+        'ficha_id',
+        'resumo_id', // IDs geralmente não precisam de uppercase
+        'html_content', // Conteúdo rico
+
+        // 4. Parâmetros do DataTables (ESSENCIAIS para não quebrar as listas)
+        'draw',
+        'columns',
+        'order',
+        'start',
+        'length',
+        'search',
+
+        // 5. Filtros de Listagem (ESSENCIAIS para os dados aparecerem)
+        'filtro_situacao',
+        'filtro_tipo_entidade',
+        'tipo_entidade',
+        'filtro_data_inicio',
+        'filtro_data_fim',
+        'filtro_status'
+    ];
+
+    foreach ($data as $key => $value) {
+        // Se for um array (ex: search[value] do DataTables), chama recursivamente
+        if (is_array($value)) {
+            // Se a chave do array for um dos ignorados (ex: 'columns'), não mexemos nos filhos
+            if (in_array($key, $camposIgnorados)) {
+                $data[$key] = $value;
+            } else {
+                $data[$key] = sanitize_upper($value);
+            }
+        }
+        // Se for string e a chave NÃO estiver na lista de ignorados
+        elseif (is_string($value) && !in_array($key, $camposIgnorados)) {
+            // Converte para maiúsculo
+            $data[$key] = mb_strtoupper($value, 'UTF-8');
+        }
+    }
+
+    return $data;
+}
+
+// Suas outras funções de validação continuam aqui, sem alterações...
+function validate_string($value, $minLength = 1, $maxLength = 255, $allowedCharsRegex = null)
+{ /* ... */
+}
+function validate_selection($value, array $allowedValues)
+{ /* ... */
+}

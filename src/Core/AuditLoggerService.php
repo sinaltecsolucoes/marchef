@@ -23,7 +23,7 @@ class AuditLoggerService
      * @param ?array $dadosAntigos Array com os dados antes da alteração.
      * @param ?array $dadosNovos Array com os dados depois da alteração.
      */
-    public function log(string $acao, ?int $registroId = null, ?string $tabelaAfetada = null, ?array $dadosAntigos = null, ?array $dadosNovos = null): void
+    public function log(string $acao, ?int $registroId = null, ?string $tabelaAfetada = null, ?array $dadosAntigos = null, ?array $dadosNovos = null, ?string $observacao = null): void
     {
         // Obtém os dados do usuário da sessão atual
         $usuarioId = $_SESSION['codUsuario'] ?? null;
@@ -34,9 +34,9 @@ class AuditLoggerService
         $jsonNovo = $dadosNovos ? json_encode($dadosNovos, JSON_UNESCAPED_UNICODE) : null;
 
         $sql = "INSERT INTO tbl_auditoria_logs 
-                    (log_usuario_id, log_usuario_nome, log_acao, log_tabela_afetada, log_registro_id, log_dados_antigos, log_dados_novos) 
+                    (log_usuario_id, log_usuario_nome, log_acao, log_tabela_afetada, log_registro_id, log_dados_antigos, log_dados_novos, log_observacao) 
                 VALUES 
-                    (:usuario_id, :usuario_nome, :acao, :tabela, :registro_id, :json_antigo, :json_novo)";
+                    (:usuario_id, :usuario_nome, :acao, :tabela, :registro_id, :json_antigo, :json_novo, :observacao)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -46,7 +46,8 @@ class AuditLoggerService
             ':tabela' => $tabelaAfetada,
             ':registro_id' => $registroId,
             ':json_antigo' => $jsonAntigo,
-            ':json_novo' => $jsonNovo
+            ':json_novo' => $jsonNovo,
+            ':observacao' => $observacao,
         ]);
     }
 }

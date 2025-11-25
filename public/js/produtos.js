@@ -172,12 +172,14 @@ $(document).ready(function () {
     // INICIALIZAÇÃO DA TABELA DATATABLES
     // =================================================================
     const tableProdutos = $('#tabela-produtos').DataTable({
+        "processing": true,
         "serverSide": true,
         "ajax": {
             "url": "ajax_router.php?action=listarProdutos",
             "type": "POST",
             "data": function (d) {
-                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
+                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+                d.filtro_tipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
             }
         },
         "responsive": true,
@@ -223,6 +225,8 @@ $(document).ready(function () {
     });
 
     $('input[name="filtro_situacao"]').on('change', () => tableProdutos.ajax.reload());
+    $('input[name="filtro_tipo"]').on('change', () => tableProdutos.ajax.reload());
+
     $tipoEmbalagemSelect.on('change', toggleEmbalagemFields);
     $pesoEmbalagemSecundariaInput.on('keyup', calcularUnidades);
 
@@ -446,5 +450,24 @@ $(document).ready(function () {
         }).fail(function () {
             notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do produto para cópia.');
         });
+    });
+
+    // Evento do Botão de Imprimir Relatório
+    $('#btn-imprimir-relatorio').on('click', function () {
+        // 1. Filtro de Situação
+       // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
+        let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+
+        // 2. Filtro de Tipo
+       // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
+        let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos'; 
+
+        // 3. Termo de Busca
+        let termoBusca = $('.dataTables_filter input').val() || '';
+
+        // 4. Monta a URL com todos os parâmetros
+        let urlRelatorio = `index.php?page=relatorio_produtos&filtro=${filtroSituacao}&tipo=${filtroTipo}&search=${encodeURIComponent(termoBusca)}`;
+
+        window.open(urlRelatorio, '_blank');
     });
 });

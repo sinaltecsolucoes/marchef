@@ -10,6 +10,16 @@ date_default_timezone_set('America/Sao_Paulo'); //Mesmo fuso horario de Brasilia
 // 1. Manipulador de Erros (deve ser o primeiro)
 require_once __DIR__ . "/Core/error_handler.php";
 
+// Carrega as funções auxiliares globais (sanitize, helpers de sessão, etc)
+require_once __DIR__ . "/Core/helpers.php";
+
+// Carrega a Biblioteca DomPDF
+// Isso garante que o PDF funcione tanto no ajax_router quanto no index.php
+$dompdfAutoload = __DIR__ . '/../public/libs/dompdf/vendor/autoload.php';
+if (file_exists($dompdfAutoload)) {
+    require_once $dompdfAutoload;
+}
+
 // 2. Autoloader de Classes (essencial para carregar nossas classes de /src)
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';
@@ -26,9 +36,6 @@ spl_autoload_register(function ($class) {
 });
 
 // 3. Definição de Constantes Globais
-// ATENÇÃO: Ajuste a URL se seu projeto não estiver na raiz do localhost.
-//define('BASE_URL', 'http://localhost/marchef/public');
-
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
 $scriptPath = dirname($_SERVER['SCRIPT_NAME']);
