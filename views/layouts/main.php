@@ -64,7 +64,7 @@
                             <?php // --- SUBMENU DE PRODUTOS ---
                             $paginasProdutos = ['produtos', 'fichas_tecnicas', 'templates', 'regras'];
                             if (count(array_intersect($paginasProdutos, $paginasPermitidasUsuario)) > 0):
-                                ?>
+                            ?>
                                 <li class="dropend">
                                     <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">Produtos</a>
                                     <ul class="dropdown-menu dropdown-submenu">
@@ -77,9 +77,9 @@
                                                     Técnicas</a></li>
                                         <?php endif; ?>
                                         <?php // --- SUBSUBMENU DE ETIQUETAS ---
-                                            $paginasEtiquetas = ['templates', 'regras'];
-                                            if (count(array_intersect($paginasEtiquetas, $paginasPermitidasUsuario)) > 0):
-                                                ?>
+                                        $paginasEtiquetas = ['templates', 'regras'];
+                                        if (count(array_intersect($paginasEtiquetas, $paginasPermitidasUsuario)) > 0):
+                                        ?>
                                             <li class="dropend">
                                                 <a class="dropdown-item dropdown-toggle" href="#"
                                                     data-bs-toggle="dropdown">Etiquetas</a>
@@ -102,7 +102,7 @@
                             <?php // --- SUBMENU DE ESTOQUE ---
                             $paginasEstoque = ['estoque_camaras', 'estoque_enderecos'];
                             if (count(array_intersect($paginasEstoque, $paginasPermitidasUsuario)) > 0):
-                                ?>
+                            ?>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
@@ -125,13 +125,17 @@
 
                     <?php
                     // Define as páginas que pertencem a este menu
-                    $paginasLotes = ['lotes_producao', 'lotes_embalagem'];
+                    $paginasLotes = ['lotes_recebimento', 'lotes_producao', 'lotes_embalagem'];
                     // Verifica se o usuário tem permissão para ver PELO MENOS UMA página do menu
                     if (count(array_intersect($paginasLotes, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Lotes</a>
                             <ul class="dropdown-menu">
+                                <?php if (in_array('lotes_recebimento', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=lotes_recebimento">Gestão de Lotes
+                                            (Recebimento)</a></li>
+                                <?php endif; ?>
                                 <?php if (in_array('lotes_producao', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=lotes_producao">Gestão de Lotes
                                             (Produção)</a></li>
@@ -156,7 +160,7 @@
                     // Verifica se o usuário tem permissão para ver a página de estoque
                     $paginasConsulta = ['estoque'];
                     if (count(array_intersect($paginasConsulta, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Estoques</a>
@@ -175,7 +179,7 @@
                     <?php
                     $paginasExpedicao = ['ordens_expedicao', 'carregamentos'];
                     if (count(array_intersect($paginasExpedicao, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Expedição</a>
@@ -195,7 +199,7 @@
                     $paginasFaturamento = ['faturamentos_listar'];
 
                     if (count(array_intersect($paginasFaturamento, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Faturamento</a>
@@ -214,7 +218,7 @@
                     // --- SUBMENU DE CONFIGURAÇÕES ---
                     $paginasConfig = ['permissoes'];
                     if (count(array_intersect($paginasConfig, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Configurações</a>
@@ -230,7 +234,7 @@
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Utilitários
                     $paginasUtils = ['auditoria', 'backup'];
                     if (count(array_intersect($paginasUtils, $paginasPermitidasUsuario)) > 0):
-                        ?>
+                    ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button"
                                 data-bs-toggle="dropdown">Utilitários</a>
@@ -245,7 +249,8 @@
                         </li>
                     <?php endif; ?>
 
-                    <?php // --- MENU SOBRE --- ?>
+                    <?php // --- MENU SOBRE --- 
+                    ?>
                     <li class="nav-item">
                         <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sobreModal">
                             <i class="fas fa-circle-info me-1"></i> Sobre
@@ -381,7 +386,7 @@
         <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
     <?php endif; ?>
 
-    <?php if ($paginaAtual === 'lotes_producao' || $paginaAtual === 'lotes_embalagem'): ?>
+    <?php if ($paginaAtual === 'lotes_recebimento' || $paginaAtual === 'lotes_producao' || $paginaAtual === 'lotes_embalagem'): ?>
         <script src="<?php echo BASE_URL; ?>/js/lotes_novo.js"></script>
     <?php endif; ?>
     <?php if ($paginaAtual === 'templates'): ?>
@@ -460,14 +465,14 @@
     <script>
         function debounce(func, wait) {
             let timeout;
-            return function () {
+            return function() {
                 clearTimeout(timeout);
                 timeout = setTimeout(func, wait);
             };
         }
 
         const recalcDataTables = () => {
-            $('.dataTable').each(function () {
+            $('.dataTable').each(function() {
                 const dt = $(this).DataTable();
                 if (dt.responsive) {
                     dt.columns.adjust().responsive.recalc();
@@ -479,9 +484,9 @@
     </script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll('.dropdown-menu .dropdown-toggle').forEach(function (element) {
-                element.addEventListener('click', function (e) {
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('.dropdown-menu .dropdown-toggle').forEach(function(element) {
+                element.addEventListener('click', function(e) {
                     e.stopPropagation();
                     e.preventDefault();
 
@@ -489,7 +494,7 @@
                     if (nextEl && nextEl.classList.contains('dropdown-menu')) {
                         // Fecha outros submenus abertos no mesmo nível
                         let parentMenu = this.closest('.dropdown-menu');
-                        parentMenu.querySelectorAll(':scope .dropdown-menu.show').forEach(function (submenu) {
+                        parentMenu.querySelectorAll(':scope .dropdown-menu.show').forEach(function(submenu) {
                             if (submenu !== nextEl) {
                                 submenu.classList.remove('show');
                             }

@@ -34,9 +34,23 @@ class AuditLoggerService
         $jsonNovo = $dadosNovos ? json_encode($dadosNovos, JSON_UNESCAPED_UNICODE) : null;
 
         $sql = "INSERT INTO tbl_auditoria_logs 
-                    (log_usuario_id, log_usuario_nome, log_acao, log_tabela_afetada, log_registro_id, log_dados_antigos, log_dados_novos, log_observacao) 
+                    (log_usuario_id, 
+                    log_usuario_nome, 
+                    log_acao,
+                    log_tabela_afetada, 
+                    log_registro_id, 
+                    log_dados_antigos, 
+                    log_dados_novos,
+                    log_observacao) 
                 VALUES 
-                    (:usuario_id, :usuario_nome, :acao, :tabela, :registro_id, :json_antigo, :json_novo, :observacao)";
+                    (:usuario_id,
+                     :usuario_nome, 
+                     :acao,
+                     :tabela, 
+                     :registro_id, 
+                     :json_antigo,
+                     :json_novo,
+                     :observacao)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([

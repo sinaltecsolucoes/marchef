@@ -244,6 +244,7 @@
                         <div class="col-md-4 mb-3">
                             <label for="prod_congelamento" class="form-label">Congelamento</label>
                             <select class="form-select" id="prod_congelamento" name="prod_congelamento">
+                                <option value="IN NATURA">In Natura</option>
                                 <option value="BLOCO">Bloco</option>
                                 <option value="IQF">IQF</option>
                             </select>

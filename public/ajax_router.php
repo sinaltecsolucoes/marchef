@@ -87,12 +87,12 @@ try {
     $regraRepo = new RegraRepository($pdo); // Cria a instância do repositório para Regras das Etiquetas
     $auditLogRepo = new AuditLogRepository($pdo); // Cria a instância do repositório para Auditoria de Logs
     $carregamentoRepo = new CarregamentoRepository($pdo); // Cria a instância do repositório para Carregamentos
-    $camaraRepo = new CamaraRepository($pdo);// Cria a instância do repositório para Câmaras
-    $enderecoRepo = new EnderecoRepository($pdo);// Cria a instância do repositório para Endereçamento das Câmaras
+    $camaraRepo = new CamaraRepository($pdo); // Cria a instância do repositório para Câmaras
+    $enderecoRepo = new EnderecoRepository($pdo); // Cria a instância do repositório para Endereçamento das Câmaras
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
-    $faturamentoRepo = new FaturamentoRepository($pdo);//Cria a instância do repositorio para Faturamento
-    $condPagRepo = new CondicaoPagamentoRepository($pdo);//Cria a instância do repositorio para Condições de Pagamento
-    $fichaTecnicaRepo = new FichaTecnicaRepository($pdo);//Cria a instância do repositorio para Fichas Técnicas
+    $faturamentoRepo = new FaturamentoRepository($pdo); //Cria a instância do repositorio para Faturamento
+    $condPagRepo = new CondicaoPagamentoRepository($pdo); //Cria a instância do repositorio para Condições de Pagamento
+    $fichaTecnicaRepo = new FichaTecnicaRepository($pdo); //Cria a instância do repositorio para Fichas Técnicas
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -299,6 +299,20 @@ switch ($action) {
         excluirCaixaMista($loteNovoRepo);
         break;
 
+    // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
+    case 'adicionarItemRecebimento':
+        adicionarItemRecebimento($loteNovoRepo);
+        break;
+    case 'getItensRecebimento':
+        getItensRecebimento($loteNovoRepo);
+        break;
+    case 'excluirItemRecebimento':
+        excluirItemRecebimento($loteNovoRepo);
+        break;
+    case 'getLotesFinalizadosOptions':
+        getLotesFinalizadosOptions($loteNovoRepo);
+        break;
+
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
         salvarPermissoes($permissionRepo);
@@ -374,66 +388,21 @@ switch ($action) {
     case 'excluirCarregamento':
         excluirCarregamento($carregamentoRepo);
         break;
-    /*case 'reativarCarregamento':
-        reativarCarregamento($carregamentoRepo);
-        break;*/
     case 'reabrirCarregamento':
         reabrirCarregamento($carregamentoRepo, $ordemExpedicaoRepo);
         break;
     case 'getOrdensParaCarregamentoSelect':
         getOrdensParaCarregamentoSelect($ordemExpedicaoRepo);
         break;
-  /*  case 'adicionarItemCarregamento':
-        adicionarItemCarregamento($carregamentoRepo);
-        break;*/
-    /*case 'getCarregamentoDetalhes':
-        getCarregamentoDetalhes($carregamentoRepo);
-        break;*/
-   /* case 'adicionarFila':
-        adicionarFila($carregamentoRepo);
-        break;*/
-   /* case 'adicionarItemAFila':
-        adicionarItemAFila($carregamentoRepo);
-        break;*/
-   /* case 'getDadosConferencia':
-        getDadosConferencia($carregamentoRepo);
-        break;*/
-   /* case 'confirmarBaixaEstoque':
-        confirmarBaixaEstoque($carregamentoRepo);
-        break;*/
-    /*case 'salvarFilaComposta':
-        salvarFilaComposta($carregamentoRepo);
-        break;*/
-   /* case 'removerFilaCompleta':
-        removerFilaCompleta($carregamentoRepo);
-        break;*/
     case 'getFilaDetalhes':
         getFilaDetalhes($carregamentoRepo);
         break;
-    /*case 'atualizarFilaComposta':
-        atualizarFilaComposta($carregamentoRepo);
-        break;*/
-    /*case 'getItensDeEstoqueParaCarregamento':
-        getItensDeEstoqueParaCarregamento($carregamentoRepo);
-        break;*/
-    /*case 'getLotesComSaldoPorProduto':
-        getLotesComSaldoPorProduto($carregamentoRepo);
-        break;*/
-   /* case 'getProdutosDisponiveisEmEstoque':
-        getProdutosDisponiveisEmEstoque($carregamentoRepo);
-        break;*/
     case 'getFotosDaFila':
         getFotosDaFila($carregamentoRepo);
         break;
     case 'addFotoFila':
         addFotoFila($carregamentoRepo);
         break;
-    /*case 'salvarFilaDoPool':
-        salvarFilaDoPool($carregamentoRepo);
-        break;*/
-   /* case 'atualizarFilaDoPool':
-        atualizarFilaDoPool($carregamentoRepo);
-        break;*/
     case 'getCarregamentoDetalhesCompletos':
         getCarregamentoDetalhesCompletos($carregamentoRepo);
         break;
@@ -742,7 +711,7 @@ switch ($action) {
 // --- FUNÇÕES DE CONTROLE PARA PRODUTOS ---
 function listarProdutos(ProdutoRepository $repo)
 {
-    $output = $repo->findAllForDataTable($_POST); 
+    $output = $repo->findAllForDataTable($_POST);
     echo json_encode($output);
 }
 
@@ -1497,6 +1466,60 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
     echo json_encode(['success' => !!$data, 'data' => $data]);
 }
 
+// --- FUNÇÕES DE CONTROLE PARA DETALHES DE RECEBIMENTO ---
+
+function adicionarItemRecebimento(LoteNovoRepository $repo)
+{
+    try {
+        // O repositório já valida os dados dentro do array $_POST
+        $repo->adicionarItemRecebimento($_POST);
+        echo json_encode(['success' => true, 'message' => 'Detalhe de recebimento adicionado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getItensRecebimento(LoteNovoRepository $repo)
+{
+    // No JS definimos que este parâmetro vai via GET na URL
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+
+    if (!$loteId) {
+        echo json_encode(['success' => false, 'data' => [], 'message' => 'ID do lote não fornecido.']);
+        return;
+    }
+
+    $itens = $repo->getItensRecebimento($loteId);
+    echo json_encode(['success' => true, 'data' => $itens]);
+}
+
+function excluirItemRecebimento(LoteNovoRepository $repo)
+{
+    $itemId = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+
+    if (!$itemId) {
+        echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
+        return;
+    }
+
+    try {
+        if ($repo->excluirItemRecebimento($itemId)) {
+            echo json_encode(['success' => true, 'message' => 'Item removido com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Erro ao remover o item.']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function getLotesFinalizadosOptions(LoteNovoRepository $repo)
+{
+    // Retorna no formato esperado pelo Select2 { results: [...] }
+    $dados = $repo->getLotesFinalizadosParaSelect();
+    echo json_encode(['results' => $dados]);
+}
+
 /**
  * Controller para Salvar a Caixa Mista (recebe os dados e chama o Repositório).
  */
@@ -1513,7 +1536,6 @@ function salvarCaixaMista(LoteNovoRepository $repo, int $usuarioId)
             'message' => 'Caixa Mista criada com sucesso! Novo item de embalagem gerado.',
             'novo_item_emb_id' => $novoItemEmbId // Retorna o ID para a impressão da etiqueta
         ]);
-
     } catch (Exception $e) {
         // Se o Repo falhar (ex: saldo insuficiente), ele envia a exceção
         http_response_code(400); // 400 Bad Request
@@ -1630,7 +1652,6 @@ function imprimirEtiquetaLoteItem(PDO $pdo)
         $publicUrl = 'temp_labels/' . $filename;
 
         echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
-
     } catch (Exception $e) {
         // Captura qualquer erro e envia uma resposta JSON amigável
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
@@ -1661,7 +1682,6 @@ function getTemplate(TemplateRepository $repo)
         } else {
             echo json_encode(['success' => false, 'message' => 'Template com ID ' . htmlspecialchars($id) . ' não foi encontrado.']);
         }
-
     } catch (PDOException $e) {
         // Se QUALQUER erro de banco de dados ocorrer no bloco 'try', ele será capturado aqui.
         error_log("ERRO FATAL EM getTemplate: " . $e->getMessage()); // Grava o erro real e detalhado no log do servidor.
@@ -1848,135 +1868,6 @@ function getOrdensParaCarregamentoSelect(OrdemExpedicaoRepository $repo)
     echo json_encode(['results' => $repo->findOrdensParaCarregamentoSelect($term)]);
 }
 
-/*function adicionarItemCarregamento(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
-        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
-        if (!$carregamentoId || !$loteItemId || !$quantidade)
-            throw new Exception("Dados inválidos.");
-
-        $repo->adicionarItem($carregamentoId, $loteItemId, $quantidade);
-        echo json_encode(['success' => true]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function getDadosConferencia(CarregamentoRepository $repo)
-{
-    $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-    if (!$carregamentoId) {
-        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
-        return;
-    }
-    try {
-        $itens = $repo->getItensParaConferencia($carregamentoId);
-        echo json_encode(['success' => true, 'data' => $itens]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function confirmarBaixaEstoque(CarregamentoRepository $repo)
-{
-    $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-    $forcarBaixa = isset($_POST['forcar_baixa']) && $_POST['forcar_baixa'] === 'true';
-
-    if (!$carregamentoId) {
-        echo json_encode(['success' => false, 'message' => 'ID do carregamento inválido.']);
-        return;
-    }
-
-    try {
-        $repo->confirmarBaixaDeEstoque($carregamentoId, $forcarBaixa);
-        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado e baixa de estoque realizada com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function getCarregamentoDetalhes(CarregamentoRepository $repo)
-{
-    $carregamentoId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-    if (!$carregamentoId) {
-        echo json_encode(['success' => false, 'message' => 'ID de carregamento inválido.']);
-        return;
-    }
-    $data = $repo->findCarregamentoComFilasEItens($carregamentoId);
-    echo json_encode(['success' => !!$data, 'data' => $data]);
-}*/
-
-/*function adicionarFila(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
-
-        if (!$carregamentoId) { // Apenas o ID do carregamento é essencial para criar a fila.
-            throw new Exception("ID do Carregamento é inválido.");
-        }
-
-        $filaId = $repo->adicionarFila($carregamentoId);
-        echo json_encode(['success' => true, 'message' => 'Fila adicionada com sucesso.', 'fila_id' => $filaId]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function adicionarItemAFila(CarregamentoRepository $repo)
-{
-    try {
-        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
-        $loteItemId = filter_input(INPUT_POST, 'lote_item_id', FILTER_VALIDATE_INT);
-        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $clienteId = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
-
-        if (!$filaId || !$loteItemId || !$quantidade || !$carregamentoId || !$clienteId) {
-            throw new Exception("Dados inválidos fornecidos.");
-        }
-        $repo->adicionarItemAFila($filaId, $loteItemId, $quantidade, $carregamentoId, $clienteId);
-        echo json_encode(['success' => true, 'message' => 'Item adicionado com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function salvarFilaComposta(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $filaDataJson = $_POST['fila_data'] ?? '[]';
-        $filaData = json_decode($filaDataJson, true);
-
-        if (!$carregamentoId || empty($filaData)) {
-            throw new Exception("Dados inválidos para salvar a fila.");
-        }
-
-        $repo->salvarFilaComposta($carregamentoId, $filaData);
-        echo json_encode(['success' => true]);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function removerFilaCompleta(CarregamentoRepository $repo)
-{
-    try {
-        // Valida o ID recebido via POST
-        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
-        if (!$filaId) {
-            throw new Exception("ID de fila inválido.");
-        }
-        $repo->removerFilaCompleta($filaId);
-        echo json_encode(['success' => true, 'message' => 'Fila removida com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
 function getFilaDetalhes(CarregamentoRepository $repo)
 {
     try {
@@ -1991,24 +1882,6 @@ function getFilaDetalhes(CarregamentoRepository $repo)
     }
 }
 
-/*function atualizarFilaComposta(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
-        $filaDataJson = $_POST['fila_data'] ?? '[]';
-        $filaData = json_decode($filaDataJson, true);
-
-        if (!$carregamentoId || !$filaId || !is_array($filaData)) {
-            throw new Exception("Dados inválidos para atualizar a fila.");
-        }
-
-        $repo->atualizarFilaComposta($filaId, $carregamentoId, $filaData);
-        echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
 
 function cancelarCarregamento(CarregamentoRepository $repo)
 {
@@ -2038,20 +1911,6 @@ function excluirCarregamento(CarregamentoRepository $repo)
     }
 }
 
-/*function reativarCarregamento(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        if (!$carregamentoId) {
-            throw new Exception("ID de carregamento inválido.");
-        }
-        $repo->reativar($carregamentoId);
-        echo json_encode(['success' => true, 'message' => 'Carregamento reativado com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
 function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, $ordemExpedicaoRepo)
 {
     try {
@@ -2067,31 +1926,6 @@ function reabrirCarregamento(CarregamentoRepository $carregamentoRepo, $ordemExp
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-
-/*function getItensDeEstoqueParaCarregamento(CarregamentoRepository $repo)
-{
-    $term = $_GET['term'] ?? ''; // Termo de busca vindo do Select2
-    $itens = $repo->getItensDeEstoqueDisponivelParaSelecao($term);
-    // A resposta precisa estar no formato que o Select2 espera: { results: [...] }
-    echo json_encode(['results' => $itens]);
-}*/
-
-/*function getLotesComSaldoPorProduto(CarregamentoRepository $repo)
-{
-    $produtoId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
-    if (!$produtoId) {
-        echo json_encode(['results' => []]);
-        return;
-    }
-    $lotes = $repo->findLotesComSaldoPorProduto($produtoId);
-    echo json_encode(['results' => $lotes]);
-}*/
-
-/*function getProdutosDisponiveisEmEstoque(CarregamentoRepository $repo)
-{
-    $produtos = $repo->getProdutosDisponiveisEmEstoque();
-    echo json_encode(['results' => $produtos]);
-}*/
 
 function getFotosDaFila(CarregamentoRepository $repo)
 {
@@ -2126,51 +1960,11 @@ function addFotoFila(CarregamentoRepository $repo)
 
         // Retorna uma mensagem com a contagem de fotos salvas
         echo json_encode(['success' => true, 'message' => "{$count} foto(s) salva(s) com sucesso!"]);
-
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-
-/*function salvarFilaDoPool(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $filaDataJson = $_POST['fila_data'] ?? '[]';
-        $filaData = json_decode($filaDataJson, true);
-
-        if (!$carregamentoId || empty($filaData)) {
-            throw new Exception("Dados inválidos para salvar a fila.");
-        }
-
-        // Chamamos a nova função do repositório
-        $repo->salvarFilaDoPool($carregamentoId, $filaData);
-        echo json_encode(['success' => true, 'message' => 'Fila salva com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
-
-/*function atualizarFilaDoPool(CarregamentoRepository $repo)
-{
-    try {
-        $carregamentoId = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        $filaId = filter_input(INPUT_POST, 'fila_id', FILTER_VALIDATE_INT);
-        $filaDataJson = $_POST['fila_data'] ?? '[]';
-        $filaData = json_decode($filaDataJson, true);
-
-        if (!$carregamentoId || !$filaId || !is_array($filaData)) {
-            throw new Exception("Dados inválidos para atualizar a fila.");
-        }
-
-        // Chamamos a nova função do repositório
-        $repo->atualizarFilaDoPool($filaId, $carregamentoId, $filaData);
-        echo json_encode(['success' => true, 'message' => 'Fila atualizada com sucesso!']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-}*/
 
 function getCarregamentoItemDetalhes(CarregamentoRepository $repo)
 {
@@ -2365,7 +2159,6 @@ function getProdutosDoClienteNaOE(CarregamentoRepository $repo)
 
         $results = $repo->getProdutosDoClienteNaOE($oeId, $clienteId);
         echo json_encode(['results' => $results]);
-
     } catch (Exception $e) {
         // Se houver um erro de SQL aqui, ele será capturado
         error_log("Erro em getProdutosDoClienteNaOE: " . $e->getMessage());
@@ -2533,7 +2326,6 @@ function getEstoqueDeSobras(LoteNovoRepository $repo)
 
         // Retorna no formato {data: [...]} que o DataTables espera
         echo json_encode(['data' => $sobras]);
-
     } catch (Exception $e) {
         echo json_encode(['data' => [], 'error' => $e->getMessage()]);
     }
@@ -2661,7 +2453,6 @@ function alocarItemEndereco(EnderecoRepository $repo)
         } else {
             throw new Exception('Não foi possível alocar o item.');
         }
-
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -3300,67 +3091,6 @@ function listarFotosFicha(FichaTecnicaRepository $repo)
     echo json_encode(['success' => true, 'data' => $fotos]);
 }
 
-/* function uploadFotoFicha(FichaTecnicaRepository $repo)
-{
-    try {
-        $fichaId = filter_input(INPUT_POST, 'ficha_id', FILTER_VALIDATE_INT);
-        $fotoTipo = $_POST['foto_tipo'] ?? '';
-
-        if (!$fichaId || empty($fotoTipo) || empty($_FILES['foto_arquivo'])) {
-            throw new Exception("Dados insuficientes para o upload.");
-        }
-
-        // --- LÓGICA DE ORGANIZAÇÃO DE PASTAS RESTAURADA ---
-        $codigoInternoProduto = $repo->getCodigoInternoProdutoByFichaId($fichaId);
-        if (!$codigoInternoProduto) {
-            throw new Exception("Não foi possível encontrar o produto associado a esta ficha.");
-        }
-        $nomePasta = preg_replace('/[^a-zA-Z0-9_-]/', '', $codigoInternoProduto);
-
-        $arquivo = $_FILES['foto_arquivo'];
-
-        // Validações do arquivo
-        if ($arquivo['error'] !== UPLOAD_ERR_OK)
-            throw new Exception("Erro no upload do arquivo.");
-        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
-        if (!in_array($arquivo['type'], $tiposPermitidos))
-            throw new Exception("Formato de arquivo não permitido.");
-
-        // Cria a pasta do produto se não existir
-        $pastaProdutoDir = __DIR__ . '/uploads/fichas_tecnicas/' . $nomePasta . '/';
-        if (!is_dir($pastaProdutoDir)) {
-            mkdir($pastaProdutoDir, 0775, true);
-        }
-
-        $extensao = strtolower(pathinfo($arquivo['name'], PATHINFO_EXTENSION));
-        if (empty($extensao) && $arquivo['type'] == 'image/jpeg')
-            $extensao = 'jpg';
-
-        // Cria o nome do arquivo com o código interno
-        $nomeArquivo = $nomePasta . "_" . $fotoTipo . "_" . time() . "." . $extensao;
-        $caminhoCompleto = $pastaProdutoDir . $nomeArquivo;
-        $caminhoPublico = 'uploads/fichas_tecnicas/' . $nomePasta . '/' . $nomeArquivo;
-        // --- FIM DA LÓGICA DE ORGANIZAÇÃO ---
-
-        $caminhoAntigo = $repo->deleteFoto($fichaId, $fotoTipo);
-        if ($caminhoAntigo && file_exists(__DIR__ . '/' . $caminhoAntigo)) {
-            unlink(__DIR__ . '/' . $caminhoAntigo);
-        }
-
-        if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
-            throw new Exception("Falha ao mover o arquivo para o destino.");
-        }
-
-        $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
-
-        echo json_encode(['success' => true]);
-
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-} */
-
 function uploadFotoFicha(FichaTecnicaRepository $repo)
 {
     try {
@@ -3406,7 +3136,7 @@ function uploadFotoFicha(FichaTecnicaRepository $repo)
         // Deleta o registro antigo, mas o UNLINK só ocorrerá se o arquivo existir, 
         // e se o novo upload for BEM SUCEDIDO. A função deleteFoto já apaga o registro no BD.
         $repo->deleteFoto($fichaId, $fotoTipo);
-        
+
         if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
             throw new Exception("Falha ao mover o arquivo para o destino.");
         }
@@ -3414,7 +3144,6 @@ function uploadFotoFicha(FichaTecnicaRepository $repo)
         $repo->saveFotoPath($fichaId, $fotoTipo, $caminhoPublico);
 
         echo json_encode(['success' => true]);
-
     } catch (Exception $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3443,7 +3172,6 @@ function excluirFotoFicha(FichaTecnicaRepository $repo)
     }
 }
 
-
 /**
  * Rota para gerar o relatório PDF, salvar na pasta e retornar o caminho.
  */
@@ -3459,10 +3187,9 @@ function gerarPdfFichaTecnica(FichaTecnicaRepository $repo)
     try {
         // A lógica de geração e salvamento está no Repositório.
         $caminhoRelatorio = $repo->gerarRelatorioPdf($fichaId);
-        
+
         // Retorna o caminho público para que o JS possa abrir.
         echo json_encode(['success' => true, 'pdfUrl' => $caminhoRelatorio]);
-
     } catch (Exception $e) {
         error_log("Erro ao gerar PDF da Ficha Técnica: " . $e->getMessage());
         http_response_code(500);

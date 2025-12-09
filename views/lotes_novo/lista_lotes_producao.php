@@ -6,21 +6,6 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Novo Lote</h6>
-    </div>
-    <div class="card-body">
-        <div class="row align-items-center mb-3">
-            <div class="col-md-6">
-                <button class="btn btn-primary" id="btn-adicionar-lote-novo">
-                    <i class="fas fa-plus me-2"></i> Adicionar Lote
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Registros de Lotes</h6>
     </div>
     <div class="card-body">

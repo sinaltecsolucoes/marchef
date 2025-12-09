@@ -124,6 +124,7 @@ try {
         'fornecedores' => 'entidades/lista_entidades.php',
         'transportadoras' => 'entidades/lista_entidades.php',
         'produtos' => 'produtos/lista_produtos.php',
+        'lotes_recebimento' => 'lotes_novo/lista_lotes_recebimento.php',
         'lotes_producao' => 'lotes_novo/lista_lotes_producao.php',
         'lotes_embalagem' => 'lotes_novo/lista_lotes_embalagem.php',
         'permissoes' => 'permissoes/gerenciar.php',
@@ -163,6 +164,8 @@ try {
     if ($paginaAtual === 'transportadoras')
         $pageType = 'transportadora';
 
+    if ($paginaAtual === 'lotes_recebimento')
+        $pageType = 'lotes_recebimento';
     if ($paginaAtual === 'lotes_producao')
         $pageType = 'lotes_producao';
     if ($paginaAtual === 'lotes_embalagem')
