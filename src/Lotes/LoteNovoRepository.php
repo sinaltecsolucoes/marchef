@@ -574,7 +574,7 @@ class LoteNovoRepository
      * @return bool
      * @throws Exception
      */
-    public function reativarLote(int $loteId): bool
+    /* public function reativarLote(int $loteId): bool
     {
         // 1. Busca os dados do lote para validação e auditoria
         $stmtLote = $this->pdo->prepare("SELECT lote_status FROM tbl_lotes_novo_header WHERE lote_id = :id");
@@ -596,6 +596,52 @@ class LoteNovoRepository
 
         if ($success) {
             $this->auditLogger->log('REACTIVATE', $loteId, 'tbl_lotes_novo_header', ['lote_status' => 'CANCELADO'], ['lote_status' => 'EM ANDAMENTO'], "");
+        }
+
+        return $success;
+    } */
+
+    /**
+     * Reativa um lote que foi cancelado, mudando seu status para 'EM ANDAMENTO'.
+     *
+     * @param int $loteId O ID do lote.
+     * @param string $motivo O motivo da reativação.
+     * @return bool
+     * @throws Exception
+     */
+    public function reativarLote(int $loteId, string $motivo): bool
+    {
+        if (empty(trim($motivo))) {
+            throw new Exception("O motivo da reativação é obrigatório.");
+        }
+
+        // 1. Busca os dados do lote para validação
+        $stmtLote = $this->pdo->prepare("SELECT lote_status FROM tbl_lotes_novo_header WHERE lote_id = :id");
+        $stmtLote->execute([':id' => $loteId]);
+        $loteAtual = $stmtLote->fetch(PDO::FETCH_ASSOC);
+
+        if (!$loteAtual) {
+            throw new Exception("Lote não encontrado.");
+        }
+
+        if ($loteAtual['lote_status'] !== 'CANCELADO') {
+            throw new Exception("Apenas lotes com o status 'CANCELADO' podem ser reativados.");
+        }
+
+        // 2. Atualiza o status
+        $stmtUpdate = $this->pdo->prepare("UPDATE tbl_lotes_novo_header SET lote_status = 'EM ANDAMENTO' WHERE lote_id = :id");
+        $success = $stmtUpdate->execute([':id' => $loteId]);
+
+        // 3. Registra na Auditoria COM O MOTIVO
+        if ($success) {
+            $this->auditLogger->log(
+                'REACTIVATE',
+                $loteId,
+                'tbl_lotes_novo_header',
+                ['lote_status' => 'CANCELADO'],
+                ['lote_status' => 'EM ANDAMENTO'],
+                $motivo // <--- Motivo gravado aqui
+            );
         }
 
         return $success;
@@ -1654,13 +1700,37 @@ class LoteNovoRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    public function getItensRecebimento(int $loteId): array
+    /*public function getItensRecebimento(int $loteId): array
     {
         $sql = "SELECT 
                     r.*,
                     p.prod_descricao,
                     p.prod_codigo_interno,
                     lh.lote_completo_calculado AS lote_origem_nome
+                FROM tbl_lote_novo_recebdetalhes r
+                JOIN tbl_produtos p ON r.item_receb_produto_id = p.prod_codigo
+                LEFT JOIN tbl_lotes_novo_header lh ON r.item_receb_lote_origem_id = lh.lote_id
+                WHERE r.item_receb_lote_id = :lote_id
+                ORDER BY r.item_receb_id ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':lote_id' => $loteId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } */
+
+    public function getItensRecebimento(int $loteId): array
+    {
+        $sql = "SELECT 
+                    r.*,
+                    p.prod_descricao,
+                    p.prod_codigo_interno,
+                    -- Lógica de exibição da Origem solicitada
+                    CASE
+                        WHEN p.prod_tipo = 'CAMARAO' AND p.prod_congelamento = 'IN NATURA' THEN 'DESPESCA'
+                        WHEN p.prod_tipo <> 'CAMARAO' AND p.prod_congelamento = 'IN NATURA' THEN p.prod_origem
+                        WHEN r.item_receb_lote_origem_id IS NOT NULL THEN lh.lote_completo_calculado
+                        ELSE '-'
+                    END AS origem_formatada
                 FROM tbl_lote_novo_recebdetalhes r
                 JOIN tbl_produtos p ON r.item_receb_produto_id = p.prod_codigo
                 LEFT JOIN tbl_lotes_novo_header lh ON r.item_receb_lote_origem_id = lh.lote_id
@@ -1679,14 +1749,92 @@ class LoteNovoRepository
     }
 
     // Função auxiliar para carregar lotes finalizados (para reprocesso)
-    public function getLotesFinalizadosParaSelect(): array
+    public function getLotesFinalizadosParaSelect(string $term = ''): array
     {
         $sql = "SELECT lote_id AS id, lote_completo_calculado AS text 
                 FROM tbl_lotes_novo_header 
-                WHERE lote_status = 'FINALIZADO' 
-                ORDER BY lote_data_finalizacao DESC LIMIT 50";
+                WHERE lote_status = 'FINALIZADO'";
+        //ORDER BY lote_data_finalizacao DESC LIMIT 50";
+        $params = [];
+        if (!empty($term)) {
+            $sql .= " AND lote_completo_calculado LIKE :term ";
+            $params[':term'] = '%' . $term . '%';
+        }
+
+        $sql .= " ORDER BY lote_data_finalizacao DESC LIMIT 50";
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Busca um único item de detalhe para preencher o formulário de edição.
+     */
+    public function getItemRecebimento(int $itemId): ?array
+    {
+        $sql = "SELECT * FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $itemId]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ?: null;
+    }
+
+    /**
+     * Atualiza um item de detalhe existente.
+     */
+    public function atualizarItemRecebimento(array $data): bool
+    {
+        $id = filter_var($data['item_receb_id'], FILTER_VALIDATE_INT);
+        $loteOrigem = !empty($data['item_receb_lote_origem_id']) ? $data['item_receb_lote_origem_id'] : null;
+
+        $sql = "UPDATE tbl_lote_novo_recebdetalhes SET
+                    item_receb_produto_id = :produto_id,
+                    item_receb_lote_origem_id = :lote_origem,
+                    item_receb_nota_fiscal = :nf,
+                    item_receb_peso_nota_fiscal = :peso_nf,
+                    item_receb_total_caixas = :total_caixas,
+                    item_receb_peso_medio_ind = :peso_medio,
+                    item_receb_gram_faz = :gram_faz,
+                    item_receb_gram_lab = :gram_lab
+                WHERE item_receb_id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            ':produto_id' => $data['item_receb_produto_id'],
+            ':lote_origem' => $loteOrigem,
+            ':nf' => $data['item_receb_nota_fiscal'],
+            ':peso_nf' => $data['item_receb_peso_nota_fiscal'],
+            ':total_caixas' => $data['item_receb_total_caixas'],
+            ':peso_medio' => $data['item_receb_peso_medio_ind'],
+            ':gram_faz' => $data['item_receb_gram_faz'],
+            ':gram_lab' => $data['item_receb_gram_lab'],
+            ':id' => $id
+        ]);
+    }
+
+    public function getDadosBasicosLoteReprocesso(int $loteId): array
+    {
+        $sql = "
+        SELECT
+            rd.item_receb_nota_fiscal,
+            rd.item_receb_peso_nota_fiscal,
+            rd.item_receb_total_caixas,
+            rd.item_receb_peso_medio_ind,
+            rd.item_receb_gram_faz,
+            rd.item_receb_gram_lab
+        FROM tbl_lote_novo_recebdetalhes rd
+        INNER JOIN tbl_lotes_novo_header h
+            ON h.lote_id = rd.item_receb_lote_id
+        WHERE h.lote_id = :lote_id
+          AND h.lote_status = 'FINALIZADO'
+        ORDER BY rd.item_receb_id DESC
+        LIMIT 1
+    ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':lote_id' => $loteId]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 }

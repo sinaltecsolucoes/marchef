@@ -16,9 +16,6 @@ $(document).ready(function () {
     };
 
     let tabelaLotesNovo, loteIdAtual;
-    let modoEdicao = false;
-    let dadosOriginaisEdicao = null;
-
 
     // ==================================================
     // SELECT2: helper centralizado
@@ -652,116 +649,6 @@ $(document).ready(function () {
         });
     }
 
-    function atualizarTipoEntradaMP() {
-
-        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
-        const $selectMateria = $('#item_receb_produto_id');
-        const $selectLote = $('#item_receb_lote_origem_id');
-
-        if (tipo === 'MATERIA_PRIMA') {
-
-            // Habilita matéria-prima
-            $selectMateria.prop('disabled', false).trigger('change');
-
-            // Desabilita lote origem
-            $selectLote.val(null).prop('disabled', true).trigger('change');
-
-        } else {
-
-            // Habilita lote origem
-            $selectLote.prop('disabled', false).trigger('change');
-
-            // Desabilita matéria-prima
-            $selectMateria.val(null).prop('disabled', true).trigger('change');
-        }
-    }
-
-    function aplicarModoReprocesso() {
-
-        // labels
-        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso Reprocesso (kg)');
-
-        // readonly
-        $('#item_receb_total_caixas').prop('readonly', true);
-        $('#item_receb_peso_medio_ind').prop('readonly', true);
-
-        // desabilita edição manual
-        //$('#item_receb_produto_id').prop('disabled', true);
-        // garante consistência
-        $('#item_receb_produto_id')
-            .val(null)
-            .prop('disabled', true)
-            .trigger('change');
-    }
-
-    function aplicarModoMateriaPrima() {
-
-        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso NF (kg)');
-
-        $('#item_receb_total_caixas').prop('readonly', false);
-        $('#item_receb_peso_medio_ind').prop('readonly', false);
-
-        // limpa dados herdados
-        // $('#form-recebimento-detalhe')[0].reset();
-
-        //  $('#item_receb_produto_id').prop('disabled', false);
-        $('#item_receb_produto_id')
-            .prop('disabled', false)
-            .trigger('change');
-    }
-
-    // Inicializa
-    // atualizarTipoEntradaMP();
-    function aplicarModoEntrada() {
-
-        atualizarTipoEntradaMP();
-
-        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
-        if (tipo === 'LOTE_ORIGEM') {
-            aplicarModoReprocesso();
-        } else {
-            aplicarModoMateriaPrima();
-        }
-    }
-
-    function limparFormularioDetalhes() {
-        $('#form-recebimento-detalhe')[0].reset();
-
-        $('#item_receb_produto_id').val(null).trigger('change');
-        $('#item_receb_lote_origem_id').val(null).trigger('change');
-
-        $('#calc_peso_medio_fazenda').val('');
-    }
-
-    function sairModoEdicao() {
-        modoEdicao = false;
-        dadosOriginaisEdicao = null;
-
-        $('#btn-adicionar-item-recebimento')
-            .removeClass('btn-warning')
-            .addClass('btn-success')
-            .text('Adicionar Item');
-
-        $('#btn-cancelar-edicao').addClass('d-none');
-    }
-
-    function calcularPesoMedioFazenda() {
-        const peso = parseFloat($('[name="item_receb_peso_nota_fiscal"]').val());
-        const caixas = parseInt($('#item_receb_total_caixas').val(), 10);
-
-        if (peso > 0 && caixas > 0) {
-            const resultado = (peso / caixas).toFixed(3);
-            $('#calc_peso_medio_fazenda').val(resultado);
-        } else {
-            $('#calc_peso_medio_fazenda').val('');
-        }
-    }
-
-    // Listener
-    $('input[name="tipo_entrada_mp"]').on('change', aplicarModoEntrada);
-
     // --- Event Handlers ---
     // Evento para o botão "Adicionar Novo Lote" (Apenas na tela de Recebimento)
     $('#btn-adicionar-lote-novo').on('click', function () {
@@ -1029,11 +916,6 @@ $(document).ready(function () {
         $('#btn-adicionar-item-embalagem').html('<i class="fas fa-plus me-1"></i>Adicionar Item');
         $('#form-lote-novo-embalagem').removeData('consumo-original');
         $(this).remove(); // Remove o próprio botão de cancelar
-    });
-
-    $('#modalLoteNovo').on('hidden.bs.modal', function () {
-        limparFormularioDetalhes();
-        sairModoEdicao();
     });
 
     // Evento para o checkbox "Finalizar Tudo" no cabeçalho
@@ -1578,14 +1460,6 @@ $(document).ready(function () {
         calcularConsumoEmbalagem();
     });
 
-    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const target = $(e.target).attr('href');
-
-        if (target === '#tab-detalhes') {
-            aplicarModoEntrada();
-        }
-    });
-
     // Evento que é acionado QUANDO A ABA DE PRODUÇÃO É MOSTRADA
     $('#aba-producao-novo-tab').on('shown.bs.tab', function () {
         // Inicializa o Select2 para o dropdown de produtos (se ainda não inicializado)
@@ -1694,9 +1568,26 @@ $(document).ready(function () {
             }, 'json');
         });
 
-        // =====================================================
-        // SELECT2 - LOTE ORIGEM (AJAX REAL)
-        // =====================================================
+        // Carrega Lotes Finalizados (Reprocesso)
+        /*  initSelect2($('#item_receb_lote_origem_id'), 'Lote origem');
+          $('#item_receb_lote_origem_id').select2({
+              dropdownParent: $modalLoteNovo,
+              ajax: {
+                  url: 'ajax_router.php?action=getLotesFinalizadosOptions',
+                  dataType: 'json',
+                  processResults: function (data) {
+                      return { results: data.results };
+                  }
+              },
+              theme: 'bootstrap-5'
+          });
+  
+          initSelect2($('#item_receb_produto_id'), 'Produto (recebimento)');
+  
+          // Define o ID do lote no campo hidden (caso tenha vindo de "Salvar e Avançar")
+          $('#item_receb_lote_id');*/
+
+
         $('#item_receb_lote_origem_id').select2({
             placeholder: 'Lote origem',
             allowClear: true,
@@ -1704,8 +1595,8 @@ $(document).ready(function () {
             dropdownParent: $modalLoteNovo,
             theme: 'bootstrap-5',
 
-            // minimumInputLength: 1,
-            delay: 300,
+            //   minimumInputLength: 1, // ✅ só pesquisa após 1 caractere
+            //   delay: 300,            // ✅ debounce
 
             ajax: {
                 url: 'ajax_router.php?action=getLotesFinalizadosOptions',
@@ -1713,17 +1604,19 @@ $(document).ready(function () {
 
                 data: function (params) {
                     return {
-                        term: params.term || ''
+                        term: params.term //  TEXTO DIGITADO
                     };
                 },
 
                 processResults: function (data) {
                     return {
-                        results: data.results || []
+                        results: data.results //  [{id, text}]
                     };
                 }
             }
         });
+
+
     });
 
     // --- CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA ---
@@ -1781,207 +1674,67 @@ $(document).ready(function () {
     }
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
-    /*  $(document).on('click', '.btn-editar-item-recebimento', function () {
-          const id = $(this).data('id');
-  
-          $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
-              if (res.success) {
-                  const data = res.data;
-  
-                  // Preenche IDs
-                  $('#item_receb_id').val(data.item_receb_id);
-  
-                  // Preenche Selects (Dispara change para atualizar select2)
-                  $('#item_receb_produto_id').val(data.item_receb_produto_id).trigger('change');
-                  if (data.item_receb_lote_origem_id) {
-                      $('#item_receb_lote_origem_id').append(new Option("Carregando...", data.item_receb_lote_origem_id, true, true)).trigger('change');
-                  } else {
-                      $('#item_receb_lote_origem_id').val(null).trigger('change');
-                  }
-  
-                  // Preenche Inputs
-                  $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-                  $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
-                  $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-                  $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
-                  $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
-                  $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
-  
-                  // Força o recálculo do campo readonly
-                  $('#item_receb_peso_nota_fiscal').trigger('input');
-  
-                  // Muda botão para "Atualizar"
-                  $('#btn-adicionar-item-recebimento').html('<i class="fas fa-save me-2"></i> Atualizar Item').removeClass('btn-success').addClass('btn-warning');
-              }
-          }, 'json');
-      }); */
-
-    // --- BOTÃO EDITAR ITEM (DETALHES) ---
     $(document).on('click', '.btn-editar-item-recebimento', function () {
-
         const id = $(this).data('id');
 
         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
+            if (res.success) {
+                const data = res.data;
 
-            if (!res.success) {
-                notificacaoErro('Erro', res.message);
-                return;
+                // Preenche IDs
+                $('#item_receb_id').val(data.item_receb_id);
+
+                // Preenche Selects (Dispara change para atualizar select2)
+                $('#item_receb_produto_id').val(data.item_receb_produto_id).trigger('change');
+                if (data.item_receb_lote_origem_id) {
+                    $('#item_receb_lote_origem_id').append(new Option("Carregando...", data.item_receb_lote_origem_id, true, true)).trigger('change');
+                } else {
+                    $('#item_receb_lote_origem_id').val(null).trigger('change');
+                }
+
+                // Preenche Inputs
+                $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
+                $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
+                $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
+                $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
+                $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
+                $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
+
+                // Força o recálculo do campo readonly
+                $('#item_receb_peso_nota_fiscal').trigger('input');
+
+                // Muda botão para "Atualizar"
+                $('#btn-adicionar-item-recebimento').html('<i class="fas fa-save me-2"></i> Atualizar Item').removeClass('btn-success').addClass('btn-warning');
             }
-
-            const data = res.data;
-
-            // Entra em modo edição
-            modoEdicao = true;
-            dadosOriginaisEdicao = { ...data };
-
-            // IDs
-            $('#item_receb_id').val(data.item_receb_id);
-            $('#item_receb_lote_id').val(data.item_receb_lote_id);
-
-            // Radio button
-            if (data.item_receb_lote_origem_id) {
-                $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true);
-            } else {
-                $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
-            }
-
-            // Aplica regras de UI
-            aplicarModoEntrada();
-
-            // Selects
-            $('#item_receb_produto_id')
-                .val(data.item_receb_produto_id)
-                .trigger('change');
-
-            if (data.item_receb_lote_origem_id) {
-                const option = new Option(
-                    data.lote_origem_label || 'Lote selecionado',
-                    data.item_receb_lote_origem_id,
-                    true,
-                    true
-                );
-                $('#item_receb_lote_origem_id')
-                    .append(option)
-                    .trigger('change');
-            } else {
-                $('#item_receb_lote_origem_id').val(null).trigger('change');
-            }
-
-            // Inputs
-            $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-            $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
-            $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-            $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
-            $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
-            $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
-
-            // Recalcula campo readonly
-            calcularPesoMedioFazenda();
-
-            // Botão principal
-            $('#btn-adicionar-item-recebimento')
-                .html('<i class="fas fa-save me-2"></i> Atualizar Item')
-                .removeClass('btn-success')
-                .addClass('btn-warning');
-
-            // ✅ exibe botão cancelar
-            $('#btn-cancelar-edicao').removeClass('d-none');
-
         }, 'json');
     });
 
     // --- AJUSTE NO BOTÃO SALVAR (ADICIONAR/ATUALIZAR) ---
-    /* $('#btn-adicionar-item-recebimento').on('click', function () {
-         const id = $('#item_receb_id').val();
-         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
-         const formData = $('#form-recebimento-detalhe').serialize() + '&csrf_token=' + csrfToken;
- 
-         $.post(`ajax_router.php?action=${action}`, formData, function (res) {
-             if (res.success) {
-                 notificacaoSucesso('Sucesso', res.message);
- 
-                 // Reset do Form
-                 $('#form-recebimento-detalhe')[0].reset();
-                 $('#item_receb_id').val('');
-                 $('#item_receb_lote_id').val(loteIdAtual);
-                 $('#item_receb_produto_id').val(null).trigger('change');
-                 $('#item_receb_lote_origem_id').val(null).trigger('change');
-                 $('#calc_peso_medio_fazenda').val('');
- 
-                 // Restaura botão
-                 $('#btn-adicionar-item-recebimento').html('<i class="fas fa-plus me-2"></i> Adicionar Item').removeClass('btn-warning').addClass('btn-success');
- 
-                 recarregarItensRecebimento(loteIdAtual);
-             } else {
-                 notificacaoErro('Erro', res.message);
-             }
-         }, 'json');
-     });*/
-
-
-    // --- BOTÃO SALVAR (ADICIONAR / ATUALIZAR) ---
     $('#btn-adicionar-item-recebimento').on('click', function () {
-
         const id = $('#item_receb_id').val();
         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
-
-        const formData =
-            $('#form-recebimento-detalhe').serialize() +
-            '&csrf_token=' + csrfToken;
+        const formData = $('#form-recebimento-detalhe').serialize() + '&csrf_token=' + csrfToken;
 
         $.post(`ajax_router.php?action=${action}`, formData, function (res) {
+            if (res.success) {
+                notificacaoSucesso('Sucesso', res.message);
 
-            if (!res.success) {
+                // Reset do Form
+                $('#form-recebimento-detalhe')[0].reset();
+                $('#item_receb_id').val('');
+                $('#item_receb_lote_id').val(loteIdAtual);
+                $('#item_receb_produto_id').val(null).trigger('change');
+                $('#item_receb_lote_origem_id').val(null).trigger('change');
+                $('#calc_peso_medio_fazenda').val('');
+
+                // Restaura botão
+                $('#btn-adicionar-item-recebimento').html('<i class="fas fa-plus me-2"></i> Adicionar Item').removeClass('btn-warning').addClass('btn-success');
+
+                recarregarItensRecebimento(loteIdAtual);
+            } else {
                 notificacaoErro('Erro', res.message);
-                return;
             }
-
-            notificacaoSucesso('Sucesso', res.message);
-
-            // Limpa
-            limparFormularioDetalhes();
-
-            // Sai do modo edição (se estiver)
-            sairModoEdicao();
-
-            // Reaplica regras do radio selecionado
-            aplicarModoEntrada();
-
-            // Mantém o lote atual
-            $('#item_receb_lote_id').val(loteIdAtual);
-
-            // Recarrega tabela
-            recarregarItensRecebimento(loteIdAtual);
-
         }, 'json');
-    });
-
-    $('#btn-cancelar-edicao').on('click', function () {
-        limparFormularioDetalhes();
-        sairModoEdicao();
-    });
-
-
-    $('#item_receb_lote_origem_id').on('change', function () {
-
-        const loteId = $(this).val();
-        if (!loteId) return;
-
-        $.getJSON('ajax_router.php?action=getDadosLoteReprocesso', { lote_id: loteId })
-            .done(resp => {
-
-                if (!resp.success) return;
-
-                const d = resp.dados;
-
-                $('[name="item_receb_nota_fiscal"]').val(d.lote_nota_fiscal);
-                $('[name="item_receb_peso_nota_fiscal"]').val(d.lote_peso_nota_fiscal);
-                $('#item_receb_total_caixas').val(d.lote_total_caixas);
-                $('#calc_peso_medio_fazenda').val(d.lote_peso_medio_fazenda);
-                $('#item_receb_peso_medio_ind').val(d.lote_peso_medio_industria);
-                $('[name="item_receb_gram_faz"]').val(d.lote_gramatura_fazenda);
-                $('[name="item_receb_gram_lab"]').val(d.lote_gramatura_lab);
-            });
     });
 
 });

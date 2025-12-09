@@ -16,32 +16,6 @@ $(document).ready(function () {
     };
 
     let tabelaLotesNovo, loteIdAtual;
-    let modoEdicao = false;
-    let dadosOriginaisEdicao = null;
-
-
-    // ==================================================
-    // SELECT2: helper centralizado
-    // ==================================================
-    function initSelect2($el, placeholder = 'Selecione...', parent = $modalLoteNovo) {
-        if (!$el || $el.length === 0) return;
-        // se já inicializado, não reinicializa
-        if ($el.hasClass('select2-hidden-accessible')) return;
-
-        $el.select2({
-            placeholder: placeholder,
-            allowClear: true,
-            width: '100%',
-            dropdownParent: parent,
-            theme: 'bootstrap-5',
-            minimumResultsForSearch: 0 // força a exibição do campo de pesquisa
-        });
-    }
-
-    // Inicializa selects do Header (Aba 1) já no load para garantir presença do search
-    initSelect2($('#lote_fornecedor_id_novo'), 'Selecione o fornecedor');
-    initSelect2($('#lote_cliente_id_novo'), 'Selecione o cliente');
-
 
     // --- Inicialização da Tabela DataTables ---
     tabelaLotesNovo = $('#tabela-lotes-novo').DataTable({
@@ -175,14 +149,17 @@ $(document).ready(function () {
         return $.get('ajax_router.php?action=getFornecedorOptions').done(function (response) {
             if (response.success) {
                 const $select = $('#lote_fornecedor_id_novo');
-                $select.empty().append('<option value=""></option>');
+                $select.empty().append('<option value="">Selecione...</option>');
                 response.data.forEach(function (fornecedor) {
-                    const opt = new Option(`${fornecedor.nome_display} (Cód: ${fornecedor.ent_codigo_interno})`, fornecedor.ent_codigo);
-                    $(opt).data('codigo-interno', fornecedor.ent_codigo_interno);
-                    $select.append(opt);
+                    $select.append(
+                        $('<option>', {
+                            value: fornecedor.ent_codigo,
+                            text: `${fornecedor.nome_display} (Cód: ${fornecedor.ent_codigo_interno})`,
+                            'data-codigo-interno': fornecedor.ent_codigo_interno
+                        })
+                    );
                 });
-                // Se Select2 já foi inicializado, atualiza via change
-                $select.trigger('change');
+                $select.trigger('change.select2'); // Atualiza o Select2 após preencher as opções
             } else {
                 console.error('Erro ao carregar fornecedores:', response.message);
             }
@@ -197,14 +174,18 @@ $(document).ready(function () {
         return $.get('ajax_router.php?action=getClienteOptions', { term: '' }).done(function (response) {
             if (response.data) {
                 const $select = $('#lote_cliente_id_novo');
-                $select.empty().append('<option value=""></option>');
+                $select.empty().append('<option value="">Selecione...</option>');
 
                 response.data.forEach(function (cliente) {
-                    const opt = new Option(cliente.text, cliente.id);
-                    $(opt).data('codigo-interno', cliente.ent_codigo_interno);
-                    $select.append(opt);
+                    $select.append(
+                        $('<option>', {
+                            value: cliente.id,
+                            text: cliente.text,
+                            'data-codigo-interno': cliente.ent_codigo_interno
+                        })
+                    );
                 });
-                $select.trigger('change');
+                $select.trigger('change.select2');
             } else {
                 console.error('Erro ao carregar clientes:', response.message);
             }
@@ -227,7 +208,7 @@ $(document).ready(function () {
             .done(function (response) {
                 if (response.success) {
                     const $selectProduto = $('#item_prod_produto_id_novo');
-                    $selectProduto.empty().append('<option value=""></option>');
+                    $selectProduto.empty().append('<option value="">Selecione...</option>');
                     response.data.forEach(produto => {
                         const textoDaOpcao = `${produto.prod_descricao} (Cód: ${produto.prod_codigo_interno || 'N/A'})`;
                         const option = new Option(textoDaOpcao, produto.prod_codigo);
@@ -236,7 +217,7 @@ $(document).ready(function () {
                         $(option).data('codigo-interno', produto.prod_codigo_interno);
                         $selectProduto.append(option);
                     });
-                    $selectProduto.trigger('change');
+                    $selectProduto.trigger('change.select2');
                 } else {
                     // Trata o erro de negócio retornado pelo PHP
                     console.error('Erro ao carregar produtos:', response.message);
@@ -309,12 +290,8 @@ $(document).ready(function () {
                 const pageType = $('body').data('page-type'); // Captura o tipo da página
 
                 // Preenche os selects (necessário reinicializar o Select2 às vezes)
-                // Garante que select2 esteja inicializado e usa change normal
-                initSelect2($('#lote_fornecedor_id_novo'), 'Selecione o fornecedor');
-                initSelect2($('#lote_cliente_id_novo'), 'Selecione o cliente');
-
-                $('#lote_fornecedor_id_novo').val(header.lote_fornecedor_id).trigger('change');
-                $('#lote_cliente_id_novo').val(header.lote_cliente_id).trigger('change');
+                $('#lote_fornecedor_id_novo').val(header.lote_fornecedor_id).trigger('change.select2');
+                $('#lote_cliente_id_novo').val(header.lote_cliente_id).trigger('change.select2');
 
                 // Preenche os inputs de texto
                 $('#lote_id_novo').val(header.lote_id);
@@ -391,7 +368,7 @@ $(document).ready(function () {
             dataCalculada.setDate(1);
             dataCalculada.setMonth(dataCalculada.getMonth() + 1);
         }
-        // Formata para 'YYYY-MM-DD' para preencher o input type="date'
+        // Formata para 'YYYY-MM-DD' para preencher o input type="date"
         return dataCalculada.toISOString().split('T')[0];
     }
 
@@ -539,9 +516,7 @@ $(document).ready(function () {
         }).done(function (response) {
             if (response.success) {
                 const $select = $('#item_emb_prod_prim_id_novo');
-                // garante inicialização do select2
-                initSelect2($select, 'Selecione item primário');
-                $select.empty().append('<option value=""></option>');
+                $select.empty().append('<option value="">Selecione...</option>');
                 response.data.producao.forEach(item => {
                     if (parseFloat(item.item_prod_saldo) > 0) { // Mostra apenas itens com saldo
                         const texto = `${item.prod_descricao} (Saldo: ${item.item_prod_saldo})`;
@@ -550,7 +525,7 @@ $(document).ready(function () {
                         $select.append(option);
                     }
                 });
-                $select.trigger('change');
+                $select.trigger('change.select2');
             }
         });
     }
@@ -651,116 +626,6 @@ $(document).ready(function () {
             }
         });
     }
-
-    function atualizarTipoEntradaMP() {
-
-        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
-        const $selectMateria = $('#item_receb_produto_id');
-        const $selectLote = $('#item_receb_lote_origem_id');
-
-        if (tipo === 'MATERIA_PRIMA') {
-
-            // Habilita matéria-prima
-            $selectMateria.prop('disabled', false).trigger('change');
-
-            // Desabilita lote origem
-            $selectLote.val(null).prop('disabled', true).trigger('change');
-
-        } else {
-
-            // Habilita lote origem
-            $selectLote.prop('disabled', false).trigger('change');
-
-            // Desabilita matéria-prima
-            $selectMateria.val(null).prop('disabled', true).trigger('change');
-        }
-    }
-
-    function aplicarModoReprocesso() {
-
-        // labels
-        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso Reprocesso (kg)');
-
-        // readonly
-        $('#item_receb_total_caixas').prop('readonly', true);
-        $('#item_receb_peso_medio_ind').prop('readonly', true);
-
-        // desabilita edição manual
-        //$('#item_receb_produto_id').prop('disabled', true);
-        // garante consistência
-        $('#item_receb_produto_id')
-            .val(null)
-            .prop('disabled', true)
-            .trigger('change');
-    }
-
-    function aplicarModoMateriaPrima() {
-
-        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso NF (kg)');
-
-        $('#item_receb_total_caixas').prop('readonly', false);
-        $('#item_receb_peso_medio_ind').prop('readonly', false);
-
-        // limpa dados herdados
-        // $('#form-recebimento-detalhe')[0].reset();
-
-        //  $('#item_receb_produto_id').prop('disabled', false);
-        $('#item_receb_produto_id')
-            .prop('disabled', false)
-            .trigger('change');
-    }
-
-    // Inicializa
-    // atualizarTipoEntradaMP();
-    function aplicarModoEntrada() {
-
-        atualizarTipoEntradaMP();
-
-        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
-        if (tipo === 'LOTE_ORIGEM') {
-            aplicarModoReprocesso();
-        } else {
-            aplicarModoMateriaPrima();
-        }
-    }
-
-    function limparFormularioDetalhes() {
-        $('#form-recebimento-detalhe')[0].reset();
-
-        $('#item_receb_produto_id').val(null).trigger('change');
-        $('#item_receb_lote_origem_id').val(null).trigger('change');
-
-        $('#calc_peso_medio_fazenda').val('');
-    }
-
-    function sairModoEdicao() {
-        modoEdicao = false;
-        dadosOriginaisEdicao = null;
-
-        $('#btn-adicionar-item-recebimento')
-            .removeClass('btn-warning')
-            .addClass('btn-success')
-            .text('Adicionar Item');
-
-        $('#btn-cancelar-edicao').addClass('d-none');
-    }
-
-    function calcularPesoMedioFazenda() {
-        const peso = parseFloat($('[name="item_receb_peso_nota_fiscal"]').val());
-        const caixas = parseInt($('#item_receb_total_caixas').val(), 10);
-
-        if (peso > 0 && caixas > 0) {
-            const resultado = (peso / caixas).toFixed(3);
-            $('#calc_peso_medio_fazenda').val(resultado);
-        } else {
-            $('#calc_peso_medio_fazenda').val('');
-        }
-    }
-
-    // Listener
-    $('input[name="tipo_entrada_mp"]').on('change', aplicarModoEntrada);
 
     // --- Event Handlers ---
     // Evento para o botão "Adicionar Novo Lote" (Apenas na tela de Recebimento)
@@ -1029,11 +894,6 @@ $(document).ready(function () {
         $('#btn-adicionar-item-embalagem').html('<i class="fas fa-plus me-1"></i>Adicionar Item');
         $('#form-lote-novo-embalagem').removeData('consumo-original');
         $(this).remove(); // Remove o próprio botão de cancelar
-    });
-
-    $('#modalLoteNovo').on('hidden.bs.modal', function () {
-        limparFormularioDetalhes();
-        sairModoEdicao();
     });
 
     // Evento para o checkbox "Finalizar Tudo" no cabeçalho
@@ -1411,8 +1271,8 @@ $(document).ready(function () {
         const $selectSecundario = $('#item_emb_prod_sec_id_novo');
 
         // Apresenta um estado de "a carregar" nos dropdowns
-        $selectPrimario.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
-        $selectSecundario.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
+        $selectPrimario.empty().append('<option value="">A carregar itens...</option>').prop('disabled', true).trigger('change.select2');
+        $selectSecundario.empty().append('<option value="">Aguardando item primário...</option>').prop('disabled', true).trigger('change.select2');
 
         // Fazemos uma única chamada AJAX para obter todos os dados de produção do lote.
         $.ajax({
@@ -1428,12 +1288,8 @@ $(document).ready(function () {
 
             const producaoItens = response.data.producao;
 
-            // garante que os select2 estão inicializados
-            initSelect2($selectPrimario, 'Selecione item primário');
-            initSelect2($selectSecundario, 'Selecione item secundário');
-
             // --- PASSO A: POPULAR O DROPDOWN PRIMÁRIO ---
-            $selectPrimario.empty().append('<option value=""></option>');
+            $selectPrimario.empty().append('<option value="">Selecione...</option>');
             producaoItens.forEach(item => {
                 // A lógica crítica: incluir item se saldo > 0 OU se for o item que estamos a editar.
                 if (parseFloat(item.item_prod_saldo) > 0 || item.item_prod_id == primarioItemId) {
@@ -1445,13 +1301,13 @@ $(document).ready(function () {
             $selectPrimario.prop('disabled', false);
 
             // --- PASSO B: SELECIONAR O ITEM PRIMÁRIO CORRETO ---
-            $selectPrimario.val(primarioItemId).trigger('change');
+            $selectPrimario.val(primarioItemId).trigger('change.select2');
 
             // --- PASSO C: POPULAR E SELECIONAR O DROPDOWN SECUNDÁRIO ---
             const itemSelecionado = producaoItens.find(item => item.item_prod_id == primarioItemId);
             if (itemSelecionado) {
                 const primarioProdutoId = itemSelecionado.item_prod_produto_id;
-                $selectSecundario.empty().append('<option value=""></option>').prop('disabled', true);
+                $selectSecundario.empty().append('<option value="">A carregar...</option>').prop('disabled', true);
 
                 $.ajax({
                     url: `ajax_router.php?action=getSecundariosPorPrimario&primario_id=${primarioProdutoId}`,
@@ -1459,7 +1315,7 @@ $(document).ready(function () {
                     dataType: 'json'
                 }).done(function (secResponse) {
                     if (secResponse.success) {
-                        $selectSecundario.empty().append('<option value=""></option>');
+                        $selectSecundario.empty().append('<option value="">Selecione...</option>');
                         if (secResponse.data.length > 0) {
                             secResponse.data.forEach(produto => {
                                 const texto = `${produto.prod_descricao} (Cód: ${produto.prod_codigo_interno || 'N/A'})`;
@@ -1468,10 +1324,8 @@ $(document).ready(function () {
                                 $selectSecundario.append(option);
                             });
                         }
-                        $selectSecundario.val(secundarioProdId).trigger('change');
+                        $selectSecundario.val(secundarioProdId).trigger('change.select2');
                         $selectSecundario.prop('disabled', false);
-                    } else {
-                        $selectSecundario.prop('disabled', true);
                     }
                 });
             }
@@ -1488,7 +1342,7 @@ $(document).ready(function () {
 
         }).fail(function () {
             notificacaoErro('Erro de Comunicação!', 'Falha ao buscar dados do lote.');
-            $selectPrimario.empty().append('<option value=""></option>').prop('disabled', true).trigger('change');
+            $selectPrimario.empty().append('<option value="">Erro ao carregar</option>').prop('disabled', true).trigger('change.select2');
         });
     });
 
@@ -1578,18 +1432,14 @@ $(document).ready(function () {
         calcularConsumoEmbalagem();
     });
 
-    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const target = $(e.target).attr('href');
-
-        if (target === '#tab-detalhes') {
-            aplicarModoEntrada();
-        }
-    });
-
     // Evento que é acionado QUANDO A ABA DE PRODUÇÃO É MOSTRADA
     $('#aba-producao-novo-tab').on('shown.bs.tab', function () {
-        // Inicializa o Select2 para o dropdown de produtos (se ainda não inicializado)
-        initSelect2($('#item_prod_produto_id_novo'), 'Selecione um produto');
+        // Inicializa o Select2 para o dropdown de produtos
+        $('#item_prod_produto_id_novo').select2({
+            placeholder: 'Selecione um produto',
+            dropdownParent: $modalLoteNovo,
+            theme: "bootstrap-5"
+        });
         // Carrega os produtos primários
         carregarProdutosPrimarios();
     });
@@ -1597,13 +1447,16 @@ $(document).ready(function () {
     // Evento que é acionado QUANDO A ABA DE EMBALAGEM É MOSTRADA
     $('#aba-embalagem-novo-tab').on('shown.bs.tab', function () {
         // Inicializa os Select2 para os novos dropdowns
-        initSelect2($('#item_emb_prod_prim_id_novo'), 'Selecione um produto primário');
-        initSelect2($('#item_emb_prod_sec_id_novo'), 'Selecione um produto secundário');
+        $('#item_emb_prod_prim_id_novo, #item_emb_prod_sec_id_novo').select2({
+            placeholder: 'Selecione uma opção',
+            dropdownParent: $modalLoteNovo,
+            theme: "bootstrap-5"
+        });
         // Carrega os dados necessários
         carregarItensProducaoParaSelecao(loteIdAtual);
 
         // Define o estado inicial do dropdown de secundários
-        $('#item_emb_prod_sec_id_novo').prop('disabled', true).empty().append('<option value=""></option>').trigger('change');
+        $('#item_emb_prod_sec_id_novo').prop('disabled', true).empty().append('<option value="">Selecione um produto primário primeiro</option>').trigger('change.select2');
 
         calcularConsumoEmbalagem();
     });
@@ -1628,10 +1481,10 @@ $(document).ready(function () {
         const $selectSecundario = $('#item_emb_prod_sec_id_novo');
 
         // Limpa e desabilita o dropdown de secundários
-        $selectSecundario.prop('disabled', true).empty().append('<option value=""></option>').trigger('change');
+        $selectSecundario.prop('disabled', true).empty().append('<option value="">Carregando...</option>').trigger('change.select2');
 
         if (!primarioItemId) {
-            $selectSecundario.empty().append('<option value=""></option>').trigger('change');
+            $selectSecundario.empty().append('<option value="">Selecione um produto primário primeiro</option>').trigger('change.select2');
             return;
         }
 
@@ -1652,7 +1505,7 @@ $(document).ready(function () {
                 dataType: 'json'
             }).done(function (response) {
                 if (response.success) {
-                    $selectSecundario.prop('disabled', false).empty().append('<option value=""></option>');
+                    $selectSecundario.prop('disabled', false).empty().append('<option value="">Selecione...</option>');
 
                     if (response.data.length === 0) {
                         $selectSecundario.empty().append('<option value="">Nenhum produto associado</option>').prop('disabled', true);
@@ -1664,7 +1517,7 @@ $(document).ready(function () {
                             $selectSecundario.append(option);
                         });
                     }
-                    $selectSecundario.trigger('change');
+                    $selectSecundario.trigger('change.select2');
                 }
             });
         });
@@ -1680,50 +1533,69 @@ $(document).ready(function () {
     $('#aba-detalhes-recebimento-tab').on('shown.bs.tab', function () {
         // Carrega produtos (usando a mesma função de produtos primários ou uma nova se quiser todos)
         carregarProdutosPrimarios().then(() => {
+            // Clona as opções para o novo select se necessário, ou a função já popula classes
             // Ajuste: A função carregarProdutosPrimarios popula #item_prod_produto_id_novo. 
+            
+            // Solução rápida: Chamar a rota novamente para este ID específico
             $.get('ajax_router.php?action=getProdutoOptions', { tipo_embalagem: 'PRIMARIA' }, function (res) {
                 if (res.success) {
                     const $sel = $('#item_receb_produto_id');
-                    $sel.empty().append('<option value=""></option>');
+                    $sel.empty().append('<option value="">Selecione...</option>');
                     res.data.forEach(p => {
                         $sel.append(new Option(p.prod_descricao, p.prod_codigo));
                     });
-                    initSelect2($sel, 'Selecione produto (recebimento)');
-                    $sel.trigger('change');
                 }
             }, 'json');
         });
 
-        // =====================================================
-        // SELECT2 - LOTE ORIGEM (AJAX REAL)
-        // =====================================================
+        // Carrega Lotes Finalizados (Reprocesso)
         $('#item_receb_lote_origem_id').select2({
-            placeholder: 'Lote origem',
-            allowClear: true,
-            width: '100%',
             dropdownParent: $modalLoteNovo,
-            theme: 'bootstrap-5',
-
-            // minimumInputLength: 1,
-            delay: 300,
-
             ajax: {
                 url: 'ajax_router.php?action=getLotesFinalizadosOptions',
                 dataType: 'json',
-
-                data: function (params) {
-                    return {
-                        term: params.term || ''
-                    };
-                },
-
                 processResults: function (data) {
-                    return {
-                        results: data.results || []
-                    };
+                    return { results: data.results };
                 }
             }
         });
+
+        $('#item_receb_produto_id').select2({ dropdownParent: $modalLoteNovo });
+
+        // Define o ID do lote no campo hidden (caso tenha vindo de "Salvar e Avançar")
+        $('#item_receb_lote_id').val(loteIdAtual);
+
+        recarregarItensRecebimento(loteIdAtual);
+    });
+
+    // 3. Botão Adicionar Item Recebimento
+    $('#btn-adicionar-item-recebimento').on('click', function () {
+        const formData = $('#form-recebimento-detalhe').serialize() + '&csrf_token=' + csrfToken;
+
+        $.post('ajax_router.php?action=adicionarItemRecebimento', formData, function (res) {
+            if (res.success) {
+                notificacaoSucesso('Sucesso', 'Item adicionado!');
+                $('#form-recebimento-detalhe')[0].reset();
+                $('#item_receb_lote_id').val(loteIdAtual); // Repoem o ID
+                $('#item_receb_produto_id').val(null).trigger('change');
+                $('#item_receb_lote_origem_id').val(null).trigger('change');
+                recarregarItensRecebimento(loteIdAtual);
+            } else {
+                notificacaoErro('Erro', res.message);
+            }
+        }, 'json');
+    });
+
+    // 4. Botão Excluir Item Recebimento
+    $(document).on('click', '.btn-excluir-item-recebimento', function () {
+        const id = $(this).data('id');
+        if (confirm('Remover este item?')) {
+            $.post('ajax_router.php?action=excluirItemRecebimento', { item_id: id, csrf_token: csrfToken }, function (res) {
+                if (res.success) {
+                    recarregarItensRecebimento(loteIdAtual);
+                }
+            }, 'json');
+        }
     });
 
     // --- CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA ---
@@ -1743,7 +1615,7 @@ $(document).ready(function () {
     // --- RECARREGAR ITENS COM FORMATAÇÃO BR E BOTÃO EDITAR ---
     function recarregarItensRecebimento(loteId) {
         const $tbody = $('#tabela-itens-recebimento');
-        $tbody.html('<tr><td colspan="7" class="text-center">Carregando.</td></tr>');
+        $tbody.html('<tr><td colspan="7" class="text-center">Carregando...</td></tr>');
 
         $.ajax({
             url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
@@ -1781,207 +1653,68 @@ $(document).ready(function () {
     }
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
-    /*  $(document).on('click', '.btn-editar-item-recebimento', function () {
-          const id = $(this).data('id');
-  
-          $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
-              if (res.success) {
-                  const data = res.data;
-  
-                  // Preenche IDs
-                  $('#item_receb_id').val(data.item_receb_id);
-  
-                  // Preenche Selects (Dispara change para atualizar select2)
-                  $('#item_receb_produto_id').val(data.item_receb_produto_id).trigger('change');
-                  if (data.item_receb_lote_origem_id) {
-                      $('#item_receb_lote_origem_id').append(new Option("Carregando...", data.item_receb_lote_origem_id, true, true)).trigger('change');
-                  } else {
-                      $('#item_receb_lote_origem_id').val(null).trigger('change');
-                  }
-  
-                  // Preenche Inputs
-                  $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-                  $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
-                  $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-                  $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
-                  $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
-                  $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
-  
-                  // Força o recálculo do campo readonly
-                  $('#item_receb_peso_nota_fiscal').trigger('input');
-  
-                  // Muda botão para "Atualizar"
-                  $('#btn-adicionar-item-recebimento').html('<i class="fas fa-save me-2"></i> Atualizar Item').removeClass('btn-success').addClass('btn-warning');
-              }
-          }, 'json');
-      }); */
-
-    // --- BOTÃO EDITAR ITEM (DETALHES) ---
     $(document).on('click', '.btn-editar-item-recebimento', function () {
-
         const id = $(this).data('id');
 
         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
+            if (res.success) {
+                const data = res.data;
 
-            if (!res.success) {
-                notificacaoErro('Erro', res.message);
-                return;
+                // Preenche IDs
+                $('#item_receb_id').val(data.item_receb_id);
+
+                // Preenche Selects (Dispara change para atualizar select2)
+                $('#item_receb_produto_id').val(data.item_receb_produto_id).trigger('change');
+                if (data.item_receb_lote_origem_id) {
+                    $('#item_receb_lote_origem_id').append(new Option("Carregando...", data.item_receb_lote_origem_id, true, true)).trigger('change');
+                    // Idealmente aqui faria um fetch para pegar o texto do lote, mas o select2 ajax resolve se o usuário tentar mudar
+                } else {
+                    $('#item_receb_lote_origem_id').val(null).trigger('change');
+                }
+
+                // Preenche Inputs
+                $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
+                $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
+                $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
+                $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
+                $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
+                $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
+
+                // Força o recálculo do campo readonly
+                $('#item_receb_peso_nota_fiscal').trigger('input');
+
+                // Muda botão para "Atualizar"
+                $('#btn-adicionar-item-recebimento').html('<i class="fas fa-save me-2"></i> Atualizar Item').removeClass('btn-success').addClass('btn-warning');
             }
-
-            const data = res.data;
-
-            // Entra em modo edição
-            modoEdicao = true;
-            dadosOriginaisEdicao = { ...data };
-
-            // IDs
-            $('#item_receb_id').val(data.item_receb_id);
-            $('#item_receb_lote_id').val(data.item_receb_lote_id);
-
-            // Radio button
-            if (data.item_receb_lote_origem_id) {
-                $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true);
-            } else {
-                $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
-            }
-
-            // Aplica regras de UI
-            aplicarModoEntrada();
-
-            // Selects
-            $('#item_receb_produto_id')
-                .val(data.item_receb_produto_id)
-                .trigger('change');
-
-            if (data.item_receb_lote_origem_id) {
-                const option = new Option(
-                    data.lote_origem_label || 'Lote selecionado',
-                    data.item_receb_lote_origem_id,
-                    true,
-                    true
-                );
-                $('#item_receb_lote_origem_id')
-                    .append(option)
-                    .trigger('change');
-            } else {
-                $('#item_receb_lote_origem_id').val(null).trigger('change');
-            }
-
-            // Inputs
-            $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-            $('#item_receb_peso_nota_fiscal').val(data.item_receb_peso_nota_fiscal);
-            $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-            $('#item_receb_peso_medio_ind').val(data.item_receb_peso_medio_ind);
-            $('input[name="item_receb_gram_faz"]').val(data.item_receb_gram_faz);
-            $('input[name="item_receb_gram_lab"]').val(data.item_receb_gram_lab);
-
-            // Recalcula campo readonly
-            calcularPesoMedioFazenda();
-
-            // Botão principal
-            $('#btn-adicionar-item-recebimento')
-                .html('<i class="fas fa-save me-2"></i> Atualizar Item')
-                .removeClass('btn-success')
-                .addClass('btn-warning');
-
-            // ✅ exibe botão cancelar
-            $('#btn-cancelar-edicao').removeClass('d-none');
-
         }, 'json');
     });
 
     // --- AJUSTE NO BOTÃO SALVAR (ADICIONAR/ATUALIZAR) ---
-    /* $('#btn-adicionar-item-recebimento').on('click', function () {
-         const id = $('#item_receb_id').val();
-         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
-         const formData = $('#form-recebimento-detalhe').serialize() + '&csrf_token=' + csrfToken;
- 
-         $.post(`ajax_router.php?action=${action}`, formData, function (res) {
-             if (res.success) {
-                 notificacaoSucesso('Sucesso', res.message);
- 
-                 // Reset do Form
-                 $('#form-recebimento-detalhe')[0].reset();
-                 $('#item_receb_id').val('');
-                 $('#item_receb_lote_id').val(loteIdAtual);
-                 $('#item_receb_produto_id').val(null).trigger('change');
-                 $('#item_receb_lote_origem_id').val(null).trigger('change');
-                 $('#calc_peso_medio_fazenda').val('');
- 
-                 // Restaura botão
-                 $('#btn-adicionar-item-recebimento').html('<i class="fas fa-plus me-2"></i> Adicionar Item').removeClass('btn-warning').addClass('btn-success');
- 
-                 recarregarItensRecebimento(loteIdAtual);
-             } else {
-                 notificacaoErro('Erro', res.message);
-             }
-         }, 'json');
-     });*/
-
-
-    // --- BOTÃO SALVAR (ADICIONAR / ATUALIZAR) ---
     $('#btn-adicionar-item-recebimento').on('click', function () {
-
         const id = $('#item_receb_id').val();
         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
-
-        const formData =
-            $('#form-recebimento-detalhe').serialize() +
-            '&csrf_token=' + csrfToken;
+        const formData = $('#form-recebimento-detalhe').serialize() + '&csrf_token=' + csrfToken;
 
         $.post(`ajax_router.php?action=${action}`, formData, function (res) {
+            if (res.success) {
+                notificacaoSucesso('Sucesso', res.message);
 
-            if (!res.success) {
+                // Reset do Form
+                $('#form-recebimento-detalhe')[0].reset();
+                $('#item_receb_id').val('');
+                $('#item_receb_lote_id').val(loteIdAtual);
+                $('#item_receb_produto_id').val(null).trigger('change');
+                $('#item_receb_lote_origem_id').val(null).trigger('change');
+                $('#calc_peso_medio_fazenda').val('');
+
+                // Restaura botão
+                $('#btn-adicionar-item-recebimento').html('<i class="fas fa-plus me-2"></i> Adicionar Item').removeClass('btn-warning').addClass('btn-success');
+
+                recarregarItensRecebimento(loteIdAtual);
+            } else {
                 notificacaoErro('Erro', res.message);
-                return;
             }
-
-            notificacaoSucesso('Sucesso', res.message);
-
-            // Limpa
-            limparFormularioDetalhes();
-
-            // Sai do modo edição (se estiver)
-            sairModoEdicao();
-
-            // Reaplica regras do radio selecionado
-            aplicarModoEntrada();
-
-            // Mantém o lote atual
-            $('#item_receb_lote_id').val(loteIdAtual);
-
-            // Recarrega tabela
-            recarregarItensRecebimento(loteIdAtual);
-
         }, 'json');
-    });
-
-    $('#btn-cancelar-edicao').on('click', function () {
-        limparFormularioDetalhes();
-        sairModoEdicao();
-    });
-
-
-    $('#item_receb_lote_origem_id').on('change', function () {
-
-        const loteId = $(this).val();
-        if (!loteId) return;
-
-        $.getJSON('ajax_router.php?action=getDadosLoteReprocesso', { lote_id: loteId })
-            .done(resp => {
-
-                if (!resp.success) return;
-
-                const d = resp.dados;
-
-                $('[name="item_receb_nota_fiscal"]').val(d.lote_nota_fiscal);
-                $('[name="item_receb_peso_nota_fiscal"]').val(d.lote_peso_nota_fiscal);
-                $('#item_receb_total_caixas').val(d.lote_total_caixas);
-                $('#calc_peso_medio_fazenda').val(d.lote_peso_medio_fazenda);
-                $('#item_receb_peso_medio_ind').val(d.lote_peso_medio_industria);
-                $('[name="item_receb_gram_faz"]').val(d.lote_gramatura_fazenda);
-                $('[name="item_receb_gram_lab"]').val(d.lote_gramatura_lab);
-            });
     });
 
 });

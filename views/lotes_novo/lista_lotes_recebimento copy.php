@@ -105,121 +105,52 @@
                     </div>
 
                     <div class="tab-pane fade" id="aba-detalhes-recebimento" role="tabpanel">
-
-
                         <form id="form-recebimento-detalhe">
                             <input type="hidden" name="item_receb_lote_id" id="item_receb_lote_id">
 
-                            <!-- TIPO DE ENTRADA DA MATÉRIA-PRIMA -->
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Tipo de Entrada da Matéria-Prima</label>
-
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                        type="radio"
-                                        name="tipo_entrada_mp"
-                                        id="entrada_mp_materia"
-                                        value="MATERIA_PRIMA"
-                                        checked>
-                                    <label class="form-check-label" for="entrada_mp_materia">
-                                        Entrada por Matéria-Prima
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                        type="radio"
-                                        name="tipo_entrada_mp"
-                                        id="entrada_mp_lote"
-                                        value="LOTE_ORIGEM">
-                                    <label class="form-check-label" for="entrada_mp_lote">
-                                        Entrada por Lote de Origem (Reprocesso)
-                                    </label>
-                                </div>
-                            </div>
-
                             <div class="row g-3">
-                                <!-- PRODUTO (MATÉRIA PRIMA) -->
                                 <div class="col-md-6">
                                     <label class="form-label">Produto (Matéria Prima) *</label>
-                                    <select class="form-select"
-                                        id="item_receb_produto_id"
-                                        name="item_receb_produto_id"
-                                        style="width: 100%;">
-                                    </select>
+                                    <select class="form-select" id="item_receb_produto_id" name="item_receb_produto_id" style="width: 100%;" required></select>
                                 </div>
-
-                                <!-- LOTE ORIGEM -->
+                                
                                 <div class="col-md-6">
-                                    <label class="form-label">Origem Reprocesso</label>
-                                    <select class="form-select"
-                                        id="item_receb_lote_origem_id"
-                                        name="item_receb_lote_origem_id"
-                                        style="width: 100%;"
-                                        disabled>
-                                        <option value="">Nenhum</option>
+                                    <label class="form-label">Origem Reprocesso (Opcional)</label>
+                                    <select class="form-select" id="item_receb_lote_origem_id" name="item_receb_lote_origem_id" style="width: 100%;">
+                                        <option value="">Nenhum (Matéria Prima Nova)</option>
                                     </select>
                                 </div>
-
                                 <div class="col-md-3">
                                     <label class="form-label">Nota Fiscal</label>
                                     <input type="text" class="form-control" name="item_receb_nota_fiscal">
                                 </div>
-
                                 <div class="col-md-3">
                                     <label class="form-label">Peso NF (kg)</label>
                                     <input type="number" step="0.001" class="form-control" name="item_receb_peso_nota_fiscal">
                                 </div>
-
                                 <div class="col-md-3">
                                     <label class="form-label">Total Caixas</label>
-                                    <input type="number" class="form-control"
-                                        id="item_receb_total_caixas"
-                                        name="item_receb_total_caixas">
+                                    <input type="number" class="form-control" id="item_receb_total_caixas" name="item_receb_total_caixas">
                                 </div>
-
                                 <div class="col-md-2">
-                                    <label class="form-label text-muted" style="font-size: 0.85rem;">
-                                        P.Médio Fazenda (Kg)
-                                    </label>
-                                    <input type="text" class="form-control bg-light"
-                                        id="calc_peso_medio_fazenda"
-                                        readonly tabindex="-1">
+                                    <label class="form-label text-muted" style="font-size: 0.85rem;">P.Médio Fazenda(Kg)</label>
+                                    <input type="text" class="form-control bg-light" id="calc_peso_medio_fazenda" readonly tabindex="-1">
                                 </div>
-
                                 <div class="col-md-3">
-                                    <label class="form-label">P. Médio Indústria (kg)</label>
-                                    <input type="number" step="0.01"
-                                        class="form-control"
-                                        id="item_receb_peso_medio_ind"
-                                        name="item_receb_peso_medio_ind">
+                                    <label class="form-label">P. Médio Indústria(kg)</label>
+                                    <input type="number" step="0.01" class="form-control" id="item_receb_peso_medio_ind" name="item_receb_peso_medio_ind">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label">Gramatura Fazenda</label>
-                                    <input type="number" step="0.01"
-                                        class="form-control"
-                                        name="item_receb_gram_faz">
+                                    <input type="number" step="0.01" class="form-control" name="item_receb_gram_faz">
                                 </div>
-
                                 <div class="col-md-3">
                                     <label class="form-label">Gramatura Lab</label>
-                                    <input type="number" step="0.01"
-                                        class="form-control"
-                                        name="item_receb_gram_lab">
+                                    <input type="number" step="0.01" class="form-control" name="item_receb_gram_lab">
                                 </div>
-
                                 <div class="col-md-6 d-flex align-items-end justify-content-end">
-                                    <!-- Botão Cancelar (só aparece em edição) -->
-                                    <button type="button"
-                                        class="btn btn-secondary d-none"
-                                        id="btn-cancelar-edicao">
-                                        Cancelar
-                                    </button>
-
-                                    <button type="button"
-                                        class="btn btn-success w-100"
-                                        id="btn-adicionar-item-recebimento">
+                                    <button type="button" class="btn btn-success w-100" id="btn-adicionar-item-recebimento">
                                         <i class="fas fa-plus me-2"></i> Adicionar Item
                                     </button>
                                 </div>

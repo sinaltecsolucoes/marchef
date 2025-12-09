@@ -312,6 +312,16 @@ switch ($action) {
     case 'getLotesFinalizadosOptions':
         getLotesFinalizadosOptions($loteNovoRepo);
         break;
+    case 'getItemRecebimento':
+        getItemRecebimento($loteNovoRepo);
+        break;
+    case 'atualizarItemRecebimento':
+        atualizarItemRecebimento($loteNovoRepo);
+        break;
+    case 'getDadosLoteReprocesso':
+        getDadosLoteReprocesso($loteNovoRepo);
+        break;
+
 
     // --- ROTA DE PERMISSÕES ---
     case 'salvarPermissoes':
@@ -1346,7 +1356,7 @@ function getItensParaFinalizar(LoteNovoRepository $repo)
     echo json_encode(['success' => true, 'data' => $itens]);
 }
 
-function reativarLoteNovo(LoteNovoRepository $repo)
+/* function reativarLoteNovo(LoteNovoRepository $repo)
 {
     $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
     if (!$lote_id) {
@@ -1363,6 +1373,36 @@ function reativarLoteNovo(LoteNovoRepository $repo)
         }
     } catch (Exception $e) {
         http_response_code(400); // Bad Request é apropriado para erros de regra de negócio
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+} */
+
+// Procure a função reativarLoteNovo no final do arquivo
+function reativarLoteNovo(LoteNovoRepository $repo)
+{
+    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $motivo = trim($_POST['motivo'] ?? ''); // Captura o motivo
+
+    if (!$lote_id) {
+        echo json_encode(['success' => false, 'message' => 'ID de lote inválido.']);
+        return;
+    }
+
+    // Validação básica do motivo também aqui no controller
+    if (empty($motivo)) {
+        echo json_encode(['success' => false, 'message' => 'O motivo é obrigatório.']);
+        return;
+    }
+
+    try {
+        // Passa o ID e o Motivo para o repositório
+        if ($repo->reativarLote($lote_id, $motivo)) {
+            echo json_encode(['success' => true, 'message' => 'Lote reativado com sucesso!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Não foi possível reativar o lote.']);
+        }
+    } catch (Exception $e) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
@@ -1468,14 +1508,109 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
 
 // --- FUNÇÕES DE CONTROLE PARA DETALHES DE RECEBIMENTO ---
 
+/* function adicionarItemRecebimento(LoteNovoRepository $repo)
+{
+    try {
+
+        $tipoEntrada = $_POST['tipo_entrada_mp'] ?? null;
+
+        if (!$tipoEntrada) {
+            throw new Exception('Tipo de entrada não informado.');
+        }
+
+        if ($tipoEntrada === 'MATERIA_PRIMA') {
+
+            if (empty($_POST['item_receb_produto_id'])) {
+                throw new Exception('Selecione a matéria-prima.');
+            }
+
+            // garante consistência
+            $_POST['item_receb_lote_origem_id'] = null;
+        }
+
+         if ($tipoEntrada === 'LOTE_ORIGEM') {
+
+            if (empty($_POST['item_receb_lote_origem_id'])) {
+                throw new Exception('Selecione o lote de origem.');
+            }
+
+            $_POST['item_receb_produto_id'] = null;
+        }
+
+        // Segue fluxo normal
+        $repo->adicionarItemRecebimento($_POST);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Detalhe de recebimento adicionado com sucesso!'
+        ]);
+    } catch (Exception $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+}*/
+
 function adicionarItemRecebimento(LoteNovoRepository $repo)
 {
     try {
-        // O repositório já valida os dados dentro do array $_POST
+
+        $tipoEntrada = $_POST['tipo_entrada_mp'] ?? null;
+
+        if (!$tipoEntrada) {
+            throw new Exception('Tipo de entrada não informado.');
+        }
+
+        if ($tipoEntrada === 'MATERIA_PRIMA') {
+
+            if (empty($_POST['item_receb_produto_id'])) {
+                throw new Exception('Selecione a matéria-prima.');
+            }
+
+            // garante consistência
+            $_POST['item_receb_lote_origem_id'] = null;
+        }
+
+        if ($tipoEntrada === 'LOTE_ORIGEM') {
+
+            if (empty($_POST['item_receb_lote_origem_id'])) {
+                throw new Exception('Selecione o lote de origem.');
+            }
+
+            // ✅ BUSCA REAL DOS DADOS DO LOTE
+            $dadosDoLote = $repo->getDadosBasicosLoteReprocesso(
+                (int) $_POST['item_receb_lote_origem_id']
+            );
+
+            if (!$dadosDoLote) {
+                throw new Exception('Lote de origem não encontrado.');
+            }
+
+            // ✅ SOBRESCREVE CAMPOS (backend manda)
+            $_POST['item_receb_produto_id']        = null;
+            $_POST['item_receb_total_caixas']      = $dadosDoLote['lote_total_caixas'];
+            $_POST['item_receb_nota_fiscal']        = $dadosDoLote['lote_nota_fiscal'];
+            $_POST['item_receb_peso_nota_fiscal']   = $dadosDoLote['lote_peso_nota_fiscal'];
+            $_POST['item_receb_peso_medio_ind']     = $dadosDoLote['lote_peso_medio_industria'];
+            $_POST['item_receb_gram_faz']           = $dadosDoLote['lote_gramatura_fazenda'];
+            $_POST['item_receb_gram_lab']           = $dadosDoLote['lote_gramatura_lab'];
+        }
+
+        // ✅ SEGUE FLUXO NORMAL
         $repo->adicionarItemRecebimento($_POST);
-        echo json_encode(['success' => true, 'message' => 'Detalhe de recebimento adicionado com sucesso!']);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Detalhe de recebimento adicionado com sucesso!'
+        ]);
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
     }
 }
 
@@ -1515,8 +1650,8 @@ function excluirItemRecebimento(LoteNovoRepository $repo)
 
 function getLotesFinalizadosOptions(LoteNovoRepository $repo)
 {
-    // Retorna no formato esperado pelo Select2 { results: [...] }
-    $dados = $repo->getLotesFinalizadosParaSelect();
+    $term = $_GET['term'] ?? '';
+    $dados = $repo->getLotesFinalizadosParaSelect($term);
     echo json_encode(['results' => $dados]);
 }
 
@@ -1596,6 +1731,76 @@ function excluirCaixaMista(LoteNovoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+
+function getItemRecebimento(LoteNovoRepository $repo)
+{
+    $itemId = filter_input(INPUT_GET, 'item_id', FILTER_VALIDATE_INT);
+    if (!$itemId) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    $data = $repo->getItemRecebimento($itemId);
+    echo json_encode(['success' => true, 'data' => $data]);
+}
+
+function atualizarItemRecebimento(LoteNovoRepository $repo)
+{
+    try {
+        $repo->atualizarItemRecebimento($_POST);
+        echo json_encode(['success' => true, 'message' => 'Item atualizado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+/* function getDadosLoteReprocesso(LoteNovoRepository $repo)
+{
+    $loteId = $_GET['lote_id'] ?? null;
+
+    if (!$loteId) {
+        throw new Exception('Lote não informado.');
+    }
+
+    $dados = $repo->getDadosBasicosLoteReprocesso($loteId);
+
+    echo json_encode([
+        'success' => true,
+        'dados' => $dados
+    ]);
+} */
+
+function getDadosLoteReprocesso(LoteNovoRepository $repo)
+{
+    try {
+
+        $loteId = $_GET['lote_id'] ?? null;
+
+        if (!$loteId) {
+            throw new Exception('Lote não informado.');
+        }
+
+        $dados = $repo->getDadosBasicosLoteReprocesso((int) $loteId);
+
+        if (!$dados) {
+            throw new Exception('Lote não encontrado.');
+        }
+
+        echo json_encode([
+            'success' => true,
+            'dados' => $dados
+        ]);
+    } catch (Exception $e) {
+
+        http_response_code(400); // 👈 importante
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+}
+
+
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 

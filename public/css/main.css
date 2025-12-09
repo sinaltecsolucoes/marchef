@@ -201,7 +201,7 @@ qtd-a-finalizar {
     #botoes-cabecalho-oe {
         width: 100%;
         justify-content: flex-start;
-        
+
     }
 
     table.dataTable td.col-centralizavel {
@@ -249,4 +249,27 @@ qtd-a-finalizar {
     table.dataTable td.col-centralizavel {
         text-align: center;
     }
+}
+
+/* ==========================================================================
+   AJUSTES GLOBAIS DO SELECT2 (DROPDOWNS)
+   Iguala a altura e alinhamento com os inputs padrão do Bootstrap 5 (38px)
+   ========================================================================== */
+.select2-container .select2-selection--single {
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    margin-top: -2px !important;
+    margin-left: 5px !important;
+    color: #212529;
+    /* Garante a cor do texto igual ao input */
+}
+
+/* Garante que a seta (caret) fique centralizada verticalmente */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
 }

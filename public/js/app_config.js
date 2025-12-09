@@ -20,6 +20,11 @@ $(document).ready(function () {
       */
     $(document).ajaxError(function (event, jqXHR, ajaxSettings, thrownError) {
 
+        // IGNORAR aborts (Select2, debounce, navegação)
+        if (jqXHR.status === 0 && thrownError === 'abort') {
+            return;
+        }
+
         // Condição para IGNORAR erros de tradução do DataTables, que não são críticos.
         if (ajaxSettings.url.includes('Portuguese-Brasil.json')) {
             console.warn("Falha ao carregar arquivo de tradução do DataTables. A tabela usará o idioma padrão (inglês).");
