@@ -149,7 +149,8 @@ class ProdutoRepository
             $stmtCheckCod->execute([':cod' => $codInterno]);
             if ($stmtCheckCod->fetchColumn() > 0) {
                 // Lança uma Exceção que será capturada pelo ajax_router
-                throw new ("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
+                //  throw new ("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
+                throw new Exception("Validação falhou: O Código Interno '{$codInterno}' já está em uso por outro produto.");
             }
         }
 
@@ -165,12 +166,12 @@ class ProdutoRepository
                     prod_codigo_interno, prod_descricao, prod_situacao, prod_tipo, prod_subtipo, prod_classificacao, 
                     prod_categoria, prod_classe, prod_especie, prod_origem, prod_conservacao, prod_congelamento, 
                     prod_fator_producao, prod_tipo_embalagem, prod_peso_embalagem, prod_total_pecas, 
-                    prod_validade_meses, prod_primario_id, prod_ean13, prod_dun14, prod_ncm, prod_marca) 
+                    prod_validade_meses, prod_unidade, prod_primario_id, prod_ean13, prod_dun14, prod_ncm, prod_marca) 
                 VALUES (
                     :prod_codigo_interno, :prod_descricao, :prod_situacao, :prod_tipo, :prod_subtipo, :prod_classificacao, 
                     :prod_categoria, :prod_classe, :prod_especie, :prod_origem, :prod_conservacao, 
                     :prod_congelamento, :prod_fator_producao, :prod_tipo_embalagem, :prod_peso_embalagem, 
-                    :prod_total_pecas, :prod_validade_meses, :prod_primario_id, :prod_ean13, :prod_dun14, :prod_ncm, :prod_marca
+                    :prod_total_pecas, :prod_validade_meses, :prod_unidade, :prod_primario_id, :prod_ean13, :prod_dun14, :prod_ncm, :prod_marca
  
                 )";
         $stmt = $this->pdo->prepare($sql);
@@ -204,7 +205,7 @@ class ProdutoRepository
                     prod_conservacao = :prod_conservacao, prod_congelamento = :prod_congelamento, 
                     prod_fator_producao = :prod_fator_producao, prod_tipo_embalagem = :prod_tipo_embalagem, 
                     prod_peso_embalagem = :prod_peso_embalagem, prod_total_pecas = :prod_total_pecas, 
-                    prod_validade_meses = :prod_validade_meses, prod_primario_id = :prod_primario_id, 
+                    prod_validade_meses = :prod_validade_meses, prod_unidade = :prod_unidade, prod_primario_id = :prod_primario_id, 
                     prod_ean13 = :prod_ean13, prod_dun14 = :prod_dun14, prod_ncm = :prod_ncm, prod_marca = :prod_marca, prod_situacao = :prod_situacao
 
                 WHERE prod_codigo = :prod_codigo";
@@ -264,7 +265,8 @@ class ProdutoRepository
             ':prod_tipo_embalagem' => $tipo_embalagem,
             ':prod_peso_embalagem' => $peso_embalagem,
             ':prod_total_pecas' => !empty($data['prod_total_pecas']) ? $data['prod_total_pecas'] : null,
-            ':prod_validade_meses' => !empty($data['prod_validade_meses']) ? (int) $data['prod_validade_meses'] : null, // Nome padronizado
+            ':prod_validade_meses' => !empty($data['prod_validade_meses']) ? (int) $data['prod_validade_meses'] : null, 
+            ':prod_unidade' => !empty($data['prod_unidade']) ? $data['prod_unidade'] : null, 
             ':prod_primario_id' => !empty($data['prod_primario_id']) ? $data['prod_primario_id'] : null,
             ':prod_ean13' => !empty($data['prod_ean13']) ? $data['prod_ean13'] : null,
             ':prod_dun14' => !empty($data['prod_dun14']) ? $data['prod_dun14'] : null,
@@ -283,7 +285,8 @@ class ProdutoRepository
                                         prod_categoria, prod_classe, prod_especie, 
                                         prod_origem, prod_conservacao, prod_congelamento, 
                                         prod_fator_producao, prod_total_pecas, 
-                                        prod_codigo_interno, prod_validade_meses  
+                                        prod_codigo_interno, prod_validade_meses,
+                                        prod_ncm, prod_marca  
                                     FROM tbl_produtos 
                                     WHERE prod_tipo_embalagem = 'PRIMARIA' 
                                     AND prod_situacao = 'A' 

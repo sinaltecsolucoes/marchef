@@ -153,7 +153,8 @@
                             <table class="table table-sm table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Produto</th>
+                                        <th class="align-middle">Produto</th>
+                                        <th class="text-center align-middle">Und.</th>
                                         <th class="text-center align-middle">Qtd.<br>Produzida</th>
                                         <th class="text-center align-middle">Saldo<br>(p/ Embalar)</th>
                                         <th class="text-center align-middle">Validade</th>
@@ -262,7 +263,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-success" id="btn-confirmar-finalizacao"><i class="fas fa-save me-2"></i>Confirmar
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancelar</button>
                     Finalização</button>
             </div>
         </div>

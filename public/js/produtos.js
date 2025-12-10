@@ -210,6 +210,10 @@ $(document).ready(function () {
                 "className": "col-centralizavel align-middle"
             },
             {
+                "data": "prod_unidade",
+                "className": "text-center align-middle"
+            },
+            {
                 "data": "prod_codigo",
                 "orderable": false,
                 "className": "col-centralizavel align-middle",
@@ -257,6 +261,8 @@ $(document).ready(function () {
             $('#prod_subtipo').val(produto.prod_subtipo);
             $('#prod_classificacao').val(produto.prod_classificacao);
             $('#prod_especie').val(produto.prod_especie);
+            $('#prod_ncm').val(produto.prod_ncm);
+            $('#prod_marca').val(produto.prod_marca);
             $('#prod_origem').val(produto.prod_origem);
             $('#prod_conservacao').val(produto.prod_conservacao);
             $('#prod_congelamento').val(produto.prod_congelamento);
@@ -304,7 +310,7 @@ $(document).ready(function () {
                 notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
             }
         }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); // << REATORADO
+            // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); // << REATORADO
         });
     });
 
@@ -455,12 +461,12 @@ $(document).ready(function () {
     // Evento do Botão de Imprimir Relatório
     $('#btn-imprimir-relatorio').on('click', function () {
         // 1. Filtro de Situação
-       // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
+        // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
         let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
 
         // 2. Filtro de Tipo
-       // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
-        let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos'; 
+        // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
+        let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
 
         // 3. Termo de Busca
         let termoBusca = $('.dataTables_filter input').val() || '';

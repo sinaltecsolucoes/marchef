@@ -752,8 +752,9 @@ function salvarProduto(ProdutoRepository $repo)
             $message = 'Produto cadastrado com sucesso!';
         }
         echo json_encode(['success' => $success, 'message' => $message]);
-    } catch (PDOException $e) {
-        echo json_encode(['success' => false, 'message' => 'Erro no banco de dados: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        // Pega tanto erro de banco (PDO) quanto validações manuais (Exception)
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 
@@ -1356,28 +1357,6 @@ function getItensParaFinalizar(LoteNovoRepository $repo)
     echo json_encode(['success' => true, 'data' => $itens]);
 }
 
-/* function reativarLoteNovo(LoteNovoRepository $repo)
-{
-    $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
-    if (!$lote_id) {
-        // Tratamento de erro para ID inválido
-        echo json_encode(['success' => false, 'message' => 'ID de lote inválido.']);
-        return;
-    }
-    try {
-        if ($repo->reativarLote($lote_id)) {
-            echo json_encode(['success' => true, 'message' => 'Lote reativado com sucesso!']);
-        } else {
-            // Este caso é improvável por causa das validações no repositório, mas é bom tê-lo
-            echo json_encode(['success' => false, 'message' => 'Não foi possível reativar o lote.']);
-        }
-    } catch (Exception $e) {
-        http_response_code(400); // Bad Request é apropriado para erros de regra de negócio
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-} */
-
-// Procure a função reativarLoteNovo no final do arquivo
 function reativarLoteNovo(LoteNovoRepository $repo)
 {
     $lote_id = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
@@ -1443,21 +1422,23 @@ function atualizarItemProducaoNovo(LoteNovoRepository $repo)
 function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
 {
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
-    // Recebemos os itens como uma string JSON, então precisamos de fazer o decode
+
+    // Decodifica o JSON vindo do JavaScript
     $itensJson = $_POST['itens'] ?? '[]';
     $itens = json_decode($itensJson, true);
 
+    // Validação extra: Se o JSON for inválido, $itens será null
     if (!$loteId || !is_array($itens)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos.']);
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos. Verifique os itens selecionados.']);
         return;
     }
 
     try {
         $repo->finalizarLoteParcialmente($loteId, $itens);
-        echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e stock atualizado!']);
+        echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e estoque atualizado!']);
     } catch (Exception $e) {
-        http_response_code(400);
+        http_response_code(400); // 400 é melhor que 500 para erros de regra de negócio
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
@@ -1769,7 +1750,7 @@ function atualizarItemRecebimento(LoteNovoRepository $repo)
     ]);
 } */
 
-function getDadosLoteReprocesso(LoteNovoRepository $repo)
+/* function getDadosLoteReprocesso(LoteNovoRepository $repo)
 {
     try {
 
@@ -1793,6 +1774,41 @@ function getDadosLoteReprocesso(LoteNovoRepository $repo)
 
         http_response_code(400); // 👈 importante
 
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+}*/
+
+function getDadosLoteReprocesso(LoteNovoRepository $repo)
+{
+    try {
+        // Usa $_GET pois o JS usa $.getJSON
+        $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+
+        if (!$loteId) {
+            throw new Exception('ID do lote inválido ou não informado.');
+        }
+
+        $dados = $repo->getDadosBasicosLoteReprocesso($loteId);
+
+        if (empty($dados)) {
+            // Não lançamos Exception aqui para evitar o Erro 400 no console.
+            // Retornamos success: false para o JS tratar amigavelmente.
+            echo json_encode([
+                'success' => false,
+                'message' => 'Detalhes deste lote não encontrados (verifique se o lote de origem possui dados de recebimento).'
+            ]);
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'dados' => $dados
+        ]);
+    } catch (Exception $e) {
+        http_response_code(400); // Bad Request apenas para erros críticos de sistema
         echo json_encode([
             'success' => false,
             'message' => $e->getMessage()

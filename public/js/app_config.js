@@ -20,6 +20,7 @@ $(document).ready(function () {
       */
     $(document).ajaxError(function (event, jqXHR, ajaxSettings, thrownError) {
 
+
         // IGNORAR aborts (Select2, debounce, navegação)
         if (jqXHR.status === 0 && thrownError === 'abort') {
             return;
@@ -39,7 +40,19 @@ $(document).ready(function () {
         let titulo = 'Erro de Comunicação';
         let mensagem = 'Não foi possível comunicar com o servidor. Verifique a sua conexão com a internet.';
 
-        if (jqXHR.status === 404) {
+        // 1. Tenta pegar a mensagem específica enviada pelo PHP (json_encode)
+        if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+            mensagem = jqXHR.responseJSON.message;
+            titulo = 'Atenção'; // Título genérico para validações
+
+            // Se for erro 500 mas tiver mensagem, assumimos que é uma Exceção controlada
+            if (jqXHR.status === 500) {
+                titulo = 'Erro no Processamento';
+            }
+        }
+        // 2. Se não houver JSON, usa as mensagens genéricas baseadas no Status
+
+        else if (jqXHR.status === 404) {
             titulo = 'Recurso Não Encontrado';
             mensagem = 'A funcionalidade que você tentou aceder não foi encontrada no servidor.';
         } else if (jqXHR.status === 500) {

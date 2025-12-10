@@ -143,6 +143,119 @@ class LoteNovoRepository
         return $novoId;
     }
 
+    public function adicionarItemEmbalagem(array $data): int
+    {
+        // 1. Validações Iniciais
+        $loteId = filter_var($data['item_emb_lote_id'], FILTER_VALIDATE_INT);
+        $prodSecId = filter_var($data['item_emb_prod_sec_id'], FILTER_VALIDATE_INT);
+        $prodPrimId = filter_var($data['item_emb_prod_prim_id'], FILTER_VALIDATE_INT); // Agora isso é o ID do Produto!
+        $qtdSec = filter_var($data['item_emb_qtd_sec'], FILTER_VALIDATE_FLOAT);
+
+        if (!$loteId || !$prodSecId || !$prodPrimId || !$qtdSec || $qtdSec <= 0) {
+            throw new Exception("Dados insuficientes ou inválidos para adicionar o item de embalagem.");
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            // 2. Calcula o consumo total necessário (Unidades * Peso)
+            $sqlPesos = "SELECT 
+                        p_sec.prod_peso_embalagem AS peso_secundario,
+                        p_prim.prod_peso_embalagem AS peso_primario
+                    FROM tbl_produtos AS p_sec
+                    LEFT JOIN tbl_produtos AS p_prim ON p_sec.prod_primario_id = p_prim.prod_codigo
+                    WHERE p_sec.prod_codigo = :id_secundario";
+
+            $stmtPesos = $this->pdo->prepare($sqlPesos);
+            $stmtPesos->execute([':id_secundario' => $prodSecId]);
+            $pesos = $stmtPesos->fetch(PDO::FETCH_ASSOC);
+
+            if (!$pesos || empty($pesos['peso_primario']) || $pesos['peso_primario'] <= 0) {
+                throw new Exception("Erro de configuração de pesos nos produtos.");
+            }
+
+            $unidadesPorEmbalagem = (float) $pesos['peso_secundario'] / (float) $pesos['peso_primario'];
+            $consumoTotalNecessario = $qtdSec * $unidadesPorEmbalagem; // Ex: 50 * 10 = 500 unidades primárias
+
+            // 3. Busca itens de produção disponíveis para este produto (FIFO - Mais antigos primeiro)
+            // IMPORTANTE: Lock (FOR UPDATE) para evitar concorrência
+            $stmtEstoque = $this->pdo->prepare("
+                SELECT item_prod_id, item_prod_saldo 
+                FROM tbl_lotes_novo_producao 
+                WHERE item_prod_lote_id = :lote_id 
+                  AND item_prod_produto_id = :prod_id 
+                  AND item_prod_saldo > 0 
+                ORDER BY item_prod_id ASC 
+                FOR UPDATE
+            ");
+            $stmtEstoque->execute([':lote_id' => $loteId, ':prod_id' => $prodPrimId]);
+            $itensDisponiveis = $stmtEstoque->fetchAll(PDO::FETCH_ASSOC);
+
+            // 4. Lógica de Distribuição (FIFO)
+            $qtdRestanteParaConsumir = $consumoTotalNecessario;
+            $novoIdPrincipal = 0; // Guardaremos o ID do primeiro insert para retornar
+
+            foreach ($itensDisponiveis as $item) {
+                if ($qtdRestanteParaConsumir <= 0) break; // Já consumimos tudo que precisava
+
+                $saldoItem = (float) $item['item_prod_saldo'];
+                $itemProdId = $item['item_prod_id'];
+
+                // Quanto vamos tirar deste item específico?
+                $consumirDeste = min($saldoItem, $qtdRestanteParaConsumir);
+
+                // Atualiza o saldo na produção
+                $novoSaldo = $saldoItem - $consumirDeste;
+                $this->pdo->prepare("UPDATE tbl_lotes_novo_producao SET item_prod_saldo = :saldo WHERE item_prod_id = :id")
+                    ->execute([':saldo' => $novoSaldo, ':id' => $itemProdId]);
+
+                // Insere o registro na embalagem
+                // Nota: Se o consumo for fracionado entre dois itens, isso criará DUAS linhas na tabela de embalagem.
+                // Isso é necessário para manter a rastreabilidade exata do banco de dados.
+
+                // Calculamos a proporção da Qtd Secundária para este fragmento
+                // (Regra de 3: Se ConsumoTotal gera QtdSecTotal, ConsumirDeste gera X)
+                $qtdSecProporcional = ($consumirDeste / $unidadesPorEmbalagem);
+
+                $sqlInsert = "INSERT INTO tbl_lotes_novo_embalagem (
+                            item_emb_lote_id, item_emb_prod_sec_id, item_emb_prod_prim_id, 
+                            item_emb_qtd_sec, item_emb_qtd_prim_cons
+                        ) VALUES (
+                            :lote_id, :prod_sec_id, :prod_prim_id, 
+                            :qtd_sec, :qtd_prim_cons
+                        )";
+
+                $this->pdo->prepare($sqlInsert)->execute([
+                    ':lote_id' => $loteId,
+                    ':prod_sec_id' => $prodSecId,
+                    ':prod_prim_id' => $itemProdId, // Linka com a linha específica que cedeu o saldo
+                    ':qtd_sec' => $qtdSecProporcional,
+                    ':qtd_prim_cons' => $consumirDeste
+                ]);
+
+                if ($novoIdPrincipal === 0) {
+                    $novoIdPrincipal = (int) $this->pdo->lastInsertId();
+                }
+
+                $qtdRestanteParaConsumir -= $consumirDeste;
+            }
+
+            // 5. Verifica se conseguiu consumir tudo
+            if ($qtdRestanteParaConsumir > 0.001) { // Margem de erro float
+                // Se sobrou algo para consumir, é porque não tinha saldo suficiente
+                throw new Exception("Saldo insuficiente no total agrupado! Faltaram: " . number_format($qtdRestanteParaConsumir, 3));
+            }
+
+            // 6. Auditoria e Commit
+            $this->auditLogger->log('CREATE', $novoIdPrincipal, 'tbl_lotes_novo_embalagem', null, $data, "Embalagem adicionada (Consumo agrupado)");
+            $this->pdo->commit();
+
+            return $novoIdPrincipal;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     /**
      * Adiciona um item de embalagem (secundária), consumindo o saldo de um item de produção (primário).
      *
@@ -150,7 +263,7 @@ class LoteNovoRepository
      * @return int O ID do novo item de embalagem criado.
      * @throws Exception
      */
-    public function adicionarItemEmbalagem(array $data): int
+    /* public function adicionarItemEmbalagem(array $data): int
     {
         // Validação dos dados de entrada (esta parte está correta)
         $loteId = filter_var($data['item_emb_lote_id'], FILTER_VALIDATE_INT);
@@ -238,7 +351,7 @@ class LoteNovoRepository
             $this->pdo->rollBack();
             throw $e; // Lança a exceção para que a camada superior (API) possa tratá-la
         }
-    }
+    } */
 
     /**
      * Exclui permanentemente um lote e todos os seus itens associados,
@@ -745,11 +858,16 @@ class LoteNovoRepository
              WHERE item_emb_id = :id"
             );
 
-            // --- PRIMEIRO LOOP: Validar, atualizar itens individuais e AGRUPAR por produto ---
             foreach ($itensParaFinalizar as $item) {
-                $itemId = $item['item_id'];
-                $qtdAFinalizar = (float) $item['quantidade'];
+                // Verifica se as chaves existem antes de acessar
+                if (!isset($item['item_id']) || !isset($item['quantidade'])) {
+                    continue; // Pula se o formato estiver errado
+                }
 
+                $itemId = $item['item_id'];
+                // $qtdAFinalizar = (float) $item['quantidade'];
+
+                $qtdAFinalizar = (int) $item['quantidade'];
                 if ($qtdAFinalizar <= 0)
                     continue;
 
@@ -878,7 +996,7 @@ class LoteNovoRepository
 
         // 2. Busca os itens de produção
         $producaoStmt = $this->pdo->prepare(
-            "SELECT p.*, prod.prod_descricao 
+            "SELECT p.*, prod.prod_descricao, prod.prod_unidade
              FROM tbl_lotes_novo_producao p 
              JOIN tbl_produtos prod ON p.item_prod_produto_id = prod.prod_codigo 
              WHERE p.item_prod_lote_id = :id ORDER BY p.item_prod_id"
@@ -1815,26 +1933,33 @@ class LoteNovoRepository
 
     public function getDadosBasicosLoteReprocesso(int $loteId): array
     {
+        // Usamos ALIASES (AS ...) para coincidir com o que o JavaScript espera (d.lote_nota_fiscal, etc)
         $sql = "
-        SELECT
-            rd.item_receb_nota_fiscal,
-            rd.item_receb_peso_nota_fiscal,
-            rd.item_receb_total_caixas,
-            rd.item_receb_peso_medio_ind,
-            rd.item_receb_gram_faz,
-            rd.item_receb_gram_lab
-        FROM tbl_lote_novo_recebdetalhes rd
-        INNER JOIN tbl_lotes_novo_header h
-            ON h.lote_id = rd.item_receb_lote_id
-        WHERE h.lote_id = :lote_id
-          AND h.lote_status = 'FINALIZADO'
-        ORDER BY rd.item_receb_id DESC
-        LIMIT 1
+    SELECT
+        rd.item_receb_nota_fiscal      AS lote_nota_fiscal,
+        rd.item_receb_peso_nota_fiscal AS lote_peso_nota_fiscal,
+        rd.item_receb_total_caixas     AS lote_total_caixas,
+        rd.item_receb_peso_medio_ind   AS lote_peso_medio_industria,
+        rd.item_receb_gram_faz         AS lote_gramatura_fazenda,
+        rd.item_receb_gram_lab         AS lote_gramatura_lab,
+        
+        -- Calculamos o peso médio fazenda na query para garantir precisão se não estiver salvo
+        TRUNCATE((rd.item_receb_peso_nota_fiscal / NULLIF(rd.item_receb_total_caixas, 0)), 3) AS lote_peso_medio_fazenda
+
+    FROM tbl_lote_novo_recebdetalhes rd
+    INNER JOIN tbl_lotes_novo_header h ON h.lote_id = rd.item_receb_lote_id
+    WHERE h.lote_id = :lote_id
+      AND h.lote_status = 'FINALIZADO'
+    ORDER BY rd.item_receb_id DESC
+    LIMIT 1
     ";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':lote_id' => $loteId]);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $dados = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Retorna array vazio se não achar, ao invés de false, para tratar melhor no Controller
+        return $dados ?: [];
     }
 }

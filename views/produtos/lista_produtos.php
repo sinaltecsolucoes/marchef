@@ -26,7 +26,7 @@
                     </button>
                 </div>
 
-                  <!-- Filtro por Tipo de Embalagem -->
+                <!-- Filtro por Tipo de Embalagem -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <label class="form-label mb-0 text-nowrap">Tipo:</label>
 
@@ -85,6 +85,7 @@
                         <th class="text-center align-middle">Tipo</th>
                         <th class="text-center align-middle">Embalagem</th>
                         <th class="text-center align-middle">Peso</th>
+                        <th class="text-center align-middle">Unid.</th>
                         <th class="text-center align-middle">Ações</th>
                     </tr>
                 </thead>
@@ -274,10 +275,11 @@
                         </div>
                     </div>
 
-                    <!-- Linha 6: Código de Barras DUN para Embalagem Secundária e Validade em Meses -->
+                    <!-- Linha 6: Código de Barras DUN para Embalagem Secundária, Validade em Meses e unidade de medida -->
                     <div class="row">
 
-                        <div class="col-md-6 mb-3">
+                        <!-- VALIDADE PADRÃO -->
+                        <div class="col-md-4 mb-3">
                             <div class="form-group">
                                 <label for="prod_validade_meses" class="form-label">Validade Padrão (em
                                     meses)</label>
@@ -288,7 +290,21 @@
                             </div>
                         </div>
 
-                        <div id="bloco-dun14" class="col-md-6 mb-3" style="display: none;">
+                        <!-- UNIDADE DE MEDIDA -->
+                        <div class="col-md-4 mb-3">
+                            <label for="prod_unidade" class="form-label">Unidade</label>
+                            <select class="form-select" id="prod_unidade" name="prod_unidade">
+                                <option value="KG">KG (Quilo)</option>
+                                <option value="CX">CX (Caixa)</option>
+                                <option value="SC">SC (Saco)</option>
+                                <option value="PCT">PCT (Pacote)</option>
+                                <option value="UN">UN (Unidade)</option>
+                                <option value="TON">TON (Tonelada)</option>
+                            </select>
+                        </div>
+
+                        <!-- CÓDIGO DUN PARA EMBALAGENS SECUNDÁRIAS -->
+                        <div id="bloco-dun14" class="col-md-4 mb-3" style="display: none;">
                             <label for="prod_dun14" class="form-label">Cód. Barras (DUN-14)</label>
                             <input type="text" class="form-control" id="prod_dun14" name="prod_dun14" maxlength="14">
                         </div>
