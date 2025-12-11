@@ -376,61 +376,71 @@ switch ($page) {
                 <h5 class="modal-title">Encerrar Lote: <span id="lote-nome-finalizacao" class="text-primary fw-bold"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body ">
 
-                <div class="alert alert-info d-flex align-items-center mb-3">
-                    <i class="fas fa-info-circle fa-2x me-3"></i>
-                    <div>
-                        <strong>Conferência de Finalização</strong><br>
-                        Confira os totais produzidos abaixo. O estoque já foi movimentado durante a criação das caixas.
-                        Ao finalizar, você define o status do lote.
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-12">
+
+                            <!-- Alerta -->
+                            <div class="alert alert-info d-flex align-items-center mb-3">
+                                <i class="fas fa-info-circle fa-2x me-3"></i>
+                                <div>
+                                    <strong>Conferência de Finalização</strong><br>
+                                    Confira os totais produzidos abaixo. O estoque já foi movimentado durante a criação das caixas.
+                                    Ao finalizar, você define o status do lote.
+                                </div>
+                            </div>
+
+                            <!-- Tabela -->
+                            <div class="table-responsive px-0 mx-0">
+                                <table class="table table-bordered table-striped">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th width="10%" class="text-center align-middle font-small">CÓDIGO</th>
+                                            <th width="55%" class="text-center align-middle font-small">DESCRIÇÃO</th>
+                                            <th width="5%" class="text-center align-middle font-small">UND</th>
+                                            <th width="10%" class="text-center align-middle font-small">T. PRODUÇÃO (Prim)</th>
+                                            <th width="10%" class="text-center align-middle font-small">T. CXS SEC</th>
+                                            <th width="10%" class="text-center aling=middle text-warning font-small">T. SOBRAS (Prim)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-resumo-finalizacao">
+                                    </tbody>
+                                    <tfoot class="table-light fw-bold">
+                                        <tr>
+                                            <td colspan="3" class="text-end">TOTAIS GERAIS:</td>
+                                            <td class="text-center" id="total-geral-producao">-</td>
+                                            <td class="text-center" id="total-geral-caixas">-</td>
+                                            <td class="text-center text-warning" id="total-geral-sobras">-</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped w-100">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>CÓDIGO</th>
-                                <th>DESCRIÇÃO</th>
-                                <th class="text-center">UND</th>
-                                <th class="text-center">TOTAL PRODUÇÃO (Prim)</th>
-                                <th class="text-center">TOTAL CXS SEC</th>
-                                <th class="text-center text-warning">TOTAL SOBRAS (Prim)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-resumo-finalizacao">
-                        </tbody>
-                        <tfoot class="table-light fw-bold">
-                            <tr>
-                                <td colspan="3" class="text-end">TOTAIS GERAIS:</td>
-                                <td class="text-center" id="total-geral-producao">-</td>
-                                <td class="text-center" id="total-geral-caixas">-</td>
-                                <td class="text-center text-warning" id="total-geral-sobras">-</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+                <div class="modal-footer bg-light d-flex justify-content-between align-items-center">
 
-            <div class="modal-footer bg-light d-flex justify-content-between align-items-center">
-
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-arrow-left me-2"></i> Voltar / Sair
-                </button>
-
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-warning text-dark px-3" id="btn-decisao-parcial">
-                        <i class="fas fa-clock me-2"></i>
-                        <strong>Manter Parcial</strong>
-                        <br><small style="font-size: 0.7em;">Continuar produzindo</small>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-left me-2"></i> Voltar / Sair
                     </button>
 
-                    <button type="button" class="btn btn-success px-4" id="btn-decisao-total">
-                        <i class="fas fa-check-double me-2"></i>
-                        <strong>Finalizar e Encerrar</strong>
-                        <br><small style="font-size: 0.7em;">Estoque completo</small>
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-warning text-dark px-3" id="btn-decisao-parcial">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Manter Parcial</strong>
+                            <br><small style="font-size: 0.7em;">Continuar produzindo</small>
+                        </button>
+
+                        <button type="button" class="btn btn-success px-4" id="btn-decisao-total">
+                            <i class="fas fa-check-double me-2"></i>
+                            <strong>Finalizar e Encerrar</strong>
+                            <br><small style="font-size: 0.7em;">Estoque completo</small>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

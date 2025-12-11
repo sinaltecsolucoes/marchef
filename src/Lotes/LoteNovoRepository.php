@@ -1103,7 +1103,7 @@ class LoteNovoRepository
             "SELECT p.*, prod.prod_descricao, prod.prod_unidade
              FROM tbl_lotes_novo_producao p 
              JOIN tbl_produtos prod ON p.item_prod_produto_id = prod.prod_codigo 
-             WHERE p.item_prod_lote_id = :id ORDER BY p.item_prod_id"
+             WHERE p.item_prod_lote_id = :id ORDER BY prod.prod_descricao"
         );
         $producaoStmt->execute([':id' => $id]);
         $producao = $producaoStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1298,7 +1298,13 @@ class LoteNovoRepository
         $success = $stmt->execute([':status' => $novoStatus, ':id' => $loteId]);
 
         if ($success) {
-            $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['status' => $novoStatus], "Alteração de status via Finalização Gerencial");
+            $this->auditLogger->log(
+                'UPDATE', 
+                $loteId, 
+                'tbl_lotes_novo_header', 
+                null, 
+                ['status' => $novoStatus], 
+                "Alteração de status via Finalização Gerencial");
         }
 
         return $success;
