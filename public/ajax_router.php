@@ -298,6 +298,12 @@ switch ($action) {
     case 'excluirCaixaMista':
         excluirCaixaMista($loteNovoRepo);
         break;
+    case 'getResumoFinalizacao':
+        getResumoFinalizacao($loteNovoRepo);
+        break;
+    case 'atualizarStatusLote':
+        atualizarStatusLote($loteNovoRepo);
+        break;
 
     // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
@@ -1816,7 +1822,38 @@ function getDadosLoteReprocesso(LoteNovoRepository $repo)
     }
 }
 
+function getResumoFinalizacao(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    if (!$loteId) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido']);
+        return;
+    }
+    try {
+        $dados = $repo->getResumoFinalizacao($loteId);
+        echo json_encode(['success' => true, 'data' => $dados]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
 
+function atualizarStatusLote(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $status = $_POST['status'] ?? '';
+
+    if (!$loteId || !$status) {
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos']);
+        return;
+    }
+
+    try {
+        $repo->atualizarStatusLote($loteId, $status);
+        echo json_encode(['success' => true, 'message' => 'Status do lote atualizado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 

@@ -297,88 +297,6 @@ $(document).ready(function () {
     }
 
     // Função auxiliar para buscar dados do lote, chamada pelo evento de editar
-    /* function buscarDadosLoteParaEdicao(loteId) {
-        $.ajax({
-            url: 'ajax_router.php?action=buscarLoteNovo',
-            type: 'POST',
-            data: { lote_id: loteId, csrf_token: csrfToken },
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.success) {
-                const lote = response.data;
-                const header = lote.header;
-                const pageType = $('body').data('page-type'); // Captura o tipo da página
-
-                // Preenche os selects (necessário reinicializar o Select2 às vezes)
-                // Garante que select2 esteja inicializado e usa change normal
-                initSelect2($('#lote_fornecedor_id_novo'), 'Selecione o fornecedor');
-                initSelect2($('#lote_cliente_id_novo'), 'Selecione o cliente');
-
-                $('#lote_fornecedor_id_novo').val(header.lote_fornecedor_id).trigger('change');
-                $('#lote_cliente_id_novo').val(header.lote_cliente_id).trigger('change');
-
-                // Preenche os inputs de texto
-                $('#lote_id_novo').val(header.lote_id);
-                $('#lote_numero_novo').val(header.lote_numero);
-                $('#lote_data_fabricacao_novo').val(header.lote_data_fabricacao);
-                $('#lote_ciclo_novo').val(header.lote_ciclo);
-                $('#lote_viveiro_novo').val(header.lote_viveiro);
-                $('#lote_completo_calculado_novo').val(header.lote_completo_calculado);
-
-                $('#btn-salvar-lote-novo-header').html('<i class="fas fa-save me-1"></i> Salvar Alterações');
-                $('#modal-lote-novo-label').text('Editar Lote: ' + header.lote_completo_calculado);
-
-                // --- LÓGICA DE HABILITAÇÃO DAS ABAS ---
-                if (pageType === 'lotes_recebimento') {
-                    // Se for Recebimento, habilita a Aba 2 (Detalhes) e define o ID oculto
-                    $('#aba-detalhes-recebimento-tab').removeClass('disabled');
-                    $('#item_receb_lote_id').val(header.lote_id);
-
-                    // Opcional: Já carregar a tabela de itens para garantir que está atualizada
-                    recarregarItensRecebimento(header.lote_id);
-                } else {
-                    // Se for Produção ou Embalagem, habilita as abas correspondentes
-                    $('#aba-producao-novo-tab, #aba-embalagem-novo-tab').removeClass('disabled');
-                }
-
-                // Volta sempre para a primeira aba ao abrir
-                new bootstrap.Tab($('#aba-info-lote-novo-tab')[0]).show();
-
-                // --- BLOQUEIOS DE SOMENTE LEITURA (PRODUÇÃO/EMBALAGEM) ---
-                // Determina se o lote está fechado (Status Finalizado/Cancelado)
-                const status = header.lote_status;
-                const isReadOnlyGlobal = (status === 'FINALIZADO' || status === 'CANCELADO');
-
-                // Carrega as tabelas das outras abas (mesmo que estejam ocultas, para garantir)
-                $.when(recarregarItensProducao(loteId), recarregarItensEmbalagem(loteId)).done(function () {
-
-                    configurarModalModoLeitura(isReadOnlyGlobal);
-
-                    if (pageType === 'lotes_producao') {
-                        $('#form-lote-novo-header').find('input, select').prop('disabled', true);
-                        $('#btn-salvar-lote-novo-header').hide();
-                    }
-
-                    if (pageType === 'lotes_embalagem') {
-                        $('#form-lote-novo-header').find('input, select').prop('disabled', true);
-                        $('#btn-salvar-lote-novo-header').hide();
-
-                        $('#form-lote-novo-producao').find('input, select').prop('disabled', true);
-                        $('#form-lote-novo-producao').find('button').hide();
-
-                        // Na embalagem, já abre direto na aba 3
-                        new bootstrap.Tab($('#aba-embalagem-novo-tab')[0]).show();
-                    }
-                });
-
-                $modalLoteNovo.modal('show');
-            } else {
-                notificacaoErro('Erro!', response.message);
-            }
-        });
-    } */
-
-    // Função auxiliar para buscar dados do lote, chamada pelo evento de editar
     function buscarDadosLoteParaEdicao(loteId) {
         $.ajax({
             url: 'ajax_router.php?action=buscarLoteNovo',
@@ -521,6 +439,51 @@ $(document).ready(function () {
             $('.btn-editar-lote-novo[data-id="' + loteIdAtual + '"]').html('<i class="fas fa-search"></i> Visualizar');
             $('#modal-lote-novo-label').text('Visualizar Lote: ' + $('#lote_completo_calculado_novo').val());
         }
+    }
+
+    function recarregarItensRecebimento(loteId) {
+        const $tbody = $('#tabela-itens-recebimento');
+        $tbody.html('<tr><td colspan="7" class="text-center">Carregando...</td></tr>');
+
+        $.ajax({
+            url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
+            type: 'GET',
+            dataType: 'json'
+        }).done(function (response) {
+            $tbody.empty();
+            if (response.success && response.data.length > 0) {
+                response.data.forEach(item => {
+                    let origemHtml = '-';
+
+                    if (item.origem_formatada && item.origem_formatada !== '-') {
+                        origemHtml = `<span class="badge bg-info text-dark">${item.origem_formatada}</span>`;
+                    }
+
+                    $tbody.append(`
+                        <tr>
+                            <td class="align-middle">${item.prod_descricao}</td>
+                            <td class="text-center align-middle">${origemHtml}</td>
+                            <td class="text-center align-middle">${item.item_receb_nota_fiscal || ''}</td>
+                            
+                            <td class="text-center align-middle">${floatToBr(item.item_receb_peso_nota_fiscal, 3)}</td>
+                            <td class="text-center align-middle">${item.item_receb_total_caixas || ''}</td>
+                            <td class="text-center align-middle">${floatToBr(item.item_receb_peso_medio_ind, 2)}</td>
+                            
+                            <td class="text-center align-middle">
+                                <button class="btn btn-warning btn-sm btn-editar-item-recebimento me-1" data-id="${item.item_receb_id}" title="Editar">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm btn-excluir-item-recebimento" data-id="${item.item_receb_id}" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            } else {
+                $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum detalhe lançado.</td></tr>');
+            }
+        });
     }
 
     /**
@@ -742,41 +705,41 @@ $(document).ready(function () {
     }
 
     // 1. Carregar lista de itens
-    function recarregarItensRecebimento(loteId) {
-        const $tbody = $('#tabela-itens-recebimento');
-        $tbody.html('<tr><td colspan="7" class="text-center">Carregando...</td></tr>');
-
-        $.ajax({
-            url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
-            type: 'GET',
-            dataType: 'json'
-        }).done(function (response) {
-            $tbody.empty();
-            if (response.success && response.data.length > 0) {
-                response.data.forEach(item => {
-                    let origemHtml = item.lote_origem_nome ? `<span class="badge bg-info text-dark">${item.lote_origem_nome}</span>` : '-';
-
-                    $tbody.append(`
-                        <tr>
-                            <td>${item.prod_descricao}</td>
-                            <td>${origemHtml}</td>
-                            <td>${item.item_receb_nota_fiscal || ''}</td>
-                            <td>${item.item_receb_peso_nota_fiscal || ''}</td>
-                            <td>${item.item_receb_total_caixas || ''}</td>
-                            <td>${item.item_receb_peso_medio_ind || ''}</td>
-                            <td>
-                                <button class="btn btn-danger btn-sm btn-excluir-item-recebimento" data-id="${item.item_receb_id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `);
-                });
-            } else {
-                $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum detalhe lançado.</td></tr>');
-            }
-        });
-    }
+    /* function recarregarItensRecebimento(loteId) {
+         const $tbody = $('#tabela-itens-recebimento');
+         $tbody.html('<tr><td colspan="7" class="text-center">Carregando...</td></tr>');
+ 
+         $.ajax({
+             url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
+             type: 'GET',
+             dataType: 'json'
+         }).done(function (response) {
+             $tbody.empty();
+             if (response.success && response.data.length > 0) {
+                 response.data.forEach(item => {
+                     let origemHtml = item.lote_origem_nome ? `<span class="badge bg-info text-dark">${item.lote_origem_nome}</span>` : '-';
+ 
+                     $tbody.append(`
+                         <tr>
+                             <td>${item.prod_descricao}</td>
+                             <td class="text-center align-middle">${origemHtml}</td>
+                             <td class="text-center align-middle">${item.item_receb_nota_fiscal || ''}</td>
+                             <td class="text-center align-middle">${item.item_receb_peso_nota_fiscal || ''}</td>
+                             <td class="text-center align-middle">${item.item_receb_total_caixas || ''}</td>
+                             <td class="text-center align-middle">${item.item_receb_peso_medio_ind || ''}</td>
+                             <td>
+                                 <button class="btn btn-danger btn-sm btn-excluir-item-recebimento" data-id="${item.item_receb_id}">
+                                     <i class="fas fa-trash"></i>
+                                 </button>
+                             </td>
+                         </tr>
+                     `);
+                 });
+             } else {
+                 $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum detalhe lançado.</td></tr>');
+             }
+         });
+     } */
 
     function atualizarTipoEntradaMP() {
         const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
@@ -965,59 +928,6 @@ $(document).ready(function () {
     });
 
     // --- Event Handlers ---
-    // Evento para o botão "Adicionar Novo Lote" (Apenas na tela de Recebimento)
-    /*  $('#btn-adicionar-lote-novo').on('click', function () {
-          const pageType = $('body').data('page-type');
-  
-          // 1. Bloqueio de Segurança
-          if (pageType !== 'lotes_recebimento') {
-              console.warn("Ação bloqueada: Página incorreta.");
-              return;
-          }
-  
-          configurarModalModoLeitura(false);
-  
-          // 2. Limpa o formulário principal
-          const $headerForm = $('#form-lote-novo-header');
-          if ($headerForm.length > 0) {
-              $headerForm[0].reset();
-          }
-          $('#lote_id_novo').val('');
-          $('#modal-lote-novo-label').text('Adicionar Novo Lote');
-  
-          // 3. Limpa formulário de detalhes (se existir)
-          const $detalhesForm = $('#form-recebimento-detalhe');
-          if ($detalhesForm.length > 0) {
-              $detalhesForm[0].reset();
-              $('#item_receb_lote_id').val(''); // Limpa o ID do lote nos detalhes
-              $('#tabela-itens-recebimento').empty().html('<tr><td colspan="7" class="text-center text-muted">Salve o cabeçalho para adicionar itens.</td></tr>');
-          }
-  
-          // 4. Limpa dropdowns e carrega dados
-          $('#lote_fornecedor_id_novo, #lote_cliente_id_novo').val(null).trigger('change');
-          carregarFornecedores();
-          carregarClientes();
-  
-          // 5. Busca próximo número
-          $.get('ajax_router.php?action=getProximoNumeroLoteNovo', function (response) {
-              if (response.success) {
-                  $('#lote_numero_novo').val(response.proximo_numero);
-                  atualizarLoteCompletoNovo();
-              }
-          });
-  
-          // 6. GESTÃO DAS ABAS (REFATORADO)
-          // Usa a função centralizada para exibir as abas corretas (1 e 2) e esconder as outras
-          configurarAbasPorModulo('RECEBIMENTO');
-  
-          // Regra Específica de "Novo Lote": 
-          // Embora o módulo RECEBIMENTO tenha a aba 2, ela começa DESABILITADA até salvar o cabeçalho.
-          $('#aba-detalhes-recebimento-tab').addClass('disabled');
-  
-          // Abre o modal
-          $modalLoteNovo.modal('show');
-      }); */
-
     $('#btn-adicionar-lote-novo').on('click', function () {
         const pageType = $('body').data('page-type');
 
@@ -1270,9 +1180,58 @@ $(document).ready(function () {
         $(this).remove(); // Remove o próprio botão de cancelar
     });
 
+    /*  $('#modalLoteNovo').on('hidden.bs.modal', function () {
+          limparFormularioDetalhes();
+          sairModoEdicao();
+      }); */
+
+    // Evento disparado SEMPRE que o modal fecha
     $('#modalLoteNovo').on('hidden.bs.modal', function () {
+
+        // 1. Reutiliza as funções de limpeza do Recebimento (que você já tem)
         limparFormularioDetalhes();
         sairModoEdicao();
+
+        // 2. Limpa os OUTROS formulários (Header, Produção e Embalagem)
+        $('#form-lote-novo-header')[0].reset();
+        $('#form-lote-novo-producao')[0].reset();
+        $('#form-lote-novo-embalagem')[0].reset();
+
+        // 3. Limpa todos os Inputs Hidden de IDs Globais
+        $('#lote_id_novo').val('');
+        $('#item_prod_id_novo').val('');
+        $('#item_emb_id_novo').val('');
+
+        // 4. Reseta os Selects Globais (Cliente/Fornecedor/Produtos)
+        // O trigger('change') é importante para o Select2 limpar o visual
+        $('#lote_fornecedor_id_novo, #lote_cliente_id_novo').val(null).trigger('change');
+        $('#item_prod_produto_id_novo').val(null).trigger('change');
+        $('#item_emb_prod_prim_id_novo').val(null).trigger('change'); // Isso já limpa o secundário em cascata
+
+        // 5. Limpa as tabelas visuais
+        $('#tabela-itens-recebimento').empty();
+        $('#tabela-itens-producao-novo').empty();
+        $('#tabela-itens-embalagem-novo').empty();
+
+        // 6. Restaura botões e textos para o padrão "Novo"
+        $('#btn-salvar-lote-novo-header').html('<i class="fas fa-save me-2"></i>Salvar e Avançar').show();
+
+        $('#btn-adicionar-item-producao').html('<i class="fas fa-plus me-1"></i> Adicionar Item');
+        $('#btn-cancelar-edicao-producao').trigger('click'); // Usa o click para resetar validade e outros estados
+
+        $('#btn-adicionar-item-embalagem').html('<i class="fas fa-plus me-1"></i> Adicionar');
+        $('#btn-cancelar-edicao-embalagem').remove(); // Remove botão cancelar dinâmico da embalagem
+
+        // 7. Limpa mensagens de erro/feedback
+        $('#mensagem-lote-header').html('');
+        $('#feedback-consumo-embalagem').text('Preencha os campos para calcular o consumo.').removeClass('text-danger fw-bold').addClass('text-muted');
+
+        // 8. Reseta controles globais
+        configurarModalModoLeitura(false);
+        loteIdAtual = null;
+
+        // 9. Trava as abas novamente para o próximo "Novo Lote"
+        $('#aba-detalhes-recebimento-tab, #aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
     });
 
     // Evento para o checkbox "Finalizar Tudo" no cabeçalho
@@ -1302,57 +1261,273 @@ $(document).ready(function () {
         }
     });
 
+    // =================================================================
+    // LÓGICA DE FINALIZAÇÃO (RESUMO + DECISÃO)
+    // =================================================================
+
+    /* $tabelaLotes.on('click', '.btn-finalizar-lote-novo', function () {
+         const loteId = $(this).data('id');
+         const loteNome = $(this).data('nome');
+         const $modal = $('#modal-finalizar-lote');
+         const $tbody = $('#tabela-resumo-finalizacao');
+ 
+         // Configura visual inicial
+         $('#lote-nome-finalizacao').text(loteNome);
+         $tbody.html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Calculando resumo do lote...</td></tr>');
+ 
+         // Zera rodapés
+         $('#total-geral-producao, #total-geral-caixas, #total-geral-sobras').text('-');
+ 
+         // Guarda ID no botão de ação
+         $('#btn-acao-finalizar').data('lote-id', loteId);
+ 
+         const modalFinalizar = new bootstrap.Modal($modal[0]);
+         modalFinalizar.show();
+ 
+         // Busca o Resumo no Backend
+         $.ajax({
+             url: 'ajax_router.php?action=getResumoFinalizacao',
+             type: 'GET',
+             data: { lote_id: loteId },
+             dataType: 'json'
+         }).done(function (response) {
+             if (response.success) {
+                 $tbody.empty();
+                 const itens = response.data.itens;
+                 const totais = response.data.totais;
+ 
+                 // 1. Preenche as linhas (Produtos Secundários)
+                 if (itens.length > 0) {
+                     itens.forEach(item => {
+                         $tbody.append(`
+                             <tr>
+                                 <td class="align-middle">${item.prod_codigo_interno || '-'}</td>
+                                 <td class="align-middle">${item.prod_descricao}</td>
+                                 <td class="text-center align-middle">${item.prod_unidade || 'UN'}</td>
+                                 <td class="text-center align-middle">${parseFloat(item.total_prim_consumido).toFixed(3)}</td> <td class="text-center align-middle fw-bold">${parseInt(item.total_cxs_sec)}</td>
+                                 <td class="text-center align-middle text-muted">-</td> </tr>
+                         `);
+                     });
+                 } else {
+                     $tbody.html('<tr><td colspan="6" class="text-center text-muted">Nenhuma embalagem gerada neste lote.</td></tr>');
+                 }
+ 
+                 // 2. Preenche o Rodapé (Totais Gerais do Lote)
+                 // Total Produção: Soma de tudo que foi produzido (Matéria Prima)
+                 $('#total-geral-producao').text(parseFloat(totais.total_produzido || 0).toFixed(3));
+ 
+                 // Total Caixas: Soma visual da coluna (ou vinda do backend se quiser refinar)
+                 const totalCaixas = itens.reduce((acc, item) => acc + parseInt(item.total_cxs_sec), 0);
+                 $('#total-geral-caixas').text(totalCaixas);
+ 
+                 // Total Sobras: Saldo restante na produção
+                 const sobras = parseFloat(totais.total_sobras || 0);
+                 $('#total-geral-sobras').text(sobras.toFixed(3));
+ 
+                 if (sobras > 0) {
+                     $('#total-geral-sobras').addClass('text-danger fw-bold').removeClass('text-warning');
+                 }
+ 
+             } else {
+                 $tbody.html(`<tr><td colspan="6" class="text-center text-danger">Erro ao carregar: ${response.message}</td></tr>`);
+             }
+         });
+     }); */
+
     $tabelaLotes.on('click', '.btn-finalizar-lote-novo', function () {
         const loteId = $(this).data('id');
         const loteNome = $(this).data('nome');
         const $modal = $('#modal-finalizar-lote');
-        const $tbody = $('#tabela-itens-para-finalizar');
+        const $tbody = $('#tabela-resumo-finalizacao');
 
-        // Guarda o ID do lote no modal para uso posterior
-        $modal.data('lote-id', loteId);
         $('#lote-nome-finalizacao').text(loteNome);
-        $tbody.html('<tr><td colspan="4" class="text-center">A carregar itens disponíveis...</td></tr>');
+        $tbody.html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Calculando resumo...</td></tr>');
 
-        // Mostra o modal
+        $('#total-geral-producao, #total-geral-caixas, #total-geral-sobras').text('-');
+        $('#btn-acao-finalizar').data('lote-id', loteId);
+
         const modalFinalizar = new bootstrap.Modal($modal[0]);
         modalFinalizar.show();
 
-        // Busca os itens que podem ser finalizados
         $.ajax({
-            url: `ajax_router.php?action=getItensParaFinalizar&lote_id=${loteId}`,
+            url: 'ajax_router.php?action=getResumoFinalizacao',
             type: 'GET',
+            data: { lote_id: loteId },
             dataType: 'json'
         }).done(function (response) {
-            $tbody.empty();
-            if (response.success && response.data.length > 0) {
-                response.data.forEach(item => {
-                    const rowHtml = `
-                    <tr data-item-id="${item.item_emb_id}">
-                        <td class="align-middle">${item.prod_descricao}</td>
-                        <td class="text-center align-middle">
-                            <span class="fw-bold text-success">${parseFloat(item.quantidade_disponivel).toFixed(3)}</span>
-                        </td>
-                        <td class="td-input-finalizar align-middle">
-                            <input type="number" class="form-control qtd-a-finalizar" 
-                                   min="0" 
-                                   max="${parseFloat(item.quantidade_disponivel).toFixed(3)}" 
-                                   step="1" 
-                                   placeholder="0">
-                        </td>
-                        <td class="text-center align-middle">
-                            <button class="btn btn-outline-primary btn-sm btn-finalizar-tudo-item" title="Preencher com o máximo">Máx</button>
-                        </td>
-                    </tr>
-                `;
-                    $tbody.append(rowHtml);
-                });
+            if (response.success) {
+                $tbody.empty();
+                const embalagens = response.data.embalagens;
+                const sobras = response.data.sobras;
+                const totais = response.data.totais;
+
+                let temDados = false;
+
+                // 1. Renderiza Linhas de EMBALAGEM (O que virou caixa)
+                if (embalagens.length > 0) {
+                    temDados = true;
+                    embalagens.forEach(item => {
+                        $tbody.append(`
+                            <tr>
+                                <td class="align-middle">${item.prod_codigo_interno || '-'}</td>
+                                <td class="align-middle">${item.prod_descricao}</td>
+                                <td class="text-center align-middle">${item.prod_unidade || 'UN'}</td>
+                                <td class="text-center align-middle">${parseFloat(item.total_prim_consumido).toFixed(3)}</td> 
+                                <td class="text-center align-middle fw-bold">${parseInt(item.total_cxs_sec)}</td>
+                                <td class="text-center align-middle text-muted">-</td> </tr>
+                        `);
+                    });
+                }
+
+                // 2. Renderiza Linhas de SOBRAS (O que não foi usado)
+                if (sobras.length > 0) {
+                    temDados = true;
+                    sobras.forEach(item => {
+                        $tbody.append(`
+                            <tr class="table-warning">
+                                <td class="align-middle">${item.prod_codigo_interno || '-'}</td>
+                                <td class="align-middle fw-bold text-dark">${item.prod_descricao} (SOBRA)</td>
+                                <td class="text-center align-middle">${item.prod_unidade || 'KG'}</td>
+                                <td class="text-center align-middle text-muted">-</td> 
+                                <td class="text-center align-middle text-muted">-</td> <td class="text-center align-middle fw-bold text-danger">${parseFloat(item.total_sobra_liquida).toFixed(3)}</td>
+                            </tr>
+                        `);
+                    });
+                }
+
+                if (!temDados) {
+                    $tbody.html('<tr><td colspan="6" class="text-center text-muted">Nenhuma produção ou embalagem encontrada neste lote.</td></tr>');
+                }
+
+                // 3. Rodapés (Totais Gerais)
+                $('#total-geral-producao').text(parseFloat(totais.total_produzido || 0).toFixed(3));
+
+                // Soma total das caixas (apenas visual)
+                const totalCaixas = embalagens.reduce((acc, item) => acc + parseInt(item.total_cxs_sec), 0);
+                $('#total-geral-caixas').text(totalCaixas);
+
+                const sobrasVal = parseFloat(totais.total_sobras || 0);
+                $('#total-geral-sobras').text(sobrasVal.toFixed(3));
+                if (sobrasVal > 0) {
+                    $('#total-geral-sobras').addClass('text-danger fw-bold').removeClass('text-warning');
+                }
+
             } else {
-                $tbody.html('<tr><td colspan="4" class="text-center text-muted">Nenhum item com saldo disponível para finalizar neste lote.</td></tr>');
-                $('#btn-confirmar-finalizacao').prop('disabled', true); // Desabilita o botão se não há itens
+                $tbody.html(`<tr><td colspan="6" class="text-center text-danger">Erro: ${response.message}</td></tr>`);
             }
         });
     });
 
+    // Ação do Botão FINALIZAR (SweetAlert com 3 Opções)
+    /*$('#btn-acao-finalizar').on('click', function () {
+        const loteId = $(this).data('lote-id');
+
+        Swal.fire({
+            title: 'O que deseja fazer com esse lote?',
+            text: "Escolha o status final para encerrar a operação.",
+            icon: 'question',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'FINALIZAR E ENCERRAR', // Confirmed = FINALIZADO
+            denyButtonText: 'FINALIZAR PARCIALMENTE',  // Denied = PARCIALMENTE
+            cancelButtonText: 'SAIR',
+            confirmButtonColor: '#198754', // Verde
+            denyButtonColor: '#ffc107',    // Amarelo
+            cancelButtonColor: '#6c757d',  // Cinza
+            customClass: {
+                confirmButton: 'btn btn-success btn-lg mx-2',
+                denyButton: 'btn btn-warning btn-lg mx-2 text-dark',
+                cancelButton: 'btn btn-secondary btn-lg mx-2'
+            },
+            buttonsStyling: false // Necessário para customClass funcionar bem no Bootstrap 5
+        }).then((result) => {
+
+            let novoStatus = '';
+
+            if (result.isConfirmed) {
+                novoStatus = 'FINALIZADO';
+            } else if (result.isDenied) {
+                novoStatus = 'PARCIALMENTE FINALIZADO';
+            } else {
+                return; // Clicou em Sair/Cancelar
+            }
+
+            // Envia para o servidor
+            $.ajax({
+                url: 'ajax_router.php?action=atualizarStatusLote',
+                type: 'POST',
+                data: {
+                    lote_id: loteId,
+                    status: novoStatus,
+                    csrf_token: csrfToken
+                },
+                dataType: 'json'
+            }).done(function (res) {
+                if (res.success) {
+                    $('#modal-finalizar-lote').modal('hide');
+                    notificacaoSucesso('Lote Atualizado!', `O lote foi marcado como ${novoStatus}.`);
+                    tabelaLotesNovo.ajax.reload();
+                } else {
+                    notificacaoErro('Erro', res.message);
+                }
+            });
+        });
+    }); */
+
+    // =================================================================
+    // AÇÕES DE FINALIZAÇÃO (Botões do Rodapé)
+    // =================================================================
+
+    // Função centralizada para enviar o status
+    function enviarStatusFinalizacao(loteId, novoStatus) {
+        const textoAcao = novoStatus === 'FINALIZADO' ? 'Encerrar o Lote' : 'Manter Parcial';
+        const corConfirmacao = novoStatus === 'FINALIZADO' ? '#198754' : '#ffc107';
+
+        // Pergunta simples de segurança antes de enviar
+        Swal.fire({
+            title: 'Confirmar ação?',
+            text: `Você optou por: ${textoAcao}. Confirma?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: corConfirmacao,
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sim, confirmar!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=atualizarStatusLote',
+                    type: 'POST',
+                    data: {
+                        lote_id: loteId,
+                        status: novoStatus,
+                        csrf_token: csrfToken
+                    },
+                    dataType: 'json'
+                }).done(function (res) {
+                    if (res.success) {
+                        $('#modal-finalizar-lote').modal('hide');
+                        notificacaoSucesso('Lote Atualizado!', `O lote foi marcado como ${novoStatus}.`);
+                        tabelaLotesNovo.ajax.reload();
+                    } else {
+                        notificacaoErro('Erro', res.message);
+                    }
+                });
+            }
+        });
+    }
+
+    // Botão: FINALIZAR E ENCERRAR (Verde)
+    $('#btn-decisao-total').on('click', function () {
+        const loteId = $('#btn-acao-finalizar').data('lote-id'); // Pegamos o ID que guardamos ao abrir
+        enviarStatusFinalizacao(loteId, 'FINALIZADO');
+    });
+
+    // Botão: MANTER PARCIAL (Amarelo)
+    $('#btn-decisao-parcial').on('click', function () {
+        const loteId = $('#btn-acao-finalizar').data('lote-id');
+        enviarStatusFinalizacao(loteId, 'PARCIALMENTE FINALIZADO');
+    });
+    
     // Ação para o botão "Editar" na tabela principal de lotes 
     $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
         const pageType = $('body').data('page-type'); // Captura onde estamos
@@ -1946,44 +2121,44 @@ $(document).ready(function () {
     });
 
     // --- RECARREGAR ITENS COM FORMATAÇÃO BR E BOTÃO EDITAR ---
-    function recarregarItensRecebimento(loteId) {
-        const $tbody = $('#tabela-itens-recebimento');
-        $tbody.html('<tr><td colspan="7" class="text-center">Carregando.</td></tr>');
-
-        $.ajax({
-            url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
-            type: 'GET',
-            dataType: 'json'
-        }).done(function (response) {
-            $tbody.empty();
-            if (response.success && response.data.length > 0) {
-                response.data.forEach(item => {
-                    let origemHtml = item.origem_formatada !== '-' ? `<span class="badge bg-info text-dark">${item.origem_formatada}</span>` : '-';
-
-                    $tbody.append(`
-                        <tr>
-                            <td>${item.prod_descricao}</td>
-                            <td class="text-center">${origemHtml}</td>
-                            <td>${item.item_receb_nota_fiscal || ''}</td>
-                            <td class="text-end">${formatarBR(item.item_receb_peso_nota_fiscal, 3)}</td>
-                            <td class="text-center">${item.item_receb_total_caixas || ''}</td>
-                            <td class="text-end">${formatarBR(item.item_receb_peso_medio_ind, 3)}</td>
-                            <td class="text-center">
-                                <button class="btn btn-warning btn-sm btn-editar-item-recebimento me-1" data-id="${item.item_receb_id}">
-                                    <i class="fas fa-pencil-alt"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm btn-excluir-item-recebimento" data-id="${item.item_receb_id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `);
-                });
-            } else {
-                $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum detalhe lançado.</td></tr>');
-            }
-        });
-    }
+    /* function recarregarItensRecebimento(loteId) {
+         const $tbody = $('#tabela-itens-recebimento');
+         $tbody.html('<tr><td colspan="7" class="text-center">Carregando.</td></tr>');
+ 
+         $.ajax({
+             url: `ajax_router.php?action=getItensRecebimento&lote_id=${loteId}`,
+             type: 'GET',
+             dataType: 'json'
+         }).done(function (response) {
+             $tbody.empty();
+             if (response.success && response.data.length > 0) {
+                 response.data.forEach(item => {
+                     let origemHtml = item.origem_formatada !== '-' ? `<span class="badge bg-info text-dark">${item.origem_formatada}</span>` : '-';
+ 
+                     $tbody.append(`
+                         <tr>
+                             <td>${item.prod_descricao}</td>
+                             <td class="text-center">${origemHtml}</td>
+                             <td>${item.item_receb_nota_fiscal || ''}</td>
+                             <td class="text-end">${formatarBR(item.item_receb_peso_nota_fiscal, 3)}</td>
+                             <td class="text-center">${item.item_receb_total_caixas || ''}</td>
+                             <td class="text-end">${formatarBR(item.item_receb_peso_medio_ind, 3)}</td>
+                             <td class="text-center">
+                                 <button class="btn btn-warning btn-sm btn-editar-item-recebimento me-1" data-id="${item.item_receb_id}">
+                                     <i class="fas fa-pencil-alt"></i>
+                                 </button>
+                                 <button class="btn btn-danger btn-sm btn-excluir-item-recebimento" data-id="${item.item_receb_id}">
+                                     <i class="fas fa-trash"></i>
+                                 </button>
+                             </td>
+                         </tr>
+                     `);
+                 });
+             } else {
+                 $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum detalhe lançado.</td></tr>');
+             }
+         });
+     } */
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
     $(document).on('click', '.btn-editar-item-recebimento', function () {
