@@ -304,6 +304,9 @@ switch ($action) {
     case 'atualizarStatusLote':
         atualizarStatusLote($loteNovoRepo);
         break;
+    case 'gerarRelatorioLote':
+        gerarRelatorioLote();
+        break;
 
     // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
@@ -1495,51 +1498,6 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
 
 // --- FUNÇÕES DE CONTROLE PARA DETALHES DE RECEBIMENTO ---
 
-/* function adicionarItemRecebimento(LoteNovoRepository $repo)
-{
-    try {
-
-        $tipoEntrada = $_POST['tipo_entrada_mp'] ?? null;
-
-        if (!$tipoEntrada) {
-            throw new Exception('Tipo de entrada não informado.');
-        }
-
-        if ($tipoEntrada === 'MATERIA_PRIMA') {
-
-            if (empty($_POST['item_receb_produto_id'])) {
-                throw new Exception('Selecione a matéria-prima.');
-            }
-
-            // garante consistência
-            $_POST['item_receb_lote_origem_id'] = null;
-        }
-
-         if ($tipoEntrada === 'LOTE_ORIGEM') {
-
-            if (empty($_POST['item_receb_lote_origem_id'])) {
-                throw new Exception('Selecione o lote de origem.');
-            }
-
-            $_POST['item_receb_produto_id'] = null;
-        }
-
-        // Segue fluxo normal
-        $repo->adicionarItemRecebimento($_POST);
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Detalhe de recebimento adicionado com sucesso!'
-        ]);
-    } catch (Exception $e) {
-
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
-    }
-}*/
-
 function adicionarItemRecebimento(LoteNovoRepository $repo)
 {
     try {
@@ -1740,53 +1698,6 @@ function atualizarItemRecebimento(LoteNovoRepository $repo)
     }
 }
 
-/* function getDadosLoteReprocesso(LoteNovoRepository $repo)
-{
-    $loteId = $_GET['lote_id'] ?? null;
-
-    if (!$loteId) {
-        throw new Exception('Lote não informado.');
-    }
-
-    $dados = $repo->getDadosBasicosLoteReprocesso($loteId);
-
-    echo json_encode([
-        'success' => true,
-        'dados' => $dados
-    ]);
-} */
-
-/* function getDadosLoteReprocesso(LoteNovoRepository $repo)
-{
-    try {
-
-        $loteId = $_GET['lote_id'] ?? null;
-
-        if (!$loteId) {
-            throw new Exception('Lote não informado.');
-        }
-
-        $dados = $repo->getDadosBasicosLoteReprocesso((int) $loteId);
-
-        if (!$dados) {
-            throw new Exception('Lote não encontrado.');
-        }
-
-        echo json_encode([
-            'success' => true,
-            'dados' => $dados
-        ]);
-    } catch (Exception $e) {
-
-        http_response_code(400); // 👈 importante
-
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
-    }
-}*/
-
 function getDadosLoteReprocesso(LoteNovoRepository $repo)
 {
     try {
@@ -1853,6 +1764,13 @@ function atualizarStatusLote(LoteNovoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function gerarRelatorioLote()
+{
+    // Apenas inclui o arquivo que contém a lógica de geração e o HTML.
+    // O arquivo relatorio_lote.php vai gerar o PDF e devolver o JSON.
+    require_once __DIR__ . '/../views/lotes_novo/relatorio_lote.php';
 }
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
@@ -2139,7 +2057,6 @@ function getFilaDetalhes(CarregamentoRepository $repo)
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
-
 
 function cancelarCarregamento(CarregamentoRepository $repo)
 {

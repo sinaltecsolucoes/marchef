@@ -55,6 +55,7 @@ switch ($page) {
                 <thead>
                     <tr>
                         <th class="text-center align-middle">Lote Completo</th>
+                        <th class="text-center align-middle">Cliente</th>
                         <th class="text-center align-middle">Fornecedor</th>
                         <th class="text-center align-middle">Data Fabricação</th>
                         <th class="text-center align-middle">Status</th>

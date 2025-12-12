@@ -1,0 +1,406 @@
+<?php
+// views/lotes_novo/relatorio_lote.php
+
+require_once __DIR__ . '/../../src/bootstrap.php';
+
+use App\Core\Database;
+use App\Lotes\LoteNovoRepository;
+
+// Validação de Sessão e ID
+if (!isset($_SESSION['codUsuario'])) die("Acesso negado.");
+$loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+if (!$loteId) die("ID do lote inválido.");
+
+try {
+    $pdo = Database::getConnection();
+    $repo = new LoteNovoRepository($pdo);
+    $dados = $repo->getDadosRelatorioLote($loteId);
+
+    if (empty($dados)) die("Lote não encontrado.");
+
+    $h = $dados['header'];
+    $recebimento = $dados['recebimento'];
+    $producao = $dados['producao'];
+    $embalagem = $dados['embalagem'];
+    $gramFaz = $recebimento[0]['item_receb_gram_faz'];
+    $gramaInd = $recebimento[0]['item_receb_gram_lab'];
+    $totalCaixas = $recebimento[0]['item_receb_total_caixas'];
+
+
+    // --- 1. CÁLCULOS DE TOTAIS (RECEBIMENTO) ---
+    $totalRecebidoKg = 0;
+    foreach ($recebimento as $r) {
+        $totalRecebidoKg += (float)$r['item_receb_peso_nota_fiscal'];
+
+        $pesoMedioFaz = $totalRecebidoKg / $totalCaixas;
+    }
+
+    // $totalProduzidoKg = 0; // Soma dos itens de produção (Primária)
+
+    // --- 2. CÁLCULOS DE TOTAIS (PRODUÇÃO E BENEFICIAMENTO) ---
+    $pesoProduzidoTotal = 0; // Peso Real 
+    $pesoBeneficiadoTotal = 0; // Peso Teórico (Entrada Calculada)
+
+    foreach ($producao as $p) {
+        $qtd = (float)$p['item_prod_quantidade'];
+        $pesoUn = (float)$p['prod_peso_embalagem'];
+        $fator = (float)$p['prod_fator_producao'] / 100;
+        $unidade = strtoupper($p['prod_unidade']);
+
+        // 1. Calcula o Peso Real Produzido (Kg)
+        if ($unidade === 'KG') {
+            // Se a unidade já é KG, o peso é a própria quantidade
+            $pesoItemProduzido = $qtd;
+        } else {
+            // Se for CX, SC, UN, etc., multiplica pela quantidade * peso da embalagem
+            // ATENÇÃO: Se o cadastro do produto estiver com peso 0, isso dará 0.
+            $pesoItemProduzido = $qtd * $pesoUn;
+        }
+
+        $pesoProduzidoTotal += $pesoItemProduzido; // Soma ao total Geral
+
+        // Cálculo do Peso Beneficiado: Peso Produzido / Fator
+        // Evita divisão por zero se o fator não tiver sido cadastrado corretamente
+        $pesoBeneficiadoItem = 0;
+        if ($fator > 0) {
+            $pesoBeneficiadoItem = $pesoItemProduzido / $fator;
+        } else {
+            $pesoBeneficiadoItem = 0;
+        }
+
+        $pesoBeneficiadoTotal += $pesoBeneficiadoItem;
+    }
+
+    // --- 3. CÁLCULOS FINAIS (APROVEITAMENTO) ---
+    // Quanto rendeu em relação ao que chegou de Nota Fiscal
+
+    // Diferença em Quilos (Produção Teórica Beneficiada - Entrada Real)
+    // AprovQuilo = Peso Beneficiado Calculado - Total Recebido Real
+    $aprovQuilo = $pesoBeneficiadoTotal - $totalRecebidoKg;
+
+    // Rendimento % = (AprovQuilo / Total Recebido) * 100
+    // Se AprovQuilo for negativo (perda), a porcentagem  será negativa.
+    $rendimento = ($totalRecebidoKg > 0) ? ($aprovQuilo / $totalRecebidoKg) * 100 : 0;
+
+    // --- 4. CÁLCULO EMBALAGEM (SECUNDÁRIA) ---
+    $totalEmbaladoKg = 0;
+    foreach ($embalagem as $e) {
+        $pesoUn = ($e['prod_unidade'] == 'KG') ? 1 : (float)$e['prod_peso_embalagem'];
+        $qtd = (float)$e['item_emb_qtd_sec'];
+        $totalEmbaladoKg += ($pesoUn * $qtd);
+    }
+} catch (Exception $e) {
+    die("Erro: " . $e->getMessage());
+}
+
+// --- LOGO (Base64) ---
+$pathLogo = __DIR__ . '/../../public/img/logo_marchef.png';
+$logoSrc = '';
+if (file_exists($pathLogo)) {
+    $type = pathinfo($pathLogo, PATHINFO_EXTENSION);
+    $data = file_get_contents($pathLogo);
+    $logoSrc = 'data:image/' . $type . ';base64,' . base64_encode($data);
+}
+
+// --- NOME E CAMINHO DO ARQUIVO ---
+// Formata data para pasta: dez_25
+$meses = ['01' => 'jan', '02' => 'fev', '03' => 'mar', '04' => 'abr', '05' => 'mai', '06' => 'jun', '07' => 'jul', '08' => 'ago', '09' => 'set', '10' => 'out', '11' => 'nov', '12' => 'dez'];
+$dataFab = new DateTime($h['lote_data_fabricacao']);
+$mesExtenso = $meses[$dataFab->format('m')];
+$anoCurto = $dataFab->format('y');
+$nomePasta = "{$mesExtenso}_{$anoCurto}";
+
+$dirBase = __DIR__ . '/../../public/uploads/lotes/' . $nomePasta;
+if (!is_dir($dirBase)) {
+    mkdir($dirBase, 0777, true);
+}
+
+// Nome do arquivo: lote_3586.pdf
+$nomeArquivo = "lote_" . preg_replace('/[^0-9]/', '', $h['lote_numero']) . ".pdf";
+$caminhoFisico = $dirBase . '/' . $nomeArquivo;
+$urlPublica = BASE_URL . "/uploads/lotes/{$nomePasta}/{$nomeArquivo}";
+
+ob_start();
+?>
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            margin: 20px;
+        }
+
+        body {
+            font-family: sans-serif;
+            font-size: 10px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 4px;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #eee;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .header-table td {
+            border: none;
+        }
+
+        .section-title {
+            background-color: #ddd;
+            font-weight: bold;
+            padding: 5px;
+            margin-top: 10px;
+            border: 1px solid #000;
+            text-transform: uppercase;
+        }
+
+        .no-border {
+            border: none !important;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 200px;
+            margin: 0 auto;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+
+<body>
+
+    <table class="header-table">
+        <tr>
+            <td width="20%"><img src="<?= $logoSrc ?>" style="height: 50px;"></td>
+            <td width="60%" class="text-center">
+                <h2 style="margin:0;">RESUMO DE PRODUÇÃO (LOTE)</h2>
+                <h3>PRODUTO: CAMARÃO</h3>
+            </td>
+            <td width="20%" class="text-right" style="font-size: 9px;">
+                Emissão: <?= date('d/m/Y') ?><br>
+                Hora: <?= date('H:i') ?><br>
+                Usuário: <?= $_SESSION['nomeUsuario'] ?>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-title">RESUMO LOTE</div>
+    <table border="1">
+        <tr>
+            <td width="15%"><strong>Lote:</strong></td>
+            <td width="35%"><?= $h['lote_completo_calculado'] ?></td>
+            <td width="15%"><strong>N. Fiscal:</strong></td>
+            <td width="35%"><?= $recebimento[0]['item_receb_nota_fiscal'] ?? '-' ?></td>
+        </tr>
+        <tr>
+            <td><strong>Cliente:</strong></td>
+            <td><?= $h['nome_cliente'] ?></td>
+            <td><strong>P. N. Fiscal:</strong></td>
+            <td><?= number_format($totalRecebidoKg, 3, ',', '.') ?> kg</td>
+        </tr>
+        <tr>
+            <td><strong>Fornecedor:</strong></td>
+            <td><?= $h['nome_fornecedor'] ?></td>
+            <td><strong>Gram. Faz / Lab:</strong></td>
+            <td>
+                <?= (number_format($gramFaz, 2, ',', '.') ?? '-') ?>g /
+                <?= (number_format($gramaInd, 2, ',', '.')) ?>g
+            </td>
+        </tr>
+        <tr>
+            <td><strong>Viv.:</strong></td>
+            <td><?= $h['lote_viveiro'] ?></td>
+            <td><strong>T. Benef. (Entrada):</strong></td>
+            <td><?= number_format($pesoBeneficiadoTotal, 3, ',', '.') ?> kg</td>
+        </tr>
+        <tr>
+            <td><strong>P. Médio (Ind):</strong></td>
+            <td><?= number_format($recebimento[0]['item_receb_peso_medio_ind'], 2, ',', '.') ?? '-' ?> kg/cx</td>
+            <td><strong>Produção (Saída):</strong></td>
+            <td><?= number_format($pesoProduzidoTotal, 3, ',', '.') ?> kg</td>
+        </tr>
+        <tr>
+            <td><strong>Situação:</strong></td>
+            <td><?= $h['lote_status'] ?></td>
+            <td><strong>Aprov. (kg / %):</strong></td>
+            <td>
+                <?= number_format($aprovQuilo, 2, ',', '.') ?> kg /
+                <?= number_format($rendimento, 2, ',', '.') ?> %
+            </td>
+        </tr>
+        <tr>
+            <td><strong>Observação:</strong></td>
+            <td colspan="3"><?= $h['lote_observacao'] ?? '' ?></td>
+        </tr>
+    </table>
+
+    <div style="font-weight: bold; margin-top: 15px;">DETALHAMENTO</div>
+
+    <div class="section-title">RECEBIMENTO (MATÉRIA PRIMA)</div>
+    <table border="1">
+        <thead>
+            <tr>
+                <th width="5%">#</th>
+                <th width="10%">Data</th>
+                <th width="10%">NF</th>
+                <th width="15%">Origem</th>
+                <th width="20%">Produto</th>
+                <th width="10%">Peso NF</th>
+                <th width="10%">Caixas</th>
+                <th width="10%">P. Médio</th>
+                <th width="10%">Gram.</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($recebimento as $i => $r): 
+                
+                ?>
+                <tr>
+                    <td class="text-center"><?= $i + 1 ?></td>
+                    <td class="text-center"><?= date('d/m/Y', strtotime($h['lote_data_fabricacao'])) ?></td>
+                    <td class="text-center"><?= $r['item_receb_nota_fiscal'] ?></td>
+                    <td><?= $r['origem_nome'] ?? $h['nome_fornecedor'] ?></td>
+                    <td><?= $r['prod_descricao'] ?></td>
+                    <td class="text-center"><?= number_format($r['item_receb_peso_nota_fiscal'], 3, ',', '.') ?></td>
+                    <td class="text-center"><?= $totalCaixas ?></td>
+                    <td class="text-center"><?= number_format($pesoMedioFaz, 2, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($r['item_receb_gram_faz'],2,',','.') ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <div class="section-title">PRODUÇÃO (PRIMÁRIA)</div>
+    <table border="1">
+        <thead>
+            <tr>
+                <th width="10%">Cód.</th>
+                <th width="40%">Descrição</th>
+                <th width="15%">Marca</th>
+                <th width="5%">Und</th>
+                <th width="10%">Qtd</th>
+                <th width="10%">Peso</th>
+                <th width="10%">P. Benef.</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            foreach ($producao as $p):
+                $pesoTotalItem = $p['prod_peso_embalagem'] * $p['item_prod_quantidade'];
+                if ($fator > 0) {
+                    $pesoBeneficiadoItem = $pesoTotalItem / $fator;
+                } else {
+                    $pesoBeneficiadoItem = 0;
+                }
+
+            ?>
+                <tr>
+                    <td class="text-center"><?= $p['prod_codigo_interno'] ?></td>
+                    <td><?= $p['prod_descricao'] ?></td>
+                    <td class="text-center"><?= $p['prod_marca'] ?></td>
+                    <td class="text-center"><?= $p['prod_unidade'] ?></td>
+                    <td class="text-center"><?= number_format($p['item_prod_quantidade'], 3, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($pesoTotalItem, 3, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($pesoBeneficiadoItem, 2, ',', '.') ?> kg</td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <div class="section-title">EMBALAGEM (SECUNDÁRIA)</div>
+    <table border="1">
+        <thead>
+            <tr>
+                <th width="10%">Cód.</th>
+                <th width="40%">Descrição</th>
+                <th width="15%">Marca</th>
+                <th width="5%">Und</th>
+                <th width="10%">Qtd Cxs</th>
+                <th width="10%">Peso Total</th>
+                <th width="10%">% Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $totalGeralEmb = 0;
+            foreach ($embalagem as $e) {
+                $pesoTotalItem = $e['prod_peso_embalagem'] * $e['item_emb_qtd_sec'];
+                $totalGeralEmb += $pesoTotalItem;
+            }
+            ?>
+            <?php foreach ($embalagem as $e):
+                $pesoTotalItem = $e['prod_peso_embalagem'] * $e['item_emb_qtd_sec'];
+                $perc = ($totalEmbaladoKg > 0) ? ($pesoTotalItem / $totalEmbaladoKg) * 100 : 0;
+            ?>
+                <tr>
+                    <td class="text-center"><?= $e['prod_codigo_interno'] ?></td>
+                    <td><?= $e['prod_descricao'] ?></td>
+                    <td class="text-center"><?= $e['prod_marca'] ?></td>
+                    <td class="text-center"><?= $e['prod_unidade'] ?></td>
+                    <td class="text-center"><?= (int)$e['item_emb_qtd_sec'] ?></td>
+                    <td class="text-center"><?= number_format($pesoTotalItem, 3, ',', '.') ?> kg</td>
+                    <td class="text-center"><?= number_format($perc, 2, ',', '.') ?> %</td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <br><br><br><br><br><br><br><br><br><br>
+
+    <div style="text-align: center;">
+        <div class="signature-line"></div>
+        <p>Responsável pelos dados</p>
+    </div>
+
+</body>
+
+</html>
+<?php
+// GERA O PDF
+$html = ob_get_clean();
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+$options = new Options();
+$options->set('isRemoteEnabled', true);
+$dompdf = new Dompdf($options);
+$dompdf->loadHtml($html);
+$dompdf->setPaper('A4', 'portrait');
+$dompdf->render();
+
+$output = $dompdf->output();
+file_put_contents($caminhoFisico, $output);
+
+// Redireciona o JS para o arquivo gerado
+header("Content-type: application/json");
+echo json_encode(['success' => true, 'url' => $urlPublica]);
+exit;
+?>

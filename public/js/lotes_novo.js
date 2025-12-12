@@ -58,6 +58,10 @@ $(document).ready(function () {
                 "className": "text-center align-middle",
             },
             {
+                "data": "cliente_razao_social",
+                "className": "align-middle",
+            },
+            {
                 "data": "fornecedor_razao_social",
                 "className": "align-middle",
             },
@@ -121,6 +125,7 @@ $(document).ready(function () {
                         if (pageType === 'lotes_recebimento') {
                             menuItens += `<li><a class="dropdown-item text-danger btn-inativar-lote d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Inativar Lote</a></li>`;
                         }
+
                         // 2. LOTES FINALIZADOS
                     } else if (status === 'FINALIZADO') {
                         btnHtml += `<button class="btn btn-info btn-sm btn-editar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
@@ -129,6 +134,7 @@ $(document).ready(function () {
                         if (pageType === 'lotes_embalagem') {
                             menuItens += `<li><a class="dropdown-item btn-reabrir-lote d-inline-flex align-items-center" href="#" data-id="${loteId}" data-nome="${loteNome}">Reabrir Lote</a></li>`;
                         }
+
                         // 3. LOTES CANCELADOS (Inativos)
                     } else if (status === 'CANCELADO') {
                         btnHtml += `<button class="btn btn-secondary btn-sm btn-editar-lote-novo me-1 d-inline-flex align-items-center" data-id="${loteId}" title="Visualizar Lote"><i class="fas fa-search me-1"></i>Visualizar</button>`;
@@ -139,7 +145,17 @@ $(document).ready(function () {
                         }
                     }
 
-                    // Botão Excluir (Aparece em qualquer estado, dependendo da regra, geralmente para Produção)
+                    // --- AÇÕES GERAIS (Botão PDF) ---
+
+                    // Botão de Relatório APENAS em Embalagem (para qualquer status que não seja Cancelado)
+                    if (pageType === 'lotes_embalagem' && status !== 'CANCELADO') {
+                        if (menuItens !== '') { menuItens += `<li><hr class="dropdown-divider"></li>`; }
+
+                        // Adicionamos a classe 'btn-imprimir-relatorio-lista' para capturar o clique depois
+                        menuItens += `<li><a class="dropdown-item text-dark btn-imprimir-relatorio-lista d-inline-flex align-items-center" href="#" data-id="${loteId}"><i class="fas fa-file-pdf me-2"></i> Relatório Final</a></li>`;
+                    }
+
+                    // Botão Excluir (Apenas Produção)
                     if (pageType === 'lotes_producao') {
                         if (menuItens !== '') {
                             menuItens += `<li><hr class="dropdown-divider"></li>`;
@@ -2136,6 +2152,39 @@ $(document).ready(function () {
             .always(function () {
                 $btnSalvar.prop('disabled', false).html(textoOriginal);
             });
+    });
+
+    // Evento para Gerar Relatório A PARTIR DA LISTA (DataTables)
+    $tabelaLotes.on('click', '.btn-imprimir-relatorio-lista', function (e) {
+        e.preventDefault(); // Evita que a página role para o topo
+        const loteId = $(this).data('id');
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Gerando PDF...',
+            text: 'Aguarde, o download iniciará em breve.',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+
+        $.ajax({
+            url: 'ajax_router.php?action=gerarRelatorioLote',
+            type: 'GET',
+            data: { lote_id: loteId },
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                // Abre o PDF em nova aba
+                window.open(response.url, '_blank');
+            } else {
+                notificacaoErro('Erro', response.message || 'Não foi possível gerar o relatório.');
+            }
+        }).fail(function () {
+            notificacaoErro('Erro', 'Erro de comunicação ao gerar relatório.');
+        });
     });
 
 });
