@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../src/bootstrap.php';
 
 use App\Core\Database;
 use App\Lotes\LoteNovoRepository;
+use App\Core\PdfFooter;
 
 // Validação de Sessão e ID
 if (!isset($_SESSION['codUsuario'])) die("Acesso negado.");
@@ -74,6 +75,32 @@ try {
     // Se AprovQuilo for negativo (perda), a porcentagem  será negativa.
     $rendimento = ($totalRecebidoKg > 0) ? ($aprovQuilo / $totalRecebidoKg) * 100 : 0;
 
+    // 1. LÓGICA DE COR PARA APROVEITAMENTO (Texto)
+    // Se for maior que 0: Azul. Caso contrário (negativo ou zero): Vermelho.
+    $corAprov = ($aprovQuilo > 0) ? '#007bff' : '#dc3545'; // Azul Bootstrap vs Vermelho Bootstrap
+
+    // 2. LÓGICA DE COR PARA SITUAÇÃO (Fundo do Badge)
+    // Traduzindo a lógica JS para PHP/CSS
+    $status = strtoupper($h['lote_status']); // Garante maiúsculas para comparar
+    $bgBadge = '#6c757d'; // bg-secondary (Cinza padrão)
+    $textBadge = '#ffffff'; // Texto branco padrão
+
+    switch ($status) {
+        case 'EM ANDAMENTO':
+            $bgBadge = '#ffc107'; // bg-warning (Amarelo)
+            $textBadge = '#000000'; // Texto preto para contraste no amarelo
+            break;
+        case 'PARCIALMENTE FINALIZADO':
+            $bgBadge = '#17a2b8'; // bg-info (Azul Ciano)
+            break;
+        case 'FINALIZADO':
+            $bgBadge = '#28a745'; // bg-success (Verde)
+            break;
+        case 'CANCELADO':
+            $bgBadge = '#dc3545'; // bg-danger (Vermelho)
+            break;
+    }
+
     // --- EMBALAGEM (SECUNDÁRIA) ---
     $totalEmbaladoKg = 0;
     foreach ($embalagem as $e) {
@@ -121,7 +148,8 @@ ob_start();
     <meta charset="UTF-8">
     <style>
         @page {
-            margin: 20px;
+            margin: 15px 15px 40px 15px;
+            /* segue a sequencia TRBL (Top, Right, Bottom, Left). */
         }
 
         body {
@@ -133,13 +161,13 @@ ob_start();
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 7px;
         }
 
         th,
         td {
             border: 1px solid #000;
-            padding: 4px;
+            padding: 3px;
             vertical-align: middle;
         }
 
@@ -164,8 +192,8 @@ ob_start();
         .section-title {
             background-color: #ddd;
             font-weight: bold;
-            padding: 5px;
-            margin-top: 10px;
+            padding: 4px;
+            margin-top: 4px;
             border: 1px solid #000;
             text-transform: uppercase;
         }
@@ -187,6 +215,29 @@ ob_start();
 </head>
 
 <body>
+    <script type="text/php">
+        if (isset($pdf)) {
+        // Posição Y (Altura da página - 40px)
+        $y = $pdf->get_height() - 40; 
+        $w = $pdf->get_width();
+        
+        // Configuração de fonte (Helvetica padrão)
+        $font = null; 
+        $size = 7;
+        $color = array(0.3, 0.3, 0.3); // Cinza
+
+        // 1. LINHA SEPARADORA (X1, Y1, X2, Y2, Cor, Espessura)
+        $pdf->line(20, $y - 5, $w - 20, $y - 5, array(0, 0, 0), 1);
+
+        // 2. TEXTO ESQUERDA
+        $pdf->page_text(20, $y, "Gerado eletronicamente pelo sistema", $font, $size, $color);
+
+        // 3. Texto Direita com o LOTE INJETADO VIA PHP
+        $textoDireita = "Resumo Lote (<?= $h['lote_numero'] ?>) - pág. {PAGE_NUM} de {PAGE_COUNT}";
+        
+        $pdf->page_text($w - 131, $y, $textoDireita, $font, $size, $color);
+    }
+    </script>
 
     <table class="header-table">
         <tr>
@@ -205,48 +256,76 @@ ob_start();
 
     <div class="section-title">RESUMO LOTE</div>
     <table border="1">
+        <!-- LINHA 01: LOTE E NOTA FISCAL -->
         <tr>
             <td width="15%"><strong>Lote:</strong></td>
-            <td width="35%"><?= $loteCompleto ?></td>
+            <td width="35%"><?= $loteCompleto ?>
+
+                <span style="background-color: <?= $bgBadge ?>; 
+                    color: <?= $textBadge ?>; 
+                    padding: 2px 6px; 
+                    border-radius: 3px; 
+                    font-size: 8px;
+                    font-weight: bold;
+                    margin-left: 10px;
+                    vertical-align:middle;
+                    text-transform: uppercase;">
+                    <?= $h['lote_status'] ?>
+                </span>
+            </td>
             <td width="15%"><strong>N. Fiscal:</strong></td>
             <td width="35%"><?= $numeroNF ?? '-' ?></td>
         </tr>
+
+        <!-- LINHA 02: DATA LOTE E PESO NOTA FISCAL -->
         <tr>
-            <td><strong>Cliente:</strong></td>
-            <td><?= $nomeCliente ?></td>
+            <td><strong>Data::</strong></td>
+            <td><?= date('d/m/Y', strtotime($h['lote_data_fabricacao'])) ?></td>
             <td><strong>P. N. Fiscal:</strong></td>
             <td><?= number_format($totalRecebidoKg, 3, ',', '.') ?> kg</td>
         </tr>
+
+        <!-- LINHA 03: CLIENTE E GRAMATURAS -->
         <tr>
-            <td><strong>Fornecedor:</strong></td>
-            <td><?= $h['nome_fornecedor'] ?></td>
+            <td><strong>Cliente:</strong></td>
+            <td><?= $nomeCliente ?></td>
             <td><strong>Gram. Faz / Lab:</strong></td>
             <td>
                 <?= (number_format($gramFaz, 2, ',', '.') ?? '-') ?>g /
                 <?= (number_format($gramaInd, 2, ',', '.')) ?>g
             </td>
         </tr>
+
+        <!-- LINHA 04: FORNECEDOR E TOTAL BENEFICIADO -->
         <tr>
-            <td><strong>Viv.:</strong></td>
-            <td><?= $h['lote_viveiro'] ?></td>
+            <td><strong>Fornecedor:</strong></td>
+            <td><?= $h['nome_fornecedor'] ?></td>
             <td><strong>T. Benef. (Entrada):</strong></td>
             <td><?= number_format($pesoBeneficiadoTotal, 2, ',', '.') ?> kg</td>
         </tr>
+
+        <!-- LINHA 05: VIVEIRO E TOTAL PRODUZIDO -->
         <tr>
-            <td><strong>P. Médio (Ind):</strong></td>
-            <td><?= number_format($recebimento[0]['item_receb_peso_medio_ind'], 2, ',', '.') ?? '-' ?> kg/cx</td>
+            <td><strong>Viv.:</strong></td>
+            <td><?= $h['lote_viveiro'] ?></td>
             <td><strong>Produção (Saída):</strong></td>
             <td><?= number_format($pesoProduzidoTotal, 3, ',', '.') ?> kg</td>
         </tr>
+
+        <!-- LINHA 06: PESO MEDIO (IND) E APROVEITAMENTO -->
         <tr>
-            <td><strong>Situação:</strong></td>
-            <td><?= $h['lote_status'] ?></td>
+            <td><strong>P. Médio (Ind):</strong></td>
+            <td><?= number_format($recebimento[0]['item_receb_peso_medio_ind'], 2, ',', '.') ?? '-' ?> kg/cx</td>
             <td><strong>Aprov. (kg / %):</strong></td>
             <td>
-                <?= number_format($aprovQuilo, 2, ',', '.') ?> kg /
-                <?= number_format($rendimento, 2, ',', '.') ?> %
+                <span style="color: <?= $corAprov ?>; font-weight: bold;">
+                    <?= number_format($aprovQuilo, 2, ',', '.') ?> kg /
+                    <?= number_format($rendimento, 2, ',', '.') ?> %
+                </span>
             </td>
         </tr>
+
+        <!-- LINHA 07: OBSERVACAO -->
         <tr>
             <td><strong>Observação:</strong></td>
             <td colspan="3"><?= $h['lote_observacao'] ?? '' ?></td>
@@ -371,7 +450,6 @@ ob_start();
         <div class="signature-line"></div>
         <p>Responsável pelos dados</p>
     </div>
-
 </body>
 
 </html>
@@ -384,6 +462,8 @@ use Dompdf\Options;
 
 $options = new Options();
 $options->set('isRemoteEnabled', true);
+$options->set('isPhpEnabled', true);
+$options->set('defaultFont', 'Helvetica');
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');

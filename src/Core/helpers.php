@@ -54,6 +54,8 @@ function sanitize_upper(array $data): array
         'password',
         'email',
         'ent_email',
+        'usu_tipo',
+        'permissao_pagina',
 
         // 2. Arquivos e Caminhos
         'config_logo_path',
@@ -61,6 +63,7 @@ function sanitize_upper(array $data): array
         'foto',
         'arquivo',
         'caminho',
+        'permissoes',
 
         // 3. Tokens e Sistema
         'csrf_token',

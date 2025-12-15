@@ -52,12 +52,8 @@ $(document).ready(function () {
                 }
             }
         ],
-        //"language": { "url": "libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
-
-
-
 
     // Abrir modal para Adicionar
     $('#btn-adicionar-usuario').on('click', function () {

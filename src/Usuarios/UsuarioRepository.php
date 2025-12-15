@@ -60,7 +60,12 @@ class UsuarioRepository
             $stmt->execute();
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+            return [
+                "draw" => (int) $draw,
+                "recordsTotal" => (int) $totalRecords,
+                "recordsFiltered" => (int) $totalFiltered,
+                "data" => $data ?? []
+            ];
         } catch (PDOException $e) {
             error_log('Erro em findAllForDataTable: ' . $e->getMessage());
             throw new Exception('Erro ao buscar usuários: ' . $e->getMessage());
