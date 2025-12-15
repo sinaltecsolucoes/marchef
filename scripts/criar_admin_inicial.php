@@ -10,7 +10,7 @@ try {
     $total_reg = count($res);
 
     if ($total_reg == 0) {
-        $senha_padrao_admin = 'adm@adm';
+        $senha_padrao_admin = '123456';
         $senha_hashed = password_hash($senha_padrao_admin, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("INSERT INTO tbl_usuarios (usu_nome, usu_login, usu_senha, usu_tipo, usu_situacao) VALUES (:nome, :login, :senha, :tipo, :situacao)");
         $stmt->bindValue(":nome", 'Administrador');

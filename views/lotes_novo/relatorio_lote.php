@@ -16,62 +16,54 @@ try {
     $repo = new LoteNovoRepository($pdo);
     $dados = $repo->getDadosRelatorioLote($loteId);
 
-    if (empty($dados)) die("Lote não encontrado.");
+    if (empty($dados)) {
+        throw new RuntimeException("Lote não encontrado.");
+    }
 
+    // Variáveis
     $h = $dados['header'];
+    $loteCompleto = $h['lote_completo_calculado'];
+    $nomeCliente = $h['nome_cliente'];
+
     $recebimento = $dados['recebimento'];
     $producao = $dados['producao'];
     $embalagem = $dados['embalagem'];
-    $gramFaz = $recebimento[0]['item_receb_gram_faz'];
-    $gramaInd = $recebimento[0]['item_receb_gram_lab'];
-    $totalCaixas = $recebimento[0]['item_receb_total_caixas'];
+
+    // --- RECEBIMENTO ---
+    $totalRecebidoKg = array_sum(
+        array_map(
+            fn($r) => (float)$r['item_receb_peso_nota_fiscal'],
+            $recebimento
+        )
+    );
+    $numeroNF     = $recebimento[0]['item_receb_nota_fiscal'];
+    $gramFaz      = $recebimento[0]['item_receb_gram_faz'];
+    $gramaInd     = $recebimento[0]['item_receb_gram_lab'];
+    $totalCaixas  = $recebimento[0]['item_receb_total_caixas'];
+    $pesoMedioFaz = $totalCaixas > 0 ? $totalRecebidoKg / $totalCaixas : 0;
 
 
-    // --- 1. CÁLCULOS DE TOTAIS (RECEBIMENTO) ---
-    $totalRecebidoKg = 0;
-    foreach ($recebimento as $r) {
-        $totalRecebidoKg += (float)$r['item_receb_peso_nota_fiscal'];
 
-        $pesoMedioFaz = $totalRecebidoKg / $totalCaixas;
-    }
-
-    // $totalProduzidoKg = 0; // Soma dos itens de produção (Primária)
-
-    // --- 2. CÁLCULOS DE TOTAIS (PRODUÇÃO E BENEFICIAMENTO) ---
+    // --- PRODUÇÃO ---
     $pesoProduzidoTotal = 0; // Peso Real 
     $pesoBeneficiadoTotal = 0; // Peso Teórico (Entrada Calculada)
 
     foreach ($producao as $p) {
-        $qtd = (float)$p['item_prod_quantidade'];
-        $pesoUn = (float)$p['prod_peso_embalagem'];
-        $fator = (float)$p['prod_fator_producao'] / 100;
+        $qtd     = (float)$p['item_prod_quantidade'];
+        $pesoUn  = (float)$p['prod_peso_embalagem'];
+        $fator   = (float)$p['fator_atual'] / 100;
         $unidade = strtoupper($p['prod_unidade']);
 
         // 1. Calcula o Peso Real Produzido (Kg)
-        if ($unidade === 'KG') {
-            // Se a unidade já é KG, o peso é a própria quantidade
-            $pesoItemProduzido = $qtd;
-        } else {
-            // Se for CX, SC, UN, etc., multiplica pela quantidade * peso da embalagem
-            // ATENÇÃO: Se o cadastro do produto estiver com peso 0, isso dará 0.
-            $pesoItemProduzido = $qtd * $pesoUn;
-        }
-
+        $pesoItemProduzido = ($unidade === 'KG') ? $qtd : $qtd * $pesoUn;
         $pesoProduzidoTotal += $pesoItemProduzido; // Soma ao total Geral
 
         // Cálculo do Peso Beneficiado: Peso Produzido / Fator
         // Evita divisão por zero se o fator não tiver sido cadastrado corretamente
-        $pesoBeneficiadoItem = 0;
-        if ($fator > 0) {
-            $pesoBeneficiadoItem = $pesoItemProduzido / $fator;
-        } else {
-            $pesoBeneficiadoItem = 0;
-        }
-
-        $pesoBeneficiadoTotal += $pesoBeneficiadoItem;
+        $pesoBeneficiadoTotal += ($fator > 0) ? $pesoItemProduzido / $fator : 0;
     }
 
-    // --- 3. CÁLCULOS FINAIS (APROVEITAMENTO) ---
+    // --- CÁLCULOS FINAIS (APROVEITAMENTO) ---
     // Quanto rendeu em relação ao que chegou de Nota Fiscal
 
     // Diferença em Quilos (Produção Teórica Beneficiada - Entrada Real)
@@ -82,7 +74,7 @@ try {
     // Se AprovQuilo for negativo (perda), a porcentagem  será negativa.
     $rendimento = ($totalRecebidoKg > 0) ? ($aprovQuilo / $totalRecebidoKg) * 100 : 0;
 
-    // --- 4. CÁLCULO EMBALAGEM (SECUNDÁRIA) ---
+    // --- EMBALAGEM (SECUNDÁRIA) ---
     $totalEmbaladoKg = 0;
     foreach ($embalagem as $e) {
         $pesoUn = ($e['prod_unidade'] == 'KG') ? 1 : (float)$e['prod_peso_embalagem'];
@@ -215,13 +207,13 @@ ob_start();
     <table border="1">
         <tr>
             <td width="15%"><strong>Lote:</strong></td>
-            <td width="35%"><?= $h['lote_completo_calculado'] ?></td>
+            <td width="35%"><?= $loteCompleto ?></td>
             <td width="15%"><strong>N. Fiscal:</strong></td>
-            <td width="35%"><?= $recebimento[0]['item_receb_nota_fiscal'] ?? '-' ?></td>
+            <td width="35%"><?= $numeroNF ?? '-' ?></td>
         </tr>
         <tr>
             <td><strong>Cliente:</strong></td>
-            <td><?= $h['nome_cliente'] ?></td>
+            <td><?= $nomeCliente ?></td>
             <td><strong>P. N. Fiscal:</strong></td>
             <td><?= number_format($totalRecebidoKg, 3, ',', '.') ?> kg</td>
         </tr>
@@ -238,7 +230,7 @@ ob_start();
             <td><strong>Viv.:</strong></td>
             <td><?= $h['lote_viveiro'] ?></td>
             <td><strong>T. Benef. (Entrada):</strong></td>
-            <td><?= number_format($pesoBeneficiadoTotal, 3, ',', '.') ?> kg</td>
+            <td><?= number_format($pesoBeneficiadoTotal, 2, ',', '.') ?> kg</td>
         </tr>
         <tr>
             <td><strong>P. Médio (Ind):</strong></td>
@@ -279,9 +271,9 @@ ob_start();
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($recebimento as $i => $r): 
-                
-                ?>
+            <?php foreach ($recebimento as $i => $r):
+
+            ?>
                 <tr>
                     <td class="text-center"><?= $i + 1 ?></td>
                     <td class="text-center"><?= date('d/m/Y', strtotime($h['lote_data_fabricacao'])) ?></td>
@@ -291,7 +283,7 @@ ob_start();
                     <td class="text-center"><?= number_format($r['item_receb_peso_nota_fiscal'], 3, ',', '.') ?></td>
                     <td class="text-center"><?= $totalCaixas ?></td>
                     <td class="text-center"><?= number_format($pesoMedioFaz, 2, ',', '.') ?></td>
-                    <td class="text-center"><?= number_format($r['item_receb_gram_faz'],2,',','.') ?></td>
+                    <td class="text-center"><?= number_format($r['item_receb_gram_faz'], 2, ',', '.') ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
@@ -314,6 +306,7 @@ ob_start();
             <?php
             foreach ($producao as $p):
                 $pesoTotalItem = $p['prod_peso_embalagem'] * $p['item_prod_quantidade'];
+                $fator = (float)$p['fator_atual'] / 100;
                 if ($fator > 0) {
                     $pesoBeneficiadoItem = $pesoTotalItem / $fator;
                 } else {

@@ -153,8 +153,20 @@ try {
         'relatorio_ficha_tecnica' => 'fichas_tecnicas/relatorio_ficha_tecnica.php',
         'relatorio_entidade' => 'entidades/relatorio_ficha.php',
         'relatorio_produtos' => 'produtos/relatorio_lista.php',
-
     ];
+
+    // Se for Admin, enchemos a lista de permissões com TODAS as páginas possíveis.
+    // Assim, o main.php vai desenhar todos os menus sem precisar consultar o banco.
+    if ($tipoUsuarioLogado === 'Admin') {
+        $todasAsPaginas = array_keys($paginasPermitidas);
+        $paginasPermitidasUsuario = array_unique(array_merge($paginasPermitidasUsuario, $todasAsPaginas));
+
+        // Garante também a permissão especial de editar usuários
+        if (!in_array('editar_outros_usuarios', $paginasPermitidasUsuario)) {
+            $paginasPermitidasUsuario[] = 'editar_outros_usuarios';
+        }
+    }
+
 
     $pageType = '';
     if ($paginaAtual === 'clientes')

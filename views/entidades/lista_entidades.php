@@ -44,7 +44,8 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <!-- Filtro por Tipo Específico -->
                 <div class="d-flex align-items-center gap-2">
-                    <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora ?>
+                    <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora 
+                    ?>
                         <label for="filtro-tipo-entidade" class="form-label mb-0 text-nowrap">Filtrar por Tipo:</label>
                         <select class="form-select" id="filtro-tipo-entidade">
                             <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
@@ -55,7 +56,8 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                             <?php endif; ?>
                             <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
                         </select>
-                    <?php endif; // Se for transportadora, este bloco inteiro fica vazio ?>
+                    <?php endif; // Se for transportadora, este bloco inteiro fica vazio 
+                    ?>
                 </div>
 
                 <!-- Filtro por Situação -->
@@ -101,9 +103,9 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                         <th class="text-center align-middle">Situação</th>
                         <th class="text-center align-middle">Tipo</th>
                         <th class="text-center align-middle">Código Interno</th>
-                        <th class="text-center align-middle">Razão Social</th>
-                        <th class="text-center align-middle">Nome Fantasia</th>
-                        <th class="text-center align-middle">CPF/CNPJ</th>
+                        <th class="text-center align-middle">Razão Social / Nome Completo</th>
+                        <th class="text-center align-middle">Nome Fantasia / Apelido (Nome Comum)</th>
+                        <th class="text-center align-middle">CNPJ / CPF</th>
                         <th class="text-center align-middle">Endereço Principal</th>
                         <th class="text-center align-middle">Ações</th>
                     </tr>
@@ -148,24 +150,24 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                     <label class="form-label">Tipo de Entidade</label><br>
 
                                     <div class="form-check form-check-inline" <?php if ($pageType !== 'cliente')
-                                        echo 'style="display:none;"'; ?>>
+                                                                                    echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-cliente" value="Cliente" <?php if ($pageType === 'cliente')
-                                                echo 'checked'; ?>>
+                                                                                            echo 'checked'; ?>>
                                         <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
                                     </div>
 
                                     <div class="form-check form-check-inline" <?php if ($pageType !== 'fornecedor')
-                                        echo 'style="display:none;"'; ?>>
+                                                                                    echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-fornecedor" value="Fornecedor" <?php if ($pageType === 'fornecedor')
-                                                echo 'checked'; ?>>
+                                                                                                    echo 'checked'; ?>>
                                         <label class="form-check-label"
                                             for="tipo-entidade-fornecedor">Fornecedor</label>
                                     </div>
 
                                     <div class="form-check form-check-inline" <?php if ($pageType === 'transportadora')
-                                        echo 'style="display:none;"'; ?>>
+                                                                                    echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-ambos" value="Cliente e Fornecedor">
                                         <label class="form-check-label" for="tipo-entidade-ambos">Ambos (Cliente e
@@ -173,10 +175,10 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                     </div>
 
                                     <div class="form-check form-check-inline" <?php if ($pageType !== 'transportadora')
-                                        echo 'style="display:none;"'; ?>>
+                                                                                    echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
                                             id="tipo-entidade-transportadora" value="Transportadora" <?php if ($pageType === 'transportadora')
-                                                echo 'checked'; ?>>
+                                                                                                            echo 'checked'; ?>>
                                         <label class="form-check-label"
                                             for="tipo-entidade-transportadora">Transportadora</label>
                                     </div>
@@ -230,12 +232,12 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="razao-social" class="form-label">Razão Social / Nome Completo</label>
+                                    <label for="razao-social" id="label-razao-social" class="form-label">Razão Social</label>
                                     <input type="text" class="form-control" id="razao-social" name="ent_razao_social"
                                         required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="nome-fantasia" class="form-label">Nome Fantasia / Apelido</label>
+                                    <label for="nome-fantasia" id="label-nome-fantasia" class="form-label">Nome Fantasia</label>
                                     <input type="text" class="form-control" id="nome-fantasia" name="ent_nome_fantasia">
                                 </div>
                             </div>

@@ -344,6 +344,77 @@
         </div>
     </div>
 
+    <!-- Modal para Edição de Perfil -->
+    <div class="modal fade" id="perfil" tabindex="-1" aria-labelledby="perfilLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="perfilLabel">
+                        <i class="fas fa-user-edit me-2"></i>Editar Meu Perfil
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-perfil">
+                        <input type="hidden" id="perfil_usu_codigo" name="usu_codigo">
+
+                        <div class="mb-3">
+                            <label for="perfil_usu_nome_select" class="form-label">Nome (Usuário)</label>
+
+                            <select class="form-select" id="perfil_usu_nome_select" style="width: 100%;">
+                            </select>
+
+                            <input type="hidden" id="perfil_usu_nome" name="usu_nome">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="perfil_usu_login" class="form-label">Login (Usuário)</label>
+                            <input type="text" class="form-control" id="perfil_usu_login" name="usu_login" required>
+                        </div>
+
+                        <div class="mb-3 d-none" id="div-situacao-perfil">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="perfil_usu_situacao">
+                                <label class="form-check-label" for="perfil_usu_situacao" id="label-situacao">Usuário Ativo</label>
+                            </div>
+                            <div class="form-text text-muted" style="font-size: 0.8em;">
+                                <i class="fas fa-info-circle"></i> Controle de acesso (Apenas Admin).
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="perfil_usu_senha" class="form-label">Alterar Senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="perfil_usu_senha" name="usu_senha" placeholder="Deixe vazio para manter a atual">
+                                <button class="btn btn-outline-secondary" type="button" id="btn-show-pass-perfil" title="Mostrar/Ocultar Senha">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Preencha apenas se desejar mudar sua senha.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="perfil_usu_tipo" class="form-label">Perfil de Acesso</label>
+                            <select class="form-select bg-light" id="perfil_usu_tipo" name="usu_tipo" disabled>
+                                <option value="Admin">Administrador</option>
+                                <option value="Gerente">Gerente</option>
+                                <option value="Producao">Produção</option>
+                            </select>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-lock me-1"></i> O perfil não pode ser alterado aqui.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar-perfil">
+                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>

@@ -58,14 +58,18 @@ class EntidadeRepository
                             end_entidade_id, 
                             end_logradouro, 
                             end_numero, 
-                            ROW_NUMBER() OVER(PARTITION BY end_entidade_id 
-                            ORDER BY CASE end_tipo_endereco 
-                            WHEN 'Principal' THEN 1 
-                            WHEN 'Comercial' THEN 2 
-                            ELSE 3 END, 
-                            end_codigo ASC) AS rn 
-                            FROM tbl_enderecos) 
-                            END ON ent.ent_codigo = end.end_entidade_id AND end.rn = 1";
+                            ROW_NUMBER() OVER(
+                                PARTITION BY end_entidade_id 
+                                ORDER BY CASE end_tipo_endereco 
+                                    WHEN 'Principal' THEN 1 
+                                    WHEN 'Comercial' THEN 2 
+                                    ELSE 3 END, 
+                                    end_codigo ASC
+                            ) AS rn 
+                        FROM tbl_enderecos
+                    ) endereco 
+                    ON ent.ent_codigo = endereco.end_entidade_id 
+                    AND endereco.rn = 1";
 
         $conditions = [];
         $queryParams = [];
@@ -115,8 +119,8 @@ class EntidadeRepository
         $totalFiltered = $stmtFiltered->fetchColumn();
 
         $sqlData = "SELECT ent.*, 
-                           end.end_logradouro, 
-                           end.end_numero 
+                           endereco.end_logradouro, 
+                           endereco.end_numero 
                            $sqlBase 
                            $whereClause 
                            ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
@@ -129,7 +133,12 @@ class EntidadeRepository
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
+        return [
+            "draw" => (int) $draw,
+            "recordsTotal" => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data" => $data ?: []
+        ];
     }
 
     /**
@@ -138,22 +147,22 @@ class EntidadeRepository
     public function find(int $id): ?array
     {
         $query = $this->pdo->prepare("SELECT ent.*, 
-                                                    end.end_cep, 
-                                                    end.end_logradouro, 
-                                                    end.end_numero, 
-                                                    end.end_complemento, 
-                                                    end.end_bairro, 
-                                                    end.end_cidade, 
-                                                    end.end_uf 
+                                                    endereco.end_cep, 
+                                                    endereco.end_logradouro, 
+                                                    endereco.end_numero, 
+                                                    endereco.end_complemento, 
+                                                    endereco.end_bairro, 
+                                                    endereco.end_cidade, 
+                                                    endereco.end_uf 
                                              FROM tbl_entidades ent 
                                              LEFT JOIN (SELECT *, ROW_NUMBER() 
                                                         OVER(PARTITION BY end_entidade_id 
                                                              ORDER BY CASE end_tipo_endereco 
                                                              WHEN 'Principal' 
                                                              THEN 1 ELSE 2 END) as rn 
-                                                             FROM tbl_enderecos) end 
-                                                             ON ent.ent_codigo = end.end_entidade_id 
-                                                             AND end.rn = 1 
+                                                             FROM tbl_enderecos) endereco 
+                                                             ON ent.ent_codigo = endereco.end_entidade_id 
+                                                             AND endereco.rn = 1 
                                                              WHERE ent.ent_codigo = :id");
         $query->execute([':id' => $id]);
         $result = $query->fetch(PDO::FETCH_ASSOC);

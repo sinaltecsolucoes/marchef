@@ -1989,7 +1989,7 @@ class LoteNovoRepository
                         p.prod_marca,
                         p.prod_unidade,
                         p.prod_peso_embalagem,
-                        p.prod_fator_producao
+                        p.prod_fator_producao AS fator_atual
                     FROM tbl_lotes_novo_producao lp
                     JOIN tbl_produtos p ON lp.item_prod_produto_id = p.prod_codigo
                     WHERE lp.item_prod_lote_id = :id
