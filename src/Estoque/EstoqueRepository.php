@@ -155,4 +155,5 @@ class EstoqueRepository
         $stmt->execute([':endereco_id' => $enderecoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-}
+
+    }

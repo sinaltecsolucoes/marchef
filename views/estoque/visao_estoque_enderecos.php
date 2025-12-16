@@ -1,4 +1,5 @@
-<?php // /views/estoque/visao_estoque_enderecos.php ?>
+<?php // /views/estoque/visao_estoque_enderecos.php 
+?>
 
 <h4 class="fw-bold mb-3">Visão de Estoque por Endereços</h4>
 
@@ -91,6 +92,47 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
                         class="fas fa-times me-2"></i>Fechar</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-transferir-item" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Transferir Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form id="form-transferir-item">
+                <div class="modal-body">
+                    <input type="hidden" id="transf_alocacao_id" name="alocacao_origem_id">
+
+                    <div class="alert alert-light border mb-3">
+                        <strong>Produto:</strong> <span id="transf_produto_nome"></span><br>
+                        <strong>Lote:</strong> <span id="transf_lote"></span><br>
+                        <strong>Origem Atual:</strong> <span id="transf_origem_nome"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Para qual endereço?</label>
+                        <select class="form-select" id="select-endereco-destino" name="endereco_destino_id" style="width: 100%;" required>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Quantidade a Mover</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="transf_quantidade" name="quantidade" step="0.001" min="0.001" required>
+                            <span class="input-group-text">cx/unid</span>
+                        </div>
+                        <div class="form-text">Máximo disponível: <span id="transf_max_qtd"></span></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Confirmar Transferência</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

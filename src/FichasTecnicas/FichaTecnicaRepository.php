@@ -42,7 +42,9 @@ class FichaTecnicaRepository
                     CONCAT(p.prod_descricao, ' (Cód: ', COALESCE(p.prod_codigo_interno, 'N/A'), ')') AS text
                 FROM tbl_produtos p
                 LEFT JOIN tbl_fichas_tecnicas ft ON p.prod_codigo = ft.ficha_produto_id
-                WHERE ft.ficha_id IS NULL{$sqlWhereTerm}
+                WHERE ft.ficha_id IS NULL
+                AND p.prod_primario_id IS NOT NULL AND p.prod_primario_id > 0
+                {$sqlWhereTerm}
                 ORDER BY p.prod_descricao";
 
         $stmt = $this->pdo->prepare($sql);
@@ -93,55 +95,6 @@ class FichaTecnicaRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /* public function findAllForDataTable(array $params): array
-     {
-         try {
-             $draw = $params['draw'] ?? 1;
-             $start = $params['start'] ?? 0;
-             $length = $params['length'] ?? 10;
-             $searchValue = $params['search']['value'] ?? '';
-
-             $baseQuery = "FROM tbl_fichas_tecnicas ft JOIN tbl_produtos p ON ft.ficha_produto_id = p.prod_codigo";
-
-             $totalRecords = $this->pdo->query("SELECT COUNT(ft.ficha_id) $baseQuery")->fetchColumn();
-
-             $whereClause = '';
-             if (!empty($searchValue)) {
-                 $whereClause = " WHERE p.prod_descricao LIKE :search_descricao OR p.prod_marca LIKE :search_marca OR p.prod_ncm LIKE :search_ncm";
-             }
-
-             $stmtFiltered = $this->pdo->prepare("SELECT COUNT(ft.ficha_id) $baseQuery $whereClause");
-             if (!empty($searchValue)) {
-                 $stmtFiltered->execute([
-                     ':search_descricao' => '%' . $searchValue . '%',
-                     ':search_marca' => '%' . $searchValue . '%',
-                     ':search_ncm' => '%' . $searchValue . '%'
-                 ]);
-             } else {
-                 $stmtFiltered->execute();
-             }
-             $totalFiltered = $stmtFiltered->fetchColumn();
-
-             $sqlData = "SELECT ft.ficha_id, p.prod_descricao, p.prod_marca, p.prod_ncm, ft.ficha_data_modificacao $baseQuery $whereClause ORDER BY ft.ficha_id DESC LIMIT :start, :length";
-             $stmt = $this->pdo->prepare($sqlData);
-             $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-             $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-             if (!empty($searchValue)) {
-                 $stmt->bindValue(':search_descricao', '%' . $searchValue . '%');
-                 $stmt->bindValue(':search_marca', '%' . $searchValue . '%');
-                 $stmt->bindValue(':search_ncm', '%' . $searchValue . '%');
-             }
-             $stmt->execute();
-             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-             return ["draw" => (int) $draw, "recordsTotal" => (int) $totalRecords, "recordsFiltered" => (int) $totalFiltered, "data" => $data];
-         } catch (PDOException $e) {
-             error_log('Erro em findAllForDataTable: ' . $e->getMessage());
-             throw new Exception('Erro ao buscar fichas técnicas: ' . $e->getMessage());
-         }
-     } */
-
     public function findAllForDataTable(array $params): array
     {
         try {

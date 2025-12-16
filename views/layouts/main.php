@@ -316,8 +316,8 @@
 
                     <h6 class="fw-bold mb-2">📞 Contato</h6>
                     <ul class="list-unstyled">
-                        <li><strong>WhatsApp:</strong> <a href="https://wa.me/5588993576795" target="_blank">(88)
-                                99357-6795</a></li>
+                        <li><strong>WhatsApp:</strong> <a href="https://wa.me/5588992432756" target="_blank">(88)
+                                99243-2756</a></li>
                         <li><strong>E-mail:</strong> <a
                                 href="mailto:contato@mdsolucoestecnologicas.com.br">contato@mdsolucoestecnologicas.com.br</a>
                         </li>

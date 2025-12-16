@@ -1,4 +1,4 @@
-// /public/js/enderecos.js (Versão Simplificada para CRUD)
+// /public/js/enderecos.js
 $(document).ready(function () {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
     const $modal = $('#modal-endereco');

@@ -35,11 +35,11 @@ class ProdutoRepository
         $filtroTipo = !empty($params['filtro_tipo']) ? $params['filtro_tipo'] : 'Todos';
 
         // Colunas para ordenação e busca
-        $columns = ['prod_situacao', 'prod_codigo_interno', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_peso_embalagem'];
+        $columns = ['prod_situacao', 'prod_codigo_interno', 'prod_classe', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_peso_embalagem'];
         $orderColumn = $columns[$orderColumnIndex] ?? 'prod_codigo_interno';
 
         // Colunas em que a busca será aplicada
-        $searchableColumns = ['prod_codigo_interno', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
+        $searchableColumns = ['prod_codigo_interno', 'prod_classe', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
 
         // --- Contagem Total de Registros ---
         $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
@@ -66,7 +66,7 @@ class ProdutoRepository
 
         // Filtro por Busca
         if (!empty($searchValue)) {
-            $searchableColumns = ['prod_codigo_interno', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
+            $searchableColumns = ['prod_codigo_interno', 'prod_classe', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
             $searchConditions = [];
             $searchTerm = '%' . $searchValue . '%';
             foreach ($searchableColumns as $index => $column) {
@@ -80,12 +80,6 @@ class ProdutoRepository
         $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
         // --- Contagem de Registros Filtrados ---
-        /*   $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
-        $sqlFiltered = "SELECT COUNT(prod_codigo) FROM tbl_produtos $whereClause";
-        $stmtFiltered = $this->pdo->prepare($sqlFiltered);
-        $stmtFiltered->execute($queryParams);
-        $totalFiltered = $stmtFiltered->fetchColumn();*/
-
         $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
 
         $stmtFiltered = $this->pdo->prepare("SELECT COUNT(prod_codigo) $sqlBase $whereClause");
@@ -93,8 +87,6 @@ class ProdutoRepository
         $totalFiltered = $stmtFiltered->fetchColumn();
 
         // --- Busca dos Dados da Página Atual ---
-        /*  $sql = "SELECT * FROM tbl_produtos $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
-        $stmt = $this->pdo->prepare($sql);*/
         $sql = "SELECT * $sqlBase $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
         $stmt = $this->pdo->prepare($sql);
 
@@ -102,14 +94,11 @@ class ProdutoRepository
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
 
         // Vincula os parâmetros da cláusula WHERE (agora com múltiplos :searchX)
-        foreach ($queryParams as $key => &$value) {
-            $stmt->bindParam($key, $value);
+        foreach ($queryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
         }
 
         // Vincula os parâmetros do LIMIT com tipo explícito
-        /* $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);*/
-
         $stmt->execute();
 
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -118,7 +107,7 @@ class ProdutoRepository
             "draw" => (int) $draw,
             "recordsTotal" => (int) $totalRecords,
             "recordsFiltered" => (int) $totalFiltered,
-            "data" => $data
+            "data" => $data ?? []
         ];
     }
 
@@ -265,8 +254,8 @@ class ProdutoRepository
             ':prod_tipo_embalagem' => $tipo_embalagem,
             ':prod_peso_embalagem' => $peso_embalagem,
             ':prod_total_pecas' => !empty($data['prod_total_pecas']) ? $data['prod_total_pecas'] : null,
-            ':prod_validade_meses' => !empty($data['prod_validade_meses']) ? (int) $data['prod_validade_meses'] : null, 
-            ':prod_unidade' => !empty($data['prod_unidade']) ? $data['prod_unidade'] : null, 
+            ':prod_validade_meses' => !empty($data['prod_validade_meses']) ? (int) $data['prod_validade_meses'] : null,
+            ':prod_unidade' => !empty($data['prod_unidade']) ? $data['prod_unidade'] : null,
             ':prod_primario_id' => !empty($data['prod_primario_id']) ? $data['prod_primario_id'] : null,
             ':prod_ean13' => !empty($data['prod_ean13']) ? $data['prod_ean13'] : null,
             ':prod_dun14' => !empty($data['prod_dun14']) ? $data['prod_dun14'] : null,

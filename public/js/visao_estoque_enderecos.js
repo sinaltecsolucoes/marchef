@@ -171,10 +171,25 @@ $(document).ready(function () {
                                     <td class="text-center align-middle" style="width: 10%;">${reservadoHtml}</td>
                                     <td class="text-center align-middle text-success fw-bolder" style="width: 10%;">${formatarNumero(qtdDisponivel)}</td>
                                     
-                                    <td style="width: 10%;"></td> <td class="text-center align-middle" style="width: 10%;">
-                                        <button class="btn btn-danger btn-xs btn-desalocar-item-especifico" data-alocacao-id="${item.alocacao_id}" title="Desalocar este item">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                    <td style="width: 10%;"></td> 
+                                    <td class="text-center align-middle" style="width: 10%;">
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-warning btn-xs btn-transferir-item text-dark" 
+                                                data-alocacao-id="${item.alocacao_id}"
+                                                data-produto="${item.produto}"
+                                                data-lote="${item.lote}"
+                                                data-qtd="${qtdDisponivel}" 
+                                                data-origem="${endereco.nome}"
+                                                title="Transferir para outro endereço">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </button>
+                                            
+                                            <button class="btn btn-danger btn-xs btn-desalocar-item-especifico ms-1" 
+                                                data-alocacao-id="${item.alocacao_id}" 
+                                                title="Desalocar este item">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>`;
                         });
@@ -377,6 +392,82 @@ $(document).ready(function () {
             } else {
                 $containerDetalhes.html('<p class="text-center text-muted">Nenhuma reserva encontrada para este item.</p>');
             }
+        });
+    });
+
+    // --- LÓGICA DE TRANSFERÊNCIA ---
+
+    const $modalTransf = $('#modal-transferir-item');
+    const $formTransf = $('#form-transferir-item');
+    const $selectDestino = $('#select-endereco-destino');
+
+    // 1. Inicializa Select2 para buscar endereços
+    $selectDestino.select2({
+        dropdownParent: $modalTransf,
+        placeholder: "Busque o endereço de destino...",
+        theme: "bootstrap-5",
+        ajax: {
+            url: "ajax_router.php?action=buscarEnderecosSelect",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { term: params.term }; },
+            processResults: function (data) { return { results: data.results }; },
+            cache: true
+        }
+    });
+
+    // 2. Clique no botão de Transferir (Abre Modal)
+    $container.on('click', '.btn-transferir-item', function () {
+        const uid = $(this).data('alocacao-id');
+        const prod = $(this).data('produto');
+        const lote = $(this).data('lote');
+        const qtdMax = parseFloat($(this).data('qtd'));
+        const origemNome = $(this).data('origem');
+
+        // Preenche os campos visuais
+        $('#transf_alocacao_id').val(uid);
+        $('#transf_produto_nome').text(prod);
+        $('#transf_lote').text(lote);
+        $('#transf_origem_nome').text(origemNome);
+
+        // Configura o input de quantidade
+        $('#transf_quantidade').val(qtdMax).attr('max', qtdMax);
+        $('#transf_max_qtd').text(formatarNumero(qtdMax));
+
+        // Reseta o select
+        $selectDestino.val(null).trigger('change');
+
+        $modalTransf.modal('show');
+    });
+
+    // 3. Envio do Formulário
+    $formTransf.on('submit', function (e) {
+        e.preventDefault();
+
+        // Validação básica de destino diferente de origem (opcional no front, mas bom ter)
+        // O back já garante a lógica, mas aqui evita requisição inútil.
+
+        const formData = new FormData(this);
+        // Adiciona CSRF se não estiver vindo automático
+        formData.append('csrf_token', csrfToken);
+
+        $.ajax({
+            url: 'ajax_router.php?action=transferirItemEndereco',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.success) {
+                $modalTransf.modal('hide');
+                notificacaoSucesso('Sucesso!', response.message);
+                carregarDados(currentSearchTerm); // Atualiza a árvore
+            } else {
+                notificacaoErro('Erro na Transferência', response.message);
+            }
+        }).fail(function () {
+            notificacaoErro('Erro', 'Falha na comunicação com o servidor.');
         });
     });
 

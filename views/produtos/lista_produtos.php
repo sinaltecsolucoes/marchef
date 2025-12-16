@@ -82,6 +82,7 @@
                         <th class="text-center align-middle">Situação</th>
                         <th class="text-center align-middle">Cód. Interno</th>
                         <th class="text-center align-middle">Descrição</th>
+                        <th class="text-center align-middle">Descrição Etiqueta</th>
                         <th class="text-center align-middle">Tipo</th>
                         <th class="text-center align-middle">Embalagem</th>
                         <th class="text-center align-middle">Peso</th>

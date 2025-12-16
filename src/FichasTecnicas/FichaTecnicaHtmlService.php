@@ -72,7 +72,7 @@ class FichaTecnicaHtmlService
 
         // 3. INÍCIO DA RENDERIZAÇÃO DO HTML
         ob_start();
-        ?>
+?>
         <!DOCTYPE html>
         <html lang="pt-br">
 
@@ -115,7 +115,7 @@ class FichaTecnicaHtmlService
                 }
 
                 body {
-                    font-family: 'DejaVu Sans', sans-serif; 
+                    font-family: 'DejaVu Sans', sans-serif;
                     font-size: 8pt;
                 }
 
@@ -461,13 +461,19 @@ class FichaTecnicaHtmlService
                                         $categoria = strtoupper($criterio['criterio_grupo'] ?? 'OUTROS');
                                         if ($categoria !== $categoriaAtual):
                                             $categoriaAtual = $categoria;
-                                            ?>
+                                ?>
                                             <tr>
                                                 <td colspan="6" class="categoria-header" style="height: 12px;">
                                                     <?php echo $categoriaAtual; ?>
                                                 </td>
                                             </tr>
-                                            <?php
+
+                                            <tr>
+                                                <th colspan="3" style="font-size: 7pt; background-color: #e9ecef;">CRITÉRIO</th>
+                                                <th colspan="1" style="font-size: 7pt; background-color: #e9ecef;">UNIDADE</th>
+                                                <th colspan="2" style="font-size: 7pt; background-color: #e9ecef;">PADRÃO</th>
+                                            </tr>
+                                        <?php
                                         endif;
                                         ?>
                                         <tr>
@@ -481,7 +487,7 @@ class FichaTecnicaHtmlService
                                                 <?php echo htmlspecialchars($criterio['criterio_valor']); ?>
                                             </td>
                                         </tr>
-                                        <?php
+                                    <?php
                                     endforeach;
                                 else:
                                     ?>
@@ -548,7 +554,7 @@ class FichaTecnicaHtmlService
         </body>
 
         </html>
-        <?php
+<?php
         return ob_get_clean();
     }
 }

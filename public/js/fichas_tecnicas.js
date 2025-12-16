@@ -131,6 +131,62 @@ $(document).ready(function () {
 
     // --- LÓGICA DA PÁGINA DE DETALHES ---
     if ($('#main-title').length) {
+
+        // --- LÓGICA DINÂMICA DO BOTÃO PRINCIPAL (UX WIZARD) ---
+        const $btnPrincipal = $('#btn-salvar-ficha-geral');
+
+        // Instâncias das abas do Bootstrap para navegação manual
+        const tabGeraisElement = document.querySelector('#dados-gerais-tab');
+        const tabCriteriosElement = document.querySelector('#criterios-tab');
+        const tabMidiaElement = document.querySelector('#midia-tab');
+
+        // Listener que dispara sempre que uma aba é mostrada/clicada
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            const targetId = $(e.target).attr('id'); // pega o ID da aba clicada
+
+            if (targetId === 'dados-gerais-tab') {
+                // ESTADO 1: Aba Geral
+                $btnPrincipal
+                    .html('<i class="fas fa-save me-2"></i> Salvar e ir para Critérios')
+                    .prop('type', 'submit')           // .prop é mais seguro que .attr
+                    .attr('form', 'form-ficha-geral')
+                    .removeClass('btn-info btn-success').addClass('btn-primary');
+
+            } else if (targetId === 'criterios-tab') {
+                // ESTADO 2: Aba Critérios
+                $btnPrincipal
+                    .html('Ir para Mídias <i class="fas fa-arrow-right ms-2"></i>')
+                    .prop('type', 'button') // Transforma em botão comum
+                    .removeAttr('form')     // Remove vínculo com o form
+                    .removeClass('btn-primary btn-success').addClass('btn-primary text-white');
+
+            } else if (targetId === 'midia-tab') {
+                // ESTADO 3: Aba Mídia
+                $btnPrincipal
+                    .html('<i class="fas fa-check-circle me-2"></i> Finalizar (Voltar aos Dados Gerais)')
+                    .prop('type', 'button')
+                    .removeAttr('form')
+                    .removeClass('btn-primary btn-info').addClass('btn-success');
+            }
+        });
+
+        // Comportamento do clique quando o botão NÃO é submit (Abas 2 e 3)
+        $btnPrincipal.on('click', function (e) {
+            // Verifica a propriedade type. Se for button, TEM QUE prevenir o submit.
+            if ($(this).prop('type') === 'button') {
+                e.preventDefault(); 
+
+                if ($('#criterios-tab').hasClass('active')) {
+                    // Estou em critérios, vou para Mídia
+                    new bootstrap.Tab(tabMidiaElement).show();
+                } else if ($('#midia-tab').hasClass('active')) {
+                    // Estou em mídia, volto para o começo (ciclo fechado)
+                    new bootstrap.Tab(tabGeraisElement).show();
+                }
+            }
+        });
+
+
         // --- LÓGICA DAS ABAS 1 E 2 ---
         const $produtoInfoDisplay = $('#produto-info-display');
         const select2ProdutoConfig = {
@@ -192,8 +248,42 @@ $(document).ready(function () {
                     // Armazena os critérios copiados em uma variável global temporária
                     // para serem processados após o salvamento dos dados gerais
                     sessionStorage.setItem('criteriosCopiados', JSON.stringify(fichaData.criterios));
-                    Swal.fire('Critérios Copiados', 'Os critérios laboratoriais foram copiados. Salve os dados gerais para ativá-los.', 'info');
+
+                    // Mostra eles na tabela imediatamente para o usuário ver
+                    renderizarCriteriosPendentes(fichaData.criterios);
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Critérios Copiados',
+                        text: 'Os critérios foram carregados. Eles serão salvos definitivamente quando você clicar em "Salvar e ir para Critérios".',
+                        timer: 4000
+                    });
                 }
+            }
+        }
+
+        // Função auxiliar para mostrar os critérios na tabela ANTES de salvar no banco
+        function renderizarCriteriosPendentes(criterios) {
+            const $tbody = $('#tbody-criterios');
+            $tbody.empty(); // Limpa a mensagem de "carregando" ou vazia
+
+            if (criterios && criterios.length > 0) {
+                criterios.forEach(criterio => {
+                    const row = `
+                <tr class="table-warning"> <td class="text-center align-middle">${criterio.criterio_grupo}</td>
+                    <td class="text-center align-middle">${criterio.criterio_nome}</td>
+                    <td class="text-center align-middle">${criterio.criterio_unidade || ''}</td>
+                    <td class="text-center align-middle">${criterio.criterio_valor}</td>
+                    <td class="text-center align-middle text-muted">
+                        <small><i class="fas fa-clock me-1"></i>Aguardando salvar</small>
+                    </td>
+                </tr>`;
+                    $tbody.append(row);
+                });
+
+                // Avisa visualmente na aba que existem itens
+                $('#criterios-tab').html('2. Critérios Laboratoriais <span class="badge bg-warning text-dark">' + criterios.length + '</span>');
+            } else {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted">Nenhum critério copiado.</td></tr>');
             }
         }
 
@@ -253,7 +343,7 @@ $(document).ready(function () {
         }
 
         $('#ficha_produto_id').select2(select2ProdutoConfig);
-        
+
         $('#ficha_fabricante_id').select2({
             placeholder: "Selecione um fabricante...",
             theme: "bootstrap-5",
@@ -341,7 +431,7 @@ $(document).ready(function () {
                         });
 
                         $('#ficha_id').val(novaFichaId);
-                        $('#main-title').text('Editar Ficha Técnica #' + novaFichaId);
+                        $('#main-title').text('Editar Ficha Técnica');
                         $('#ficha_produto_id').prop('disabled', true);
                         $('#criterios-tab, #midia-tab').prop('disabled', false).removeClass('disabled');
                         new bootstrap.Tab($('#criterios-tab')).show();

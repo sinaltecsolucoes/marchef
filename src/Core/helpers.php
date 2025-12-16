@@ -64,6 +64,15 @@ function sanitize_upper(array $data): array
         'arquivo',
         'caminho',
         'permissoes',
+        'produto_especie',
+        'produto_denominacao',
+        'criterios',
+        'criterio_grupo',
+        'criterio_nome',
+        'criterio_unidade',
+        'criterio_valor',
+        'ficha_medidas_emb_primaria',
+        'ficha_medidas_emb_secundaria',
 
         // 3. Tokens e Sistema
         'csrf_token',

@@ -557,6 +557,13 @@ switch ($action) {
     case 'getVisaoEstoqueHierarquicoFiltrada':
         getVisaoEstoqueHierarquicoFiltrada($enderecoRepo);
         break;
+    case 'transferirItemEndereco':
+        transferirItemEndereco($enderecoRepo);
+        break;
+    case 'buscarEnderecosSelect':
+        buscarEnderecosSelect($enderecoRepo);
+        break;
+
 
     // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---
     case 'listarOrdensExpedicao':
@@ -2636,12 +2643,23 @@ function alocarItemEndereco(EnderecoRepository $repo)
 function desalocarItemEndereco(EnderecoRepository $repo)
 {
     try {
-        // Agora esperamos o ID da ALOCAÇÃO, não do endereço.
+        // 1. Validação do ID da Alocação.
         $alocacaoId = filter_input(INPUT_POST, 'alocacao_id', FILTER_VALIDATE_INT);
         if (!$alocacaoId) {
             throw new Exception("ID da alocação é obrigatório.");
         }
-        if ($repo->desalocarItem($alocacaoId)) {
+
+        // 2. Validação do Usuário
+        // Precisamos garantir que existe um usuário logado para assinar o histórico
+        //if (!isset($_SESSION['codUsuario'])) {
+        if (!isset($_SESSION['usu_codigo'])) {
+            throw new Exception("Sessão inválida ou expirada");
+        }
+        //$usuarioId = (int)$_SESSION['codUsuario'];
+        $usuarioId = (int)$_SESSION['usu_codigo'];
+
+        // 3. Chama o Repositório, passando os DOIS parâmetros
+        if ($repo->desalocarItem($alocacaoId, $usuarioId)) {
             echo json_encode(['success' => true, 'message' => 'Item desalocado e endereço liberado com sucesso!']);
         } else {
             throw new Exception('Não foi possível desalocar o item.');
@@ -2695,6 +2713,46 @@ function getVisaoEstoqueHierarquicoFiltrada(EnderecoRepository $repo)
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
+}
+
+function transferirItemEndereco(EnderecoRepository $repo)
+{
+    try {
+        // 1. Inputs
+        $alocacaoOrigemId = filter_input(INPUT_POST, 'alocacao_origem_id', FILTER_VALIDATE_INT);
+        $enderecoDestinoId = filter_input(INPUT_POST, 'endereco_destino_id', FILTER_VALIDATE_INT);
+        $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_FLOAT);
+
+        // 2. Validação Sessão
+        if (!isset($_SESSION['codUsuario'])) throw new Exception("Sessão expirada.");
+        $usuarioId = $_SESSION['codUsuario'];
+
+        if (!$alocacaoOrigemId || !$enderecoDestinoId || !$quantidade) {
+            throw new Exception("Dados incompletos para transferência.");
+        }
+
+        // 3. Execução
+        // Nota: $enderecoRepo deve estar instanciado anteriormente no router
+        $sucesso = $repo->transferirItem(
+            $alocacaoOrigemId,
+            $enderecoDestinoId,
+            $quantidade,
+            $usuarioId
+        );
+
+        if ($sucesso) {
+            echo json_encode(['success' => true, 'message' => 'Transferência realizada com sucesso!']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function buscarEnderecosSelect(EnderecoRepository $repo)
+{
+    $term = $_GET['term'] ?? '';
+    $results = $repo->buscarEnderecosParaSelect($term);
+    echo json_encode(['results' => $results]);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ORDENS DE EXPEDIÇÃO ---

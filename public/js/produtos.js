@@ -37,7 +37,7 @@ $(document).ready(function () {
                 }
             }
         }
-    });
+    }); 
 
     // =================================================================
     // Funções Auxiliares
@@ -191,27 +191,31 @@ $(document).ready(function () {
             },
             {
                 "data": "prod_codigo_interno",
-                "className": "text-center align-middle"
+                "className": "text-center align-middle font-small"
             },
             {
                 "data": "prod_descricao",
-                "className": "align-middle"
+                "className": "align-middle font-small"
+            },
+            {
+                "data": "prod_classe",
+                "className": "align-middle font-small"
             },
             {
                 "data": "prod_tipo",
-                "className": "col-centralizavel align-middle"
+                "className": "col-centralizavel align-middle font-small"
             },
             {
                 "data": "prod_tipo_embalagem",
-                "className": "col-centralizavel align-middle"
+                "className": "col-centralizavel align-middle font-small"
             },
             {
                 "data": "prod_peso_embalagem",
-                "className": "col-centralizavel align-middle"
+                "className": "col-centralizavel align-middle font-small"
             },
             {
                 "data": "prod_unidade",
-                "className": "text-center align-middle"
+                "className": "text-center align-middle font-small"
             },
             {
                 "data": "prod_codigo",
