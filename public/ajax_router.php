@@ -45,6 +45,7 @@ use App\Faturamento\FaturamentoRepository;
 use App\CondicaoPagamento\CondicaoPagamentoRepository;
 use App\FichasTecnicas\FichaTecnicaRepository;
 use App\Core\RelatorioService;
+use App\Estoque\MovimentoRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -89,6 +90,7 @@ try {
     $carregamentoRepo = new CarregamentoRepository($pdo); // Cria a instância do repositório para Carregamentos
     $camaraRepo = new CamaraRepository($pdo); // Cria a instância do repositório para Câmaras
     $enderecoRepo = new EnderecoRepository($pdo); // Cria a instância do repositório para Endereçamento das Câmaras
+    $movimentoRepo = new MovimentoRepository($pdo); // Cria a instância do repositório para Movimentos de Produtos
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
     $faturamentoRepo = new FaturamentoRepository($pdo); //Cria a instância do repositorio para Faturamento
     $condPagRepo = new CondicaoPagamentoRepository($pdo); //Cria a instância do repositorio para Condições de Pagamento
@@ -563,7 +565,9 @@ switch ($action) {
     case 'buscarEnderecosSelect':
         buscarEnderecosSelect($enderecoRepo);
         break;
-
+    case 'relatorioKardex':
+        relatorioKardex($movimentoRepo);
+        break;
 
     // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---
     case 'listarOrdensExpedicao':
@@ -1138,7 +1142,12 @@ function finalizarLoteParcialmente(LoteRepository $repo)
     }
 
     try {
-        $repo->finalizeParcialmente($loteId, $itens);
+        if (!isset($_SESSION['usu_codigo'])) {
+            throw new Exception("Sessão expirada.");
+        }
+        $usuarioId = $_SESSION['usu_codigo'];
+
+        $repo->finalizeParcialmente($loteId, $itens, $usuarioId);
         echo json_encode(['success' => true, 'message' => 'Itens finalizados e adicionados ao estoque com sucesso!']);
     } catch (Exception $e) {
         // Captura qualquer erro vindo do repositório e envia como uma resposta amigável
@@ -1451,7 +1460,13 @@ function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
     }
 
     try {
-        $repo->finalizarLoteParcialmente($loteId, $itens);
+        if (!isset($_SESSION['usu_codigo'])) {
+            throw new Exception("Sessão expirada.");
+        }
+        $usuarioId = $_SESSION['usu_codigo'];
+
+        // $repo->finalizeParcialmente($loteId, $itens, $usuarioId);
+        $repo->finalizarLoteParcialmente($loteId, $itens, $usuarioId);
         echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e estoque atualizado!']);
     } catch (Exception $e) {
         http_response_code(400); // 400 é melhor que 500 para erros de regra de negócio
@@ -2753,6 +2768,13 @@ function buscarEnderecosSelect(EnderecoRepository $repo)
     $term = $_GET['term'] ?? '';
     $results = $repo->buscarEnderecosParaSelect($term);
     echo json_encode(['results' => $results]);
+}
+
+function relatorioKardex(MovimentoRepository $repo)
+{
+    // Pega todos os parâmetros $_POST (filtros, paginação, draw)
+    $dados = $repo->buscarKardexDataTable($_POST);
+    echo json_encode($dados);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ORDENS DE EXPEDIÇÃO ---

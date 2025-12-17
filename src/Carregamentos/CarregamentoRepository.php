@@ -6,16 +6,19 @@ use PDO;
 use Exception;
 use App\Core\AuditLoggerService;
 use App\OrdensExpedicao\OrdemExpedicaoRepository;
+use App\Estoque\MovimentoRepository;
 
 class CarregamentoRepository
 {
     private PDO $pdo;
     private AuditLoggerService $auditLogger;
+    private MovimentoRepository $movimentoRepo;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-        $this->auditLogger = new AuditLoggerService($pdo); // Se usar
+        $this->auditLogger = new AuditLoggerService($pdo);
+        $this->movimentoRepo = new MovimentoRepository($pdo);
     }
 
     /**
@@ -160,7 +163,6 @@ class CarregamentoRepository
         $stmt = $this->pdo->query("SELECT MAX(CAST(SUBSTRING_INDEX(car_numero, '.', 1) AS UNSIGNED)) FROM tbl_carregamentos");
         $lastNum = ($stmt->fetchColumn() ?: 0) + 1;
         return str_pad($lastNum, 4, '0', STR_PAD_LEFT);
-
     }
 
     /**
@@ -410,7 +412,6 @@ class CarregamentoRepository
             // 7. Se tudo deu certo, confirma a transação
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             // Se qualquer passo falhar, desfaz tudo
             $this->pdo->rollBack();
@@ -800,7 +801,7 @@ class CarregamentoRepository
             $stmtHeader = $this->pdo->prepare("DELETE FROM tbl_carregamentos WHERE car_id = :id");
             $stmtHeader->execute([':id' => $carregamentoId]);
 
-            $this->auditLogger->log('DELETE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, null,"");
+            $this->auditLogger->log('DELETE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, null, "");
 
             $this->pdo->commit();
             return true;
@@ -871,7 +872,7 @@ class CarregamentoRepository
         }
 
         // Adicionar log de auditoria
-        $this->auditLogger->log('DELETE', $filaId, 'tbl_carregamento_itens', null, ['cliente_id_removido' => $clienteId],"");
+        $this->auditLogger->log('DELETE', $filaId, 'tbl_carregamento_itens', null, ['cliente_id_removido' => $clienteId], "");
 
         return true;
     }
@@ -938,7 +939,6 @@ class CarregamentoRepository
 
             // O máximo que o usuário pode setar é o que está disponível + o que ele já tem
             $data['max_quantidade_disponivel'] = $saldoFisicoDisponivel + $data['qtd_carregada'];
-
         } else {
             // --- É ITEM DA OE ---
             $data['max_quantidade_disponivel'] = $data['max_quantidade_oe'] + $data['qtd_carregada'];
@@ -1028,7 +1028,7 @@ class CarregamentoRepository
                 ':motivo' => !empty($motivo) ? $motivo : null
             ]);
             $newId = (int) $this->pdo->lastInsertId();
-            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data,"");
+            $this->auditLogger->log('CREATE', $newId, 'tbl_carregamento_itens', null, $data, "");
 
             $this->pdo->commit();
             return $newId;
@@ -1166,7 +1166,6 @@ class CarregamentoRepository
             }
 
             return $successCount;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e; // Re-lança a exceção para o controller
@@ -1547,5 +1546,5 @@ class CarregamentoRepository
 
         $fila['clientes'] = array_values($clientes);
         return $fila;
-    } 
+    }
 }

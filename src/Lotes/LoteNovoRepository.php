@@ -5,16 +5,19 @@ namespace App\Lotes;
 use PDO;
 use Exception;
 use App\Core\AuditLoggerService;
+use App\Estoque\MovimentoRepository;
 
 class LoteNovoRepository
 {
     private PDO $pdo;
     private AuditLoggerService $auditLogger;
+    private MovimentoRepository $movimentoRepo;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
         $this->auditLogger = new AuditLoggerService($pdo);
+        $this->movimentoRepo = new MovimentoRepository($pdo);
     }
 
     /**
@@ -727,7 +730,7 @@ class LoteNovoRepository
      * Processa a finalização parcial ou total de itens de um lote.
      * Atualiza as quantidades e define se o lote deve ser fechado.
      */
-    public function finalizarLoteParcialmente(int $loteId, array $itensParaFinalizar): bool
+    public function finalizarLoteParcialmente(int $loteId, array $itensParaFinalizar, int $usuarioId): bool
     {
         if (empty($itensParaFinalizar)) {
             throw new Exception("Nenhum item foi selecionado para finalização.");
@@ -764,7 +767,7 @@ class LoteNovoRepository
 
                 $itemId = $item['item_id'];
 
-                // MUDANÇA: Trabalhamos com INTEIROS para caixas/unidades
+                // Trabalhamos com INTEIROS para caixas/unidades
                 $qtdAFinalizar = (int) $item['quantidade'];
 
                 if ($qtdAFinalizar <= 0)
@@ -817,7 +820,19 @@ class LoteNovoRepository
             $stmt_update_header = $this->pdo->prepare($sql_update_header);
             $stmt_update_header->execute($params_update_header);
 
-            $this->auditLogger->log('UPDATE', $loteId, 'tbl_lotes_novo_header', null, ['novo_status' => $novoStatus], "Finalização de itens");
+            $this->auditLogger->log(
+                'UPDATE',
+                $loteId,
+                'tbl_lotes_novo_header',
+                null,
+                ['novo_status' => $novoStatus],
+                "Finalização de itens"
+            );
+
+            // Se o lote acabou de ser totalmente FINALIZADO, registramos a entrada oficial no estoque.
+            if ($novoStatus === 'FINALIZADO') {
+                $this->registrarEntradaProducaoKardex($loteId, $usuarioId);
+            }
 
             $this->pdo->commit();
             return true;
@@ -2022,5 +2037,37 @@ class LoteNovoRepository
             'producao' => $producao,
             'embalagem' => $embalagem
         ];
+    }
+
+    /**
+     * Método auxiliar privado para registrar a entrada lógica (PRODUÇÃO) no Kardex.
+     * Deve ser chamado apenas quando o lote transiciona para FINALIZADO.
+     */
+    private function registrarEntradaProducaoKardex(int $loteId, int $usuarioId): void
+    {
+        // 1. Busca os itens produzidos (Caixas/Embalagens Secundárias)
+        $sqlItens = "SELECT item_emb_id, item_emb_qtd_sec 
+                     FROM tbl_lotes_novo_embalagem 
+                     WHERE item_emb_lote_id = ?";
+        $stmtItens = $this->pdo->prepare($sqlItens);
+        $stmtItens->execute([$loteId]);
+        $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Registra cada item no Kardex
+        foreach ($itens as $item) {
+            // Verifica se já não foi registrado para não duplicar (segurança extra)
+            // Se quiser confiar apenas na chamada do método, pode pular essa verificação
+
+            $this->movimentoRepo->registrar(
+                'PRODUCAO',                      // Tipo
+                $item['item_emb_id'],      // Item ID
+                $item['item_emb_qtd_sec'], // Quantidade
+                $usuarioId,                 // Usuário
+                null,                        // Origem (Nasceu)
+                null,                       // Destino (Ainda sem endereço)
+                'Produção Finalizada',            // Obs
+                $loteId                        // Documento Ref
+            );
+        }
     }
 }

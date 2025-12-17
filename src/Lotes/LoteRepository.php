@@ -164,10 +164,10 @@ class LoteRepository
         // AUDITORIA
         if ($success) {
             if ($id) {
-                $this->auditLogger->log('UPDATE', $id, 'tbl_lote_itens', $dadosAntigos, $data,"");
+                $this->auditLogger->log('UPDATE', $id, 'tbl_lote_itens', $dadosAntigos, $data, "");
             } else {
                 $novoId = (int) $this->pdo->lastInsertId();
-                $this->auditLogger->log('CREATE', $novoId, 'tbl_lote_itens', null, $data,"");
+                $this->auditLogger->log('CREATE', $novoId, 'tbl_lote_itens', null, $data, "");
             }
             // ATUALIZA O STATUS GERAL DO LOTE
             $this->atualizarStatusGeralDoLote((int) $data['lote_id']);
@@ -186,7 +186,7 @@ class LoteRepository
         $success = $stmt->execute([':id' => $itemId]);
 
         if ($success && $stmt->rowCount() > 0) {
-            $this->auditLogger->log('DELETE', $itemId, 'tbl_lote_itens', $dadosAntigos, null,"");
+            $this->auditLogger->log('DELETE', $itemId, 'tbl_lote_itens', $dadosAntigos, null, "");
 
             // ATUALIZA O STATUS GERAL DO LOTE
             $this->atualizarStatusGeralDoLote((int) $dadosAntigos['item_lote_id']);
@@ -210,7 +210,7 @@ class LoteRepository
             $this->pdo->prepare("DELETE FROM tbl_lotes WHERE lote_id = :id")->execute([':id' => $id]);
 
             // AUDITORIA: Registar a exclusão antes de confirmar a transação
-            $this->auditLogger->log('DELETE', $id, 'tbl_lotes', $dadosAntigosHeader, null,"");
+            $this->auditLogger->log('DELETE', $id, 'tbl_lotes', $dadosAntigosHeader, null, "");
 
             $this->pdo->commit();
             return true;
@@ -270,9 +270,8 @@ class LoteRepository
             $stmtUpdateLote = $this->pdo->prepare("UPDATE tbl_lotes SET lote_status = 'FINALIZADO' WHERE lote_id = :id");
             $stmtUpdateLote->execute([':id' => $loteId]);
 
-            $this->auditLogger->log('FINALIZE', $loteId, 'tbl_lotes', null, ['status' => 'FINALIZADO'],"");
+            $this->auditLogger->log('FINALIZE', $loteId, 'tbl_lotes', null, ['status' => 'FINALIZADO'], "");
             $this->pdo->commit();
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -321,7 +320,8 @@ class LoteRepository
      * @param array $itens Os itens a serem finalizados, no formato [['item_id' => x, 'quantidade' => y], ...].
      * @throws Exception
      */
-    public function finalizeParcialmente(int $loteId, array $itens): void
+    //public function finalizeParcialmente(int $loteId, array $itens): void
+    public function finalizeParcialmente(int $loteId, array $itens, int $usuarioId): bool
     {
         $this->pdo->beginTransaction();
 
@@ -365,9 +365,9 @@ class LoteRepository
             // 4. Após finalizar os itens, recalcula e atualiza o status geral do lote
             $this->atualizarStatusLote($loteId);
 
-            $this->auditLogger->log('FINALIZE_PARTIAL', $loteId, 'tbl_lotes', null, ['itens_finalizados' => $itens],"");
+            $this->auditLogger->log('FINALIZE_PARTIAL', $loteId, 'tbl_lotes', null, ['itens_finalizados' => $itens], "");
             $this->pdo->commit();
-
+            return true;
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -466,11 +466,10 @@ class LoteRepository
             // PASSO 4: AUDITORIA
             $dadosNovos = $dadosAntigos;
             $dadosNovos['lote_status'] = 'CANCELADO';
-            $this->auditLogger->log('CANCEL_LOTE', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos,"");
+            $this->auditLogger->log('CANCEL_LOTE', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos, "");
 
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -707,7 +706,7 @@ class LoteRepository
 
             // 5. Regista a alteração de status na auditoria
             $dadosNovos = ['lote_status' => $novoStatus];
-            $this->auditLogger->log('UPDATE_STATUS', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos,"");
+            $this->auditLogger->log('UPDATE_STATUS', $loteId, 'tbl_lotes', $dadosAntigos, $dadosNovos, "");
         }
     }
 
@@ -804,7 +803,6 @@ class LoteRepository
 
             $this->pdo->commit();
             return true;
-
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;

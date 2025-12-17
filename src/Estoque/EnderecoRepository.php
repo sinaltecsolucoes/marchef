@@ -371,7 +371,7 @@ class EnderecoRepository
             // 3. REGISTRA NO KARDEX (ENTRADA)
             // Origem NULL significa que veio da Produção/Externo para o Estoque
             $this->movimentoRepo->registrar(
-                'ENTRADA',
+                'ALOCACAO',
                 $loteItemId,
                 $quantidade,
                 $usuarioId,

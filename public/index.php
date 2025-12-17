@@ -153,6 +153,7 @@ try {
         'relatorio_ficha_tecnica' => 'fichas_tecnicas/relatorio_ficha_tecnica.php',
         'relatorio_entidade' => 'entidades/relatorio_ficha.php',
         'relatorio_produtos' => 'produtos/relatorio_lista.php',
+        'relatorio_kardex' => 'estoque/relatorio_kardex.php'
     ];
 
     // Se for Admin, enchemos a lista de permissões com TODAS as páginas possíveis.

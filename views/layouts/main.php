@@ -197,7 +197,6 @@
 
                     <?php
                     $paginasFaturamento = ['faturamentos_listar'];
-
                     if (count(array_intersect($paginasFaturamento, $paginasPermitidasUsuario)) > 0):
                     ?>
                         <li class="nav-item dropdown">
@@ -213,7 +212,21 @@
                     <?php endif; ?>
 
                     <?php
+                    $paginasRelatorios = ['relatorio_kardex'];
+                    if (count(array_intersect($paginasRelatorios, $paginasPermitidasUsuario)) > 0):
+                    ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button"
+                                data-bs-toggle="dropdown">Relatórios</a>
+                            <ul class="dropdown-menu">
+                                <?php if (in_array('relatorio_kardex', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=relatorio_kardex">Relatório KARDEX</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
+                    <?php
                     // Verifica se o usuário tem permissão para ver PELO MENOS UM item do menu Configurações
                     // --- SUBMENU DE CONFIGURAÇÕES ---
                     $paginasConfig = ['permissoes'];
@@ -488,6 +501,10 @@
 
     <?php if ($paginaAtual === 'estoque_enderecos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/enderecos.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'relatorio_kardex'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/relatorio_kardex.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'visao_estoque_enderecos'): ?>

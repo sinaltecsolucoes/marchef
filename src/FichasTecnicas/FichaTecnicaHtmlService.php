@@ -16,7 +16,7 @@ class FichaTecnicaHtmlService
 
     public function renderHtml(int $fichaId): string
     {
-        // 1. BUSCA DE DADOS (Manter como estava)
+        // 1. BUSCA DE DADOS
         $ficha = $this->repository->findCompletaById($fichaId);
         $fotos = $this->repository->getFotosByFichaId($fichaId);
 

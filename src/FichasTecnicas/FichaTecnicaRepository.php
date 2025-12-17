@@ -196,9 +196,10 @@ class FichaTecnicaRepository
             return null;
         }
 
-        $stmtCriterios = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas_criterios WHERE criterio_ficha_id = :id ORDER BY criterio_id");
+      /*  $stmtCriterios = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas_criterios WHERE criterio_ficha_id = :id ORDER BY criterio_grupo");
         $stmtCriterios->execute([':id' => $fichaId]);
-        $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);
+        $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);*/
+        $ficha['criterios'] = $this->getCriteriosByFichaId($fichaId);
         $ficha['fotos'] = [];
 
         return $ficha;
@@ -312,7 +313,7 @@ class FichaTecnicaRepository
         // Log de auditoria antes de deletar, para termos o registro do que foi apagado
         $dadosAntigos = $this->findCompletaById($fichaId)['header'] ?? null;
         if ($dadosAntigos) {
-            $this->auditLogger->log('DELETE', $fichaId, 'tbl_fichas_tecnicas', $dadosAntigos, null,"");
+            $this->auditLogger->log('DELETE', $fichaId, 'tbl_fichas_tecnicas', $dadosAntigos, null, "");
         }
 
         $stmt = $this->pdo->prepare("DELETE FROM tbl_fichas_tecnicas WHERE ficha_id = :id");
