@@ -353,6 +353,7 @@ $(document).ready(function () {
                 // --- BLOQUEIOS DE SOMENTE LEITURA ---
                 const status = header.lote_status;
                 const isReadOnlyGlobal = (status === 'FINALIZADO' || status === 'CANCELADO');
+                $('#lote_status_atual').val(status);
 
                 // Carrega dados das outras abas (Eager Loading para performance)
                 $.when(recarregarItensProducao(loteId), recarregarItensEmbalagem(loteId)).done(function () {
@@ -677,7 +678,7 @@ $(document).ready(function () {
         });
     }
 
-    function calcularConsumoEmbalagem() {
+    /* function calcularConsumoEmbalagem() {
         const $form = $('#form-lote-novo-embalagem');
         const $selectPrimario = $('#item_emb_prod_prim_id_novo');
         const $selectSecundario = $('#item_emb_prod_sec_id_novo');
@@ -718,6 +719,52 @@ $(document).ready(function () {
                 .removeClass('text-danger fw-bold').addClass('text-muted');
             $btnAdicionar.prop('disabled', false);
         }
+    } */
+
+    function calcularConsumoEmbalagem() {
+        const $form = $('#form-lote-novo-embalagem');
+        const $selectPrimario = $('#item_emb_prod_prim_id_novo');
+        const $selectSecundario = $('#item_emb_prod_sec_id_novo');
+        const $qtdInput = $('#item_emb_qtd_sec_novo');
+        const $feedback = $('#feedback-consumo-embalagem');
+        const $btnAdicionar = $('#btn-adicionar-item-embalagem');
+
+        // Verifica se estamos em modo de edição
+        const isEditing = !!$('#item_emb_id_novo').val();
+        const consumoOriginal = parseFloat($form.data('consumo-original')) || 0;
+
+        // pegamos o valor RAW (bruto) que salvamos no data-attribute 'saldo-total'
+        const saldoAtualDropdown = parseFloat($selectPrimario.find('option:selected').data('saldo-total')) || 0;
+        
+        // Se estivermos a editar, o saldo disponível para o cálculo é o saldo atual MAIS o que o item já tinha consumido.
+        // Precisamos tratar erros de ponto flutuante com toFixed e parseFloat novamente
+        let saldoParaCalculo = isEditing ? (saldoAtualDropdown + consumoOriginal) : saldoAtualDropdown;
+
+        // Pequena segurança para arredondamento de float (ex: 1502.000000001)
+        saldoParaCalculo = parseFloat(saldoParaCalculo.toFixed(3));
+
+        const unidadesPorEmbalagem = parseFloat($selectSecundario.find('option:selected').data('unidades-primarias')) || 0;
+        const quantidade = parseInt($qtdInput.val()) || 0;
+
+        if (saldoParaCalculo === 0 || unidadesPorEmbalagem === 0 || quantidade === 0) {
+            $feedback.text('Preencha os campos para calcular o consumo.').removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', true);
+            return;
+        }
+
+        const consumoCalculado = quantidade * unidadesPorEmbalagem;
+        const saldoRestante = saldoParaCalculo - consumoCalculado;
+
+        // Comparação com margem de segurança para float
+        if (consumoCalculado > (saldoParaCalculo + 0.001)) { // Aceita diferença ínfima de milésimos
+            $feedback.html(`Consumo: <strong class="text-danger">${consumoCalculado.toFixed(3)}</strong> (Saldo insuficiente! Saldo disponível para a operação: ${saldoParaCalculo.toFixed(3)})`)
+                .removeClass('text-muted').addClass('text-danger fw-bold');
+            $btnAdicionar.prop('disabled', true);
+        } else {
+            $feedback.html(`Consumo: <strong>${consumoCalculado.toFixed(3)}</strong> (Saldo restante: ${saldoRestante.toFixed(3)})`)
+                .removeClass('text-danger fw-bold').addClass('text-muted');
+            $btnAdicionar.prop('disabled', false);
+        }
     }
 
     /**
@@ -735,47 +782,6 @@ $(document).ready(function () {
         // 3. Garante que o campo de data de validade volte ao estado bloqueado
         $('#liberar_edicao_validade_novo').prop('checked', false);
         $('#item_prod_data_validade_novo').prop('readonly', true);
-    }
-
-    function atualizarTipoEntradaMP() {
-        // Se o botão principal de salvar estiver oculto, estamos em modo leitura.
-        // Não deixamos o código abaixo reabilitar os campos.
-        if ($('#btn-salvar-lote-novo-header').is(':hidden')) {
-            return;
-        }
-
-        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-        const $selectMateria = $('#item_receb_produto_id');
-        const $selectLote = $('#item_receb_lote_origem_id');
-
-        if (tipo === 'MATERIA_PRIMA') {
-            // Habilita Matéria Prima
-            $selectMateria.prop('disabled', false);
-
-            // Bloqueia e Limpa Lote Origem
-            $selectLote.val(null).trigger('change');
-            $selectLote.prop('disabled', true);
-
-            // Ajuste visual do Select2 (Cinza)
-            $selectLote.parent().find('.select2-container').addClass('select2-container--disabled');
-            $selectMateria.parent().find('.select2-container').removeClass('select2-container--disabled');
-
-            // APLICA AS REGRAS VISUAIS DE MATÉRIA PRIMA (Labels, Readonlys, etc)
-            aplicarModoMateriaPrima();
-
-        } else {
-            // Habilita Lote Origem (Reprocesso)
-            $selectLote.prop('disabled', false);
-            $selectLote.parent().find('.select2-container').removeClass('select2-container--disabled');
-
-            // Bloqueia e Limpa Matéria Prima
-            $selectMateria.val(null).trigger('change');
-            $selectMateria.prop('disabled', true);
-            $selectMateria.parent().find('.select2-container').addClass('select2-container--disabled');
-
-            //  APLICA AS REGRAS VISUAIS DE REPROCESSO (Labels, Readonlys, etc)
-            aplicarModoReprocesso();
-        }
     }
 
     function aplicarModoReprocesso() {
@@ -806,18 +812,88 @@ $(document).ready(function () {
             .trigger('change');
     }
 
-    // atualizarTipoEntradaMP();
     function aplicarModoEntrada() {
-
-        atualizarTipoEntradaMP();
+        atualizarTipoEntradaMP();  // Chama o sub-método com logs
 
         const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
         if (tipo === 'LOTE_ORIGEM') {
             aplicarModoReprocesso();
         } else {
             aplicarModoMateriaPrima();
         }
+    }
+
+    function atualizarTipoEntradaMP() {
+        // Verifica se o lote está FINALIZADO ou CANCELADO
+        const statusLote = $('#lote_status_atual').val();
+        const isReadOnlyGlobal = (statusLote === 'FINALIZADO' || statusLote === 'CANCELADO');
+
+        if (isReadOnlyGlobal) {
+            console.log('Aplicando modo leitura global na aba Detalhes');
+
+            // Bloqueia radios
+            $('input[name="tipo_entrada_mp"]').prop('disabled', true);
+
+            // Bloqueia selects (com trigger para Select2 atualizar visual)
+            $('#item_receb_produto_id')
+                .prop('disabled', true)
+                .trigger('change');  // Atualiza o container do Select2
+
+            $('#item_receb_lote_origem_id')
+                .prop('disabled', true)
+                .trigger('change');
+
+            // Bloqueia inputs de texto → readonly (CSS já aplica fundo cinza)
+            $('#item_receb_nota_fiscal, #item_receb_peso_nota_fiscal, #item_receb_total_caixas, #item_receb_peso_medio_ind, [name="item_receb_gram_faz"], [name="item_receb_gram_lab"]')
+                .prop('readonly', true);
+
+            // Bloqueia botão
+            $('#btn-adicionar-item-recebimento')
+                .prop('disabled', true)
+                .removeClass('btn-success btn-warning')
+                .addClass('btn-secondary')
+                .text('Visualizando');  // Opcional: muda texto para reforçar
+
+            // === REFORÇO VISUAL PARA SELECT2 (garante fundo cinza mesmo em casos edge) ===
+            // $('.select2-container').addClass('select2-container--disabled');
+
+            $('#item_receb_produto_id, #item_receb_lote_origem_id')
+                .next('.select2-container')  // pega o container do Select2 imediatamente depois
+                .addClass('select2-container--disabled');
+
+            // === APLICA CLASSE MODO LEITURA NO FORM INTEIRO (se quiser fundo sutil no container) ===
+            $('#form-recebimento-detalhe').addClass('modo-leitura');
+
+            return;
+        }
+
+        // Se NÃO for finalizado/cancelado → aplica regras normais do radio
+
+        const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+
+        const $selectMateria = $('#item_receb_produto_id');
+        const $selectLote = $('#item_receb_lote_origem_id');
+
+        if (tipo === 'MATERIA_PRIMA') {
+            $selectMateria.prop('disabled', false).trigger('change');
+            $selectLote.val(null).trigger('change');
+            $selectLote.prop('disabled', true);
+
+            aplicarModoMateriaPrima();
+        } else {
+            $selectLote.prop('disabled', false).trigger('change');
+            $selectMateria.val(null).trigger('change');
+            $selectMateria.prop('disabled', true);
+
+            aplicarModoReprocesso();
+        }
+
+        $('#form-recebimento-detalhe').removeClass('modo-leitura');
+        // $('.select2-container').removeClass('select2-container--disabled');
+
+        $('#item_receb_produto_id, #item_receb_lote_origem_id')
+            .next('.select2-container')
+            .removeClass('select2-container--disabled');
     }
 
     function limparFormularioDetalhes() {
@@ -901,7 +977,10 @@ $(document).ready(function () {
     }
 
     // Listener
-    $('input[name="tipo_entrada_mp"]').on('change', aplicarModoEntrada);
+    $('input[name="tipo_entrada_mp"]').on('change', function () {
+        const novoTipo = $(this).val();
+        aplicarModoEntrada();
+    });
 
     // Máscara para moedas/pesos: Formata enquanto digita
     $(document).on('input', '.mask-peso-3, .mask-peso-2', function () {
@@ -961,6 +1040,8 @@ $(document).ready(function () {
 
         // Bloqueia a aba 2 até salvar
         $('#aba-detalhes-recebimento-tab').addClass('disabled');
+
+        aplicarModoEntrada();
 
         $modalLoteNovo.modal('show');
     });
@@ -1920,12 +2001,9 @@ $(document).ready(function () {
     $('#aba-detalhes-recebimento-tab').on('shown.bs.tab', function () {
         // Carrega produtos
         carregarProdutosPrimarios().then(() => {
-            // A função carregarProdutosPrimarios popula #item_prod_produto_id_novo. 
             $.get('ajax_router.php?action=getProdutoOptions', { tipo_embalagem: 'PRIMARIA' }, function (res) {
                 if (res.success) {
                     const $sel = $('#item_receb_produto_id');
-
-                    // Verifica se já tem valor (caso seja edição) para não limpar à toa
                     const valorAtual = $sel.val();
 
                     if (!valorAtual) {
@@ -1936,33 +2014,30 @@ $(document).ready(function () {
                     }
                     initSelect2($sel, 'Selecione produto (recebimento)');
                     $sel.trigger('change');
+
+                    // Chama o método após load e init
+                    aplicarModoEntrada();
+                } else {
+                    console.error('Erro ao carregar opções de Produto:', res.message);
                 }
             }, 'json');
         });
 
-        // =====================================================
-        // SELECT2 - LOTE ORIGEM (AJAX REAL)
-        // =====================================================
+        // Inicialização do Select2 Lote Origem
         $('#item_receb_lote_origem_id').select2({
             placeholder: 'Lote origem',
             allowClear: true,
             width: '100%',
             dropdownParent: $modalLoteNovo,
             theme: 'bootstrap-5',
-
-            // minimumInputLength: 1,
-            //delay: 300,
-
             ajax: {
                 url: 'ajax_router.php?action=getLotesFinalizadosOptions',
                 dataType: 'json',
-
                 data: function (params) {
                     return {
                         term: params.term || ''
                     };
                 },
-
                 processResults: function (data) {
                     return {
                         results: data.results || []
@@ -1970,8 +2045,6 @@ $(document).ready(function () {
                 }
             }
         });
-        // Força a verificação das regras assim que a aba abre
-        atualizarTipoEntradaMP();
     });
 
     // CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA
@@ -1991,11 +2064,9 @@ $(document).ready(function () {
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
     $(document).on('click', '.btn-editar-item-recebimento', function () {
-
         const id = $(this).data('id');
 
         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
-
             if (!res.success) {
                 notificacaoErro('Erro', res.message);
                 return;
@@ -2017,9 +2088,6 @@ $(document).ready(function () {
             } else {
                 $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
             }
-
-            // Aplica regras de UI
-            aplicarModoEntrada();
 
             // Selects
             $('#item_receb_produto_id')
@@ -2057,6 +2125,9 @@ $(document).ready(function () {
 
             // exibe botão cancelar
             $('#btn-cancelar-edicao').removeClass('d-none');
+
+            // Aplica as regras de UI, com tudo já preenchido
+            aplicarModoEntrada();
 
         }, 'json');
     });
@@ -2187,4 +2258,4 @@ $(document).ready(function () {
         });
     });
 
-});
+}); 

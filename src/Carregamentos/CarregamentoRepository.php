@@ -109,7 +109,6 @@ class CarregamentoRepository
     /**
      * Busca o próximo número de carregamento
      */
-
     public function salvarCarregamentoHeader(array $data, int $usuarioId): int
     {
         // Obtém o ID da OE de forma segura. Se não existir, usa null.
@@ -333,17 +332,25 @@ class CarregamentoRepository
      * Atualiza o status de um carregamento.
      * Função helper interna.
      */
-    private function updateStatus(int $id, string $novoStatus): bool
+    /*  private function updateStatus(int $id, string $novoStatus): bool
     {
         $sql = "UPDATE tbl_carregamentos SET car_status = :status WHERE car_id = :id";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([':status' => $novoStatus, ':id' => $id]);
+    }*/
+
+    private function updateStatus(int $id, string $status): bool
+    {
+        $sql = "UPDATE tbl_carregamentos SET car_status = :status, car_data_saida = NOW() WHERE car_id = :id";
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute([':status' => $status, ':id' => $id]);
     }
 
     /**
      * Finaliza um carregamento, baixa o estoque e VINCULA a OE.
      */
-    public function finalizar(int $carregamentoId, OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
+    /* public function finalizar(int $carregamentoId, OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
     {
         $this->pdo->beginTransaction();
         try {
@@ -417,6 +424,73 @@ class CarregamentoRepository
             $this->pdo->rollBack();
             throw $e; // Re-lança a exceção para o controller mostrar o erro
         }
+    }*/
+
+    /**
+     * Finaliza um carregamento:
+     * 1. Atualiza contadores do lote (Legado)
+     * 2. Baixa estoque físico WMS e grava Kardex (Novo)
+     * 3. Vincula OE e atualiza status
+     */
+    public function finalizar(int $carregamentoId, int $usuarioId, OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            // 1. Valida o Carregamento e busca o ID da OE
+            $stmtStatus = $this->pdo->prepare("SELECT car_status, car_numero, car_ordem_expedicao_id FROM tbl_carregamentos WHERE car_id = :id FOR UPDATE");
+            $stmtStatus->execute([':id' => $carregamentoId]);
+            $carregamento = $stmtStatus->fetch(PDO::FETCH_ASSOC);
+
+            if (!$carregamento || $carregamento['car_status'] !== 'EM ANDAMENTO') {
+                throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser finalizados.");
+            }
+
+            // 2. Busca itens para atualizar o contador "finalizada" 
+            $stmtItens = $this->pdo->prepare(
+                "SELECT ci.car_item_lote_novo_item_id, ci.car_item_quantidade
+                 FROM tbl_carregamento_itens ci
+                 WHERE ci.car_item_carregamento_id = :id"
+            );
+            $stmtItens->execute([':id' => $carregamentoId]);
+            $itensParaBaixar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($itensParaBaixar)) {
+                throw new Exception("Não é possível finalizar um carregamento sem itens.");
+            }
+
+            // Atualiza o contador legado (Mantive pois você já usava)
+            $stmtUpdateLoteItem = $this->pdo->prepare(
+                "UPDATE tbl_lotes_novo_embalagem SET item_emb_qtd_finalizada = item_emb_qtd_finalizada + :qtd 
+                 WHERE item_emb_id = :id"
+            );
+
+            foreach ($itensParaBaixar as $item) {
+                $stmtUpdateLoteItem->execute([
+                    ':qtd' => $item['car_item_quantidade'],
+                    ':id' => $item['car_item_lote_novo_item_id']
+                ]);
+            }
+
+            // 3. WMS + KARDEX
+            $this->processarSaidaEstoque($carregamentoId, $usuarioId);
+
+            // 4. Atualiza o status do próprio carregamento para 'FINALIZADO'
+            $this->updateStatus($carregamentoId, 'FINALIZADO');
+
+            // 5. ATUALIZA E BLOQUEIA A ORDEM DE EXPEDIÇÃO BASE
+            if (!empty($carregamento['car_ordem_expedicao_id'])) {
+                $ordemExpedicaoRepo->linkCarregamento($carregamento['car_ordem_expedicao_id'], $carregamentoId);
+            }
+
+            // 6. Registra na auditoria
+            $this->auditLogger->log('FINALIZE', $carregamentoId, 'tbl_carregamentos', ['status_anterior' => 'EM ANDAMENTO'], ['status_novo' => 'FINALIZADO'], "Carregamento Finalizado");
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -459,12 +533,10 @@ class CarregamentoRepository
                 }
             }
 
-            // ### INÍCIO DA LÓGICA ###
             // Se o carregamento tinha uma OE base, desvincula ela
             if (!empty($dadosAntigos['car_ordem_expedicao_id'])) {
                 $ordemExpedicaoRepo->unlinkCarregamento($dadosAntigos['car_ordem_expedicao_id']);
             }
-            // ### FIM DA LÓGICA ###
 
             // Atualiza o status do carregamento para 'EM ANDAMENTO'
             $this->updateStatus($carregamentoId, 'EM ANDAMENTO');
@@ -514,7 +586,13 @@ class CarregamentoRepository
             ':car_id' => $carregamentoId
         ]);
 
-        // $this->auditLogger->log('UPDATE', $carregamentoId, 'tbl_carregamentos', $dadosAntigos, $data);
+        /*  $this->auditLogger->log(
+            'UPDATE', 
+            $carregamentoId, 
+            'tbl_carregamentos',
+             $dadosAntigos,
+              $data,
+            "");*/
         return $success;
     }
 
@@ -811,7 +889,62 @@ class CarregamentoRepository
         }
     }
 
-    /* --- Funções de Apoio (Estorno) --- */
+    /**
+     * Baixa o estoque físico (WMS) e registra a SAÍDA no Kardex.
+     */
+    private function processarSaidaEstoque(int $carregamentoId, int $usuarioId): void
+    {
+        // Busca os itens cruzando com a Ordem de Expedição para saber DE QUAL ENDEREÇO (alocação) baixar
+        $sql = "SELECT 
+                    ci.car_item_quantidade,
+                    oei.oei_alocacao_id,       -- Onde estava reservado
+                    al.alocacao_lote_item_id   -- O que é o produto
+                FROM tbl_carregamento_itens ci
+                JOIN tbl_ordens_expedicao_itens oei ON ci.car_item_oe_item_id = oei.oei_id
+                JOIN tbl_estoque_alocacoes al ON oei.oei_alocacao_id = al.alocacao_id
+                WHERE ci.car_item_carregamento_id = ?";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$carregamentoId]);
+        $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($itens as $item) {
+            $qtdSair = (float)$item['car_item_quantidade'];
+            $alocacaoId = (int)$item['oei_alocacao_id'];
+            $loteItemId = (int)$item['alocacao_lote_item_id'];
+
+            // A. BAIXA NO ESTOQUE FÍSICO (WMS)
+            $stmtSaldo = $this->pdo->prepare("SELECT alocacao_quantidade FROM tbl_estoque_alocacoes WHERE alocacao_id = ?");
+            $stmtSaldo->execute([$alocacaoId]);
+            $qtdAtual = (float)$stmtSaldo->fetchColumn();
+
+            $novoSaldo = $qtdAtual - $qtdSair;
+
+            if ($novoSaldo <= 0.001) {
+                // Esvaziou o endereço: apaga a alocação
+                $this->pdo->prepare("DELETE FROM tbl_estoque_alocacoes WHERE alocacao_id = ?")->execute([$alocacaoId]);
+            } else {
+                // Sobrou saldo: atualiza
+                $this->pdo->prepare("UPDATE tbl_estoque_alocacoes SET alocacao_quantidade = ? WHERE alocacao_id = ?")
+                    ->execute([$novoSaldo, $alocacaoId]);
+            }
+
+            // B. REGISTRA NO KARDEX (SAIDA)
+            $this->movimentoRepo->registrar(
+                'SAIDA',
+                $loteItemId,
+                $qtdSair,
+                $usuarioId,
+                $alocacaoId, // Origem (Saiu daqui)
+                null,        // Destino (Foi pro cliente)
+                'Expedição Carregamento #' . $carregamentoId,
+                $carregamentoId
+            );
+
+            // C. Atualiza status do Item da OE para ATENDIDO
+            $this->pdo->prepare("UPDATE tbl_ordens_expedicao_itens SET oei_status = 'ATENDIDO' WHERE oei_alocacao_id = ?")->execute([$alocacaoId]);
+        }
+    }
 
     private function getItensEstornaveis(int $carregamentoId): array
     {

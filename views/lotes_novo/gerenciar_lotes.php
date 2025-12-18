@@ -146,6 +146,7 @@ switch ($page) {
                         <form id="form-recebimento-detalhe">
                             <input type="hidden" name="item_receb_lote_id" id="item_receb_lote_id">
                             <input type="hidden" name="item_receb_id" id="item_receb_id">
+                            <input type="hidden" id="lote_status" name="lote_status" value="">
 
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Tipo de Entrada da Matéria-Prima</label>

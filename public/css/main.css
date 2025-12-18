@@ -273,3 +273,47 @@ qtd-a-finalizar {
     top: 50% !important;
     transform: translateY(-50%) !important;
 }
+
+
+.modo-leitura {
+    background-color: #f8f9fa !important;
+    pointer-events: none;
+    /* Bloqueia cliques */
+}
+
+/* ==========================================================================
+   CAMPOS DESABILITADOS / SOMENTE LEITURA - FUNDO CINZA CLARO
+   ========================================================================== */
+
+/* Inputs e textareas disabled ou readonly */
+input:disabled,
+textarea:disabled,
+input[readonly],
+textarea[readonly] {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+/* Select nativo disabled (caso não use Select2 em algum lugar) */
+select:disabled {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+/* Select2: quando o container está desabilitado */
+.select2-container--disabled .select2-selection--single {
+    background-color: #e9ecef !important;
+    cursor: not-allowed;
+}
+
+.select2-container--disabled .select2-selection__rendered {
+    color: #6c757d !important;
+}
+
+/* Garante que a seta fique visível, mas desabilitada */
+.select2-container--disabled .select2-selection__arrow b {
+    border-color: #6c757d transparent transparent transparent;
+}
