@@ -1683,16 +1683,24 @@ function getDetalhesCaixaMista(LoteNovoRepository $repo)
  */
 function excluirCaixaMista(LoteNovoRepository $repo)
 {
+    // 1. Validação do ID da Caixa Mista
     $mistaId = filter_input(INPUT_POST, 'mista_id', FILTER_VALIDATE_INT);
     if (!$mistaId) {
         echo json_encode(['success' => false, 'message' => 'ID da caixa mista inválido.']);
         return;
     }
 
+    // 2. Validação da Sessão (Fundamental para o Kardex saber quem excluiu)
+    if (!isset($_SESSION['usu_codigo'])) {
+        echo json_encode(['success' => false, 'message' => 'Sessão expirada.']);
+        return;
+    }
+    $usuarioId = (int)$_SESSION['usu_codigo'];
+
     try {
-        // Implemente a lógica de exclusão no repositório.
-        // Essa função precisa reverter o consumo de saldo de cada item de origem.
-        $repo->excluirCaixaMista($mistaId);
+        // 3. Chama o repositório passando o ID da Mista E o Usuário
+        $repo->excluirCaixaMista($mistaId, $usuarioId);
+
         echo json_encode(['success' => true, 'message' => 'Caixa mista excluída com sucesso e saldos revertidos.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -1772,8 +1780,17 @@ function getResumoFinalizacao(LoteNovoRepository $repo)
 
 function atualizarStatusLote(LoteNovoRepository $repo)
 {
+    /* $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $status = $_POST['status'] ?? '';*/
+
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
-    $status = $_POST['status'] ?? '';
+    $status = filter_input(INPUT_POST, 'status', FILTER_SANITIZE_SPECIAL_CHARS);
+
+    // Verifica Sessão
+    if (!isset($_SESSION['codUsuario'])) {
+        throw new Exception("Sessão expirada.");
+    }
+    $usuarioId = $_SESSION['codUsuario'];
 
     if (!$loteId || !$status) {
         echo json_encode(['success' => false, 'message' => 'Dados inválidos']);
@@ -1781,7 +1798,7 @@ function atualizarStatusLote(LoteNovoRepository $repo)
     }
 
     try {
-        $repo->atualizarStatusLote($loteId, $status);
+        $repo->atualizarStatusLote($loteId, $status, $usuarioId);
         echo json_encode(['success' => true, 'message' => 'Status do lote atualizado com sucesso!']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2221,13 +2238,22 @@ function getLotesParaCarregamentoPorProduto(CarregamentoRepository $repo)
 function finalizarCarregamento(CarregamentoRepository $carregamentoRepo, OrdemExpedicaoRepository $ordemExpedicaoRepo)
 {
     try {
+        // 1. Inputs
         $id = filter_input(INPUT_POST, 'carregamento_id', FILTER_VALIDATE_INT);
-        if (!$id)
+        if (!$id) {
             throw new Exception("ID inválido.");
+        }
 
-        // Passamos o segundo repositório para a função
-        $carregamentoRepo->finalizar($id, $ordemExpedicaoRepo);
-        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado.']);
+        // 2. Validação Sessão (Verifique se no seu sistema é 'usu_codigo' ou 'codUsuario')
+        if (!isset($_SESSION['usu_codigo'])) {
+            throw new Exception("Sessão expirada.");
+        }
+        $usuarioId = (int)$_SESSION['usu_codigo'];
+
+        // 3. Execução
+        $carregamentoRepo->finalizar($id, $usuarioId, $ordemExpedicaoRepo);
+
+        echo json_encode(['success' => true, 'message' => 'Carregamento finalizado com sucesso.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }

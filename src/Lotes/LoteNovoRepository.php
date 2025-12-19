@@ -1060,7 +1060,7 @@ class LoteNovoRepository
     /**
      * Atualiza apenas o status do lote (Finalização Gerencial).
      */
-    public function atualizarStatusLote(int $loteId, string $novoStatus): bool
+    public function atualizarStatusLote(int $loteId, string $novoStatus, int $usuarioId): bool
     {
         // Valida status permitidos
         if (!in_array($novoStatus, ['FINALIZADO', 'PARCIALMENTE FINALIZADO'])) {
@@ -1069,7 +1069,7 @@ class LoteNovoRepository
 
         $sql = "UPDATE tbl_lotes_novo_header SET lote_status = :status";
 
-        // Se for finalizado, grava a data de hoje. Se for parcial, não mexe na data (ou limpa, opcional)
+        // Se for finalizado, grava a data de hoje. Se for parcial, não mexe na data 
         if ($novoStatus === 'FINALIZADO') {
             $sql .= ", lote_data_finalizacao = NOW()";
         }
@@ -1088,8 +1088,13 @@ class LoteNovoRepository
                 ['status' => $novoStatus],
                 "Alteração de status via Finalização Gerencial"
             );
-        }
 
+            // Se o status mudou para FINALIZADO, registramos a entrada oficial no estoque.
+            if ($novoStatus === 'FINALIZADO') {
+                $this->registrarEntradaProducaoKardex($loteId, $usuarioId);
+            }
+            // -----------------------------------------------
+        }
         return $success;
     }
 
@@ -1448,8 +1453,27 @@ class LoteNovoRepository
                 ':mista_id' => $novoMistaHeaderId
             ]);
 
+            // Registra a entrada dessa nova caixa mista no estoque
+            $this->movimentoRepo->registrar(
+                'PRODUCAO',                             // Tipo
+                $novoItemEmbIdGerado,             // ID do Item (Caixa Mista)
+                1,                                // Quantidade (Geralmente 1 caixa mista fechada)
+                $usuarioId,                        // Usuário
+                null,                               // Origem
+                null,                              // Destino
+                'Caixa Mista criada a partir de sobras',
+                $loteDestinoId                        // Lote Referência
+            );
+
             // 7. Auditoria
-            $this->auditLogger->log('CREATE', $novoMistaHeaderId, 'tbl_caixas_mistas_header', null, $data, 'Criação de Caixa Mista');
+            $this->auditLogger->log(
+                'CREATE',
+                $novoMistaHeaderId,
+                'tbl_caixas_mistas_header',
+                null,
+                $data,
+                'Criação de Caixa Mista'
+            );
 
             $this->pdo->commit();
 
@@ -1601,7 +1625,7 @@ class LoteNovoRepository
      * @return bool Retorna true se a operação for bem-sucedida.
      * @throws Exception Se a caixa mista não for encontrada ou se houver um erro no processo.
      */
-    public function excluirCaixaMista(int $mistaId): bool
+    public function excluirCaixaMista(int $mistaId, int $usuarioId): bool
     {
         $this->pdo->beginTransaction();
         try {
@@ -1637,6 +1661,22 @@ class LoteNovoRepository
             $itemEmbIdGerado = $stmtItemEmbId->fetchColumn();
 
             if ($itemEmbIdGerado) {
+                // =================================================================================
+                // KARDEX: Saída por Desmonte/Exclusão (ESTORNO) 
+                // =================================================================================
+                // Tiramos a caixa do estoque antes de apagá-la do banco
+                $this->movimentoRepo->registrar(
+                    'SAIDA',                        // Tipo: Saiu do estoque
+                    $itemEmbIdGerado,         // O Item
+                    1,                        // Quantidade
+                    $usuarioId,                // Usuário 
+                    null,
+                    null,
+                    'Exclusão/Desmonte de Caixa Mista',
+                    null
+                );
+                // =================================================================================
+
                 $stmtDeleteEmb = $this->pdo->prepare("DELETE FROM tbl_lotes_novo_embalagem WHERE item_emb_id = :id");
                 $stmtDeleteEmb->execute([':id' => $itemEmbIdGerado]);
             }
@@ -1981,52 +2021,60 @@ class LoteNovoRepository
 
         if (!$header) return [];
 
-        // 2. Itens de Recebimento (Matéria Prima)
+        // 2. Itens de Recebimento (Matéria Prima) - COM A LÓGICA DE ORIGEM FORMATADA
         $sqlReceb = "SELECT 
                         r.*, 
                         p.prod_descricao,
                         p.prod_especie,
-                        -- Tenta buscar o nome do lote de origem se houver
-                        lh.lote_completo_calculado as origem_nome
+                        -- Adicionamos a lógica da origem aqui também para o PDF
+                        CASE
+                            WHEN p.prod_tipo = 'CAMARAO' AND p.prod_congelamento = 'IN NATURA' THEN 'DESPESCA'
+                            WHEN p.prod_tipo <> 'CAMARAO' AND p.prod_congelamento = 'IN NATURA' THEN p.prod_origem
+                            WHEN r.item_receb_lote_origem_id IS NOT NULL THEN lh.lote_completo_calculado
+                            ELSE '-'
+                        END AS origem_formatada
                      FROM tbl_lote_novo_recebdetalhes r
                      JOIN tbl_produtos p ON r.item_receb_produto_id = p.prod_codigo
                      LEFT JOIN tbl_lotes_novo_header lh ON r.item_receb_lote_origem_id = lh.lote_id
                      WHERE r.item_receb_lote_id = :id";
+
         $stmtR = $this->pdo->prepare($sqlReceb);
         $stmtR->execute([':id' => $loteId]);
         $recebimento = $stmtR->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Itens de Produção (Primária)
+        // 3. Itens de Produção (Primária) - AGRUPADO POR PRODUTO
         $sqlProd = "SELECT 
-                        lp.*, 
                         p.prod_descricao, 
                         p.prod_codigo_interno,
                         p.prod_marca,
                         p.prod_unidade,
                         p.prod_peso_embalagem,
-                        p.prod_fator_producao AS fator_atual
+                        p.prod_fator_producao AS fator_atual,
+                        SUM(lp.item_prod_quantidade) as item_prod_quantidade
                     FROM tbl_lotes_novo_producao lp
                     JOIN tbl_produtos p ON lp.item_prod_produto_id = p.prod_codigo
                     WHERE lp.item_prod_lote_id = :id
-                    
+                    GROUP BY p.prod_codigo, p.prod_descricao, p.prod_codigo_interno, p.prod_marca, p.prod_unidade, p.prod_peso_embalagem, p.prod_fator_producao
                     ORDER BY p.prod_descricao";
+
         $stmtP = $this->pdo->prepare($sqlProd);
         $stmtP->execute([':id' => $loteId]);
         $producao = $stmtP->fetchAll(PDO::FETCH_ASSOC);
 
-        // 4. Itens de Embalagem (Secundária)
+        // 4. Itens de Embalagem (Secundária) - AGRUPADO POR PRODUTO
         $sqlEmb = "SELECT 
-                        le.*, 
                         p.prod_descricao, 
                         p.prod_codigo_interno,
                         p.prod_marca,
                         p.prod_unidade,
-                        p.prod_peso_embalagem
+                        p.prod_peso_embalagem,
+                        SUM(le.item_emb_qtd_sec) as item_emb_qtd_sec
                     FROM tbl_lotes_novo_embalagem le
                     JOIN tbl_produtos p ON le.item_emb_prod_sec_id = p.prod_codigo
                     WHERE le.item_emb_lote_id = :id
-                    
+                    GROUP BY p.prod_codigo, p.prod_descricao, p.prod_codigo_interno, p.prod_marca, p.prod_unidade, p.prod_peso_embalagem
                     ORDER BY p.prod_descricao";
+
         $stmtE = $this->pdo->prepare($sqlEmb);
         $stmtE->execute([':id' => $loteId]);
         $embalagem = $stmtE->fetchAll(PDO::FETCH_ASSOC);

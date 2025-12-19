@@ -357,7 +357,7 @@ ob_start();
                     <td class="text-center"><?= $i + 1 ?></td>
                     <td class="text-center"><?= date('d/m/Y', strtotime($h['lote_data_fabricacao'])) ?></td>
                     <td class="text-center"><?= $r['item_receb_nota_fiscal'] ?></td>
-                    <td><?= $r['origem_nome'] ?? $h['nome_fornecedor'] ?></td>
+                    <td class="text-center"><?= $r['origem_formatada'] ?? '-' ?></td>
                     <td><?= $r['prod_descricao'] ?></td>
                     <td class="text-center"><?= number_format($r['item_receb_peso_nota_fiscal'], 3, ',', '.') ?></td>
                     <td class="text-center"><?= $totalCaixas ?></td>
