@@ -738,80 +738,72 @@ $(document).ready(function () {
     }
 
     function atualizarTipoEntradaMP() {
+        // Se o botão principal de salvar estiver oculto, estamos em modo leitura.
+        // Não deixamos o código abaixo reabilitar os campos.
+        if ($('#btn-salvar-lote-novo-header').is(':hidden')) {
+            return;
+        }
 
         const tipo = $('input[name="tipo_entrada_mp"]:checked').val();
         const $selectMateria = $('#item_receb_produto_id');
         const $selectLote = $('#item_receb_lote_origem_id');
 
-        // Usamos setTimeout para garantir que o DOM terminou de renderizar a aba/modal
-        setTimeout(function () {
-            if (tipo === 'MATERIA_PRIMA') {
-                // ==========================================
-                // MODO: MATÉRIA PRIMA
-                // ==========================================
+        if (tipo === 'MATERIA_PRIMA') {
+            // Habilita Matéria Prima
+            $selectMateria.prop('disabled', false);
 
-                // 1. Habilita o Produto
-                $selectMateria.prop('disabled', false);
+            // Bloqueia e Limpa Lote Origem
+            $selectLote.val(null).trigger('change');
+            $selectLote.prop('disabled', true);
 
-                // 2. Bloqueia o Lote de Origem
-                $selectLote.val(null).trigger('change.select2'); // Limpa valor
-                $selectLote.prop('disabled', true); // Bloqueia propriedade (Lógica)
+            // Ajuste visual do Select2 (Cinza)
+            $selectLote.parent().find('.select2-container').addClass('select2-container--disabled');
+            $selectMateria.parent().find('.select2-container').removeClass('select2-container--disabled');
 
-                // Força visualmente o bloqueio (caso o Select2 esteja teimoso)
-                $selectLote.parent().find('.select2-container').addClass('select2-container--disabled');
+            // APLICA AS REGRAS VISUAIS DE MATÉRIA PRIMA (Labels, Readonlys, etc)
+            aplicarModoMateriaPrima();
 
-                aplicarModoMateriaPrima();
+        } else {
+            // Habilita Lote Origem (Reprocesso)
+            $selectLote.prop('disabled', false);
+            $selectLote.parent().find('.select2-container').removeClass('select2-container--disabled');
 
-            } else {
-                // ==========================================
-                // MODO: REPROCESSO (LOTE ORIGEM)
-                // ==========================================
+            // Bloqueia e Limpa Matéria Prima
+            $selectMateria.val(null).trigger('change');
+            $selectMateria.prop('disabled', true);
+            $selectMateria.parent().find('.select2-container').addClass('select2-container--disabled');
 
-                // 1. Habilita o Lote
-                $selectLote.prop('disabled', false);
-                $selectLote.parent().find('.select2-container').removeClass('select2-container--disabled');
-
-                // 2. Bloqueia o Produto
-                $selectMateria.val(null).trigger('change.select2');
-                $selectMateria.prop('disabled', true);
-
-                aplicarModoReprocesso();
-            }
-        }, 50); // Pequeno atraso de 50ms para garantir a renderização
+            //  APLICA AS REGRAS VISUAIS DE REPROCESSO (Labels, Readonlys, etc)
+            aplicarModoReprocesso();
+        }
     }
 
     function aplicarModoReprocesso() {
-        console.log('🔄 Aplicando Modo: REPROCESSO');
 
-        // 1. MUDA O TEXTO DA LABEL (Busca pelo parente/vizinho)
-        let $inputPeso = $('#item_receb_peso_nota_fiscal');
-        let $label = $inputPeso.parent().find('label'); // Procura a label dentro da col-md-3
+        // labels
+        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso Reprocesso (kg)');
 
-        $label.text('Peso Reprocesso (kg)');
+        // readonly
+        $('#item_receb_total_caixas').prop('readonly', true);
+        $('#item_receb_peso_medio_ind').prop('readonly', true);
 
-        // 2. READONLY (Campos numéricos)
-        $('#item_receb_total_caixas').prop('readonly', true).addClass('bg-light');
-        $('#item_receb_peso_medio_ind').prop('readonly', true).addClass('bg-light');
-
-        // 3. PRODUTO (Matéria Prima)
-        let $prodSelect = $('#item_receb_produto_id');
-        $prodSelect.val(null).trigger('change.select2'); // Limpa
-        $prodSelect.prop('disabled', true); // Bloqueia
+        // garante consistência
+        $('#item_receb_produto_id')
+            .val(null)
+            .prop('disabled', true)
+            .trigger('change');
     }
 
     function aplicarModoMateriaPrima() {
-        // 1. MUDA O TEXTO DA LABEL
-        let $inputPeso = $('#item_receb_peso_nota_fiscal');
-        let $label = $inputPeso.parent().find('label');
 
-        $label.text('Peso NF (kg)');
+        $('label[for="item_receb_peso_nota_fiscal"]').text('Peso NF (kg)');
 
-        // 2. READONLY (Libera campos)
-        $('#item_receb_total_caixas').prop('readonly', false).removeClass('bg-light');
-        $('#item_receb_peso_medio_ind').prop('readonly', false).removeClass('bg-light');
+        $('#item_receb_total_caixas').prop('readonly', false);
+        $('#item_receb_peso_medio_ind').prop('readonly', false);
 
-        // 3. PRODUTO
-        $('#item_receb_produto_id').prop('disabled', false);
+        $('#item_receb_produto_id')
+            .prop('disabled', false)
+            .trigger('change');
     }
 
     // atualizarTipoEntradaMP();
@@ -1929,7 +1921,7 @@ $(document).ready(function () {
         // Carrega produtos
         carregarProdutosPrimarios().then(() => {
             // A função carregarProdutosPrimarios popula #item_prod_produto_id_novo. 
-            $.get('ajax_router.php?action=getProdutoOptions', { tipo_embalagem: 'MATERIA-PRIMA  ' }, function (res) {
+            $.get('ajax_router.php?action=getProdutoOptions', { tipo_embalagem: 'PRIMARIA' }, function (res) {
                 if (res.success) {
                     const $sel = $('#item_receb_produto_id');
 
@@ -1946,7 +1938,6 @@ $(document).ready(function () {
                     $sel.trigger('change');
                 }
             }, 'json');
-            aplicarModoEntrada();
         });
 
         // =====================================================

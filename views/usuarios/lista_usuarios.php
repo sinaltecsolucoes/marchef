@@ -73,9 +73,11 @@
                     <div class="form-group mb-3">
                         <label for="usu-tipo" class="form-label">Nível de Acesso</label>
                         <select class="form-select" id="usu-tipo" name="usu_tipo" required>
-                            <option value="Producao">Produção</option>
+                            <option value="Admin">Administrador</option>
+                            <option value="Financeiro">Financeiro</option>
                             <option value="Gerente">Gerente</option>
-                            <option value="Admin">Admin</option>
+                            <option value="Logistica">Logística</option>
+                            <option value="Producao">Produção</option>
                         </select>
                     </div>
                     <div class="form-group mt-3">

@@ -1,4 +1,3 @@
-// public/produtos.js
 $(document).ready(function () {
     // =================================================================
     // Bloco de Configuração e Seletores Globais
@@ -38,7 +37,7 @@ $(document).ready(function () {
                 }
             }
         }
-    });
+    }); 
 
     // =================================================================
     // Funções Auxiliares
@@ -110,31 +109,13 @@ $(document).ready(function () {
     function toggleEmbalagemFields() {
         const tipo = $tipoEmbalagemSelect.val();
         const isSecundaria = (tipo === 'SECUNDARIA');
-        const isMateriaPrima = (tipo === 'MATERIA-PRIMA');
 
         $blocoEmbalagemSecundaria.toggle(isSecundaria);
         $blocoEmbalagemPrimaria.toggle(!isSecundaria);
-        $blocoEmbalagemPrimaria.toggle(!isSecundaria && !isMateriaPrima);
         $blocoEan13.toggle(!isSecundaria);
         $blocoDun14.toggle(isSecundaria);
         $('#asterisco-codigo-interno').toggle(isSecundaria);
         $('#prod_codigo_interno').prop('required', isSecundaria);
-
-        // Campos específicos a serem escondidos para 'MATERIA-PRIMA'
-        const showCamposComuns = !isMateriaPrima;
-        $('#prod_categoria').closest('.col-md-3.mb-3').toggle(showCamposComuns);
-        $('#prod_classe').closest('.col-md-7.mb-3').toggle(showCamposComuns);
-        $('#prod_fator_producao').closest('.col-md-4.mb-3').toggle(showCamposComuns);
-
-        // Limpar campos escondidos ao selecionar 'MATERIA-PRIMA'
-        if (isMateriaPrima) {
-            $('#prod_categoria').val('');
-            $('#prod_classe').val('');
-            $('#prod_fator_producao').val('');
-            $('#prod_peso_embalagem').val('');
-            $('#prod_total_pecas').val('');
-            $('#prod_ean13').val('');
-        }
 
         if (isSecundaria) {
             loadProdutosPrimarios();
@@ -328,12 +309,12 @@ $(document).ready(function () {
             if (response.success) {
                 $modalProduto.modal('hide');
                 tableProdutos.ajax.reload(null, false);
-                notificacaoSucesso('Sucesso!', response.message); 
+                notificacaoSucesso('Sucesso!', response.message); // << REATORADO
             } else {
-                notificacaoErro('Erro ao Salvar', response.message); 
+                notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
             }
         }).fail(function () {
-            // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); 
+            // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); // << REATORADO
         });
     });
 

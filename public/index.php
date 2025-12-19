@@ -118,42 +118,59 @@ try {
     // Lógica de roteamento
     $paginaAtual = $page;
     $paginasPermitidas = [
+        // Página Inicial
         'home' => 'home/home.php',
-        'usuarios' => 'usuarios/lista_usuarios.php',
-        'clientes' => 'entidades/lista_entidades.php',
-        'fornecedores' => 'entidades/lista_entidades.php',
-        'transportadoras' => 'entidades/lista_entidades.php',
-        'produtos' => 'produtos/lista_produtos.php',
-        'lotes_recebimento' => 'lotes_novo/gerenciar_lotes.php',
-        'lotes_producao' => 'lotes_novo/gerenciar_lotes.php',
-        'lotes_embalagem' => 'lotes_novo/gerenciar_lotes.php',
-        'permissoes' => 'permissoes/gerenciar.php',
-        'templates' => 'etiquetas/lista_templates.php',
-        'regras' => 'etiquetas/lista_regras.php',
-        'auditoria' => 'auditoria/visualizar_logs.php',
-        'backup' => 'backup/pagina_backup.php',
-        'carregamentos' => 'carregamentos/lista_carregamentos.php',
-        'carregamento_detalhes' => 'carregamentos/detalhes_carregamento.php',
-        'estoque' => 'estoque/lista_estoque.php',
-        'estoque_camaras' => 'estoque/lista_camaras.php',
-        'estoque_enderecos' => 'estoque/lista_enderecos.php',
-        'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php',
-        'ordens_expedicao' => 'ordens_expedicao/lista_ordens_expedicao.php',
-        'ordem_expedicao_detalhes' => 'ordens_expedicao/detalhes_ordem_expedicao.php',
-        'ordem_expedicao_relatorio' => 'ordens_expedicao/ordem_expedicao_relatorio.php',
-        'condicoes_pagamento' => 'condicao_pagamento/lista_condicoes_pagamento.php',
-        'faturamentos_listar' => 'faturamento/lista_faturamentos.php',
-        'faturamento_gerar' => 'faturamento/gerar_resumo.php',
-        'relatorio_faturamento' => 'faturamento/relatorio_faturamento.php',
-        'relatorio_faturamento_excel' => 'faturamento/relatorio_faturamento_excel.php',
-        'gestao_caixas_mistas' => 'lotes_novo/gestao_caixas_mistas.php',
-        'carregamento_relatorio' => 'carregamentos/carregamento_relatorio.php',
-        'fichas_tecnicas' => 'fichas_tecnicas/lista_fichas_tecnicas.php',
-        'ficha_tecnica_detalhes' => 'fichas_tecnicas/detalhes_ficha_tecnica.php',
-        'relatorio_ficha_tecnica' => 'fichas_tecnicas/relatorio_ficha_tecnica.php',
-        'relatorio_entidade' => 'entidades/relatorio_ficha.php',
-        'relatorio_produtos' => 'produtos/relatorio_lista.php',
-        'relatorio_kardex' => 'estoque/relatorio_kardex.php'
+
+        // Páginas Módulo Cadastro 
+        'usuarios'                  => 'usuarios/lista_usuarios.php',                      // Usuários 
+        'clientes'                  => 'entidades/lista_entidades.php',                    // Entidades (Clientes)
+        'fornecedores'              => 'entidades/lista_entidades.php',                    // Entidades (Fornecedores)
+        'transportadoras'           => 'entidades/lista_entidades.php',                    // Entidades (Transportadoras)
+        'relatorio_entidade'        => 'entidades/relatorio_ficha.php',                    // Relatório Entidades        
+        'produtos'                  => 'produtos/lista_produtos.php',                      // Produtos
+        'relatorio_produtos'        => 'produtos/relatorio_lista.php',                     // Relatório Produtos
+        'fichas_tecnicas'           => 'fichas_tecnicas/lista_fichas_tecnicas.php',        // Fichas Técnicas
+        'ficha_tecnica_detalhes'    => 'fichas_tecnicas/detalhes_ficha_tecnica.php',       // Detalhes Ficha Técnica
+        'relatorio_ficha_tecnica'   => 'fichas_tecnicas/relatorio_ficha_tecnica.php',      // Relatório Ficha Técnica
+        'condicoes_pagamento'       => 'condicao_pagamento/lista_condicoes_pagamento.php', // Condições de Pagamento
+        'templates'                 => 'etiquetas/lista_templates.php',                    // Etiquetas
+        'regras'                    => 'etiquetas/lista_regras.php',                       // Regras para Etiquetas
+        'estoque_camaras'           => 'estoque/lista_camaras.php',                        // Câmaras de Armazenagem
+        'estoque_enderecos'         => 'estoque/lista_enderecos.php',                      // Endereços Câmaras de Armazenagem
+
+        // Páginas Módulo Lotes
+        'lotes_recebimento'    => 'lotes_novo/gerenciar_lotes.php',      // Gestão de Lotes (Recebimento)
+        'lotes_producao'       => 'lotes_novo/gerenciar_lotes.php',      // Gestão de Lotes (Produção)
+        'lotes_embalagem'      => 'lotes_novo/gerenciar_lotes.php',      // Gestão de Lotes (Embalagem)
+        'gestao_caixas_mistas' => 'lotes_novo/gestao_caixas_mistas.php', // Gestão de Caixas Mistas
+
+        // Páginas Módulo Estoque
+        'estoque'                 => 'estoque/lista_estoque.php',           // Lista Geral de Estoque
+        'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php', // Visão Geral Estoque por Endereço
+
+        // Páginas Módulo Carregamento / Expedição
+        'ordens_expedicao'          => 'ordens_expedicao/lista_ordens_expedicao.php',    // Cadastro de Ordens de Expedição
+        'ordem_expedicao_detalhes'  => 'ordens_expedicao/detalhes_ordem_expedicao.php',  // Detalhes de Ordem de Expedição
+        'ordem_expedicao_relatorio' => 'ordens_expedicao/ordem_expedicao_relatorio.php', // Relatório de Ordens de Expedição        
+        'carregamentos'             => 'carregamentos/lista_carregamentos.php',          // Cadastro de Carregamento
+        'carregamento_detalhes'     => 'carregamentos/detalhes_carregamento.php',        // Detalhes Carregamento
+        'carregamento_relatorio'    => 'carregamentos/carregamento_relatorio.php',       // Relatório de Carregamento
+
+        // Páginas Módulo Faturamento
+        'faturamentos_listar'         => 'faturamento/lista_faturamentos.php',          // Cadastro de Faturamentos
+        'faturamento_gerar'           => 'faturamento/gerar_resumo.php',                // Gerar Resumo Faturamento
+        'relatorio_faturamento'       => 'faturamento/relatorio_faturamento.php',       // Relatório Faturamento
+        'relatorio_faturamento_excel' => 'faturamento/relatorio_faturamento_excel.php', // Relatório Faturamento (Excel)
+
+        // Páginas Módulo Relatórios
+        'relatorio_kardex' => 'estoque/relatorio_kardex.php', // Relatório Kardex
+
+        // Páginas Módulo Configurações
+        'permissoes' => 'permissoes/gerenciar.php', // Gerenciar Permissões
+
+        // Páginas Módulo Utilitários
+        'auditoria' => 'auditoria/visualizar_logs.php', // Logs de Auditoria
+        'backup' => 'backup/pagina_backup.php',         // Backup Banco de Dados
     ];
 
     // Se for Admin, enchemos a lista de permissões com TODAS as páginas possíveis.
@@ -167,7 +184,6 @@ try {
             $paginasPermitidasUsuario[] = 'editar_outros_usuarios';
         }
     }
-
 
     $pageType = '';
     if ($paginaAtual === 'clientes')
@@ -187,6 +203,8 @@ try {
     $homePadraoPorTipo = [
         'Admin' => 'home/home_admin.php',
         'Gerente' => 'home/home_gerente.php',
+        'Logistica' => 'home/home_gerente.php',
+        'Financeiro' => 'home/home_gerente.php',
         'Producao' => 'home/home_producao.php'
     ];
     $arquivoView = '';

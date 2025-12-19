@@ -7,43 +7,79 @@ if ($_SESSION['tipoUsuario'] !== 'Admin') {
     return;
 }
 
-// Lista de todas as páginas e ações disponíveis no sistema
-// A permissão foi renomeada para ser mais clara sobre sua função.
+// Lista de todas as páginas e ações disponíveis no sistema, agora agrupadas por módulo
 $paginas_e_acoes_disponiveis = [
-    'home' => 'Página Inicial (Home)',
-    'usuarios' => 'Gerenciar Usuários',
-    'clientes' => 'Gerenciar Clientes',
-    'fornecedores' => 'Gerenciar Fornecedores',
-    'produtos' => 'Gerenciar Produtos',
-    'lotes_producao' => 'Gerenciar Lotes Produção',
-    'lotes_embalagem' => 'Gerenciar Lotes Embalagem',
-    'templates' => 'Gerenciar Templates de Etiqueta',
-    'regras' => 'Gerenciar Regras de Etiqueta',
-    'editar_outros_usuarios' => 'Ação: Editar Outros Usuários',
-    'auditoria' => 'Visualizar Logs de Auditoria',
-    'backup' => 'Realizar Backups do Banco de Dados',
-    'carregamentos' => 'Gerenciar Carregamentos',
-    'carregamento_detalhes' => 'Gerenciar Detalhes de Carregamentos',
-    'estoque' => 'Gerenciar Estoque de Produtos',
-    'estoque_camaras' => 'Gerenciar Câmaras',
-    'estoque_enderecos' => 'Gerenciar Endereços Câmaras',
-    'visao_estoque_enderecos' => 'Gerenciar Estoque de Produtos por Endereço',
-    'ordens_expedicao' => 'Gerenciar Ordens de Expedição',
-    'ordem_expedicao_detalhes' => 'Gerenciar Detalhes de Ordens de Expedição',
-    'faturamento_listar' => 'Gerenciar Faturamento',
-    'faturamento_gerar' => 'Gerenciar Detalhes Faturamento',
-    'condicoes_pagamento' => 'Gerenciar Condições de Pagamentos',
-    
+    'Página Inicial' => [
+        'home' => 'Página Inicial',
+    ],
+
+    'Páginas Módulo Cadastro' => [
+        'usuarios'               => 'Gerenciar Usuários',
+        'clientes'               => 'Gerenciar Clientes',
+        'fornecedores'           => 'Gerenciar Fornecedores',
+        'transportadoras'        => 'Gerenciar Transportadoras',
+        'produtos'               => 'Gerenciar Produtos',
+        'fichas_tecnicas'        => 'Gestão de Fichas Técnicas',
+        'ficha_tecnica_detalhes' => 'Detalhes Fichas Técnicas',
+        'condicoes_pagamento'    => 'Gerenciar Condições de Pagamento',
+        'templates'              => 'Modelos de Etiquetas',
+        'regras'                 => 'Regras para Etiquetas',
+        'estoque_camaras'        => 'Gerenciar Câmaras de Armazenagem',
+        'estoque_enderecos'      => 'Gerenciar Endereços Câmaras',
+    ],
+
+    'Páginas Módulo Lotes' => [
+        'lotes_recebimento'    => 'Gerenciar Lotes (Recebimento)',
+        'lotes_producao'       => 'Gerenciar Lotes (Produção)',
+        'lotes_embalagem'      => 'Gerenciar Lotes (Embalagem)',
+        'gestao_caixas_mistas' => 'Gestão de Caixas Mistas',
+    ],
+
+    'Páginas Módulo Estoque' => [
+        'estoque'                 => 'Estoque de Produtos (Lista Geral)',
+        'visao_estoque_enderecos' => 'Estoque de Produtos por Endereços',
+    ],
+
+    'Páginas Módulo Carregamento / Expedição' => [
+        'ordens_expedicao'         => 'Gerenciar Ordens de Expedição',
+        'ordem_expedicao_detalhes' => 'Detalhes de Ordem de Expedição',
+        'carregamentos'            => 'Gerenciar Carregamentos',
+        'carregamento_detalhes'    => 'Detalhes Carregamento',
+    ],
+
+    'Páginas Módulo Faturamento' => [
+        'faturamentos_listar' => 'Gerenciar Faturamentos',
+        'faturamento_gerar'   => 'Gerar Resumo Faturamento',
+    ],
+
+    'Páginas Módulo Relatórios' => [
+        'relatorio_entidade'          => 'Relatórios Clientes, Fornecedores, Transportadoras',
+        'relatorio_produtos'          => 'Relatório Produtos',
+        'relatorio_ficha_tecnica'     => 'Relatório Ficha Técnica',
+        'ordem_expedicao_relatorio'   => 'Relatório de Ordem de Expedição',
+        'carregamento_relatorio'      => 'Relatório de Carregamento',
+        'relatorio_faturamento'       => 'Relatório Faturamento (PDF)',
+        'relatorio_faturamento_excel' => 'Relatório Faturamento (Excel)',
+        'relatorio_kardex'            => 'Relatório Kardex',
+    ],
+
+    'Páginas Módulo Configurações' => [
+        'editar_outros_usuarios' => 'Editar Outros Usuários',
+    ],
+
+    'Páginas Módulo Utilitários' => [
+        'auditoria' => 'Visualizar Logs de Auditoria',
+        'backup'    => 'Backup do Sistema',
+    ],
 ];
 
 // Perfis de usuário que podem ter permissões configuradas
-$perfis_disponiveis = ['Admin', 'Gerente', 'Producao'];
+$perfis_disponiveis = ['Admin', 'Financeiro', 'Gerente', 'Logistica', 'Producao'];
 
 // Busca as permissões atuais do banco de dados
 $permissoes_atuais = [];
 try {
     $stmt = $pdo->query("SELECT permissao_pagina, permissao_perfil FROM tbl_permissoes");
-    // Agrupa os resultados para facilitar a verificação
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $permissoes_atuais[$row['permissao_pagina']][$row['permissao_perfil']] = true;
     }
@@ -62,11 +98,10 @@ try {
     </div>
 
     <form id="form-gerenciar-permissoes">
-        <!-- Token CSRF para segurança do formulário -->
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover">
+        <div class="table-responsive tabela-permissoes-wrapper">
+            <table class="table table-bordered table-striped table-hover tabela-permissoes">
                 <thead class="table-light">
                     <tr>
                         <th>Página / Ação</th>
@@ -76,27 +111,36 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($paginas_e_acoes_disponiveis as $chave_permissao => $descricao): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($descricao); ?></td>
-                            <?php foreach ($perfis_disponiveis as $perfil): ?>
-                                <td class="text-center">
-                                    <?php
-                                    $is_admin_column = ($perfil === 'Admin');
-                                    // Para o admin, a permissão está sempre marcada. Para outros, verifica no array.
-                                    $is_checked = $is_admin_column || (isset($permissoes_atuais[$chave_permissao][$perfil]));
-                                    ?>
-                                    <div class="form-check form-switch d-inline-block">
-                                        <input class="form-check-input" type="checkbox" role="switch"
-                                            id="switch-<?php echo htmlspecialchars($chave_permissao); ?>-<?php echo htmlspecialchars($perfil); ?>"
-                                            name="permissoes[<?php echo htmlspecialchars($perfil); ?>][]"
-                                            value="<?php echo htmlspecialchars($chave_permissao); ?>"
-                                            <?php echo $is_checked ? 'checked' : ''; ?>
-                                            <?php echo $is_admin_column ? 'disabled' : ''; ?>>
-                                    </div>
-                                </td>
-                            <?php endforeach; ?>
+                    <?php foreach ($paginas_e_acoes_disponiveis as $titulo => $paginas): ?>
+                        <!-- Linha de título -->
+                        <tr class="table-secondary">
+                            <td colspan="<?php echo count($perfis_disponiveis) + 1; ?>">
+                                <strong><?php echo htmlspecialchars($titulo); ?></strong>
+                            </td>
                         </tr>
+
+                        <!-- Linhas das páginas -->
+                        <?php foreach ($paginas as $chave_permissao => $descricao): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($descricao); ?></td>
+                                <?php foreach ($perfis_disponiveis as $perfil): ?>
+                                    <td class="text-center">
+                                        <?php
+                                        $is_admin_column = ($perfil === 'Admin');
+                                        $is_checked = $is_admin_column || (isset($permissoes_atuais[$chave_permissao][$perfil]));
+                                        ?>
+                                        <div class="form-check form-switch d-inline-block">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                id="switch-<?php echo htmlspecialchars($chave_permissao); ?>-<?php echo htmlspecialchars($perfil); ?>"
+                                                name="permissoes[<?php echo htmlspecialchars($perfil); ?>][]"
+                                                value="<?php echo htmlspecialchars($chave_permissao); ?>"
+                                                <?php echo $is_checked ? 'checked' : ''; ?>
+                                                <?php echo $is_admin_column ? 'disabled' : ''; ?>>
+                                        </div>
+                                    </td>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>

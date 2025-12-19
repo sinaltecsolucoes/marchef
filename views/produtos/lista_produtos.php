@@ -42,6 +42,10 @@
                         <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-sec" value="SECUNDARIA">
                         <label class="form-check-label" for="filtro-tipo-sec">Secundário</label>
                     </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-mp" value="MATERIA-PRIMA">
+                        <label class="form-check-label" for="filtro-tipo-mp">Matéria-Prima</label>
+                    </div>
                 </div>
 
                 <!-- Filtro por Situação -->
@@ -112,21 +116,26 @@
                     <input type="hidden" id="prod_codigo" name="prod_codigo">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
+                    <!-- Linha 1: Categoria (IQF), Descrição para Etiquetas e Situação -->
                     <div class="row">
+                        <!-- Campo Categoria (IQF) -->
                         <div class="col-md-3 mb-3">
-                            <label for="prod_categoria" class="form-label">Categoria (IQF)</label>
-                            <select class="form-select" id="prod_categoria" name="prod_categoria">
-                                <option value="">Nenhuma</option>
-                                <option value="A1">A1</option>
-                                <option value="A2">A2</option>
-                                <option value="A3">A3</option>
+                            <label for="prod_tipo_embalagem" class="form-label">Tipo de Embalagem</label>
+                            <select class="form-select" id="prod_tipo_embalagem" name="prod_tipo_embalagem" required>
+                                <option value="PRIMARIA">Primária</option>
+                                <option value="SECUNDARIA">Secundária</option>
+                                <option value="MATERIA-PRIMA">Matéria-Prima</option>
                             </select>
                         </div>
+
+                        <!-- Campo Descrição para Etiqueta -->
                         <div class="col-md-7 mb-3">
                             <label for="prod_classe" class="form-label">Classe (Descrição para Etiqueta)</label>
                             <input type="text" class="form-control" id="prod_classe" name="prod_classe"
                                 placeholder="Será calculado automaticamente...">
                         </div>
+
+                        <!-- Switch Situação -->
                         <div class="col-md-2 mb-3">
                             <label for="prod_situacao" class="form-label">Situação</label>
                             <div class="form-check form-switch">
@@ -140,15 +149,23 @@
 
                     <div id="mensagem-produto" class="mb-3"></div>
 
-                    <!-- Linha 1: Tipo de Embalagem e Descrição -->
+                    <!-- Linha 2: Tipo de Embalagem e Descrição -->
                     <div class="row">
+
+                        <!-- Tipo Embalagem-->
                         <div class="col-md-3 mb-3">
-                            <label for="prod_tipo_embalagem" class="form-label">Tipo de Embalagem</label>
-                            <select class="form-select" id="prod_tipo_embalagem" name="prod_tipo_embalagem" required>
-                                <option value="PRIMARIA">Primária</option>
-                                <option value="SECUNDARIA">Secundária</option>
+
+                            <label for="prod_categoria" class="form-label">Categoria (IQF)</label>
+                            <select class="form-select" id="prod_categoria" name="prod_categoria">
+                                <option value="">Nenhuma</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A3">A3</option>
                             </select>
+
                         </div>
+
+                        <!-- Descrição do Produto -->
                         <div class="col-md-9 mb-3">
                             <label for="prod_descricao" class="form-label">Descrição do Produto</label>
                             <input type="text" class="form-control" id="prod_descricao" name="prod_descricao" required>
@@ -175,18 +192,24 @@
                         </div>
                     </div>
 
-                    <!-- Linha 2: Código Interno, Tipo e Subtipo -->
+                    <!-- Linha 3: Código Interno, NCM e Marca -->
                     <div class="row">
+
+                        <!-- Código Interno -->
                         <div class="col-md-3 mb-3">
                             <label for="prod_codigo_interno" class="form-label">Código Interno <span class="text-danger"
                                     id="asterisco-codigo-interno" style="display: none;">*</span></label>
                             <input type="text" class="form-control" id="prod_codigo_interno" name="prod_codigo_interno">
                         </div>
+
+                        <!-- NCM -->
                         <div class="col-md-5 mb-3">
                             <label for="prod_ncm" class="form-label">NCM</label>
                             <input type="text" class="form-control" id="prod_ncm" name="prod_ncm"
                                 placeholder="Nomenclatura Comum do Mercosul">
                         </div>
+
+                        <!-- Marca -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_marca" class="form-label">Marca</label>
                             <input type="text" class="form-control" id="prod_marca" name="prod_marca"
@@ -194,7 +217,10 @@
                         </div>
                     </div>
 
+                    <!-- Linha 4: Tipo de Produto e Subtipo-->
                     <div class="row">
+
+                        <!-- Tipo Produto -->
                         <div class="col-md-3 mb-3">
                             <label for="prod_tipo" class="form-label">Tipo</label>
                             <select class="form-select" id="prod_tipo" name="prod_tipo" required>
@@ -205,6 +231,8 @@
                                 <option value="OUTRO">Outro</option>
                             </select>
                         </div>
+
+                        <!-- Subtipo Produto -->
                         <div class="col-md-9 mb-3">
                             <label for="prod_subtipo" class="form-label">Subtipo</label>
                             <input type="text" class="form-control" id="prod_subtipo" name="prod_subtipo"
@@ -212,17 +240,22 @@
                         </div>
                     </div>
 
-
-                    <!-- Linha 3: Classificação, Espécie e Origem -->
+                    <!-- Linha 5: Classificação, Espécie e Origem -->
                     <div class="row">
+
+                        <!-- Classificação -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_classificacao" class="form-label">Classificação</label>
                             <input type="text" class="form-control" id="prod_classificacao" name="prod_classificacao">
                         </div>
+
+                        <!-- Espécie -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_especie" class="form-label">Espécie</label>
                             <input type="text" class="form-control" id="prod_especie" name="prod_especie">
                         </div>
+
+                        <!-- Origem -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_origem" class="form-label">Origem</label>
                             <select class="form-select" id="prod_origem" name="prod_origem">
@@ -232,8 +265,10 @@
                         </div>
                     </div>
 
-                    <!-- Linha 4: Características de Produção -->
+                    <!-- Linha 6: Características de Produção (Conservação, Congelamento, Fator de Produção) -->
                     <div class="row">
+
+                        <!-- Conservação -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_conservacao" class="form-label">Conservação</label>
                             <select class="form-select" id="prod_conservacao" name="prod_conservacao">
@@ -243,6 +278,8 @@
                                 <option value="EMPANADO">Empanado</option>
                             </select>
                         </div>
+
+                        <!-- Congelamento -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_congelamento" class="form-label">Congelamento</label>
                             <select class="form-select" id="prod_congelamento" name="prod_congelamento">
@@ -251,6 +288,8 @@
                                 <option value="IQF">IQF</option>
                             </select>
                         </div>
+
+                        <!-- Fator Produção -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_fator_producao" class="form-label">Fator de Produção (%)</label>
                             <input type="number" step="0.01" class="form-control" id="prod_fator_producao"
@@ -258,28 +297,34 @@
                         </div>
                     </div>
 
-                    <!-- Linha 5: Detalhes da Embalagem Primária -->
+                    <!-- Linha 7: Detalhes da Embalagem Primária (Peso, Total Peças, Código EAN-->
                     <div id="bloco-embalagem-primaria" class="row">
+
+                        <!-- Peso Embalagem-->
                         <div class="col-md-4 mb-3">
                             <label for="prod_peso_embalagem" class="form-label">Peso Embalagem (kg)</label>
                             <input type="text" class="form-control" id="prod_peso_embalagem" name="prod_peso_embalagem"
                                 placeholder="Ex: 2.000">
                         </div>
+
+                        <!-- Total de Peças Embalagem-->
                         <div class="col-md-4 mb-3">
                             <label for="prod_total_pecas" class="form-label">Total de Peças</label>
                             <input type="text" class="form-control" id="prod_total_pecas" name="prod_total_pecas"
                                 placeholder="Ex: 55 a 60">
                         </div>
+
+                        <!-- Código EAN 13 Embalagem-->
                         <div class="col-md-4 mb-3">
                             <label for="prod_ean13" class="form-label">Cód. Barras (EAN-13)</label>
                             <input type="text" class="form-control" id="prod_ean13" name="prod_ean13" maxlength="13">
                         </div>
                     </div>
 
-                    <!-- Linha 6: Código de Barras DUN para Embalagem Secundária, Validade em Meses e unidade de medida -->
+                    <!-- Linha 8: Validade em Meses, Unidade de Medida e Código de Barras DUN para Embalagem Secundária -->
                     <div class="row">
 
-                        <!-- VALIDADE PADRÃO -->
+                        <!-- Validade Padrão -->
                         <div class="col-md-4 mb-3">
                             <div class="form-group">
                                 <label for="prod_validade_meses" class="form-label">Validade Padrão (em
@@ -291,7 +336,7 @@
                             </div>
                         </div>
 
-                        <!-- UNIDADE DE MEDIDA -->
+                        <!-- Unidade de medida -->
                         <div class="col-md-4 mb-3">
                             <label for="prod_unidade" class="form-label">Unidade</label>
                             <select class="form-select" id="prod_unidade" name="prod_unidade">
@@ -304,14 +349,14 @@
                             </select>
                         </div>
 
-                        <!-- CÓDIGO DUN PARA EMBALAGENS SECUNDÁRIAS -->
+                        <!-- Código DUN para Embalagens Secundárias -->
                         <div id="bloco-dun14" class="col-md-4 mb-3" style="display: none;">
                             <label for="prod_dun14" class="form-label">Cód. Barras (DUN-14)</label>
                             <input type="text" class="form-control" id="prod_dun14" name="prod_dun14" maxlength="14">
                         </div>
 
                     </div>
-                </form>
+                </form> 
             </div>
             <div class="modal-footer">
                 <button type="submit" form="form-produto" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar

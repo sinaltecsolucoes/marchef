@@ -410,7 +410,9 @@
                             <label for="perfil_usu_tipo" class="form-label">Perfil de Acesso</label>
                             <select class="form-select bg-light" id="perfil_usu_tipo" name="usu_tipo" disabled>
                                 <option value="Admin">Administrador</option>
+                                <option value="Financeiro">Financeiro</option>
                                 <option value="Gerente">Gerente</option>
+                                <option value="Logistica">Logística</option>
                                 <option value="Producao">Produção</option>
                             </select>
                             <div class="form-text text-muted">
@@ -542,7 +544,7 @@
     <?php if ($paginaAtual === 'home'): ?>
         <?php if ($_SESSION['tipoUsuario'] === 'Admin'): ?>
             <script src="<?php echo BASE_URL; ?>/js/dashboard_admin.js"></script>
-        <?php elseif ($_SESSION['tipoUsuario'] === 'Gerente'): ?>
+        <?php elseif (in_array($_SESSION['tipoUsuario'], ['Gerente', 'Financeiro', 'Logistica'])): ?>
             <script src="<?php echo BASE_URL; ?>/js/dashboard_gerente.js"></script>
         <?php elseif ($_SESSION['tipoUsuario'] === 'Producao'): ?>
             <script src="<?php echo BASE_URL; ?>/js/dashboard_producao.js"></script>

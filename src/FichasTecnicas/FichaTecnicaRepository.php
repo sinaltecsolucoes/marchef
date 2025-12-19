@@ -95,6 +95,7 @@ class FichaTecnicaRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
     public function findAllForDataTable(array $params): array
     {
         try {

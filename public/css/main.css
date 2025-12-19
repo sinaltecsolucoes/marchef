@@ -81,6 +81,22 @@ body {
     margin-right: 30px;
 }
 
+.tabela-permissoes-wrapper {
+    max-height: 600px;
+    /* altura máxima da área visível */
+    overflow-y: auto;
+    /* ativa a barra de rolagem vertical */
+}
+
+.tabela-permissoes thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    /* cor de fundo para não ficar transparente */
+    z-index: 2;
+    /* garante que fique acima das células */
+}
+
 /* Reduz o tamanho da fonte da tabela de itens do lote */
 .table-sm-custom {
     font-size: 0.85rem;
@@ -272,4 +288,43 @@ qtd-a-finalizar {
 .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
     top: 50% !important;
     transform: translateY(-50%) !important;
+}
+
+/* ============================================================
+   ESTILO GLOBAL PARA CAMPOS BLOQUEADOS (DISABLED / READONLY)
+   Garante fundo cinza e cursor de bloqueio em todo o sistema.
+   ============================================================ */
+
+/* 1. Inputs, Textareas e Selects Padrão */
+input:disabled,
+input[readonly],
+textarea:disabled,
+textarea[readonly],
+select:disabled,
+select[readonly],
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: #e9ecef !important;
+    /* Cinza Padrão Bootstrap */
+    cursor: not-allowed !important;
+    /* Cursor "Proibido" */
+    opacity: 1;
+    /* Garante contraste total */
+    color: #6c757d;
+    /* Texto cinza escuro */
+}
+
+/* 2. Select2 (Dropdowns com pesquisa) */
+.select2-container--default.select2-container--disabled .select2-selection--single {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    color: #6c757d !important;
+    border-color: #ced4da !important;
+}
+
+/* 3. Labels de campos desabilitados (Opcional, mas recomendado) */
+.form-group.disabled label,
+fieldset[disabled] label {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
