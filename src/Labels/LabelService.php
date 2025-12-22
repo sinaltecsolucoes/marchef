@@ -26,30 +26,31 @@ class LabelService
 
     public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
     {
-        // 1. Buscar os dados do item com base no seu tipo.
+       
+       // 1. Buscar os dados do item com base no seu tipo.
         $dados = null;
         if ($itemType === 'producao') {
             $dados = $this->findDadosItemProducao($itemId, $clienteId);
         } elseif ($itemType === 'embalagem') {
-            // A função findDadosItemEmbalagem agora ignora o $clienteId,
-            // pois busca o cliente diretamente do lote de destino.
             $dados = $this->findDadosItemEmbalagem($itemId, null);
         }
 
+        // --- LOG 2: VERIFICAÇÃO DE DADOS ---
         if (!$dados) {
             throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
         }
-
+       
         // Agora, usamos o ID do cliente que foi encontrado na consulta.
         $clienteParaRegra = $dados['lote_cliente_id'] ?? $clienteId;
-
+       
         // 2. Usar o RegraRepository para descobrir qual template usar.
         $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteParaRegra);
 
+        // --- LOG 3: VERIFICAÇÃO DE REGRA ---
         if ($templateId === null) {
             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
         }
-
+       
         // 3. Buscar o conteúdo ZPL do template encontrado.
         $template = $this->templateRepo->find($templateId);
         if (!$template || empty($template['template_conteudo_zpl'])) {
@@ -149,7 +150,19 @@ class LabelService
             $comandoFonte = '^A0N,28,28';
 
         // --- LÓGICA DE CÓDIGOS DE BARRAS ---
-        $dadosBarras1D = ($dados['prod_tipo_embalagem'] === 'SECUNDARIA') ? $dados['prod_dun14'] : $dados['prod_ean13'];
+        // Usa o operador '??' para garantir que se for NULL, vire uma string vazia ''
+        $codBarraBruto = ($dados['prod_tipo_embalagem'] === 'SECUNDARIA')
+            ? ($dados['prod_dun14'] ?? '')
+            : ($dados['prod_ean13'] ?? '');
+
+        // Garante que seja string para não quebrar a função seguinte
+        $dadosBarras1D = (string) $codBarraBruto;
+
+        // Se estiver vazio, talvez você queira preencher com zeros para o código de barras não sair quebrado visualmente
+        if (empty($dadosBarras1D)) {
+            $dadosBarras1D = '00000000000000'; // Valor padrão para evitar erro visual no ZPL
+        }
+
         $dadosQrCode = $this->buildGs1DataString($dados, $dadosBarras1D);
 
         // --- LÓGICA DE CAMPOS COMPOSTOS ---
@@ -157,7 +170,7 @@ class LabelService
         $linhaProdutoClasse = implode(' ', $partesClasse);
         $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
         $linhaClassificacao = "CLASSIFICAÇÃO: " . $this->buildClassificationLine($dados);
-        $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
+        $linhaLote = ($dados['lote_num_completo'] ?? '');
         $dataFab = isset($dados['lote_data_fabricacao']) ? date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
         $dataVal = isset($dados['lote_item_data_val']) ? date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
         $linhaFabEValidade = "FAB.: {$dataFab}        VAL.: {$dataVal}";
@@ -174,9 +187,12 @@ class LabelService
             '{produto_nome}' => $nomeProduto,
             '{produto_cod_interno}' => $dados['prod_codigo'] ?? '',
             '{lote_completo}' => $dados['lote_num_completo'] ?? '',
-            '{cliente_nome}' => $dados['ent_razao_social'] ?? '',
+            'cliente_nome' => $dados['ent_razao_social'] ?? '',
+            'nomeCliente' => $dados['ent_razao_social'] ?? '',
             '{data_fabricacao}' => $dataFab,
             '{data_validade}' => $dataVal,
+            'fabricacaoLote' => $dataFab,
+            'validadeLote' => $dataVal,
             '{quantidade}' => $dados['lote_item_qtd'] ?? '',
             '{categoria}' => $dados['prod_categoria'] ?? '',
 
@@ -186,16 +202,59 @@ class LabelService
             '{linha_especie_origem}' => $linhaEspecieOrigem,
             '{linha_classificacao_unidades_peso}' => $linhaClassificacao,
             '{linha_lote_completo}' => $linhaLote,
+            'numeroLote' => $linhaLote,
             '{linha_fab_e_validade}' => $linhaFabEValidade,
             '{linha_peso_liquido}' => $linhaPesoLiquido,
             '{linha_cliente_endereco}' => $linhaEndereco,
+            'enderecoCliente' => $linhaEndereco,
             '{linha_cliente_cidade_uf_cep}' => $linhaCidadeUfCep,
+            'cidadeCliente' => $linhaCidadeUfCep,
             '{linha_cliente_cnpj_ie}' => $linhaCnpjIe,
+            'cnpjCliente' => $linhaCnpjIe,
 
             // Códigos de Barras
             '{00000000000000}' => $dadosBarras1D ?? '',
             '{00000000000001}' => $dadosQrCode ?? ''
         ];
+
+        // ==============================================================================
+        // 🛠️ DEBUG DE VARIÁVEIS (INSERIDO AQUI)
+        // ==============================================================================
+
+        // 1. O que o ZPL está pedindo? (Procura qualquer coisa entre chaves {Texto})
+        preg_match_all('/\{[a-zA-Z0-9_]+\}/', $zpl, $matches);
+        $variaveisZPL = array_unique($matches[0] ?? []);
+
+        // 2. O que o PHP está entregando?
+        $variaveisPHP = array_keys($placeholders);
+
+        // 3. O que está faltando? (ZPL pede, mas PHP não tem)
+        $faltando = array_diff($variaveisZPL, $variaveisPHP);
+
+        error_log("=== 🔍 DEBUG ETIQUETA: ANÁLISE DE PLACEHOLDERS ===");
+
+        if (!empty($faltando)) {
+            error_log("❌ CRÍTICO - Variáveis no ZPL sem correspondência no PHP:");
+            error_log(implode(", ", $faltando));
+            error_log("Dica: Adicione estas chaves no array \$placeholders.");
+        } else {
+            error_log("✅ SUCESSO - Todas as variáveis do ZPL foram encontradas no array PHP.");
+        }
+
+        // Verifica se o ZPL tem variáveis sem chaves (Erro comum de formatação)
+        // Ex: ^FDvalidadeLote^FS em vez de ^FD{validadeLote}^FS
+        if (strpos($zpl, '^FD{') === false && strpos($zpl, '^FV{') === false) {
+            error_log("⚠️ ALERTA: Não encontrei padrões como ^FD{...} no ZPL.");
+            error_log("   Verifique se o seu ZPL realmente usa chaves em volta das variáveis.");
+            // Loga um trecho para conferência
+            error_log("   Trecho ZPL: " . substr($zpl, 0, 150));
+        }
+
+        // Se quiser ver os valores exatos que estão sendo passados:
+        // error_log("📦 DADOS PHP FINAIS: " . print_r($placeholders, true));
+
+        error_log("==================================================");
+        // ==============================================================================
 
         return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
     }

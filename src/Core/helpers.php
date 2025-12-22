@@ -75,6 +75,7 @@ function sanitize_upper(array $data): array
         'ficha_medidas_emb_primaria',
         'ficha_medidas_emb_secundaria',
         'tipo_entrada_mp',
+        'itemType',
         
 
         // 3. Tokens e Sistema

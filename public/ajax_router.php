@@ -4,6 +4,8 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+$action = $_REQUEST['action'] ?? 'NENHUMA';
+error_log(" ROUTER ACIONADO. Ação: " . $action);
 
 
 require_once __DIR__ . '/../src/bootstrap.php';
@@ -95,6 +97,7 @@ try {
     $faturamentoRepo = new FaturamentoRepository($pdo); //Cria a instância do repositorio para Faturamento
     $condPagRepo = new CondicaoPagamentoRepository($pdo); //Cria a instância do repositorio para Condições de Pagamento
     $fichaTecnicaRepo = new FichaTecnicaRepository($pdo); //Cria a instância do repositorio para Fichas Técnicas
+    $labelService = new LabelService($pdo); // Cria a instância do Repositorio para Serviço de Etiquetas
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Erro de conexão com o banco de dados.']);
     exit;
@@ -341,7 +344,7 @@ switch ($action) {
 
     // --- ROTA DE ETIQUETAS ---  
     case 'imprimirEtiquetaLoteItem':
-        imprimirEtiquetaLoteItem($pdo);
+        imprimirEtiquetaLoteItem($pdo, $labelService);
         break;
 
     // --- ROTAS DE TEMPLATES DE ETIQUETA ---
@@ -1819,59 +1822,105 @@ function gerarRelatorioLote()
  * Ela recebe o tipo de item (producao ou embalagem) e o ID,
  * e passa para o LabelService para fazer o trabalho pesado.
  */
-function imprimirEtiquetaLoteItem(PDO $pdo)
+
+function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
 {
     try {
-        // 1. Validação dos dados de entrada
+        // 1. Validação
         $itemId = filter_input(INPUT_POST, 'itemId', FILTER_VALIDATE_INT);
-        $itemType = $_POST['itemType'] ?? ''; // 'producao' ou 'embalagem'
+        $itemType = $_POST['itemType'] ?? '';
         $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
-        if ($clienteId === false)
-            $clienteId = null;
+
+        // Tratamento para clienteId false/null
+        if (!$clienteId) $clienteId = null;
 
         if (!$itemId || !in_array($itemType, ['producao', 'embalagem'])) {
-            throw new Exception("Dados inválidos para gerar etiqueta.");
+            throw new Exception("Dados inválidos (ID ou Tipo) para gerar etiqueta.");
         }
 
-        // 2. Chama o serviço de etiquetas (que precisará ser adaptado)
-        $labelService = new App\Labels\LabelService($pdo);
-
+        // 2. Chama o serviço 
         $labelData = $labelService->gerarZplParaItemLote($itemId, $itemType, $clienteId);
 
         if ($labelData === null || empty($labelData['zpl'])) {
-            throw new Exception('Não foi possível gerar o ZPL. Verifique se o item existe e o template está configurado.');
+            throw new Exception('O serviço retornou ZPL vazio. Verifique logs anteriores.');
         }
 
-        // 3. O resto do processo (converter ZPL para PDF e salvar) permanece o mesmo.
         $zpl = $labelData['zpl'];
         $filename = $labelData['filename'];
 
-        $curl = curl_init('http://api.labelary.com/v1/printers/12dpmm/labels/4x7/0/');
+        // =================================================================
+        // LÓGICA DINÂMICA: Detectar tamanho baseado no ZPL
+        // =================================================================
+
+        // 1. Densidade da impressora física (203dpi é o padrão)
+        $dpi = 203;
+        $dpmm = 8; // Equivalente a 8 dots per mm para a URL do Labelary (8 pontos por milimetro)
+
+        // 2. Tenta encontrar a largura em pontos (^PW)
+        // O padrão regex busca por ^PW seguido de números
+        if (preg_match('/\^PW(\d+)/', $zpl, $matchLargura)) {
+            $larguraDots = (int)$matchLargura[1];
+        } else {
+            $larguraDots = 718; // Fallback: largura padrão se não tiver ^PW (aprox 9cm)
+        }
+
+        // 3. Tenta encontrar a altura em pontos (^LL)
+        if (preg_match('/\^LL(\d+)/', $zpl, $matchAltura)) {
+            $alturaDots = (int)$matchAltura[1];
+        } else {
+            $alturaDots = 479; // Fallback: altura padrão se não tiver ^LL (aprox 6cm)
+        }
+
+        // 4. Converte Pontos para Polegadas (Dots / DPI)
+        // O Labelary exige o formato em polegadas (ex: 4x6)
+        $larguraInches = number_format($larguraDots / $dpi, 2, '.', '');
+        $alturaInches  = number_format($alturaDots / $dpi, 2, '.', '');
+
+        // Log para conferência (pode remover depois)
+        error_log("📏 Tamanho Detectado: {$larguraDots}x{$alturaDots} dots -> {$larguraInches}x{$alturaInches} pol");
+
+        // 5. Monta a URL Dinâmica
+        $apiUrl = "http://api.labelary.com/v1/printers/{$dpmm}dpmm/labels/{$larguraInches}x{$alturaInches}/0/";
+        // =================================================================
+
+        // 3. Conversão na API Labelary (PONTO CRÍTICO DE REDE)
+        $curl = curl_init($apiUrl); 
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, $zpl);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        // curl_setopt($curl, CURLOPT_TIMEOUT, 10); // Dica: Adicione timeout para não travar o servidor
         curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/pdf']);
         $pdfContent = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-        if (curl_getinfo($curl, CURLINFO_HTTP_CODE) != 200) {
-            throw new Exception('Erro da API Labelary: ' . $pdfContent);
+        if ($httpCode != 200) {
+            $erroCurl = curl_error($curl);
+            throw new Exception('Erro ao converter na API Labelary. Código: ' . $httpCode);
         }
-        curl_close($curl);
+        // curl_close($curl);
 
+        // 4. Salvar Arquivo (PONTO CRÍTICO DE PERMISSÃO)
         $tempDir = __DIR__ . '/temp_labels/';
         if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0775, true);
+            if (!mkdir($tempDir, 0775, true)) {
+                throw new Exception("Falha ao criar pasta de etiquetas temporárias. Verifique permissões.");
+            }
         }
+
         $filePath = $tempDir . $filename;
-        file_put_contents($filePath, $pdfContent);
+        if (file_put_contents($filePath, $pdfContent) === false) {
+            throw new Exception("Falha ao salvar o arquivo PDF no disco. Verifique permissões.");
+        }
+
         $publicUrl = 'temp_labels/' . $filename;
 
         echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
-    } catch (Exception $e) {
-        // Captura qualquer erro e envia uma resposta JSON amigável
+    } catch (Throwable $e) { // Throwable pega tanto Exception quanto Error (erros fatais)
+        error_log($e->getTraceAsString());
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
     }
 }
+
 
 // --- FUNÇÕES DE CONTROLE PARA TEMPLATES DE ETIQUETA ---
 
@@ -2039,7 +2088,8 @@ function criarBackup()
         $dbConfig = require __DIR__ . '/../config/database.php';
 
         // 2. Passa a configuração para o serviço ao criá-lo (Injeção de Dependência).
-        $backupService = new BackupService($dbConfig);
+        // $backupService = new BackupService($dbConfig);
+        $backupService = new BackupService();
         $filename = $backupService->gerarBackup();
 
         echo json_encode(['success' => true, 'filename' => $filename]);
