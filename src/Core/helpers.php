@@ -88,6 +88,9 @@ function sanitize_upper(array $data): array
         'ficha_id',
         'resumo_id', // IDs geralmente não precisam de uppercase
         'html_content', // Conteúdo rico
+        'template_conteudo_zpl', 
+        'template_descricao',    
+        'zpl_file_upload',
 
         // 4. Parâmetros do DataTables (ESSENCIAIS para não quebrar as listas)
         'draw',

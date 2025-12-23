@@ -81,7 +81,7 @@ class LabelService
                     lnh.lote_data_fabricacao,
                     lnp.item_prod_data_validade as lote_item_data_val,
                     lnp.item_prod_quantidade as lote_item_qtd,
-                    c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
+                    c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual, c.ent_nome_fantasia,
                     end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep
                 FROM tbl_lotes_novo_producao lnp
                 JOIN tbl_lotes_novo_header lnh ON lnp.item_prod_lote_id = lnh.lote_id
@@ -111,7 +111,7 @@ class LabelService
                 
                 -- Busca os dados do cliente do Lote de Destino, se houver
                 lnh.lote_cliente_id,
-                c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual,
+                c.ent_razao_social, c.ent_cnpj, c.ent_inscricao_estadual, c.ent_nome_fantasia,
                 end.end_logradouro, end.end_numero, end.end_complemento, end.end_bairro, end.end_cidade, end.end_uf, end.end_cep,
 
                 -- Lógica para a data de validade
@@ -184,11 +184,13 @@ class LabelService
         // --- MAPA COMPLETO DE PLACEHOLDERS ---
         $placeholders = [
             // Simples
-            '{produto_nome}' => $nomeProduto,
+            'nomeProduto' => $nomeProduto,
             '{produto_cod_interno}' => $dados['prod_codigo'] ?? '',
-            '{lote_completo}' => $dados['lote_num_completo'] ?? '',
+            'codigoProduto' => $dados['prod_codigo_interno'] ?? '',
+            'linhaLote' => $dados['lote_num_completo'] ?? '',
             'cliente_nome' => $dados['ent_razao_social'] ?? '',
             'nomeCliente' => $dados['ent_razao_social'] ?? '',
+            'nomeFantasia' => $dados['ent_nome_fantasia'] ?? '',
             '{data_fabricacao}' => $dataFab,
             '{data_validade}' => $dataVal,
             'fabricacaoLote' => $dataFab,
@@ -198,13 +200,13 @@ class LabelService
 
             // Compostos e de Negócio
             '{fonte_produto_nome}' => $comandoFonte,
-            '{linha_produto_classe}' => $linhaProdutoClasse,
-            '{linha_especie_origem}' => $linhaEspecieOrigem,
-            '{linha_classificacao_unidades_peso}' => $linhaClassificacao,
+            'linhaProduto' => $linhaProdutoClasse,
+            'linhaEspecie' => $linhaEspecieOrigem,
+            'linhaClassificacao' => $linhaClassificacao,
             '{linha_lote_completo}' => $linhaLote,
             'numeroLote' => $linhaLote,
-            '{linha_fab_e_validade}' => $linhaFabEValidade,
-            '{linha_peso_liquido}' => $linhaPesoLiquido,
+            'linhaDatas' => $linhaFabEValidade,
+            'linhaPeso' => $linhaPesoLiquido,
             '{linha_cliente_endereco}' => $linhaEndereco,
             'enderecoCliente' => $linhaEndereco,
             '{linha_cliente_cidade_uf_cep}' => $linhaCidadeUfCep,
@@ -213,8 +215,8 @@ class LabelService
             'cnpjCliente' => $linhaCnpjIe,
 
             // Códigos de Barras
-            '{00000000000000}' => $dadosBarras1D ?? '',
-            '{00000000000001}' => $dadosQrCode ?? ''
+            '1000' => $dadosBarras1D ?? '',
+            '1001' => $dadosQrCode ?? ''
         ];
 
         // ==============================================================================

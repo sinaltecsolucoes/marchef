@@ -114,7 +114,7 @@ class TemplateRepository
     /**
      * Atualiza um template de etiqueta existente.
      */
-    public function update(int $id, array $data): bool
+    /*public function update(int $id, array $data): bool
     {
         $dadosAntigos = $this->find($id);
         if (!$dadosAntigos)
@@ -142,7 +142,55 @@ class TemplateRepository
         }
 
         return $success;
+    }*/
+
+    /**
+     * Atualiza um template de etiqueta existente.
+     */
+    public function update(int $id, array $data): bool
+    {
+        $dadosAntigos = $this->find($id);
+        if (!$dadosAntigos) {
+            return false;
+        }
+
+        // 1. Lógica de Prioridade Invertida:
+        // Se houver texto na textarea (que vem via $_POST), usamos ele, pois o JS já preencheu
+        // com o arquivo ou o usuário digitou manualmente.
+        if (!empty($data['template_conteudo_zpl'])) {
+            $zplContent = $data['template_conteudo_zpl'];
+        }
+        // Fallback: Só olha para o arquivo se a textarea estiver vazia
+        elseif (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
+            $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
+        } else {
+            $zplContent = ''; // Se não tem nada, salva vazio ou mantém o antigo (depende da regra de negócio)
+        }
+
+        // 2. Aplica o processamento (Placeholders e Limpeza)
+        $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
+        $zplContent = str_replace("\0", '', $zplContent);
+
+        // 3. Executa a atualização
+        $sql = "UPDATE tbl_etiqueta_templates SET template_nome = :nome, template_descricao = :descricao, template_conteudo_zpl = :zpl WHERE template_id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        $success = $stmt->execute([
+            ':id' => $id,
+            ':nome' => $data['template_nome'],
+            ':descricao' => $data['template_descricao'] ?? null,
+            ':zpl' => $zplContent
+        ]);
+
+        if ($success) {
+            // Log para auditoria
+            $data['zpl_processado'] = $zplContent;
+            $this->auditLogger->log('UPDATE', $id, 'tbl_etiqueta_templates', $dadosAntigos, $data);
+        }
+
+        return $success;
     }
+
+
     /**
      * Exclui um template de etiqueta.
      */
@@ -183,5 +231,4 @@ class TemplateRepository
 
         return $zplContent;
     }
-
 }
