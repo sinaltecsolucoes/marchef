@@ -30,8 +30,9 @@
                 <thead>
                     <tr>
                         <th class="text-center align-middle">Cliente</th>
+                        <th class="text-center align-middle">Cód.</th>
                         <th class="text-center align-middle">Produto</th>
-                        <th class="text-center align-middle">Template Aplicado</th>
+                        <th class="text-center align-middle">Modelo Aplicado</th>
                         <th class="text-center align-middle">Prioridade</th>
                         <th class="text-center align-middle" width="20%">Ações</th>
                     </tr>
@@ -70,7 +71,7 @@
                             style="width:100%;"></select>
                     </div>
                     <div class="mb-3">
-                        <label for="regra_template_id" class="form-label">Aplicar o Template <span
+                        <label for="regra_template_id" class="form-label">Aplicar o Modelo <span
                                 class="text-danger">*</span></label>
                         <select class="form-select" id="regra_template_id" name="regra_template_id" style="width:100%;"
                             required></select>

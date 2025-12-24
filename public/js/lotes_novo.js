@@ -346,7 +346,10 @@ $(document).ready(function () {
                 $('#lote_viveiro_novo').val(header.lote_viveiro);
                 $('#lote_completo_calculado_novo').val(header.lote_completo_calculado);
 
-                $('#btn-salvar-lote-novo-header').html('<i class="fas fa-save me-1"></i> Salvar Alterações');
+                const $btnSalvar = $('#btn-salvar-lote-novo-header'); // Garante a seleção
+                $btnSalvar.html('<i class="fas fa-save me-1"></i> Salvar Alterações');
+                $btnSalvar.prop('disabled', false); // Reativa o botão para salvar alterações
+
                 $('#modal-lote-novo-label').text('Editar Lote: ' + header.lote_completo_calculado);
 
                 // --- LÓGICA DE HABILITAÇÃO DAS ABAS ---
@@ -845,38 +848,6 @@ $(document).ready(function () {
             aplicarModoMateriaPrima();
         }
     }
-
-    /* function bloquearFormularioRecebimento() {
- 
-         loteBloqueado = true;
- 
-         // Bloqueia radios
-         $('input[name="tipo_entrada_mp"]').prop('disabled', true);
- 
-         // Bloqueia selects (com trigger para Select2 atualizar visual)
-         $('#item_receb_produto_id', '#item_receb_lote_origem_id')
-             .prop('disabled', true)
-             .trigger('change.select2');  // Atualiza o container do Select2
- 
-         // Bloqueia inputs de texto → readonly (CSS já aplica fundo cinza)
-         $('#item_receb_nota_fiscal \
-             #item_receb_peso_nota_fiscal, \
-             #item_receb_total_caixas, \
-             #item_receb_peso_medio_ind, \
-             [name="item_receb_gram_faz"], \
-             [name="item_receb_gram_lab"]')
-             .prop('readonly', true);
- 
-         // Bloqueia botão
-         $('#btn-adicionar-item-recebimento')
-             .prop('disabled', true)
-             .removeClass('btn-success btn-warning')
-             .addClass('btn-secondary')
-             .text('Visualizando');  // Muda texto para reforçar
-       
-         $('#form-recebimento-detalhe').addClass('modo-leitura');
- 
-     } */
 
     function bloquearFormularioRecebimento() {
         console.log('Bloqueando formulário de recebimento (Modo Leitura)');

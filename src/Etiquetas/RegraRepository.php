@@ -39,13 +39,18 @@ class RegraRepository
 
             $whereClause = '';
             if (!empty($searchValue)) {
-                $whereClause = " WHERE p.prod_descricao LIKE :search_produto OR e.ent_razao_social LIKE :search_cliente OR t.template_nome LIKE :search_template";
+                $whereClause = " WHERE 
+                                    p.prod_descricao LIKE :search_produto OR 
+                                    p.prod_codigo_interno LIKE :search_codigo OR 
+                                    e.ent_razao_social LIKE :search_cliente OR 
+                                    t.template_nome LIKE :search_template";
             }
 
             $stmtFiltered = $this->pdo->prepare("SELECT COUNT(r.regra_id) $baseQuery $whereClause");
             if (!empty($searchValue)) {
                 $stmtFiltered->execute([
                     ':search_produto' => '%' . $searchValue . '%',
+                    ':search_codigo'  => '%' . $searchValue . '%',
                     ':search_cliente' => '%' . $searchValue . '%',
                     ':search_template' => '%' . $searchValue . '%'
                 ]);
@@ -56,6 +61,7 @@ class RegraRepository
 
             $sqlData = "SELECT 
                             r.regra_id,
+                            p.prod_codigo_interno,
                             COALESCE(p.prod_descricao, 'Todos os Produtos') AS produto_nome,
                             COALESCE(e.ent_razao_social, 'Todos os Clientes') AS cliente_nome,
                             t.template_nome,
@@ -70,6 +76,7 @@ class RegraRepository
             $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
             if (!empty($searchValue)) {
                 $stmt->bindValue(':search_produto', '%' . $searchValue . '%');
+                $stmt->bindValue(':search_codigo', '%' . $searchValue . '%');
                 $stmt->bindValue(':search_cliente', '%' . $searchValue . '%');
                 $stmt->bindValue(':search_template', '%' . $searchValue . '%');
             }

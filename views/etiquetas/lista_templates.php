@@ -2,7 +2,7 @@
 // /views/etiquetas/lista_templates.php
 ?>
 
-<h4 class="fw-bold mb-3">Gestão de Templates de Etiqueta</h4>
+<h4 class="fw-bold mb-3">Gestão de Modelos de Etiqueta</h4>
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
@@ -11,9 +11,9 @@
     <div class="card-body">
         <div class="row align-items-center mb-3">
             <div class="col-md-6">
-                <p>Gerencie todos os templates de etiquetas</p>
+                <p>Gerencie todos os modelos de etiquetas</p>
                 <button class="btn btn-primary" id="btn-adicionar-template">
-                    <i class="fas fa-plus me-2"></i> Adicionar Novo Template
+                    <i class="fas fa-plus me-2"></i> Adicionar Novo Modelo
                 </button>
             </div>
         </div>
@@ -24,14 +24,14 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Registros de Templates</h6>
+        <h6 class="m-0 font-weight-bold text-primary">Registros de Modelos</h6>
     </div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-bordered table-hover" id="tabela-templates" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center align-middle">Nome do Template</th>
+                        <th class="text-center align-middle">Nome do Modelo</th>
                         <th class="text-center align-middle">Descrição</th>
                         <th class="text-center align-middle">Data de Criação</th>
                         <th class="text-center align-middle">Ações</th>
@@ -48,7 +48,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modal-template-label">Adicionar Novo Template</h5>
+                <h5 class="modal-title" id="modal-template-label">Adicionar Novo Modelo</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <form id="form-template" enctype="multipart/form-data">
@@ -60,7 +60,7 @@
                     <div id="mensagem-template-modal" class="mb-3"></div>
 
                     <div class="mb-3">
-                        <label for="template_nome" class="form-label">Nome do Template <span
+                        <label for="template_nome" class="form-label">Nome do Modelo <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="template_nome" name="template_nome" required>
                     </div>
@@ -87,7 +87,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar
-                        Template</button>
+                        Modelo</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
                             class="fas fa-times me-2"></i>Fechar</button>
                 </div>

@@ -85,7 +85,7 @@
                                                     data-bs-toggle="dropdown">Etiquetas</a>
                                                 <ul class="dropdown-menu dropdown-submenu">
                                                     <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
-                                                        <li><a class="dropdown-item" href="index.php?page=templates">Templates de
+                                                        <li><a class="dropdown-item" href="index.php?page=templates">Modelos de
                                                                 Etiqueta</a></li>
                                                     <?php endif; ?>
                                                     <?php if (in_array('regras', $paginasPermitidasUsuario)): ?>

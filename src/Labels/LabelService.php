@@ -26,8 +26,8 @@ class LabelService
 
     public function gerarZplParaItemLote(int $itemId, string $itemType, ?int $clienteId): ?array
     {
-       
-       // 1. Buscar os dados do item com base no seu tipo.
+
+        // 1. Buscar os dados do item com base no seu tipo.
         $dados = null;
         if ($itemType === 'producao') {
             $dados = $this->findDadosItemProducao($itemId, $clienteId);
@@ -39,10 +39,10 @@ class LabelService
         if (!$dados) {
             throw new Exception("Dados para a etiqueta do item ID {$itemId} (Tipo: {$itemType}) não foram encontrados.");
         }
-       
+
         // Agora, usamos o ID do cliente que foi encontrado na consulta.
         $clienteParaRegra = $dados['lote_cliente_id'] ?? $clienteId;
-       
+
         // 2. Usar o RegraRepository para descobrir qual template usar.
         $templateId = $this->regraRepo->findTemplateIdByRule($dados['prod_codigo'], $clienteParaRegra);
 
@@ -50,7 +50,7 @@ class LabelService
         if ($templateId === null) {
             throw new Exception("Nenhuma regra de etiqueta aplicável foi encontrada para esta combinação de produto e cliente.");
         }
-       
+
         // 3. Buscar o conteúdo ZPL do template encontrado.
         $template = $this->templateRepo->find($templateId);
         if (!$template || empty($template['template_conteudo_zpl'])) {
@@ -149,14 +149,53 @@ class LabelService
         else
             $comandoFonte = '^A0N,28,28';
 
+
+
         // --- LÓGICA DE CÓDIGOS DE BARRAS ---
         // Usa o operador '??' para garantir que se for NULL, vire uma string vazia ''
-        $codBarraBruto = ($dados['prod_tipo_embalagem'] === 'SECUNDARIA')
+  /*     $codBarraBruto = ($dados['prod_tipo_embalagem'] === 'SECUNDARIA')
             ? ($dados['prod_dun14'] ?? '')
             : ($dados['prod_ean13'] ?? '');
 
         // Garante que seja string para não quebrar a função seguinte
-        $dadosBarras1D = (string) $codBarraBruto;
+        $dadosBarras1D = (string) $codBarraBruto;*/
+
+
+        // --- LÓGICA DE CÓDIGOS DE BARRAS ---
+        
+        // 1. Definição do Tipo e Valores Brutos
+        $tipoEmbalagem = $dados['prod_tipo_embalagem'] ?? 'INDEFINIDO';
+        $eanDb = $dados['prod_ean13'] ?? '';
+        $dunDb = $dados['prod_dun14'] ?? '';
+
+        // --- DEBUG: Salvar no log de erros do PHP (verifique error.log ou storage/logs) ---
+        error_log("========== DEBUG ETIQUETA ITEM ID: " . ($dados['prod_codigo'] ?? 'N/A') . " ==========");
+        error_log("Produto: " . ($dados['prod_descricao'] ?? 'Sem Nome'));
+        error_log("Tipo Embalagem Detectado: " . $tipoEmbalagem);
+        error_log("Valor bruto EAN (DB): '" . $eanDb . "'");
+        error_log("Valor bruto DUN (DB): '" . $dunDb . "'");
+
+        // 2. Seleção Lógica
+        if ($tipoEmbalagem === 'SECUNDARIA') {
+            // Se for secundária, usa o DUN. Se o DUN estiver vazio, tenta fallback para o EAN?
+            // Por enquanto, mantemos a lógica original estrita, mas com trim()
+            $codBarraBruto = $dunDb;
+            error_log("Selecionado: DUN");
+        } else {
+            // Primária ou qualquer outro caso
+            $codBarraBruto = $eanDb;
+            error_log("Selecionado: EAN");
+        }
+
+        // 3. Higienização (Importante: remove espaços em branco e quebras de linha que causam erros no ZPL)
+        $dadosBarras1D = trim((string) $codBarraBruto);
+        
+        error_log("Valor Final Enviado para ZPL: '" . $dadosBarras1D . "'");
+        error_log("==================================================================");
+
+
+
+
 
         // Se estiver vazio, talvez você queira preencher com zeros para o código de barras não sair quebrado visualmente
         if (empty($dadosBarras1D)) {
@@ -170,7 +209,9 @@ class LabelService
         $linhaProdutoClasse = implode(' ', $partesClasse);
         $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
         $linhaClassificacao = "CLASSIFICAÇÃO: " . $this->buildClassificationLine($dados);
-        $linhaLote = ($dados['lote_num_completo'] ?? '');
+        $linhaDescricao = "CLASSIFICAÇÃO: " . $this->construirLinhaClassificacao($dados);
+        $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
+        $codigoInternoProduto = "COD.: " . ($dados['prod_codigo_interno'] ?? '');
         $dataFab = isset($dados['lote_data_fabricacao']) ? date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
         $dataVal = isset($dados['lote_item_data_val']) ? date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
         $linhaFabEValidade = "FAB.: {$dataFab}        VAL.: {$dataVal}";
@@ -186,8 +227,8 @@ class LabelService
             // Simples
             'nomeProduto' => $nomeProduto,
             '{produto_cod_interno}' => $dados['prod_codigo'] ?? '',
-            'codigoProduto' => $dados['prod_codigo_interno'] ?? '',
-            'linhaLote' => $dados['lote_num_completo'] ?? '',
+            'codigoProduto' => $codigoInternoProduto,
+            'numeroLote' => $dados['lote_num_completo'] ?? '',
             'cliente_nome' => $dados['ent_razao_social'] ?? '',
             'nomeCliente' => $dados['ent_razao_social'] ?? '',
             'nomeFantasia' => $dados['ent_nome_fantasia'] ?? '',
@@ -203,8 +244,9 @@ class LabelService
             'linhaProduto' => $linhaProdutoClasse,
             'linhaEspecie' => $linhaEspecieOrigem,
             'linhaClassificacao' => $linhaClassificacao,
+            'linhaDescricao' => $linhaDescricao,
             '{linha_lote_completo}' => $linhaLote,
-            'numeroLote' => $linhaLote,
+            'linhaLote' => $linhaLote,
             'linhaDatas' => $linhaFabEValidade,
             'linhaPeso' => $linhaPesoLiquido,
             '{linha_cliente_endereco}' => $linhaEndereco,
@@ -218,45 +260,6 @@ class LabelService
             '1000' => $dadosBarras1D ?? '',
             '1001' => $dadosQrCode ?? ''
         ];
-
-        // ==============================================================================
-        // 🛠️ DEBUG DE VARIÁVEIS (INSERIDO AQUI)
-        // ==============================================================================
-
-        // 1. O que o ZPL está pedindo? (Procura qualquer coisa entre chaves {Texto})
-        preg_match_all('/\{[a-zA-Z0-9_]+\}/', $zpl, $matches);
-        $variaveisZPL = array_unique($matches[0] ?? []);
-
-        // 2. O que o PHP está entregando?
-        $variaveisPHP = array_keys($placeholders);
-
-        // 3. O que está faltando? (ZPL pede, mas PHP não tem)
-        $faltando = array_diff($variaveisZPL, $variaveisPHP);
-
-        error_log("=== 🔍 DEBUG ETIQUETA: ANÁLISE DE PLACEHOLDERS ===");
-
-        if (!empty($faltando)) {
-            error_log("❌ CRÍTICO - Variáveis no ZPL sem correspondência no PHP:");
-            error_log(implode(", ", $faltando));
-            error_log("Dica: Adicione estas chaves no array \$placeholders.");
-        } else {
-            error_log("✅ SUCESSO - Todas as variáveis do ZPL foram encontradas no array PHP.");
-        }
-
-        // Verifica se o ZPL tem variáveis sem chaves (Erro comum de formatação)
-        // Ex: ^FDvalidadeLote^FS em vez de ^FD{validadeLote}^FS
-        if (strpos($zpl, '^FD{') === false && strpos($zpl, '^FV{') === false) {
-            error_log("⚠️ ALERTA: Não encontrei padrões como ^FD{...} no ZPL.");
-            error_log("   Verifique se o seu ZPL realmente usa chaves em volta das variáveis.");
-            // Loga um trecho para conferência
-            error_log("   Trecho ZPL: " . substr($zpl, 0, 150));
-        }
-
-        // Se quiser ver os valores exatos que estão sendo passados:
-        // error_log("📦 DADOS PHP FINAIS: " . print_r($placeholders, true));
-
-        error_log("==================================================");
-        // ==============================================================================
 
         return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
     }
@@ -298,12 +301,76 @@ class LabelService
 
         // --- ETAPA 3: Formata e Adiciona o Peso (se encontrado) ---
         if ($pesoParaFormatar > 0) {
-            $pesoFormatado = str_replace('.', ',', (string) $pesoParaFormatar);
-            $partes[] = "UNIDADES/" . $pesoFormatado . "kg";
+            $pesoFormatado = '';
+            $sufixo = '';
+
+            if ($pesoParaFormatar < 1) {
+                // Lógica para gramas (< 1kg)
+                // Multiplica por 1000 (ex.: 0.300 vira 300)
+                $valorGramas = $pesoParaFormatar * 1000;
+
+                // Convertemos para float e depois string para remover zeros decimais  desnecessários (300.0 vira 300)
+                $pesoFormatado = (string)((float)$valorGramas);
+                $sufixo = 'g';
+            } else {
+                // Lógica para quilos (>=1kg)
+                // Mantém formatação original com vírgula
+                $pesoFormatado = str_replace('.', ',', (string) $pesoParaFormatar);
+                $sufixo = 'kg';
+            }
+            $partes[] = "UNIDADES/" . $pesoFormatado . $sufixo;
         }
 
         return implode(' ', $partes);
     }
+
+    private function construirLinhaClassificacao(array $produto): string
+    {
+        $partes = [];
+        $pesoParaFormatar = 0;
+
+        // --- ETAPA 1: Adiciona Peças (Comum a ambos) ---
+        if (!empty($produto['prod_total_pecas'])) {
+            $partes[] = $produto['prod_total_pecas'];
+        }
+
+        // --- ETAPA 2: Encontra o Peso Correto ---
+        if ($produto['prod_tipo_embalagem'] === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
+            // Se for SECUNDÁRIA, busca o peso do PRIMÁRIO
+            $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
+            if ($produtoPrimario) {
+                $pesoParaFormatar = (float) ($produtoPrimario['prod_peso_embalagem'] ?? 0);
+            }
+        } else if ($produto['prod_tipo_embalagem'] === 'PRIMARIA') {
+            // Se for PRIMÁRIA, usa o seu PRÓPRIO peso
+            $pesoParaFormatar = (float) ($produto['prod_peso_embalagem'] ?? 0);
+        }
+
+        // --- ETAPA 3: Formata e Adiciona o Peso (se encontrado) ---
+        if ($pesoParaFormatar > 0) {
+            $pesoFormatado = '';
+            $sufixo = '';
+
+            if ($pesoParaFormatar < 1) {
+                // Lógica para gramas (< 1kg)
+                // Multiplica por 1000 (ex.: 0.300 vira 300)
+                $valorGramas = $pesoParaFormatar * 1000;
+
+                // Convertemos para float e depois string para remover zeros decimais  desnecessários (300.0 vira 300)
+                $pesoFormatado = (string)((float)$valorGramas);
+                $sufixo = 'g';
+            } else {
+                // Lógica para quilos (>=1kg)
+                // Mantém formatação original com vírgula
+                $pesoFormatado = str_replace('.', ',', (string) $pesoParaFormatar);
+                $sufixo = 'kg';
+            }
+            $partes[] = "UNIDADES/" . $pesoFormatado . $sufixo;
+        }
+
+        return implode(' ', $partes);
+    }
+
 
     private function buildGs1DataString(array $dados, string $gtin): string
     {

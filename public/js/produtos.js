@@ -72,6 +72,9 @@ $(document).ready(function () {
                 subtipoFormatado = 'DESCASCADO EVISCERADO';
                 break;
             case 'P&D C/ CAUDA':
+            case 'P&D TAIL ON':
+            case 'P&D TAIL-ON':
+            case 'P&D TAILON':
             case 'PPV C/ CAUDA':
                 subtipoFormatado = 'DESCASCADO EVISCERADO COM CAUDA';
                 break;

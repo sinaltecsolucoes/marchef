@@ -79,6 +79,13 @@ $(document).ready(function () {
                 "className": "align-middle"
             },
             {
+                "data": "prod_codigo_interno",
+                "className": "text-center align-middle",
+                "render": function (data) {
+                    return data ? data : '-'; // Mostra traço se for nulo (regra "Todos os Produtos")
+                }
+            },
+            {
                 "data": "produto_nome",
                 "className": "align-middle"
             },

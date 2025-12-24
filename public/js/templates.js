@@ -42,7 +42,8 @@ $(document).ready(function () {
     $('#btn-adicionar-template').on('click', function () {
         $form[0].reset();
         $('#template_id').val('');
-        $('#modal-template-label').text('Adicionar Novo Template');
+        $('#modal-template-label').text('Adicionar Novo Modelo');
+        $('#form-template').find('button[type="submit"]').html('<i class="fas fa-save me-2"></i>Salvar Modelo');
         $('#mensagem-template-modal').html('');
         $modal.modal('show');
     });
@@ -64,14 +65,15 @@ $(document).ready(function () {
                 $('#template_descricao').val(data.template_descricao);
                 $('#template_conteudo_zpl').val(data.template_conteudo_zpl);
 
-                $('#modal-template-label').text('Editar Template');
+                $('#modal-template-label').text('Editar Modelo');
+                $('#form-template').find('button[type="submit"]').html('<i class="fas fa-save me-2"></i>Salvar Edição');
                 $modal.modal('show');
             } else {
                 notificacaoErro('Erro ao Carregar', response.message);
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log('AJAX Fail Details:', textStatus, errorThrown, jqXHR.responseText);
-            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do template. Detalhes: ' + (jqXHR.responseText || 'Resposta vazia'));
+            notificacaoErro('Erro de Comunicação', 'Não foi possível carregar os dados do modelo. Detalhes: ' + (jqXHR.responseText || 'Resposta vazia'));
         });
     });
 
@@ -79,8 +81,8 @@ $(document).ready(function () {
     $('#tabela-templates').on('click', '.btn-excluir-template', function () {
         const id = $(this).data('id');
         confirmacaoAcao(
-            'Excluir Template?',
-            'Tem a certeza que deseja excluir este template? Esta ação não pode ser desfeita.'
+            'Excluir Modelo?',
+            'Tem a certeza que deseja excluir este modelo? Esta ação não pode ser desfeita.'
         ).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -96,7 +98,7 @@ $(document).ready(function () {
                         notificacaoErro('Erro!', response.message);
                     }
                 }).fail(function () {
-                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o template.');
+                    notificacaoErro('Erro de Comunicação', 'Não foi possível excluir o modelo.');
                 });
             }
         });
@@ -125,7 +127,7 @@ $(document).ready(function () {
                 notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
-            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o template.');
+            notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o modelo.');
         }).always(function () {
             $button.prop('disabled', false);
         });
@@ -143,7 +145,7 @@ $(document).ready(function () {
         reader.onload = function (e) {
             const content = e.target.result;
             $('#template_conteudo_zpl').val(content); // Preenche a textarea com o conteúdo do arquivo
-            notificacaoSucesso('Sucesso!', 'Conteúdo do arquivo carregado na caixa de texto.');
+            //notificacaoSucesso('Sucesso!', 'Conteúdo do arquivo carregado na caixa de texto.');
         };
 
         reader.onerror = function () {
