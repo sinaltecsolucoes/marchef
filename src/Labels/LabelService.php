@@ -257,8 +257,8 @@ class LabelService
             'cnpjCliente' => $linhaCnpjIe,
 
             // Códigos de Barras
-            '1000' => $dadosBarras1D ?? '',
-            '1001' => $dadosQrCode ?? ''
+            '12345678' => $dadosBarras1D ?? '',
+            '10qrcode' => $dadosQrCode ?? ''
         ];
 
         return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
