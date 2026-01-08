@@ -11,7 +11,8 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <h6 class="m-0 font-weight-bold text-primary">1. Selecionar Ordem de Expedição</h6>
 
-        <?php if (!$modoEdicao): // Só mostra este botão se NÃO estiver em modo de edição (modo criação) ?>
+        <?php if (!$modoEdicao): // Só mostra este botão se NÃO estiver em modo de edição (modo criação) 
+        ?>
             <a href="index.php?page=faturamentos_listar" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Voltar para a Lista
             </a>
@@ -39,7 +40,7 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
         <h6 class="m-0 font-weight-bold text-primary">Dados de Transporte</h6>
         <div>
             <?php if ($modoEdicao): ?>
-                    <a href="index.php?page=relatorio_faturamento_excel&id=<?php echo htmlspecialchars($_GET['resumo_id']); ?>"
+                <a href="index.php?page=relatorio_faturamento_excel&id=<?php echo htmlspecialchars($_GET['resumo_id']); ?>"
                     id="btn-exportar-excel-link" class="btn btn-success" target="_blank">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </a>
@@ -176,6 +177,14 @@ $modoEdicao = isset($_GET['resumo_id']) && !empty($_GET['resumo_id']);
                         <label for="edit_fatn_condicao_pag_id" class="form-label">Condição de Pagamento</label>
                         <select class="form-select" id="edit_fatn_condicao_pag_id" name="fatn_condicao_pag_id"
                             style="width: 100%;"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_fatn_endereco_id" class="form-label">Endereço de Entrega (Local de Entrega)</label>
+                        <select class="form-select" id="edit_fatn_endereco_id" name="fatn_endereco_id" style="width: 100%;">
+                            <option value="">Endereço Principal (Padrão)</option>
+                        </select>
+                        <div class="form-text">Selecione o endereço de entrega cadastrado para este cliente.</div>
                     </div>
 
                     <div class="mb-3">

@@ -218,7 +218,6 @@ class FaturamentoRepository
             $this->pdo->commit();
             $this->auditLogger->log('CREATE', $novoResumoId, 'tbl_faturamento_resumos', null, ['ordem_id' => $ordemId]);
             return $novoResumoId;
-
         } catch (\Exception $e) {
             $this->pdo->rollBack();
             throw $e;
@@ -688,5 +687,21 @@ class FaturamentoRepository
 
         $stmt = $this->pdo->prepare("UPDATE tbl_faturamento_resumos SET fat_status = 'EM ELABORAÇÃO' WHERE fat_id = :id");
         return $stmt->execute([':id' => $resumoId]);
+    }
+
+    /**
+     * Busca todos os endereços de uma entidade (Cliente).
+     */
+    public function listarEnderecosPorEntidade(int $entidadeId): array
+    {
+        // Ajuste conforme sua tabela de endereços (tbl_enderecos)
+        $sql = "SELECT end_id, end_logradouro, end_numero, end_bairro, end_cidade, end_uf, end_cep, end_tipo_endereco 
+                FROM tbl_enderecos 
+                WHERE end_entidade_id = :id 
+                ORDER BY end_tipo_endereco DESC, end_id DESC"; // Principal primeiro
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $entidadeId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

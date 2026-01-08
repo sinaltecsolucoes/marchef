@@ -54,10 +54,12 @@ $(document).ready(function () {
         },
         "responsive": true,
         "columns": [
+            // 0. Lote (Ordenável)
             {
                 "data": "lote_completo_calculado",
                 "className": "text-center align-middle",
             },
+            // 1. Fornecedor (Ordenável)
             {
                 "data": "cliente_razao_social",
                 "className": "align-middle",
@@ -66,6 +68,7 @@ $(document).ready(function () {
                 "data": "fornecedor_razao_social",
                 "className": "align-middle",
             },*/
+            // 4. Gram Fazenda (Ordenável como texto)
             {
                 "data": "gramaturas_fazenda",
                 "className": "text-center align-middle",
@@ -85,6 +88,7 @@ $(document).ready(function () {
                     }).join(' / ');
                 }
             },
+            // 5. Gram Lab (Ordenável como texto)
             {
                 "data": "gramaturas_laboratorio",
                 "className": "text-center align-middle",
@@ -102,6 +106,7 @@ $(document).ready(function () {
                     }).join(' / ');
                 }
             },
+            // 3. Peso (Ordenável)    
             {
                 "data": "peso_total_nota",
                 "className": "text-center align-middle",
@@ -111,6 +116,7 @@ $(document).ready(function () {
                     return data ? formatarBR(data) + ' kg' : '-';
                 }
             },
+            // 2. Data (Ordenável)
             {
                 "data": "lote_data_fabricacao",
                 "className": "col-centralizavel align-middle",
@@ -120,6 +126,7 @@ $(document).ready(function () {
                     return date.toLocaleDateString('pt-BR');
                 }
             },
+            // 6. Status (Ordenável)
             {
                 "data": "lote_status",
                 "className": "col-centralizavel align-middle",
@@ -141,6 +148,7 @@ $(document).ready(function () {
                     return date.toLocaleString('pt-BR');
                 }
             },*/
+            // 7. Ações (NÃO Ordenável) 
             {
                 "data": "lote_id",
                 "orderable": false,

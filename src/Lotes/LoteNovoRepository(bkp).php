@@ -16,14 +16,7 @@ class LoteNovoRepository
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-	
-	try {
-            $this->pdo->exec("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
-        } catch (Exception $e) {
-            // Se der erro ao tentar mudar (raro), segue a vida
-        }
-        
-	$this->auditLogger = new AuditLoggerService($pdo);
+        $this->auditLogger = new AuditLoggerService($pdo);
         $this->movimentoRepo = new MovimentoRepository($pdo);
     }
 
@@ -901,10 +894,10 @@ class LoteNovoRepository
             $searchNumeric = empty($cleanVal) ? $searchTerm : '%' . $cleanVal . '%';
 
             $whereClause = " WHERE (
-                    l.lote_completo_calculado LIKE :search0 COLLATE utf8mb4_general_ci OR
-                    l.lote_numero LIKE :search1 COLLATE utf8mb4_general_ci OR
-                    c.ent_razao_social LIKE :search2 COLLATE utf8mb4_general_ci OR
-                    c.ent_nome_fantasia LIKE :search3 COLLATE utf8mb4_general_ci OR
+                    l.lote_completo_calculado LIKE :search0 OR
+                    l.lote_numero LIKE :search1 OR
+                    c.ent_razao_social LIKE :search2 OR
+                    c.ent_nome_fantasia LIKE :search3 OR
 
                     -- Busca nos detalhes via SUBQUERY (EXISTS)
                     -- Isso garante que o lote seja encontrado, mas o JOIN principal traga TODOS os itens para somar corretamente
@@ -913,21 +906,21 @@ class LoteNovoRepository
                         SELECT 1 FROM tbl_lote_novo_recebdetalhes sub_d
                         WHERE sub_d.item_receb_lote_id = l.lote_id
                         AND(
-                            sub_d.item_receb_gram_faz LIKE :search4 COLLATE utf8mb4_general_ci OR       -- Gramatura Fazenda
-                            sub_d.item_receb_gram_lab LIKE :search5 COLLATE utf8mb4_general_ci OR       -- Gramatura Lab
-                            CAST(sub_d.item_receb_peso_nota_fiscal AS CHAR) LIKE :search6 COLLATE utf8mb4_general_ci  -- Peso (nota individual)
+                            sub_d.item_receb_gram_faz LIKE :search4 OR       -- Gramatura Fazenda
+                            sub_d.item_receb_gram_lab LIKE :search5 OR       -- Gramatura Lab
+                            sub_d.item_receb_peso_nota_fiscal LIKE :search6  -- Peso (nota individual)
                         )
                     ) OR 
                      
                         -- 2. Busca pelo SOMATÓRIO TOTAL
                         -- Calcula a soma de todas as notas desse lote e verifica se bate com a pesquisa
-                        CAST((
+                        (
                             SELECT SUM(sub_s.item_receb_peso_nota_fiscal) 
                             FROM tbl_lote_novo_recebdetalhes sub_s 
                             WHERE sub_s.item_receb_lote_id = l.lote_id
-                        ) AS CHAR) LIKE :search8 COLLATE utf8mb4_general_ci OR
+                        ) LIKE :search8 OR
 
-                    DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7 COLLATE utf8mb4_general_ci  -- Data (Formato BR)
+                    DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7   -- Data (Formato BR)
             )";
 
             $queryParams[':search0'] = $searchTerm;
@@ -997,7 +990,7 @@ class LoteNovoRepository
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
-            "draw" => intval($draw),
+            "draw" => intval($params['draw']),
             "recordsTotal" => (int) $totalRecords,
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data
