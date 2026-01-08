@@ -174,7 +174,7 @@ $(document).ready(function () {
         $btnPrincipal.on('click', function (e) {
             // Verifica a propriedade type. Se for button, TEM QUE prevenir o submit.
             if ($(this).prop('type') === 'button') {
-                e.preventDefault(); 
+                e.preventDefault();
 
                 if ($('#criterios-tab').hasClass('active')) {
                     // Estou em critérios, vou para Mídia
@@ -222,6 +222,7 @@ $(document).ready(function () {
             $('#ficha_medidas_emb_secundaria').val(header.ficha_medidas_emb_secundaria);
             $('#ficha_paletizacao').val(header.ficha_paletizacao);
             $('#ficha_gestao_qualidade').val(header.ficha_gestao_qualidade);
+            $('#ficha_responsavel_tecnico').val(header.ficha_responsavel_tecnico || 'PRISCILA CASTRO');
             if (header.ficha_fabricante_id && header.fabricante_nome) {
                 $('#ficha_fabricante_id').append(new Option(
                     header.fabricante_nome,
@@ -532,6 +533,7 @@ $(document).ready(function () {
                                 case 'EMBALAGEM_PRIMARIA': idSufixo = 'primaria'; break;
                                 case 'EMBALAGEM_SECUNDARIA': idSufixo = 'secundaria'; break;
                                 case 'SIF': idSufixo = 'sif'; break;
+                                case 'ASSINATURA': idSufixo = 'assinatura'; break;
                             }
                             if (idSufixo) {
                                 $(`#preview-${idSufixo}`).attr('src', foto.foto_path + '?t=' + new Date().getTime());
@@ -561,6 +563,7 @@ $(document).ready(function () {
                             case 'EMBALAGEM_PRIMARIA': idSufixo = 'primaria'; break;
                             case 'EMBALAGEM_SECUNDARIA': idSufixo = 'secundaria'; break;
                             case 'SIF': idSufixo = 'sif'; break;
+                            case 'ASSINATURA': idSufixo = 'assinatura'; break;
                         }
                         currentUploadInfo = {
                             fichaId,

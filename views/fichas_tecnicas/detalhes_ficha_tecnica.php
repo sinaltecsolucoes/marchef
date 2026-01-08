@@ -1,4 +1,5 @@
-<?php // /views/fichas_tecnicas/detalhes_ficha_tecnica.php ?>
+<?php // /views/fichas_tecnicas/detalhes_ficha_tecnica.php 
+?>
 
 <h4 class="fw-bold mb-3" id="main-title">Nova Ficha Técnica</h4>
 
@@ -135,6 +136,20 @@
                         <textarea class="form-control" id="ficha_gestao_qualidade" name="ficha_gestao_qualidade"
                             rows="4"></textarea>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="ficha_responsavel_tecnico" class="form-label fw-bold text-primary">
+                            <i class="fas fa-signature me-1"></i> Responsável Técnico (Nome na Assinatura)
+                        </label>
+
+                        <input class="form-control" list="lista-responsaveis" id="ficha_responsavel_tecnico" name="ficha_responsavel_tecnico" placeholder="Selecione ou digite o nome...">
+
+                        <datalist id="lista-responsaveis">
+                            <option value="PRISCILA CASTRO">
+                        </datalist>
+                        <small class="text-muted">Este nome aparecerá ao lado da assinatura no relatório.</small>
+                    </div>
+
                 </form>
 
             </div>
@@ -286,13 +301,34 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-md-6 col-lg-3 mb-4">
+                        <div class="card h-100 text-center">
+                            <div class="card-header fw-bold">5. Assinatura Responsável</div>
+                            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                <div class="preview-container mb-3" id="preview-container-assinatura">
+                                    <img src="assets/img/placeholder.png" class="img-fluid rounded" id="preview-assinatura" style="max-height: 100px;">
+                                </div>
+                                <form class="form-upload" data-tipo="ASSINATURA">
+                                    <input type="file" class="form-control form-control-sm" accept="image/*">
+                                </form>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn btn-danger btn-sm btn-remover-foto" data-tipo="ASSINATURA" style="display: none;">
+                                    <i class="fas fa-times me-2"></i>Remover
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
-    <div class="card-footer d-flex justify-content-between">
+</div>
+<div class="card-footer d-flex justify-content-between">
 
-    </div>
+</div>
 </div>
 
 <div class="modal fade" id="modal-crop-image" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">

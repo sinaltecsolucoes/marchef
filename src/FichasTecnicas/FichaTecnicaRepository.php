@@ -95,7 +95,7 @@ class FichaTecnicaRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     public function findAllForDataTable(array $params): array
     {
         try {
@@ -197,7 +197,7 @@ class FichaTecnicaRepository
             return null;
         }
 
-      /*  $stmtCriterios = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas_criterios WHERE criterio_ficha_id = :id ORDER BY criterio_grupo");
+        /*  $stmtCriterios = $this->pdo->prepare("SELECT * FROM tbl_fichas_tecnicas_criterios WHERE criterio_ficha_id = :id ORDER BY criterio_grupo");
         $stmtCriterios->execute([':id' => $fichaId]);
         $ficha['criterios'] = $stmtCriterios->fetchAll(PDO::FETCH_ASSOC);*/
         $ficha['criterios'] = $this->getCriteriosByFichaId($fichaId);
@@ -247,6 +247,7 @@ class FichaTecnicaRepository
                             ficha_paletizacao = :ficha_paletizacao,
                             ficha_registro_embalagem = :ficha_registro_embalagem,
                             ficha_gestao_qualidade = :ficha_gestao_qualidade,
+                            ficha_responsavel_tecnico = :ficha_responsavel_tecnico,
                             ficha_usuario_id = :usuario_id
                         WHERE ficha_id = :ficha_id";
                 $stmt = $this->pdo->prepare($sql);
@@ -259,6 +260,7 @@ class FichaTecnicaRepository
                             ficha_desc_emb_primaria, ficha_desc_emb_secundaria,
                             ficha_medidas_emb_primaria, ficha_medidas_emb_secundaria,
                             ficha_paletizacao, ficha_registro_embalagem, ficha_gestao_qualidade,
+                            ficha_responsavel_tecnico,
                             ficha_usuario_id
                         ) VALUES (
                             :ficha_produto_id, :ficha_fabricante_id, :ficha_conservantes, :ficha_alergenicos,
@@ -266,6 +268,7 @@ class FichaTecnicaRepository
                             :ficha_desc_emb_primaria, :ficha_desc_emb_secundaria,
                             :ficha_medidas_emb_primaria, :ficha_medidas_emb_secundaria,
                             :ficha_paletizacao, :ficha_registro_embalagem, :ficha_gestao_qualidade,
+                            :ficha_responsavel_tecnico,
                             :usuario_id
                         )";
                 $stmt = $this->pdo->prepare($sql);
@@ -286,6 +289,7 @@ class FichaTecnicaRepository
             $stmt->bindValue(':ficha_paletizacao', $data['ficha_paletizacao'] ?? null);
             $stmt->bindValue(':ficha_registro_embalagem', $data['ficha_registro_embalagem'] ?? null);
             $stmt->bindValue(':ficha_gestao_qualidade', $data['ficha_gestao_qualidade'] ?? null);
+            $stmt->bindValue(':ficha_responsavel_tecnico', $data['ficha_responsavel_tecnico'] ?? 'PRISCILA CASTRO');
 
             $stmt->execute();
 

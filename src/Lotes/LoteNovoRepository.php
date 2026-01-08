@@ -45,8 +45,10 @@ class LoteNovoRepository
             ':data_fab' => $data['lote_data_fabricacao'],
             ':fornecedor' => $data['lote_fornecedor_id'] ?: null,
             ':cliente' => $data['lote_cliente_id'] ?: null,
-            ':ciclo' => $data['lote_ciclo'],
+            ':ciclo' => $data['lote_ciclo'] ?? null,
             ':viveiro' => $data['lote_viveiro'],
+            ':so2' => !empty($data['lote_so2']) ? $data['lote_so2'] : null,
+            ':observacao' => $data['lote_observacao'] ?? null,
             ':completo' => $data['lote_completo_calculado'],
         ];
 
@@ -55,7 +57,8 @@ class LoteNovoRepository
             $sql = "UPDATE tbl_lotes_novo_header 
                     SET lote_numero = :numero, lote_data_fabricacao = :data_fab, 
                         lote_fornecedor_id = :fornecedor, lote_cliente_id = :cliente,  
-                        lote_ciclo = :ciclo, lote_viveiro = :viveiro, 
+                        lote_ciclo = :ciclo, lote_viveiro = :viveiro,
+                        lote_so2 = :so2, lote_observacao = :observacao, 
                         lote_completo_calculado = :completo 
                     WHERE lote_id = :id";
             $params[':id'] = $id;
@@ -63,10 +66,12 @@ class LoteNovoRepository
             // Se não existe ID, fazemos um INSERT
             $sql = "INSERT INTO tbl_lotes_novo_header (
                         lote_numero, lote_data_fabricacao, lote_fornecedor_id, lote_cliente_id,
-                        lote_ciclo, lote_viveiro, lote_completo_calculado, lote_usuario_id
+                        lote_ciclo, lote_viveiro, lote_so2, lote_observacao, 
+                        lote_completo_calculado, lote_usuario_id
                     ) VALUES (
                         :numero, :data_fab, :fornecedor, :cliente, 
-                        :ciclo, :viveiro, :completo, :user_id
+                        :ciclo, :viveiro, :so2, :observacao,
+                        :completo, :user_id
                     )";
             $params[':user_id'] = $userId;
         }
@@ -857,7 +862,8 @@ class LoteNovoRepository
 
         $baseQuery = "FROM tbl_lotes_novo_header l         
                       LEFT JOIN tbl_entidades c ON l.lote_cliente_id = c.ent_codigo
-                      LEFT JOIN tbl_entidades f ON l.lote_fornecedor_id = f.ent_codigo";
+                      LEFT JOIN tbl_entidades f ON l.lote_fornecedor_id = f.ent_codigo
+                      LEFT JOIN tbl_lote_novo_recebdetalhes r ON l.lote_id = r.item_receb_lote_id";
 
         $totalRecords = $this->pdo->query("SELECT COUNT(l.lote_id) FROM tbl_lotes_novo_header l")->fetchColumn();
 
@@ -872,14 +878,18 @@ class LoteNovoRepository
             $queryParams[':search2'] = $searchTerm;
         }
 
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(l.lote_id) $baseQuery $whereClause");
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause");
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
         $sqlData = "SELECT l.*, 
                     COALESCE(NULLIF(f.ent_nome_fantasia,''), f.ent_razao_social) AS fornecedor_razao_social, 
-                    COALESCE(NULLIF(c.ent_nome_fantasia,''), c.ent_razao_social) AS cliente_razao_social
+                    COALESCE(NULLIF(c.ent_nome_fantasia,''), c.ent_razao_social) AS cliente_razao_social,
+                    GROUP_CONCAT(DISTINCT r.item_receb_gram_faz SEPARATOR ' / ') as gramaturas_fazenda,
+                    GROUP_CONCAT(DISTINCT r.item_receb_gram_lab SEPARATOR ' / ') as gramaturas_laboratorio,
+                    SUM(r.item_receb_peso_nota_fiscal) as peso_total_nota
                     $baseQuery $whereClause 
+                    GROUP BY l.lote_id
                     ORDER BY l.lote_data_cadastro DESC 
                     LIMIT :start, :length";
 
@@ -2117,5 +2127,82 @@ class LoteNovoRepository
                 $loteId                        // Documento Ref
             );
         }
+    }
+
+    /* public function getRelatorioMensalData(int $mes, int $ano): array
+    {
+        $sql = "SELECT 
+                    h.lote_data_fabricacao,
+                    h.lote_completo_calculado,
+                    COALESCE(NULLIF(f.ent_nome_fantasia,''), f.ent_razao_social) as fornecedor_nome,
+                    h.lote_observacao,
+                    
+                    -- Somas
+                    SUM(d.item_receb_peso_nota_fiscal) as total_peso,
+                    SUM(d.item_receb_total_caixas) as total_caixas,
+                    
+                    -- Agrupamentos de Texto (Gramaturas distintas)
+                    GROUP_CONCAT(DISTINCT d.item_receb_gram_faz ORDER BY d.item_receb_gram_faz SEPARATOR ' / ') as gram_faz,
+                    GROUP_CONCAT(DISTINCT d.item_receb_gram_lab ORDER BY d.item_receb_gram_lab SEPARATOR ' / ') as gram_benef,
+                    
+                    -- Lote de Origem (Reprocesso)
+                    -- Se houver múltiplos itens de reprocesso, lista todos
+                    GROUP_CONCAT(DISTINCT l_origem.lote_completo_calculado SEPARATOR ', ') as lote_reprocesso_origem
+
+                FROM tbl_lotes_novo_header h
+                LEFT JOIN tbl_entidades f ON h.lote_cliente_id = f.ent_codigo
+                LEFT JOIN tbl_lote_novo_recebdetalhes d ON h.lote_id = d.item_receb_lote_id
+                LEFT JOIN tbl_lotes_novo_header l_origem ON d.item_receb_lote_origem_id = l_origem.lote_id
+                
+                WHERE MONTH(h.lote_data_fabricacao) = :mes 
+                  AND YEAR(h.lote_data_fabricacao) = :ano
+                  AND h.lote_status != 'CANCELADO' -- Opcional: não mostrar cancelados
+                
+                GROUP BY h.lote_id
+                ORDER BY h.lote_data_fabricacao ASC, h.lote_id ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':mes' => $mes, ':ano' => $ano]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } */
+
+    public function getRelatorioMensalData(array $meses, int $ano): array
+    {
+        if (empty($meses)) return [];
+
+        // Cria string de interrogações para o SQL: "?,?,?"
+        $placeholders = implode(',', array_fill(0, count($meses), '?'));
+
+        $sql = "SELECT 
+                    h.lote_data_fabricacao,
+                    h.lote_completo_calculado,
+                    COALESCE(NULLIF(f.ent_nome_fantasia,''), f.ent_razao_social) as fornecedor_nome,
+                    h.lote_observacao,
+                    
+                    SUM(d.item_receb_peso_nota_fiscal) as total_peso,
+                    SUM(d.item_receb_total_caixas) as total_caixas,
+                    
+                    GROUP_CONCAT(DISTINCT d.item_receb_gram_faz ORDER BY d.item_receb_gram_faz SEPARATOR ' / ') as gram_faz,
+                    GROUP_CONCAT(DISTINCT d.item_receb_gram_lab ORDER BY d.item_receb_gram_lab SEPARATOR ' / ') as gram_benef,
+                    GROUP_CONCAT(DISTINCT l_origem.lote_completo_calculado SEPARATOR ', ') as lote_reprocesso_origem
+
+                FROM tbl_lotes_novo_header h
+                LEFT JOIN tbl_entidades f ON h.lote_fornecedor_id = f.ent_codigo
+                LEFT JOIN tbl_lote_novo_recebdetalhes d ON h.lote_id = d.item_receb_lote_id
+                LEFT JOIN tbl_lotes_novo_header l_origem ON d.item_receb_lote_origem_id = l_origem.lote_id
+                
+                WHERE YEAR(h.lote_data_fabricacao) = ?
+                  AND MONTH(h.lote_data_fabricacao) IN ($placeholders)
+                  AND h.lote_status != 'CANCELADO'
+                
+                GROUP BY h.lote_id
+                ORDER BY h.lote_data_fabricacao ASC, h.lote_id ASC";
+
+        // Parâmetros: [Ano, Mes1, Mes2, Mes3...]
+        $params = array_merge([$ano], $meses);
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

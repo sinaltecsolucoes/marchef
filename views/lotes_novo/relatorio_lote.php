@@ -25,6 +25,7 @@ try {
     $h = $dados['header'];
     $loteCompleto = $h['lote_completo_calculado'];
     $nomeCliente = $h['nome_cliente'];
+    $observacao = $h['lote_observacao'] ?? '';
 
     $recebimento = $dados['recebimento'];
     $producao = $dados['producao'];
@@ -328,7 +329,9 @@ ob_start();
         <!-- LINHA 07: OBSERVACAO -->
         <tr>
             <td><strong>Observação:</strong></td>
-            <td colspan="3"><?= $h['lote_observacao'] ?? '' ?></td>
+            <td colspan="3">
+                <?= nl2br(htmlspecialchars($h['lote_observacao'] ?? '')) ?>
+            </td>
         </tr>
     </table>
 

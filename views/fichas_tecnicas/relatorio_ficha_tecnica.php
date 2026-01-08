@@ -36,7 +36,6 @@ try {
     foreach ($fotos as $foto) {
         $caminhosFotos[$foto['foto_tipo']] = BASE_URL . '/' . $foto['foto_path'];
     }
-
 } catch (Exception $e) {
     die("Erro ao carregar os dados da ficha: " . $e->getMessage());
 }
@@ -281,7 +280,7 @@ function formatarPesoBrasileiro(?float $valor): string
                                     $categoria = strtoupper($criterio['criterio_grupo'] ?? 'OUTROS');
                                     if ($categoria !== $categoriaAtual):
                                         $categoriaAtual = $categoria;
-                                        ?>
+                            ?>
                                         <tr>
                                             <td colspan="3" class="categoria-header">
                                                 <?php echo $categoriaAtual; ?>
@@ -292,7 +291,7 @@ function formatarPesoBrasileiro(?float $valor): string
                                             <th class="th-criterio" style="width: 20%;">UNIDADE</th>
                                             <th class="th-criterio" style="width: 30%;">PADRÃO</th>
                                         </tr>
-                                        <?php
+                                    <?php
                                     endif;
                                     ?>
                                     <tr>
@@ -303,7 +302,7 @@ function formatarPesoBrasileiro(?float $valor): string
                                         <td style="width: 30%;"><?php echo htmlspecialchars($criterio['criterio_valor']); ?>
                                         </td>
                                     </tr>
-                                    <?php
+                                <?php
                                 endforeach;
                             else:
                                 ?>
@@ -370,6 +369,13 @@ function formatarPesoBrasileiro(?float $valor): string
         </table>
 
         <div class="assinatura-section" style="border-top: 1px solid #000; padding-top: 5px;">
+            <?php if (!empty($caminhosFotos['ASSINATURA'])): ?>
+                <div style="margin-bottom: -10px;">
+                    <img src="<?php echo htmlspecialchars($caminhosFotos['ASSINATURA']); ?>"
+                        alt="Assinatura"
+                        style="max-height: 50px;">
+                </div>
+            <?php endif; ?>
             <p style="margin: 0; font-weight: bold;">
                 CONTROLE DE QUALIDADE:
                 <span style="font-weight: normal;">PRISCILA CASTRO</span> –

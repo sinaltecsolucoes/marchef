@@ -312,9 +312,6 @@ switch ($action) {
     case 'gerarRelatorioLote':
         gerarRelatorioLote();
         break;
-    case 'gerarRelatorioMensalLotes':
-        gerarRelatorioMensalLotes($loteNovoRepo);
-        break;
 
     // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
@@ -1001,8 +998,8 @@ function salvarUsuario(UsuarioRepository $repo)
     // Lógica para limitar a criação de novos usuários
     if (!$id) { // Só executa esta verificação se for um NOVO usuário (sem ID)
         $totalUsuarios = $repo->countAll();
-        if ($totalUsuarios >= 30) {
-            echo json_encode(['success' => false, 'message' => 'Limite máximo de 30 usuários atingido. Não é possível adicionar mais usuários.']);
+        if ($totalUsuarios >= 7) {
+            echo json_encode(['success' => false, 'message' => 'Limite máximo de 4 usuários atingido. Não é possível adicionar mais usuários.']);
             return; // Interrompe a execução
         }
     }
@@ -1818,90 +1815,6 @@ function gerarRelatorioLote()
     require_once __DIR__ . '/../views/lotes_novo/relatorio_lote.php';
 }
 
-/**
- * Gera o relatório mensal de abertura de lotes.
- */
-/* function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
-{
-    // 1. Validação de Entrada
-    $mes = filter_input(INPUT_GET, 'mes', FILTER_VALIDATE_INT);
-    $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
-
-    if (!$mes || !$ano) {
-        die("Parâmetros inválidos (Mês/Ano).");
-    }
-
-    // 2. Busca os Dados (Delegamos ao Repositório)
-    try {
-        $dados = $repo->getRelatorioMensalData($mes, $ano);
-    } catch (Exception $e) {
-        die("Erro ao buscar dados: " . $e->getMessage());
-    }
-
-    // 3. Prepara variáveis para a View
-    $mesesExtenso = [
-        1 => 'JANEIRO',
-        2 => 'FEVEREIRO',
-        3 => 'MARÇO',
-        4 => 'ABRIL',
-        5 => 'MAIO',
-        6 => 'JUNHO',
-        7 => 'JULHO',
-        8 => 'AGOSTO',
-        9 => 'SETEMBRO',
-        10 => 'OUTUBRO',
-        11 => 'NOVEMBRO',
-        12 => 'DEZEMBRO'
-    ];
-    $periodoTexto = ($mesesExtenso[$mes] ?? 'MÊS ' . $mes) . '/' . $ano;
-
-    // 4. Carrega o arquivo de visualização (que gera o PDF)
-    // Isso mantém o router limpo e a lógica de apresentação separada
-    require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
-} */ 
-
-function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
-{
-    // Recebe a string "1,2,3"
-    $mesesStr = $_GET['meses'] ?? '';
-    $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
-
-    if (empty($mesesStr) || !$ano) {
-        die("Parâmetros inválidos.");
-    }
-
-    // Converte para array de inteiros seguros
-    $mesesArray = array_map('intval', explode(',', $mesesStr));
-
-    try {
-        $dados = $repo->getRelatorioMensalData($mesesArray, $ano);
-    } catch (Exception $e) {
-        die($e->getMessage());
-    }
-
-    // --- LÓGICA DO TÍTULO DO RELATÓRIO ---
-    $todosMeses = [1 => 'JAN', 2 => 'FEV', 3 => 'MAR', 4 => 'ABR', 5 => 'MAI', 6 => 'JUN', 7 => 'JUL', 8 => 'AGO', 9 => 'SET', 10 => 'OUT', 11 => 'NOV', 12 => 'DEZ'];
-
-    // Se selecionou os 12 meses
-    if (count($mesesArray) == 12) {
-        $periodoTexto = "ANO DE " . $ano . " (COMPLETO)";
-    }
-    // Se selecionou até 4 meses, mostra os nomes
-    elseif (count($mesesArray) <= 4) {
-        $nomes = [];
-        foreach ($mesesArray as $m) {
-            if (isset($todosMeses[$m])) $nomes[] = $todosMeses[$m];
-        }
-        $periodoTexto = implode(', ', $nomes) . ' / ' . $ano;
-    }
-    // Se forem muitos, resume
-    else {
-        $periodoTexto = count($mesesArray) . " MESES SELECIONADOS / " . $ano;
-    }
-
-    require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
-}
-
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 
 /**
@@ -1971,7 +1884,7 @@ function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
         // =================================================================
 
         // 3. Conversão na API Labelary (PONTO CRÍTICO DE REDE)
-        $curl = curl_init($apiUrl);
+        $curl = curl_init($apiUrl); 
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, $zpl);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);

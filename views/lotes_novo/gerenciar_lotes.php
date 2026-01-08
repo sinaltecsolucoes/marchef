@@ -31,15 +31,106 @@ switch ($page) {
 <?php if ($mostrarBotaoNovo): ?>
     <div class="card shadow mb-4 card-custom">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Abertura de Lote</h6>
+            <h6 class="m-0 fw-bold text-primary">
+                Gestão de Lotes
+            </h6>
         </div>
         <div class="card-body">
-            <div class="row align-items-center mb-3">
-                <div class="col-md-6">
-                    <button class="btn btn-primary" id="btn-adicionar-lote-novo">
-                        <i class="fas fa-plus me-2"></i> Abrir Novo Lote
+            <div class="row align-items-center">
+
+                <div class="col-md-3 border-end pe-4">
+                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
+                        Entrada
+                    </h5>
+                    <button class="btn btn-primary py-2" id="btn-adicionar-lote-novo">
+                        <i class="fas fa-plus me-2"></i> ABRIR NOVO LOTE
                     </button>
+                    <small class="text-muted d-block mt-2">
+                        Clique para iniciar um novo lote.
+                    </small>
                 </div>
+
+                <div class="col-md-9 ps-4">
+                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
+                        Relatório Lista de Lote
+                    </h5>
+
+                    
+                    
+                    <div id="form-relatorio-mensal" class="row g-3 align-items-end">
+
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">Período (Meses)</label>
+
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-meses" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Selecione os meses...
+                                </button>
+
+                                <ul class="dropdown-menu p-2 shadow w-100" aria-labelledby="btn-dropdown-meses" style="max-height: 300px; overflow-y: auto;">
+
+                                    <li class="p-1 border-bottom mb-2 bg-light rounded">
+                                        <div class="form-check">
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-mes-todos">
+                                            <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-mes-todos">
+                                                MARCAR TODOS
+                                            </label>
+                                        </div>
+                                    </li>
+
+                                    <?php
+                                    $meses = [
+                                        1 => 'Janeiro',
+                                        2 => 'Fevereiro',
+                                        3 => 'Março',
+                                        4 => 'Abril',
+                                        5 => 'Maio',
+                                        6 => 'Junho',
+                                        7 => 'Julho',
+                                        8 => 'Agosto',
+                                        9 => 'Setembro',
+                                        10 => 'Outubro',
+                                        11 => 'Novembro',
+                                        12 => 'Dezembro'
+                                    ];
+                                    $mesAtual = date('n');
+
+                                    foreach ($meses as $num => $nome) {
+                                        // Marca o mês atual por padrão
+                                        $checked = ($num == $mesAtual) ? 'checked' : '';
+                                        echo "
+                                        <li class='p-1'>
+                                            <div class='form-check'>
+                                                <input class='form-check-input check-mes-item' type='checkbox' value='{$num}' id='mes-{$num}' {$checked}>
+                                                <label class='form-check-label w-100 cursor-pointer' for='mes-{$num}'>
+                                                    {$nome}
+                                                </label>
+                                            </div>
+                                        </li>";
+                                    }
+                                    ?>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Exercício (Ano)</label>
+                            <input type="number" class="form-control" id="rel_ano" value="<?php echo date('Y'); ?>">
+                        </div>
+
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-info fw-bold text-white" id="btn-gerar-relatorio-mensal">
+                                <i class="fas fa-print me-2"></i> GERAR
+                            </button>
+                        </div>
+                    </div>
+
+
+
+
+
+                </div>
+
             </div>
         </div>
     </div>
@@ -55,11 +146,12 @@ switch ($page) {
                 <thead>
                     <tr>
                         <th class="text-center align-middle">Lote Completo</th>
-                        <th class="text-center align-middle">Cliente</th>
                         <th class="text-center align-middle">Fornecedor</th>
+                        <th class="text-center align-middle">Gram. Faz.</th>
+                        <th class="text-center align-middle">Gram. Benef.</th>
+                        <th class="text-center align-middle">Peso</th>
                         <th class="text-center align-middle">Data Fabricação</th>
                         <th class="text-center align-middle">Status</th>
-                        <th class="text-center align-middle">Data Cadastro</th>
                         <th class="text-center align-middle" width="16%">Ações</th>
                     </tr>
                 </thead>
@@ -104,10 +196,12 @@ switch ($page) {
                 <div class="tab-content border border-top-0 p-3" id="tabLoteUnificadoContent">
 
                     <div class="tab-pane fade show active" id="aba-info-lote-novo" role="tabpanel">
+
                         <form id="form-lote-novo-header">
                             <input type="hidden" id="lote_id_novo" name="lote_id">
-                            <div class="row g-3">
-                                <div class="col-md-2">
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3">
                                     <label class="form-label">Número *</label>
                                     <input type="text" class="form-control" id="lote_numero_novo" name="lote_numero" required>
                                 </div>
@@ -115,11 +209,14 @@ switch ($page) {
                                     <label class="form-label">Data Fabricação *</label>
                                     <input type="date" class="form-control" id="lote_data_fabricacao_novo" name="lote_data_fabricacao" value="<?php echo date('Y-m-d'); ?>">
                                 </div>
-                                <div class="col-md-7">
+                                <div class="col-md-6">
                                     <label class="form-label">Cliente *</label>
                                     <select class="form-select" id="lote_cliente_id_novo" name="lote_cliente_id" style="width: 100%;"></select>
                                 </div>
-                                <div class="col-md-7">
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
                                     <label class="form-label">Fornecedor *</label>
                                     <select class="form-select" id="lote_fornecedor_id_novo" name="lote_fornecedor_id" style="width: 100%;"></select>
                                 </div>
@@ -127,13 +224,23 @@ switch ($page) {
                                     <label class="form-label">Viveiro</label>
                                     <input type="text" class="form-control" id="lote_viveiro_novo" name="lote_viveiro">
                                 </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Ciclo</label>
-                                    <input type="text" class="form-control" id="lote_ciclo_novo" name="lote_ciclo">
+                                <div class="col-md-3">
+                                    <label class="form-label">SO2 (mg/kg)</label>
+                                    <input type="number" step="0.01" class="form-control" id="lote_so2_novo" name="lote_so2">
                                 </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
                                 <div class="col-12">
                                     <label class="form-label">Lote Completo (Automático) *</label>
-                                    <input type="text" class="form-control" id="lote_completo_calculado_novo" name="lote_completo_calculado" required>
+                                    <input type="text" class="form-control bg-light" id="lote_completo_calculado_novo" name="lote_completo_calculado" required>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Observações</label>
+                                    <textarea class="form-control" id="lote_observacao_novo" name="lote_observacao" rows="3"></textarea>
                                 </div>
                             </div>
                         </form>

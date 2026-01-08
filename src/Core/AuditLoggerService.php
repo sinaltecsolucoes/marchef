@@ -25,6 +25,11 @@ class AuditLoggerService
      */
     public function log(string $acao, ?int $registroId = null, ?string $tabelaAfetada = null, ?array $dadosAntigos = null, ?array $dadosNovos = null, ?string $observacao = null): void
     {
+        // 1.  CONFIGURAÇÃO DE FUSO HORÁRIO
+        // Força o PHP a usar o horário de Brasília  (ou o da região local)
+        date_default_timezone_set('America/Sao_Paulo');
+        $dataHoraLocal = date('Y-m-d H:i:s');
+
         // Obtém os dados do usuário da sessão atual
         $usuarioId = $_SESSION['codUsuario'] ?? null;
         $usuarioNome = $_SESSION['nomeUsuario'] ?? 'Sistema'; // 'Sistema' para ações não atreladas a um usuário
@@ -33,6 +38,7 @@ class AuditLoggerService
         $jsonAntigo = $dadosAntigos ? json_encode($dadosAntigos, JSON_UNESCAPED_UNICODE) : null;
         $jsonNovo = $dadosNovos ? json_encode($dadosNovos, JSON_UNESCAPED_UNICODE) : null;
 
+        // 2. ALTERAÇÃO NO SQL: Adicionamos 'log_timestamp' explicitamente
         $sql = "INSERT INTO tbl_auditoria_logs 
                     (log_usuario_id, 
                     log_usuario_nome, 
@@ -41,7 +47,8 @@ class AuditLoggerService
                     log_registro_id, 
                     log_dados_antigos, 
                     log_dados_novos,
-                    log_observacao) 
+                    log_observacao,
+                    log_timestamp) 
                 VALUES 
                     (:usuario_id,
                      :usuario_nome, 
@@ -50,18 +57,20 @@ class AuditLoggerService
                      :registro_id, 
                      :json_antigo,
                      :json_novo,
-                     :observacao)";
+                     :observacao,
+                     :timestamp)";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            ':usuario_id' => $usuarioId,
+            ':usuario_id'   => $usuarioId,
             ':usuario_nome' => $usuarioNome,
-            ':acao' => $acao,
-            ':tabela' => $tabelaAfetada,
-            ':registro_id' => $registroId,
-            ':json_antigo' => $jsonAntigo,
-            ':json_novo' => $jsonNovo,
-            ':observacao' => $observacao,
+            ':acao'         => $acao,
+            ':tabela'       => $tabelaAfetada,
+            ':registro_id'  => $registroId,
+            ':json_antigo'  => $jsonAntigo,
+            ':json_novo'    => $jsonNovo,
+            ':observacao'   => $observacao,
+            ':timestamp'    => $dataHoraLocal,
         ]);
     }
 }

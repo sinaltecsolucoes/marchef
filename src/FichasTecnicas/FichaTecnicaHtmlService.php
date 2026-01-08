@@ -84,7 +84,7 @@ class FichaTecnicaHtmlService
 
                 @page {
                     size: A4 portrait;
-                    margin: 0.5cm;
+                    margin: 0.3cm;
 
                     @top-left {
                         content: "";
@@ -109,7 +109,7 @@ class FichaTecnicaHtmlService
                     @bottom-right {
                         content: "Página " counter(page) " de " counter(pages);
                         font-family: Arial, sans-serif;
-                        font-size: 8pt;
+                        font-size: 7pt;
                         color: #888;
                     }
                 }
@@ -543,13 +543,35 @@ class FichaTecnicaHtmlService
                     </tr>
                 </table>
 
-                <div class="assinatura-section">
-                    <p style="margin: 0; font-weight: bold;">
-                        CONTROLE DE QUALIDADE:
-                        <span style="font-weight: normal;">PRISCILA CASTRO</span> –
-                        <span style="font-weight: normal;">Data emissão: <?php echo date('d/m/Y'); ?></span>
-                    </p>
+                <div class="assinatura-section" style="border-top: 1px solid #000; padding-top: 10px; margin-top: 15px;">
+                    <table style="width: 100%; border-collapse: collapse; font-family: 'DejaVu Sans', sans-serif;">
+                        <tr>
+                            <td style="width: 65%; vertical-align: middle; font-size: 7pt;">
+                                <p style="margin: 0; font-weight: bold; font-size: 8pt;">
+                                    CONTROLE DE QUALIDADE:
+                                    <span style="font-weight: normal; text-transform: uppercase;">
+                                        <?php echo htmlspecialchars($ficha['header']['ficha_responsavel_tecnico'] ?? 'PRISCILA CASTRO'); ?>
+                                    </span>
+                                </p>
+                                <p style="margin-top: 1px;">
+                                    Data emissão: <?php echo date('d/m/Y'); ?>
+                                </p>
+                            </td>
+
+                            <td style="width: 35%; vertical-align: bottom; text-align: right;">
+                                <?php if (!empty($caminhosFotos['ASSINATURA'])): ?>
+                                    <img src="<?php echo htmlspecialchars($caminhosFotos['ASSINATURA']); ?>"
+                                        alt="Assinatura"
+                                        style="max-height: 55px; max-width: 180px; object-fit: contain;">
+                                <?php else: ?>
+                                    <div style="height: 55px;"></div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
+
+
             </div>
         </body>
 

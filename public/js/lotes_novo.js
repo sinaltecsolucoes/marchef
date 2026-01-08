@@ -62,9 +62,54 @@ $(document).ready(function () {
                 "data": "cliente_razao_social",
                 "className": "align-middle",
             },
-            {
+            /*{
                 "data": "fornecedor_razao_social",
                 "className": "align-middle",
+            },*/
+            {
+                "data": "gramaturas_fazenda",
+                "className": "text-center align-middle",
+                "render": function (data) {
+                    if (!data) return '-';
+                    // Separa os valores (caso tenha múltiplos), formata cada um e junta de novo
+                    return data.split(' / ').map(v => {
+                        let num = parseFloat(v);
+                        if (isNaN(num)) return v;
+
+                        // Lógica: Se for inteiro (ex: 19), mostra normal. Se tiver decimal, fixa em 2 casas.
+                        let formatado = Number.isInteger(num)
+                            ? num.toString()
+                            : num.toFixed(2).replace('.', ',');
+
+                        return formatado + 'g';
+                    }).join(' / ');
+                }
+            },
+            {
+                "data": "gramaturas_laboratorio",
+                "className": "text-center align-middle",
+                "render": function (data) {
+                    if (!data) return '-';
+                    return data.split(' / ').map(v => {
+                        let num = parseFloat(v);
+                        if (isNaN(num)) return v;
+
+                        let formatado = Number.isInteger(num)
+                            ? num.toString()
+                            : num.toFixed(2).replace('.', ',');
+
+                        return formatado + 'g';
+                    }).join(' / ');
+                }
+            },
+            {
+                "data": "peso_total_nota",
+                "className": "text-center align-middle",
+                "title": "Peso Total (NF)",
+                "render": function (data) {
+                    // Usa a função formatarBR que já existe no seu JS
+                    return data ? formatarBR(data) + ' kg' : '-';
+                }
             },
             {
                 "data": "lote_data_fabricacao",
@@ -87,7 +132,7 @@ $(document).ready(function () {
                     return `<span class="badge ${badgeClass}">${data}</span>`;
                 }
             },
-            {
+            /*{
                 "data": "lote_data_cadastro",
                 "className": "col-centralizavel align-middle",
                 "render": function (data) {
@@ -95,7 +140,7 @@ $(document).ready(function () {
                     const date = new Date(data);
                     return date.toLocaleString('pt-BR');
                 }
-            },
+            },*/
             {
                 "data": "lote_id",
                 "orderable": false,
@@ -269,7 +314,7 @@ $(document).ready(function () {
     function atualizarLoteCompletoNovo() {
         const numero = $('#lote_numero_novo').val() || '0000';
         const dataFabStr = $('#lote_data_fabricacao_novo').val();
-        const ciclo = $('#lote_ciclo_novo').val() || 'C';
+        //const ciclo = $('#lote_ciclo_novo').val() || 'C';
         const viveiro = $('#lote_viveiro_novo').val() || 'V';
 
         // Lógica para pegar o código interno do cliente selecionado (se houver)
@@ -283,7 +328,8 @@ $(document).ready(function () {
                 ano = new Date(dataFabStr + 'T00:00:00').getFullYear().toString().slice(-2);
             } catch (e) { /* ignora erro de data inválida durante a digitação */ }
         }
-        const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codCliente}`;
+        //const loteCompletoCalculado = `${numero}/${ano}-${ciclo}/${viveiro} ${codCliente}`;
+        const loteCompletoCalculado = `${numero}/${ano}-${viveiro} ${codCliente}`;
         $('#lote_completo_calculado_novo').val(loteCompletoCalculado);
     }
 
@@ -344,6 +390,8 @@ $(document).ready(function () {
                 $('#lote_data_fabricacao_novo').val(header.lote_data_fabricacao);
                 $('#lote_ciclo_novo').val(header.lote_ciclo);
                 $('#lote_viveiro_novo').val(header.lote_viveiro);
+                $('#lote_so2_novo').val(header.lote_so2);
+                $('#lote_observacao_novo').val(header.lote_observacao);
                 $('#lote_completo_calculado_novo').val(header.lote_completo_calculado);
 
                 const $btnSalvar = $('#btn-salvar-lote-novo-header'); // Garante a seleção
@@ -1410,6 +1458,11 @@ $(document).ready(function () {
 
         // 9. Trava as abas novamente para o próximo "Novo Lote"
         $('#aba-detalhes-recebimento-tab, #aba-producao-novo-tab, #aba-embalagem-novo-tab').addClass('disabled');
+
+        // 10. Recarrega a tabela principal (mantendo a página atual) para exibir as alterações (peso, status, etc)
+        if (tabelaLotesNovo) {
+            tabelaLotesNovo.ajax.reload(null, false);
+        }
     });
 
     // Evento para o checkbox "Finalizar Tudo" no cabeçalho
@@ -1583,6 +1636,41 @@ $(document).ready(function () {
         const loteId = $('#btn-acao-finalizar').data('lote-id');
         enviarStatusFinalizacao(loteId, 'PARCIALMENTE FINALIZADO');
     });
+
+    // Evento para gerar Relatório Mensal
+
+    $('#btn-gerar-relatorio-mensal')
+        .off('click')
+        .on('click', function () {
+            const ano = $('#rel_ano').val();
+            const mesesSelecionados = [];
+
+            $('.check-mes-item:checked').each(function () {
+                mesesSelecionados.push($(this).val());
+            });
+
+            if (mesesSelecionados.length === 0 || !ano) {
+                notificacaoErro('Erro', 'Selecione pelo menos um mês e informe o ano.');
+                return;
+            }
+
+            const mesesStr = mesesSelecionados.join(',');
+            window.open(
+                `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`,
+                '_blank'
+            );
+        });
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            // Página voltou do cache do navegador
+            $('.check-mes-item').prop('checked', false);
+            $('#check-mes-todos').prop('checked', false);
+            $('#rel_ano').val('');
+            atualizarTextoBotaoMeses();
+        }
+    });
+
 
     // Ação para o botão "Editar" na tabela principal de lotes 
     $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
@@ -2332,6 +2420,84 @@ $(document).ready(function () {
         }).fail(function () {
             notificacaoErro('Erro', 'Erro de comunicação ao gerar relatório.');
         });
+    });
+
+    // --- LÓGICA DO MULTI-SELECT DE MESES ---
+
+    // 1. Função para atualizar o texto do botão conforme a seleção
+    function atualizarTextoBotaoMeses() {
+        const selecionados = [];
+        $('.check-mes-item:checked').each(function () {
+            selecionados.push($(this).next('label').text().trim());
+        });
+
+        const $btn = $('#btn-dropdown-meses');
+        const $checkTodos = $('#check-mes-todos');
+
+        if (selecionados.length === 0) {
+            $btn.text('Nenhum mês selecionado');
+            $checkTodos.prop('checked', false);
+        } else if (selecionados.length === 12) {
+            $btn.text('ANO COMPLETO (12 Meses)');
+            $checkTodos.prop('checked', true);
+        } else if (selecionados.length <= 2) {
+            $btn.text(selecionados.join(', ')); // Ex: "Janeiro, Março"
+        } else {
+            $btn.text(selecionados.length + ' meses selecionados');
+            // Se não são 12, desmarca o todos
+            $checkTodos.prop('checked', false);
+        }
+    }
+
+    // Evento: Clique no "Marcar Todos"
+    $('#check-mes-todos').on('change', function () {
+        const isChecked = $(this).is(':checked');
+        $('.check-mes-item').prop('checked', isChecked);
+        atualizarTextoBotaoMeses();
+    });
+
+    // Evento: Clique em um mês individual
+    $('.check-mes-item').on('change', function () {
+        // Se desmarcar um item, desmarca o "Todos"
+        if (!$(this).is(':checked')) {
+            $('#check-mes-todos').prop('checked', false);
+        }
+        // Se marcar todos manualmente, marca o "Todos"
+        if ($('.check-mes-item:checked').length === 12) {
+            $('#check-mes-todos').prop('checked', true);
+        }
+        atualizarTextoBotaoMeses();
+    });
+
+    // Inicializa o texto ao carregar a página
+    atualizarTextoBotaoMeses();
+
+    // Evento do Botão Gerar
+    /*  $('#btn-gerar-relatorio-mensal').on('click', function () {
+          const ano = $('#rel_ano').val();
+  
+          // Coleta os IDs dos meses marcados (1, 2, 10...)
+          const mesesSelecionados = [];
+          $('.check-mes-item:checked').each(function () {
+              mesesSelecionados.push($(this).val());
+          });
+  
+          if (mesesSelecionados.length === 0 || !ano) {
+              notificacaoErro('Erro', 'Selecione pelo menos um mês e informe o ano.');
+              return;
+          }
+  
+          // Transforma o array em string separada por vírgula (ex: "1,5,10")
+          const mesesStr = mesesSelecionados.join(',');
+  
+          // Abre o relatório em nova aba
+          const url = `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`;
+          window.open(url, '_blank');
+      }); */
+
+    // Impede que o dropdown feche ao clicar num checkbox (melhora a usabilidade)
+    $('.dropdown-menu').on('click', function (e) {
+        e.stopPropagation();
     });
 
 }); 
