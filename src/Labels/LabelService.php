@@ -2,6 +2,8 @@
 // /src/Labels/LabelService.php
 namespace App\Labels;
 
+require_once __DIR__ . '/../../public/libs/phpqrcode/phpqrcode.php';
+
 use PDO;
 use Exception;
 use App\Etiquetas\RegraRepository;
@@ -18,7 +20,6 @@ class LabelService
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-        // Seus repositórios que já existiam
         $this->regraRepo = new RegraRepository($pdo);
         $this->templateRepo = new TemplateRepository($pdo);
         $this->produtoRepo = new ProdutoRepository($pdo);
@@ -149,76 +150,49 @@ class LabelService
         else
             $comandoFonte = '^A0N,28,28';
 
-
-
-        // --- LÓGICA DE CÓDIGOS DE BARRAS ---
-        // Usa o operador '??' para garantir que se for NULL, vire uma string vazia ''
-  /*     $codBarraBruto = ($dados['prod_tipo_embalagem'] === 'SECUNDARIA')
-            ? ($dados['prod_dun14'] ?? '')
-            : ($dados['prod_ean13'] ?? '');
-
-        // Garante que seja string para não quebrar a função seguinte
-        $dadosBarras1D = (string) $codBarraBruto;*/
-
-
-        // --- LÓGICA DE CÓDIGOS DE BARRAS ---
-        
-        // 1. Definição do Tipo e Valores Brutos
+        // --- LÓGICA DE CÓDIGOS DE BARRAS (EAN vs DUN) ---
         $tipoEmbalagem = $dados['prod_tipo_embalagem'] ?? 'INDEFINIDO';
         $eanDb = $dados['prod_ean13'] ?? '';
         $dunDb = $dados['prod_dun14'] ?? '';
 
-        // --- DEBUG: Salvar no log de erros do PHP (verifique error.log ou storage/logs) ---
-        error_log("========== DEBUG ETIQUETA ITEM ID: " . ($dados['prod_codigo'] ?? 'N/A') . " ==========");
-        error_log("Produto: " . ($dados['prod_descricao'] ?? 'Sem Nome'));
-        error_log("Tipo Embalagem Detectado: " . $tipoEmbalagem);
-        error_log("Valor bruto EAN (DB): '" . $eanDb . "'");
-        error_log("Valor bruto DUN (DB): '" . $dunDb . "'");
-
-        // 2. Seleção Lógica
+        // Seleção Lógica
         if ($tipoEmbalagem === 'SECUNDARIA') {
-            // Se for secundária, usa o DUN. Se o DUN estiver vazio, tenta fallback para o EAN?
-            // Por enquanto, mantemos a lógica original estrita, mas com trim()
             $codBarraBruto = $dunDb;
-            error_log("Selecionado: DUN");
         } else {
-            // Primária ou qualquer outro caso
             $codBarraBruto = $eanDb;
-            error_log("Selecionado: EAN");
         }
 
-        // 3. Higienização (Importante: remove espaços em branco e quebras de linha que causam erros no ZPL)
+        // Higienização
         $dadosBarras1D = trim((string) $codBarraBruto);
-        
-        error_log("Valor Final Enviado para ZPL: '" . $dadosBarras1D . "'");
-        error_log("==================================================================");
-
-
-
-
-
-        // Se estiver vazio, talvez você queira preencher com zeros para o código de barras não sair quebrado visualmente
         if (empty($dadosBarras1D)) {
-            $dadosBarras1D = '00000000000000'; // Valor padrão para evitar erro visual no ZPL
+            $dadosBarras1D = '00000000000000'; // Valor padrão para evitar erro visual
         }
 
+        // Gera a string de dados GS1 para o QR Code
         $dadosQrCode = $this->buildGs1DataString($dados, $dadosBarras1D);
 
         // --- LÓGICA DE CAMPOS COMPOSTOS ---
         $partesClasse = array_filter([$dados['prod_classificacao'], $dados['prod_classe']]);
         $linhaProdutoClasse = implode(' ', $partesClasse);
+
         $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
+
         $linhaClassificacao = "CLASSIFICAÇÃO: " . $this->buildClassificationLine($dados);
         $linhaDescricao = "CLASSIFICAÇÃO: " . $this->construirLinhaClassificacao($dados);
+
         $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
         $codigoInternoProduto = "COD.: " . ($dados['prod_codigo_interno'] ?? '');
+
         $dataFab = isset($dados['lote_data_fabricacao']) ? date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
         $dataVal = isset($dados['lote_item_data_val']) ? date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
         $linhaFabEValidade = "FAB.: {$dataFab}        VAL.: {$dataVal}";
+
         $pesoFormatado = str_replace('.', ',', (string) ((float) ($dados['prod_peso_embalagem'] ?? 0)));
         $linhaPesoLiquido = "PESO LÍQUIDO: " . $pesoFormatado . "kg";
+
         $partesEndereco = array_filter([($dados['end_logradouro'] ?? '') . ', ' . ($dados['end_numero'] ?? ''), $dados['end_complemento'] ?? '', $dados['end_bairro'] ?? '']);
         $linhaEndereco = implode(' - ', $partesEndereco);
+
         $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '     CEP: ' . ($dados['end_cep'] ?? '');
         $linhaCnpjIe = "CNPJ: " . $this->formatCnpj($dados['ent_cnpj'] ?? '') . "     I.E.: " . ($dados['ent_inscricao_estadual'] ?? '');
 
@@ -258,10 +232,31 @@ class LabelService
 
             // Códigos de Barras
             '12345678' => $dadosBarras1D ?? '',
-            '10qrcode' => $dadosQrCode ?? ''
+            // O '10qrcode' será tratado abaixo com lógica especial de posicionamento
         ];
 
-        return str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
+        // 1. Aplica substituições normais primeiro
+        $zpl = str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
+
+        // 2. CORREÇÃO DE POSICIONAMENTO DO QR CODE (Troca FT por FO)
+        // Procura a linha que define o QR Code (que contém o placeholder '10qrcode') e usa comando ^FT
+        if (preg_match('/\^FT(\d+),(\d+)(.*?)10qrcode/', $zpl, $matches)) {
+            $x = $matches[1];
+            $y = $matches[2];
+            $meio_do_comando = $matches[3]; // Pega o trecho entre a coordenada e o placeholder (ex: ^BQN,2,10^FH\^FDLA,>)
+            $string_original = $matches[0];
+
+            // Nova string: ^FO[X],[Y_CALCULADO]...10qrcode
+            $string_nova = "^FO{$x},{$y}{$meio_do_comando}10qrcode";
+
+            // Substitui no arquivo ZPL apenas essa ocorrência
+            $zpl = str_replace($string_original, $string_nova, $zpl);
+        }
+
+        // 3. Finalmente, injeta os dados do QR Code no placeholder (agora posicionado corretamente)
+        $zpl = str_replace('10qrcode', $dadosQrCode, $zpl);
+
+        return $zpl;
     }
 
     private function formatCnpj(string $cnpj): string
@@ -272,7 +267,6 @@ class LabelService
         }
         return sprintf('%s.%s.%s/%s-%s', substr($cnpj, 0, 2), substr($cnpj, 2, 3), substr($cnpj, 5, 3), substr($cnpj, 8, 4), substr($cnpj, 12, 2));
     }
-
 
     private function buildClassificationLine(array $produto): string
     {
@@ -370,7 +364,6 @@ class LabelService
 
         return implode(' ', $partes);
     }
-
 
     private function buildGs1DataString(array $dados, string $gtin): string
     {

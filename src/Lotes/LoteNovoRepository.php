@@ -16,14 +16,14 @@ class LoteNovoRepository
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-	
-	try {
+
+        try {
             $this->pdo->exec("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
         } catch (Exception $e) {
             // Se der erro ao tentar mudar (raro), segue a vida
         }
-        
-	$this->auditLogger = new AuditLoggerService($pdo);
+
+        $this->auditLogger = new AuditLoggerService($pdo);
         $this->movimentoRepo = new MovimentoRepository($pdo);
     }
 
@@ -860,7 +860,7 @@ class LoteNovoRepository
      * @param array $params Parâmetros do DataTables (busca, paginação, etc.).
      * @return array
      */
-    public function findAllForDataTable(array $params): array
+    /* public function findAllForDataTable(array $params): array
     {
         // 1. Parâmetros básicos do DataTables
         $draw = $params['draw'] ?? 1;
@@ -901,10 +901,10 @@ class LoteNovoRepository
             $searchNumeric = empty($cleanVal) ? $searchTerm : '%' . $cleanVal . '%';
 
             $whereClause = " WHERE (
-                    l.lote_completo_calculado LIKE :search0 COLLATE utf8mb4_general_ci OR
-                    l.lote_numero LIKE :search1 COLLATE utf8mb4_general_ci OR
-                    c.ent_razao_social LIKE :search2 COLLATE utf8mb4_general_ci OR
-                    c.ent_nome_fantasia LIKE :search3 COLLATE utf8mb4_general_ci OR
+                    l.lote_completo_calculado LIKE :search0 OR
+                    l.lote_numero LIKE :search1 OR
+                    c.ent_razao_social LIKE :search2 OR
+                    c.ent_nome_fantasia LIKE :search3 OR
 
                     -- Busca nos detalhes via SUBQUERY (EXISTS)
                     -- Isso garante que o lote seja encontrado, mas o JOIN principal traga TODOS os itens para somar corretamente
@@ -913,9 +913,9 @@ class LoteNovoRepository
                         SELECT 1 FROM tbl_lote_novo_recebdetalhes sub_d
                         WHERE sub_d.item_receb_lote_id = l.lote_id
                         AND(
-                            sub_d.item_receb_gram_faz LIKE :search4 COLLATE utf8mb4_general_ci OR       -- Gramatura Fazenda
-                            sub_d.item_receb_gram_lab LIKE :search5 COLLATE utf8mb4_general_ci OR       -- Gramatura Lab
-                            CAST(sub_d.item_receb_peso_nota_fiscal AS CHAR) LIKE :search6 COLLATE utf8mb4_general_ci  -- Peso (nota individual)
+                            sub_d.item_receb_gram_faz LIKE :search4 OR                      -- Gramatura Fazenda
+                            sub_d.item_receb_gram_lab LIKE :search5 OR                      -- Gramatura Lab
+                            CAST(sub_d.item_receb_peso_nota_fiscal AS CHAR) LIKE :search6   -- Peso (nota individual)
                         )
                     ) OR 
                      
@@ -925,9 +925,9 @@ class LoteNovoRepository
                             SELECT SUM(sub_s.item_receb_peso_nota_fiscal) 
                             FROM tbl_lote_novo_recebdetalhes sub_s 
                             WHERE sub_s.item_receb_lote_id = l.lote_id
-                        ) AS CHAR) LIKE :search8 COLLATE utf8mb4_general_ci OR
+                        ) AS CHAR) LIKE :search8 OR
 
-                    DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7 COLLATE utf8mb4_general_ci  -- Data (Formato BR)
+                    DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7           -- Data (Formato BR)
             )";
 
             $queryParams[':search0'] = $searchTerm;
@@ -951,10 +951,10 @@ class LoteNovoRepository
         // A ordem aqui deve ser EXATAMENTE a mesma ordem das colunas no Javascript
         $columnsMap = [
             0 => 'l.lote_completo_calculado',
-            1 => 'cliente_razao_social', // Alias definido no SELECT abaixo
-            2 => 'gramaturas_fazenda',                // Alias do group_concat (ordenação aqui é string)
-            3 => 'gramaturas_laboratorio',              // Alias do group_concat
-            4 => 'peso_total_nota',         // Alias da soma
+            1 => 'cliente_razao_social',            // Alias definido no SELECT abaixo
+            2 => 'gramaturas_fazenda',              // Alias do group_concat (ordenação aqui é string)
+            3 => 'gramaturas_laboratorio',          // Alias do group_concat
+            4 => 'peso_total_nota',                 // Alias da soma
             5 => 'l.lote_data_fabricacao',
             6 => 'l.lote_status'
         ];
@@ -1002,7 +1002,119 @@ class LoteNovoRepository
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data
         ];
+    } */
+
+
+    public function findAllForDataTable(array $params): array
+    {
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+
+        $baseQuery = "FROM tbl_lotes_novo_header l         
+                  LEFT JOIN tbl_entidades c ON l.lote_cliente_id = c.ent_codigo
+                  LEFT JOIN tbl_entidades f ON l.lote_fornecedor_id = f.ent_codigo
+                  LEFT JOIN tbl_lote_novo_recebdetalhes r ON l.lote_id = r.item_receb_lote_id";
+
+        $totalRecords = $this->pdo->query("SELECT COUNT(l.lote_id) FROM tbl_lotes_novo_header l")->fetchColumn();
+
+        $whereClause = "";
+        $queryParams = [];
+
+        if (!empty($searchValue)) {
+            $searchTerm = '%' . $searchValue . '%';
+
+            $cleanVal = preg_replace('/[a-zA-Z\s]/', '', $searchValue);
+            if (strpos($cleanVal, ',') !== false) {
+                $cleanVal = str_replace('.', '', $cleanVal);
+                $cleanVal = str_replace(',', '.', $cleanVal);
+            }
+            $searchNumeric = empty($cleanVal) ? $searchTerm : '%' . $cleanVal . '%';
+
+            $whereClause = " WHERE (
+            l.lote_completo_calculado LIKE :search0 OR
+            l.lote_numero LIKE :search1 OR
+            c.ent_razao_social LIKE :search2 OR
+            c.ent_nome_fantasia LIKE :search3 OR
+            EXISTS(
+                SELECT 1 FROM tbl_lote_novo_recebdetalhes sub_d
+                WHERE sub_d.item_receb_lote_id = l.lote_id
+                AND (
+                    sub_d.item_receb_gram_faz LIKE :search4 OR
+                    sub_d.item_receb_gram_lab LIKE :search5 OR
+                    CAST(sub_d.item_receb_peso_nota_fiscal AS CHAR) LIKE :search6
+                )
+            ) OR 
+            CAST((
+                SELECT SUM(sub_s.item_receb_peso_nota_fiscal) 
+                FROM tbl_lote_novo_recebdetalhes sub_s 
+                WHERE sub_s.item_receb_lote_id = l.lote_id
+            ) AS CHAR) LIKE :search8 OR
+            DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7
+        )";
+
+            $queryParams = [
+                ':search0' => $searchTerm,
+                ':search1' => $searchTerm,
+                ':search2' => $searchTerm,
+                ':search3' => $searchTerm,
+                ':search4' => $searchNumeric,
+                ':search5' => $searchNumeric,
+                ':search6' => $searchNumeric,
+                ':search7' => $searchTerm,
+                ':search8' => $searchNumeric,
+            ];
+        }
+
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause");
+        $stmtFiltered->execute($queryParams);
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        $columnsMap = [
+            0 => 'l.lote_completo_calculado',
+            1 => 'cliente_razao_social',
+            2 => 'gramaturas_fazenda',
+            3 => 'gramaturas_laboratorio',
+            4 => 'peso_total_nota',
+            5 => 'l.lote_data_fabricacao',
+            6 => 'l.lote_status'
+        ];
+
+        $colIndex = $params['order'][0]['column'] ?? 2;
+        $dir = $params['order'][0]['dir'] ?? 'desc';
+        $orderBy = $columnsMap[$colIndex] ?? 'l.lote_data_fabricacao';
+        $dir = strtoupper($dir) === 'ASC' ? 'ASC' : 'DESC';
+
+        $sqlData = "SELECT l.*, 
+                COALESCE(NULLIF(c.ent_nome_fantasia,''), c.ent_razao_social) AS cliente_razao_social, 
+                GROUP_CONCAT(DISTINCT r.item_receb_gram_faz SEPARATOR ' / ') as gramaturas_fazenda,
+                GROUP_CONCAT(DISTINCT r.item_receb_gram_lab SEPARATOR ' / ') as gramaturas_laboratorio,
+                SUM(r.item_receb_peso_nota_fiscal) as peso_total_nota
+                $baseQuery $whereClause 
+                GROUP BY l.lote_id
+                ORDER BY $orderBy $dir 
+                LIMIT :start, :length";
+
+        $stmt = $this->pdo->prepare($sqlData);
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+
+        foreach ($queryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw" => intval($draw),
+            "recordsTotal" => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data" => $data
+        ];
     }
+
 
     /**
      * Busca um lote novo completo (cabeçalho, produção e embalagem) pelo seu ID.
