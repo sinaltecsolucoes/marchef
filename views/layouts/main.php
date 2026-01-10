@@ -11,14 +11,16 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/css/main.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/css/etiqueta_designer.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link rel="shortcut icon" href="<?php echo BASE_URL; ?>/img/icone_2.ico" type="image/x-icon">
     <link rel="stylesheet" type="text/css" href="<?php echo BASE_URL; ?>/libs/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
-
 
 </head>
 
@@ -62,7 +64,7 @@
                             ?>
 
                             <?php // --- SUBMENU DE PRODUTOS ---
-                            $paginasProdutos = ['produtos', 'fichas_tecnicas', 'templates', 'regras'];
+                            $paginasProdutos = ['produtos', 'fichas_tecnicas', 'designer', 'templates', 'regras'];
                             if (count(array_intersect($paginasProdutos, $paginasPermitidasUsuario)) > 0):
                             ?>
                                 <li class="dropend">
@@ -84,6 +86,9 @@
                                                 <a class="dropdown-item dropdown-toggle" href="#"
                                                     data-bs-toggle="dropdown">Etiquetas</a>
                                                 <ul class="dropdown-menu dropdown-submenu">
+                                                    <?php if (in_array('designer', $paginasPermitidasUsuario)): ?>
+                                                        <li><a class="dropdown-item" href="index.php?page=designer">Desenhar Etiqueta</a></li>
+                                                    <?php endif; ?>
                                                     <?php if (in_array('templates', $paginasPermitidasUsuario)): ?>
                                                         <li><a class="dropdown-item" href="index.php?page=templates">Modelos de
                                                                 Etiqueta</a></li>
@@ -449,6 +454,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
     <script>
         const BASE_URL = '<?php echo BASE_URL; ?>';
@@ -539,6 +545,10 @@
 
     <?php if ($paginaAtual === 'fichas_tecnicas' || $paginaAtual === 'ficha_tecnica_detalhes'): ?>
         <script src="<?php echo BASE_URL; ?>/js/fichas_tecnicas.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'designer'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/etiqueta_designer.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'home'): ?>

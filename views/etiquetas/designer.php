@@ -1,0 +1,168 @@
+<?php
+// views/etiquetas/designer.php
+?>
+<div class="container-fluid mt-3">
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h2><i class="fa fa-paint-brush"></i> Designer de Etiquetas</h2>
+        </div>
+        <div class="col-md-6 text-right text-end">
+            <button class="btn btn-outline-secondary" onclick="$('#input-import-prn').click()">
+                <i class="fa fa-upload"></i> Importar ZPL/PRN
+            </button>
+            <input type="file" id="input-import-prn" style="display:none" accept=".prn,.txt,.zpl">
+
+            <button class="btn btn-success" onclick="salvarLayout()">
+                <i class="fa fa-save"></i> Salvar Layout
+            </button>
+        </div>
+    </div>
+
+    <div class="designer-container border rounded">
+
+        <div class="sidebar-ferramentas">
+            <div class="mb-3">
+                <div class="sidebar-title"><i class="fas fa-ruler-combined"></i> Dimensões</div>
+                <div class="row g-1">
+                    <div class="col-6">
+                        <label class="small text-muted">Largura (mm)</label>
+                        <input type="number" id="config-largura" class="form-control form-control-sm" value="100">
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted">Altura (mm)</label>
+                        <input type="number" id="config-altura" class="form-control form-control-sm" value="150">
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="mb-4">
+                <div class="sidebar-title mb-2">Adicionar</div>
+                <div class="row g-2">
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-secondary w-100 py-2" onclick="addTexto()" title="Adicionar Texto">
+                            <i class="fas fa-font fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">Texto</div>
+                        </button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-primary w-100 py-2" onclick="$('#modalVariaveis').modal('show')" title="Campo do Banco">
+                            <i class="fas fa-database fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">Dados</div>
+                        </button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-dark w-100 py-2" onclick="addBarcode()" title="Código de Barras">
+                            <i class="fas fa-barcode fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">Barras</div>
+                        </button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-dark w-100 py-2" onclick="addQRCode()" title="QR Code">
+                            <i class="fas fa-qrcode fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">QR Code</div>
+                        </button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-success w-100 py-2" onclick="triggerUploadImagem()" title="Imagem/Logo">
+                            <i class="far fa-image fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">Img</div>
+                        </button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <button class="btn btn-outline-secondary w-100 py-2" onclick="addLinha()" title="Linha Separadora">
+                            <i class="fas fa-minus fa-lg"></i>
+                            <div style="font-size: 10px; margin-top: 5px">Linha</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div id="painel-propriedades" style="display:none;" class="card bg-light border-0">
+                <div class="card-body p-2">
+                    <h6 class="card-title text-primary" style="font-size: 0.9rem;"><i class="fas fa-sliders-h"></i> Propriedades</h6>
+
+                    <div class="mb-2 prop-texto-only prop-conteudo-box">
+                        <label class="small">Conteúdo</label>
+                        <textarea id="prop-conteudo" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+
+                    <div class="row g-1 mb-2 prop-texto-only">
+                        <div class="col-6">
+                            <label class="small">Fonte (px)</label>
+                            <input type="number" id="prop-tamanho" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" id="prop-negrito" class="form-check-input">
+                                <label for="prop-negrito" class="form-check-label small">Negrito</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-1 mb-2 prop-box-only" style="display:none">
+                        <div class="col-6">
+                            <label class="small">Largura (px)</label>
+                            <input type="number" id="prop-largura" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="small">Altura (px)</label>
+                            <input type="number" id="prop-altura" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger btn-sm w-100 mt-2" onclick="removerElementoSelecionado()">
+                        <i class="fas fa-trash"></i> Remover
+                    </button>
+                </div>
+            </div>
+            <hr>
+            <div class="mt-auto">
+                <label class="small text-muted">Nome do Layout</label>
+                <input type="text" id="nome-layout" class="form-control mb-2" placeholder="Ex: Etiqueta Padrão">
+                <button class="btn btn-success w-100" onclick="salvarLayout()">
+                    <i class="fa fa-save"></i> SALVAR
+                </button>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+
+            <div class="toolbar-alinhamento mb-3 p-2 bg-white rounded shadow-sm sticky-top" style="display:none; gap: 10px; z-index: 1000; width: auto;">
+                <span class="small text-muted fw-bold me-2"><i class="fas fa-object-group"></i> Alinhar:</span>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('esquerda')" title="Esquerda"><i class="fas fa-align-left"></i></button>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('centro-h')" title="Centro Horizontal"><i class="fas fa-arrows-alt-h"></i></button>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('direita')" title="Direita"><i class="fas fa-align-right"></i></button>
+                <div class="vr"></div>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('topo')" title="Topo"><i class="fas fa-arrow-up"></i></button>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('centro-v')" title="Centro Vertical"><i class="fas fa-arrows-alt-v"></i></button>
+                <button class="btn btn-sm btn-light border" onclick="alinhar('base')" title="Base"><i class="fas fa-arrow-down"></i></button>
+            </div>
+
+            <div id="etiqueta-canvas" class="bg-white shadow-sm">
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalVariaveis" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title">Escolher Dado</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('nome_produto')">Nome do Produto</button>
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('peso_liquido')">Peso Líquido</button>
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('lote')">Lote Completo</button>
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('data_fabricacao')">Data Fabricação</button>
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('data_validade')">Data Validade</button>
+                            <button class="list-group-item list-group-item-action" onclick="selecionarVariavel('nome_cliente')">Cliente</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="input-img-upload" accept="image/*" style="display: none;">
+    </div>
+</div>

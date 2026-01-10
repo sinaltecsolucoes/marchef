@@ -1,0 +1,111 @@
+/* Layout Geral */
+.designer-container {
+    display: flex;
+    height: calc(100vh - 100px);
+    /* Ajuste conforme seu header */
+    background-color: #f4f6f9;
+}
+
+/* Barra Lateral (Ferramentas) */
+.sidebar-ferramentas {
+    width: 300px;
+    background: #fff;
+    padding: 20px;
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #343a40;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Área de Desenho (Canvas) */
+.canvas-area {
+    flex-grow: 1;
+    background-image: radial-gradient(#cbd5e0 1px, transparent 1px);
+    background-size: 20px 20px;
+    /* Grade de fundo */
+    background-color: #e9ecef;
+    display: flex;
+    flex-direction: column;
+    /* Organiza toolbar e folha verticalmente */
+    align-items: center;
+    overflow: auto;
+    padding: 20px;
+    position: relative;
+    /* OBRIGATÓRIO PARA O LASSO FUNCIONAR */
+}
+
+/* A "Folha" da Etiqueta */
+#etiqueta-canvas {
+    background: white;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    transition: width 0.3s, height 0.3s;
+    margin-bottom: 50px;
+    /* Espaço para scroll */
+}
+
+/* Elementos dentro da etiqueta */
+.elemento-etiqueta {
+    position: absolute;
+    border: 1px dashed transparent;
+    /* Invisível até passar o mouse */
+    cursor: grab;
+    white-space: nowrap;
+    user-select: none;
+    box-sizing: content-box;
+    /* Importante para bordas */
+}
+
+.elemento-etiqueta:hover {
+    border: 1px dashed #007bff;
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.elemento-etiqueta.selecionado {
+    border: 1px solid #007bff;
+    z-index: 100;
+}
+
+/* TRUQUE PARA LINHA FINA: Borda transparente aumenta a área de clique */
+.elemento-etiqueta[data-tipo="linha"] {
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    background-clip: content-box;
+}
+
+.elemento-etiqueta[data-tipo="linha"].selecionado {
+    border-color: transparent;
+    outline: 2px dashed #007bff;
+    /* Outline fica visível por fora */
+}
+
+/* Centralizar ícones de Barcode/QR */
+.elemento-etiqueta[data-tipo="barcode"],
+.elemento-etiqueta[data-tipo="qrcode"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Caixa de Seleção (Lasso) */
+.lasso-box {
+    position: absolute;
+    border: 1px solid #007bff;
+    background-color: rgba(0, 123, 255, 0.2);
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Quando múltiplos selecionados, esconde as alças de redimensionar */
+.elemento-etiqueta.selecionado.multi-select .ui-resizable-handle {
+    display: none !important;
+}

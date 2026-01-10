@@ -133,6 +133,7 @@ try {
         'ficha_tecnica_detalhes'    => 'fichas_tecnicas/detalhes_ficha_tecnica.php',       // Detalhes Ficha Técnica
         'relatorio_ficha_tecnica'   => 'fichas_tecnicas/relatorio_ficha_tecnica.php',      // Relatório Ficha Técnica
         'condicoes_pagamento'       => 'condicao_pagamento/lista_condicoes_pagamento.php', // Condições de Pagamento
+        'designer'                  => 'etiquetas/designer.php',                           // Desenhar Etiquetas
         'templates'                 => 'etiquetas/lista_templates.php',                    // Etiquetas
         'regras'                    => 'etiquetas/lista_regras.php',                       // Regras para Etiquetas
         'estoque_camaras'           => 'estoque/lista_camaras.php',                        // Câmaras de Armazenagem
