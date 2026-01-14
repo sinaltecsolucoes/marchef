@@ -314,7 +314,7 @@ switch ($action) {
         break;
     case 'gerarRelatorioMensalLotes':
         gerarRelatorioMensalLotes($loteNovoRepo);
-        break;
+        break; 
 
     // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
@@ -337,6 +337,9 @@ switch ($action) {
         break;
     case 'getDadosLoteReprocesso':
         getDadosLoteReprocesso($loteNovoRepo);
+        break;
+    case 'getClientesComLotesOptions':
+        getClientesComLotesOptions($loteNovoRepo);
         break;
 
 
@@ -1603,7 +1606,7 @@ function getItensRecebimento(LoteNovoRepository $repo)
 
 function excluirItemRecebimento(LoteNovoRepository $repo)
 {
-    $itemId = filter_input(INPUT_POST, 'item_id', FILTER_VALIDATE_INT);
+    $itemId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
 
     if (!$itemId) {
         echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
@@ -1821,49 +1824,12 @@ function gerarRelatorioLote()
 /**
  * Gera o relatório mensal de abertura de lotes.
  */
+
 /* function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
-{
-    // 1. Validação de Entrada
-    $mes = filter_input(INPUT_GET, 'mes', FILTER_VALIDATE_INT);
-    $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
-
-    if (!$mes || !$ano) {
-        die("Parâmetros inválidos (Mês/Ano).");
-    }
-
-    // 2. Busca os Dados (Delegamos ao Repositório)
-    try {
-        $dados = $repo->getRelatorioMensalData($mes, $ano);
-    } catch (Exception $e) {
-        die("Erro ao buscar dados: " . $e->getMessage());
-    }
-
-    // 3. Prepara variáveis para a View
-    $mesesExtenso = [
-        1 => 'JANEIRO',
-        2 => 'FEVEREIRO',
-        3 => 'MARÇO',
-        4 => 'ABRIL',
-        5 => 'MAIO',
-        6 => 'JUNHO',
-        7 => 'JULHO',
-        8 => 'AGOSTO',
-        9 => 'SETEMBRO',
-        10 => 'OUTUBRO',
-        11 => 'NOVEMBRO',
-        12 => 'DEZEMBRO'
-    ];
-    $periodoTexto = ($mesesExtenso[$mes] ?? 'MÊS ' . $mes) . '/' . $ano;
-
-    // 4. Carrega o arquivo de visualização (que gera o PDF)
-    // Isso mantém o router limpo e a lógica de apresentação separada
-    require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
-} */ 
-
-function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
 {
     // Recebe a string "1,2,3"
     $mesesStr = $_GET['meses'] ?? '';
+    $fornecedoresStr = $_GET['fornecedores'] ?? '';
     $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
 
     if (empty($mesesStr) || !$ano) {
@@ -1873,8 +1839,14 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
     // Converte para array de inteiros seguros
     $mesesArray = array_map('intval', explode(',', $mesesStr));
 
+    // Processa os fornecedores (se vier vazio, manda array vazio para o repo, que entende como "todos")
+    $fornecedoresArray = [];
+    if (!empty($fornecedoresStr)) {
+        $fornecedoresArray = array_map('intval', explode(',', $fornecedoresStr));
+    }
+
     try {
-        $dados = $repo->getRelatorioMensalData($mesesArray, $ano);
+        $dados = $repo->getRelatorioMensalData($mesesArray, $ano, $fornecedoresArray);
     } catch (Exception $e) {
         die($e->getMessage());
     }
@@ -1899,7 +1871,71 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
         $periodoTexto = count($mesesArray) . " MESES SELECIONADOS / " . $ano;
     }
 
+    // Adiciona um sufixo no título se houver filtro de fornecedor
+    if (!empty($fornecedoresArray)) {
+        $qtdForn = count($fornecedoresArray);
+        $periodoTexto .= " [Filtro: $qtdForn Fornecedor(es)]";
+    }
+
     require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
+} */
+
+function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
+{
+    // 1. Recebe os parâmetros
+    $mesesStr = $_GET['meses'] ?? '';
+    // ATENÇÃO: Verifique se no seu JS você está enviando como 'clientes' ou 'fornecedores'. 
+    // Vou deixar lendo os dois para garantir que funcione independente do nome no JS.
+    $idsStr = $_GET['clientes'] ?? ($_GET['fornecedores'] ?? '');
+    $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
+
+    if (empty($mesesStr) || !$ano) {
+        die("Parâmetros inválidos.");
+    }
+
+    $mesesArray = array_map('intval', explode(',', $mesesStr));
+
+    // 2. Processa os IDs e BUSCA OS NOMES
+    $idsArray = [];
+    $nomesClientesStr = ''; // Variável que vai para o cabeçalho
+
+    if (!empty($idsStr)) {
+        $idsArray = array_map('intval', explode(',', $idsStr));
+
+        //  Busca os nomes no banco 
+        $nomesClientesStr = $repo->getNomesClientesPorIds($idsArray);
+    }
+
+    try {
+        // Passa os IDs para o filtro de dados
+        $dados = $repo->getRelatorioMensalData($mesesArray, $ano, $idsArray);
+    } catch (Exception $e) {
+        die($e->getMessage());
+    }
+
+    // --- LÓGICA DO TÍTULO DO PERÍODO ---
+    $todosMeses = [1 => 'JAN', 2 => 'FEV', 3 => 'MAR', 4 => 'ABR', 5 => 'MAI', 6 => 'JUN', 7 => 'JUL', 8 => 'AGO', 9 => 'SET', 10 => 'OUT', 11 => 'NOV', 12 => 'DEZ'];
+
+    if (count($mesesArray) == 12) {
+        $periodoTexto = "ANO DE " . $ano . " (COMPLETO)";
+    } elseif (count($mesesArray) <= 4) {
+        $nomes = [];
+        foreach ($mesesArray as $m) {
+            if (isset($todosMeses[$m])) $nomes[] = $todosMeses[$m];
+        }
+        $periodoTexto = implode(', ', $nomes) . ' / ' . $ano;
+    } else {
+        $periodoTexto = count($mesesArray) . " MESES SELECIONADOS / " . $ano;
+    }
+
+    // Chama a visualização (PDF)
+    require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
+}
+
+function getClientesComLotesOptions(LoteNovoRepository $repo)
+{
+    // Retorna no formato { data: [...] } que o seu JS espera
+    echo json_encode(['data' => $repo->getClientesComLotesOptions()]);
 }
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---

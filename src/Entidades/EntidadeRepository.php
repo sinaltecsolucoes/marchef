@@ -586,7 +586,7 @@ class EntidadeRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
+    
     /**
      * Busca o endereço principal de uma entidade.
      *

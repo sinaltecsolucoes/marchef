@@ -230,7 +230,7 @@ $(document).ready(function () {
             info: false,
             language: { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
         });
-    } 
+    }
 
     function buscarCep(cep, feedbackElement, fields) {
         cep = cep.replace(/\D/g, '');
@@ -330,7 +330,25 @@ $(document).ready(function () {
             {
                 "data": "ent_tipo_entidade",
                 "className": "text-center align-middle font-small",
-                "width": "7%"
+                "width": "7%",
+                "render": function (data, type, row) {
+                    // Só altera a visualização se for para exibição (display) ou filtro
+                    if (type === 'display' || type === 'filter') {
+                        switch (data) {
+                            case 'Cliente':
+                                return 'Fornecedor';
+                            case 'Fornecedor':
+                                return 'Fazenda (Origem)';
+                            case 'Transportadora':
+                                return 'Transportadora';
+                            case 'Cliente e Fornecedor':
+                                return 'Fornecedor e Fazenda (Origem)';
+                            default:
+                                return data; // Caso venha algo diferente, exibe o original
+                        }
+                    }
+                    return data;
+                }
             },
             {
                 "data": "ent_codigo_interno",
@@ -399,16 +417,57 @@ $(document).ready(function () {
     // =================================================================
 
     // Abrir modal para Adicionar
+    /* $('#btn-adicionar-entidade').on('click', function () {
+         // Reseta o formulário
+         $formEntidade[0].reset();
+       
+         // Força o radio de Pessoa Física como selecionado
+         $('#tipo-pessoa-fisica').prop('checked', true);
+ 
+         // Atualiza os campos conforme tipo F (esconde IE, botão buscar CNPJ etc.)
+         updatePessoaFields('F', true);
+ 
+         $modalEntidade.modal('show');
+     }); */
+
+    // Abrir modal para Adicionar
     $('#btn-adicionar-entidade').on('click', function () {
-        // Reseta o formulário
+        // 1. Reseta o formulário e o ID oculto (CRÍTICO para não editar o anterior)
         $formEntidade[0].reset();
+        $('#ent-codigo').val('');
+        $('#mensagem-entidade').empty().removeClass(); // Limpa mensagens de erro/sucesso anteriores
 
-        // Força o radio de Pessoa Física como selecionado
+        // 2. Define o Título Corretamente baseado no pageType
+        let singular = 'Entidade';
+        switch (pageType) {
+            case 'cliente':
+                singular = 'Cliente';
+                break;
+            case 'fornecedor':
+                singular = 'Fornecedor';
+                break;
+            case 'transportadora':
+                singular = 'Transportadora';
+                break;
+        }
+        $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
+
+        // 3. Configurações Visuais (Abas e Tabelas)
+        $('#enderecos-tab').addClass('disabled'); // Desabilita aba de endereços ao criar novo
+        $('#dados-tab').tab('show'); // Força a volta para a aba principal
+        if (tableEnderecos) tableEnderecos.clear().draw(); // Limpa tabela de endereços visualmente
+        setPrincipalAddressFieldsReadonly(false); // Libera campos de endereço principal
+
+        // 4. Seleciona os Radios Corretos
+        // Seleciona o tipo de entidade (Cliente/Fornecedor/Transportadora)
+        $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
+
+        // Força Pessoa Física como padrão e atualiza UI
         $('#tipo-pessoa-fisica').prop('checked', true);
-
-        // Atualiza os campos conforme tipo F (esconde IE, botão buscar CNPJ etc.)
+        $('#situacao-entidade').prop('checked', true); // Padrão Ativo
         updatePessoaFields('F', true);
 
+        // 5. Finalmente, abre o modal
         $modalEntidade.modal('show');
     });
 
@@ -444,35 +503,35 @@ $(document).ready(function () {
     });
 
     // Limpa o modal ao clicar em "Adicionar"
-    $modalEntidade.on('show.bs.modal', function (event) {
-        if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
-            let singular = 'Entidade';
-            switch (pageType) {
-                case 'cliente':
-                    singular = 'Cliente';
-                    break;
-                case 'fornecedor':
-                    singular = 'Fornecedor';
-                    break;
-                case 'transportadora':
-                    singular = 'Transportadora';
-                    break;
-            }
-
-            $formEntidade[0].reset();
-            $('#ent-codigo').val('');
-            $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
-
-            // Seleciona o radio button correto (o HTML agora também tem o valor 'Transportadora')
-            $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
-
-            // Define Pessoa Física como padrão
-            $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
-            $('#enderecos-tab').addClass('disabled');
-
-            updatePessoaFields('F', true); // Força a UI de Pessoa Física e limpa o campo
-        }
-    });
+    /* $modalEntidade.on('show.bs.modal', function (event) {
+         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
+             let singular = 'Entidade';
+             switch (pageType) {
+                 case 'cliente':
+                     singular = 'Cliente';
+                     break;
+                 case 'fornecedor':
+                     singular = 'Fornecedor';
+                     break;
+                 case 'transportadora':
+                     singular = 'Transportadora';
+                     break;
+             }
+ 
+             $formEntidade[0].reset();
+             $('#ent-codigo').val('');
+             $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
+ 
+             // Seleciona o radio button correto (o HTML agora também tem o valor 'Transportadora')
+             $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
+ 
+             // Define Pessoa Física como padrão
+             $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
+             $('#enderecos-tab').addClass('disabled');
+ 
+             updatePessoaFields('F', true); // Força a UI de Pessoa Física e limpa o campo
+         }
+     });*/
 
     // Garante que a máscara seja aplicada após o modal ser exibido
     $modalEntidade.on('shown.bs.modal', function (event) {
@@ -506,7 +565,7 @@ $(document).ready(function () {
         }).fail(function () {
             notificacaoErro('Erro de Comunicação', 'Não foi possível salvar a entidade.');
         });
-    }); 
+    });
 
     $formEndereco.on('submit', function (e) {
         e.preventDefault();

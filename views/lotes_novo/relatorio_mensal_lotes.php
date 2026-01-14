@@ -130,6 +130,11 @@ ob_start();
             <td style="border: none; width: 60%; text-align: center;">
                 <h2 style="margin: 0; font-size: 16pt;">ABERTURA DE LOTES</h2>
                 <h3 style="margin: 5px 0 0 0; font-size: 10pt; font-weight: normal; color: #555;">PERÍODO: <strong><?= $periodoTexto ?></strong></h3>
+                <?php if (!empty($nomesClientesStr)): ?>
+                    <h3 style="margin: 2px 0 0 0; font-size: 9pt; font-weight: normal; color: #333;">
+                        FORNECEDOR(ES): <strong><?= mb_strtoupper($nomesClientesStr) ?></strong>
+                    </h3>
+                <?php endif; ?>
             </td>
             <td style="border: none; width: 20%; text-align: right; font-size: 8pt; vertical-align: bottom;">
                 Emissão: <?= date('d/m/Y H:i') ?>
@@ -156,6 +161,10 @@ ob_start();
             $totalPeso = 0;
             $totalCaixas = 0;
 
+            // 1. Variáveis para Média (Arrays para guardar todos os valores encontrados)
+            $listaGramFaz = [];
+            $listaGramBenef = [];
+
             if (empty($dados)): ?>
                 <tr>
                     <td colspan="9" class="text-center" style="padding: 20px;">Nenhum registro encontrado.</td>
@@ -164,8 +173,25 @@ ob_start();
                 foreach ($dados as $d):
                     $peso = (float)$d['total_peso'];
                     $caixas = (int)$d['total_caixas'];
+
+                    // Acumula totais simples
                     $totalPeso += $peso;
                     $totalCaixas += $caixas;
+
+                    // Lógica da Média: Extrai os números das strings "12 / 14", por exemplo
+                    if (!empty($d['gram_faz'])) {
+                        $partes = explode(' / ', $d['gram_faz']);
+                        foreach ($partes as $p) {
+                            if (is_numeric($p)) $listaGramFaz[] = (float)$p;
+                        }
+                    }
+
+                    if (!empty($d['gram_benef'])) {
+                        $partes = explode(' / ', $d['gram_benef']);
+                        foreach ($partes as $p) {
+                            if (is_numeric($p)) $listaGramBenef[] = (float)$p;
+                        }
+                    }
                 ?>
                     <tr>
                         <td class="text-center"><?= date('d/m/Y', strtotime($d['lote_data_fabricacao'])) ?></td>
@@ -181,16 +207,37 @@ ob_start();
                         <td class="w-obs"><?= nl2br(htmlspecialchars($d['lote_observacao'] ?? '')) ?></td>
                     </tr>
             <?php endforeach;
-            endif; ?>
+            endif;
+
+            //  Cálculo das Médias Finais
+            $mediaFaz = 0;
+            if (count($listaGramFaz) > 0) {
+                $mediaFaz = array_sum($listaGramFaz) / count($listaGramFaz);
+            }
+
+            $mediaBenef = 0;
+            if (count($listaGramBenef) > 0) {
+                $mediaBenef = array_sum($listaGramBenef) / count($listaGramBenef);
+            }
+            ?>
         </tbody>
+
         <tfoot>
             <tr style="background-color: #e9ecef; font-weight: bold;">
-                <td colspan="3" class="text-right">TOTAIS:</td>
+                <td colspan="3" class="text-right">TOTAIS / MÉDIA:</td>
                 <td class="text-right"><?= number_format($totalPeso, 3, ',', '.') ?></td>
                 <td class="text-center"><?= $totalCaixas ?></td>
+                <td class="text-center" style="font-size: 7pt;">
+                    <?= $mediaFaz > 0 ? number_format($mediaFaz, 2, ',', '.') . 'g' : '-' ?>
+                </td>
+
+                <td class="text-center" style="font-size: 7pt;">
+                    <?= $mediaBenef > 0 ? number_format($mediaBenef, 2, ',', '.') . 'g' : '-' ?>
+                </td>
                 <td colspan="4" style="background-color: #fff; border: none;"></td>
             </tr>
         </tfoot>
+
     </table>
 
     <div style="margin-top: 40px; text-align: center; page-break-inside: avoid;">

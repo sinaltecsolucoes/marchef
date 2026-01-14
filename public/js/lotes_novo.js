@@ -994,7 +994,6 @@ $(document).ready(function () {
         }
     }
 
-
     function limparFormularioDetalhes() {
         $('#form-recebimento-detalhe')[0].reset();
 
@@ -1126,6 +1125,19 @@ $(document).ready(function () {
 
             // Abre a Aba 4 diretamente
             new bootstrap.Tab($tabEmbalagem[0]).show();
+        }
+    }
+
+    // Função reutilizável para atualizar a tabela principal
+    function recarregarTabelaLotes() {
+        let idTabelaPrincipal = '#tabela-lotes-novo'; 
+
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable(idTabelaPrincipal)) {
+            // reload(null, false) recarrega os dados e mantém a paginação atual
+            $(idTabelaPrincipal).DataTable().ajax.reload(null, false);
+            console.log('Tabela atualizada via Ajax.');
+        } else {
+            console.log('Tabela não encontrada ou não é DataTables.');
         }
     }
 
@@ -1651,11 +1663,30 @@ $(document).ready(function () {
         .off('click')
         .on('click', function () {
             const ano = $('#rel_ano').val();
+
+            // Coleta Meses
             const mesesSelecionados = [];
 
             $('.check-mes-item:checked').each(function () {
                 mesesSelecionados.push($(this).val());
             });
+
+            // Coleta Fornecedores
+            const fornecedoresSelecionados = [];
+
+            // Se "Todos" estiver marcado, podemos enviar vazio (indicando todos) ou enviar todos os IDs. 
+            // Para filtros URL, se todos estiverem marcados, enviar vazio deixa a URL mais limpa.
+            if (!$('#check-fornecedor-todos').is(':checked')) {
+                $('.check-fornecedor-item:checked').each(function () {
+                    fornecedoresSelecionados.push($(this).val());
+                });
+                // Se o usuário desmarcou tudo, precisamos avisar
+                if (fornecedoresSelecionados.length === 0) {
+                    notificacaoErro('Erro', 'Selecione pelo menos um fornecedor.');
+                    return;
+                }
+            }
+            // Nota: Se 'Todos' estiver checkado, o array fica vazio, e o PHP entende como "trazer tudo".
 
             if (mesesSelecionados.length === 0 || !ano) {
                 notificacaoErro('Erro', 'Selecione pelo menos um mês e informe o ano.');
@@ -1663,10 +1694,15 @@ $(document).ready(function () {
             }
 
             const mesesStr = mesesSelecionados.join(',');
-            window.open(
-                `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`,
-                '_blank'
-            );
+            const fornStr = fornecedoresSelecionados.join(',');
+
+            // Monta a url
+            let url = `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`;
+
+            if (fornStr) {
+                url += `&fornecedores=${fornStr}`;
+            }
+            window.open(url, '_blank');
         });
 
     window.addEventListener('pageshow', function (event) {
@@ -2050,6 +2086,73 @@ $(document).ready(function () {
         });
     });
 
+    $(document).on('click', '.btn-excluir-item-recebimento', function (e) {
+        e.preventDefault();
+
+        let idItem = $(this).data('id');
+        let $linha = $(this).closest('tr');
+
+        // 1. Pega o token CSRF da meta tag (padrão do seu sistema)
+        let csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+        if (!idItem) {
+            notificacaoErro('Erro', 'ID do item não encontrado.');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Tem certeza?',
+            text: "Deseja realmente excluir este item do recebimento?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                // 2. Mudamos de $.post para $.ajax para poder enviar o Header
+                $.ajax({
+                    url: 'ajax_router.php?action=excluirItemRecebimento',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        id: idItem,
+                        // Alguns sistemas aceitam no corpo também, por garantia:
+                        csrf_token: csrfToken
+                    },
+                    // 3. Adicionamos o cabeçalho de segurança
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $linha.fadeOut(500, function () {
+                                $(this).remove();
+                            });
+
+                            // 2. ATUALIZA A TABELA PRINCIPAL (Para corrigir o "12g / 14g")
+                           recarregarTabelaLotes();
+
+                            Swal.fire('Excluído!', response.message || 'Item removido.', 'success');
+                        } else {
+                            notificacaoErro('Erro', response.message || 'Não foi possível excluir.');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        // Se der erro 419 ou 403, é o CSRF
+                        if (xhr.status === 419 || xhr.status === 403) {
+                            notificacaoErro('Erro de Sessão', 'Sua sessão expirou ou o token é inválido. Recarregue a página.');
+                        } else {
+                            notificacaoErro('Erro', 'Falha na comunicação com o servidor: ' + error);
+                        }
+                    }
+                });
+            }
+        });
+    });
+
     $tabelaItensProducao.on('click', '.btn-excluir-item-producao', function () {
         const itemId = $(this).data('id');
 
@@ -2216,7 +2319,6 @@ $(document).ready(function () {
         onAbaDetalhesExibida();
     });
 
-
     // CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA
     $('#item_receb_peso_nota_fiscal, #item_receb_total_caixas').on('input', function () {
         // Usa brToFloat para entender o valor com ponto e vírgula
@@ -2234,7 +2336,6 @@ $(document).ready(function () {
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
     $(document).on('click', '.btn-editar-item-recebimento', function () {
-
 
         const id = $(this).data('id');
 
@@ -2339,6 +2440,8 @@ $(document).ready(function () {
             // Limpa o formulários
             limparFormularioDetalhes();
 
+            recarregarTabelaLotes();
+
             // Sai do modo edição (se estiver)
             sairModoEdicao();
 
@@ -2430,8 +2533,67 @@ $(document).ready(function () {
         });
     });
 
-    // --- LÓGICA DO MULTI-SELECT DE MESES ---
+    // --- LÓGICA DO MULTI-SELECT DE FORNECEDORES ---
+    // 1. Carrega os fornecedores e monta a lista de checkboxes
+    function carregarFornecedoresParaFiltro() {
+        $.get('ajax_router.php?action=getClientesComLotesOptions', function (response) {
+            const $container = $('#container-check-fornecedores-items');
+            $container.empty();
 
+            if (response.data) {
+                response.data.forEach(item => {
+                    const html = `
+                        <li class='p-1'>
+                            <div class='form-check'>
+                                <input class='form-check-input check-fornecedor-item' type='checkbox' value='${item.id}' id='filtro-forn-${item.id}' checked>
+                                <label class='form-check-label w-100 cursor-pointer text-truncate' for='filtro-forn-${item.id}' title="${item.text}">
+                                    ${item.text}
+                                </label>
+                            </div>
+                        </li>`;
+                    $container.append(html);
+                });
+                atualizarTextoBotaoFornecedores();
+            }
+        });
+    }
+
+    // 2. Atualiza o texto do botão
+    function atualizarTextoBotaoFornecedores() {
+        const total = $('.check-fornecedor-item').length;
+        const marcados = $('.check-fornecedor-item:checked').length;
+        const $btn = $('#btn-dropdown-fornecedores');
+        const $checkTodos = $('#check-fornecedor-todos');
+
+        if (marcados === 0) {
+            $btn.text('Nenhum selecionado');
+            $checkTodos.prop('checked', false);
+        } else if (marcados === total && total > 0) {
+            $btn.text('Todos os Fornecedores');
+            $checkTodos.prop('checked', true);
+        } else {
+            $btn.text(marcados + ' fornecedor(es)');
+            $checkTodos.prop('checked', false);
+        }
+    }
+
+    // Eventos de Checkbox Fornecedores
+    $('#lista-filtro-fornecedores').on('change', '#check-fornecedor-todos', function () {
+        const isChecked = $(this).is(':checked');
+        $('.check-fornecedor-item').prop('checked', isChecked);
+        atualizarTextoBotaoFornecedores();
+    });
+
+    $('#lista-filtro-fornecedores').on('change', '.check-fornecedor-item', function () {
+        atualizarTextoBotaoFornecedores();
+    });
+
+    // Chama a função ao iniciar se estiver na página correta
+    if ($('#btn-dropdown-fornecedores').length > 0) {
+        carregarFornecedoresParaFiltro();
+    }
+
+    // --- LÓGICA DO MULTI-SELECT DE MESES ---
     // 1. Função para atualizar o texto do botão conforme a seleção
     function atualizarTextoBotaoMeses() {
         const selecionados = [];
@@ -2479,29 +2641,6 @@ $(document).ready(function () {
 
     // Inicializa o texto ao carregar a página
     atualizarTextoBotaoMeses();
-
-    // Evento do Botão Gerar
-    /*  $('#btn-gerar-relatorio-mensal').on('click', function () {
-          const ano = $('#rel_ano').val();
-  
-          // Coleta os IDs dos meses marcados (1, 2, 10...)
-          const mesesSelecionados = [];
-          $('.check-mes-item:checked').each(function () {
-              mesesSelecionados.push($(this).val());
-          });
-  
-          if (mesesSelecionados.length === 0 || !ano) {
-              notificacaoErro('Erro', 'Selecione pelo menos um mês e informe o ano.');
-              return;
-          }
-  
-          // Transforma o array em string separada por vírgula (ex: "1,5,10")
-          const mesesStr = mesesSelecionados.join(',');
-  
-          // Abre o relatório em nova aba
-          const url = `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`;
-          window.open(url, '_blank');
-      }); */
 
     // Impede que o dropdown feche ao clicar num checkbox (melhora a usabilidade)
     $('.dropdown-menu').on('click', function (e) {

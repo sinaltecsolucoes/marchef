@@ -1936,7 +1936,13 @@ class LoteNovoRepository
             $stmtDeleteHeader = $this->pdo->prepare("DELETE FROM tbl_caixas_mistas_header WHERE mista_id = :mista_id");
             $stmtDeleteHeader->execute([':mista_id' => $mistaId]);
 
-            $this->auditLogger->log('DELETE', $mistaId, 'tbl_caixas_mistas_header', ['mista_id' => $mistaId], null, 'Exclusão de Caixa Mista sem itens de origem.');
+            $this->auditLogger->log(
+                'DELETE', 
+                $mistaId, 
+                'tbl_caixas_mistas_header', 
+                ['mista_id' => $mistaId], 
+                null, 
+                'Exclusão de Caixa Mista sem itens de origem.');
 
             $this->pdo->commit();
             return true;
@@ -2111,10 +2117,36 @@ class LoteNovoRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function excluirItemRecebimento(int $itemId): bool
+    public function excluirItemRecebimento(int $itemId, int $usuarioId): bool
     {
+        // 1. Busca os dados antigos para o histórico (Snapshot)
+        $stmtGet = $this->pdo->prepare("SELECT * FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id");
+        $stmtGet->execute([':id' => $itemId]);
+        $dadosAntigos = $stmtGet->fetch(PDO::FETCH_ASSOC);
+
+        if (!$dadosAntigos) {
+            return false; // Item não existe
+        }
+
+        // 2. Executa a exclusão
         $stmt = $this->pdo->prepare("DELETE FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id");
-        return $stmt->execute([':id' => $itemId]);
+        $success = $stmt->execute([':id' => $itemId]);
+
+        // 3. Registra o Log se deu certo
+        if ($success) {
+            $this->auditLogger->log(
+                'EXCLUSAO',                       // Ação
+                $itemId, // ID Ref
+                'tbl_lote_novo_recebdetalhes',    // Tabela
+                $dadosAntigos,       // Dados Antigos (JSON)
+                null,                             // Dados Novos (Null no delete)
+                'Item de recebimento excluído via interface.', // Descrição
+               
+            );
+            return true;
+        }
+
+        return false;
     }
 
     // Função auxiliar para carregar lotes finalizados (para reprocesso)
@@ -2332,44 +2364,7 @@ class LoteNovoRepository
         }
     }
 
-    /* public function getRelatorioMensalData(int $mes, int $ano): array
-    {
-        $sql = "SELECT 
-                    h.lote_data_fabricacao,
-                    h.lote_completo_calculado,
-                    COALESCE(NULLIF(f.ent_nome_fantasia,''), f.ent_razao_social) as fornecedor_nome,
-                    h.lote_observacao,
-                    
-                    -- Somas
-                    SUM(d.item_receb_peso_nota_fiscal) as total_peso,
-                    SUM(d.item_receb_total_caixas) as total_caixas,
-                    
-                    -- Agrupamentos de Texto (Gramaturas distintas)
-                    GROUP_CONCAT(DISTINCT d.item_receb_gram_faz ORDER BY d.item_receb_gram_faz SEPARATOR ' / ') as gram_faz,
-                    GROUP_CONCAT(DISTINCT d.item_receb_gram_lab ORDER BY d.item_receb_gram_lab SEPARATOR ' / ') as gram_benef,
-                    
-                    -- Lote de Origem (Reprocesso)
-                    -- Se houver múltiplos itens de reprocesso, lista todos
-                    GROUP_CONCAT(DISTINCT l_origem.lote_completo_calculado SEPARATOR ', ') as lote_reprocesso_origem
-
-                FROM tbl_lotes_novo_header h
-                LEFT JOIN tbl_entidades f ON h.lote_cliente_id = f.ent_codigo
-                LEFT JOIN tbl_lote_novo_recebdetalhes d ON h.lote_id = d.item_receb_lote_id
-                LEFT JOIN tbl_lotes_novo_header l_origem ON d.item_receb_lote_origem_id = l_origem.lote_id
-                
-                WHERE MONTH(h.lote_data_fabricacao) = :mes 
-                  AND YEAR(h.lote_data_fabricacao) = :ano
-                  AND h.lote_status != 'CANCELADO' -- Opcional: não mostrar cancelados
-                
-                GROUP BY h.lote_id
-                ORDER BY h.lote_data_fabricacao ASC, h.lote_id ASC";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':mes' => $mes, ':ano' => $ano]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } */
-
-    public function getRelatorioMensalData(array $meses, int $ano): array
+    public function getRelatorioMensalData(array $meses, int $ano, array $fornecedores = []): array
     {
         if (empty($meses)) return [];
 
@@ -2390,22 +2385,68 @@ class LoteNovoRepository
                     GROUP_CONCAT(DISTINCT l_origem.lote_completo_calculado SEPARATOR ', ') as lote_reprocesso_origem
 
                 FROM tbl_lotes_novo_header h
-                LEFT JOIN tbl_entidades f ON h.lote_fornecedor_id = f.ent_codigo
+                LEFT JOIN tbl_entidades f ON h.lote_cliente_id = f.ent_codigo
                 LEFT JOIN tbl_lote_novo_recebdetalhes d ON h.lote_id = d.item_receb_lote_id
                 LEFT JOIN tbl_lotes_novo_header l_origem ON d.item_receb_lote_origem_id = l_origem.lote_id
                 
                 WHERE YEAR(h.lote_data_fabricacao) = ?
                   AND MONTH(h.lote_data_fabricacao) IN ($placeholders)
-                  AND h.lote_status != 'CANCELADO'
-                
-                GROUP BY h.lote_id
-                ORDER BY h.lote_data_fabricacao ASC, h.lote_id ASC";
+                  AND h.lote_status != 'CANCELADO'";
 
         // Parâmetros: [Ano, Mes1, Mes2, Mes3...]
         $params = array_merge([$ano], $meses);
 
+        // --- FILTRO DE FORNECEDORES ---
+        if (!empty($fornecedores)) {
+            // Cria placeholders para fornecedores
+            $placeholdersForn = implode(',', array_fill(0, count($fornecedores), '?'));
+
+            $sql .= " AND h.lote_cliente_id IN ($placeholdersForn)";
+
+            // Adiciona os IDs dos fornecedores ao array de parâmetros
+            $params = array_merge($params, $fornecedores);
+        }
+
+        $sql .= " GROUP BY h.lote_id
+                  ORDER BY h.lote_data_fabricacao ASC, h.lote_id ASC";
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getNomesClientesPorIds(array $ids): string
+    {
+        if (empty($ids)) return '';
+
+        // Cria os placeholders ?,?,?
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        // Busca Nome Fantasia (ou Razão Social se não tiver fantasia)
+        $sql = "SELECT COALESCE(NULLIF(ent_nome_fantasia, ''), ent_razao_social) as nome 
+                FROM tbl_entidades 
+                WHERE ent_codigo IN ($placeholders)
+                ORDER BY nome ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($ids);
+
+        // Pega todos os nomes e junta com vírgula
+        $nomes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return implode(', ', $nomes);
+    }
+
+    public function getClientesComLotesOptions()
+    {
+        $sql = "SELECT DISTINCT 
+                    e.ent_codigo as id, 
+                    COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social) as text
+                FROM tbl_lotes_novo_header h
+                INNER JOIN tbl_entidades e ON h.lote_cliente_id = e.ent_codigo
+                WHERE h.lote_status != 'CANCELADO'
+                ORDER BY text ASC";
+
+        $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

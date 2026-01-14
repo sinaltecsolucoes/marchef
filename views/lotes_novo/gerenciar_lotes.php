@@ -55,11 +55,11 @@ switch ($page) {
                         Relatório Lista de Lote
                     </h5>
 
-                    
-                    
+
+
                     <div id="form-relatorio-mensal" class="row g-3 align-items-end">
 
-                        <div class="col-md-5">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">Período (Meses)</label>
 
                             <div class="dropdown">
@@ -113,20 +113,37 @@ switch ($page) {
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Fornecedor</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-fornecedores" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Todos os Fornecedores
+                                </button>
+                                <ul class="dropdown-menu p-2 shadow w-100" id="lista-filtro-fornecedores" aria-labelledby="btn-dropdown-fornecedores" style="max-height: 300px; overflow-y: auto;">
+                                    <li class="p-1 border-bottom mb-2 bg-light rounded">
+                                        <div class="form-check">
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-fornecedor-todos" checked>
+                                            <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-fornecedor-todos">MARCAR TODOS</label>
+                                        </div>
+                                    </li>
+                                    <div id="container-check-fornecedores-items">
+                                        <li class="text-center text-muted small py-2"><i class="fas fa-spinner fa-spin"></i> Carregando...</li>
+                                    </div>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Exercício (Ano)</label>
                             <input type="number" class="form-control" id="rel_ano" value="<?php echo date('Y'); ?>">
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <button type="button" class="btn btn-info fw-bold text-white" id="btn-gerar-relatorio-mensal">
                                 <i class="fas fa-print me-2"></i> GERAR
                             </button>
                         </div>
                     </div>
-
-
-
 
 
                 </div>
@@ -210,14 +227,14 @@ switch ($page) {
                                     <input type="date" class="form-control" id="lote_data_fabricacao_novo" name="lote_data_fabricacao" value="<?php echo date('Y-m-d'); ?>">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Cliente *</label>
+                                    <label class="form-label">Fornecedor *</label>
                                     <select class="form-select" id="lote_cliente_id_novo" name="lote_cliente_id" style="width: 100%;"></select>
                                 </div>
                             </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Fornecedor *</label>
+                                    <label class="form-label">Fazenda (Origem) *</label>
                                     <select class="form-select" id="lote_fornecedor_id_novo" name="lote_fornecedor_id" style="width: 100%;"></select>
                                 </div>
                                 <div class="col-md-3">
