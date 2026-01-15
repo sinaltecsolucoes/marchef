@@ -39,6 +39,104 @@ $(document).ready(function () {
         });
     }
 
+    // --- INICIALIZAÇÃO DO MODAL DE IMPORTAÇÃO ---
+    // Carrega os selects apenas quando o modal for aberto para não pesar a página inicial
+    $('#modal-importar-legado').on('shown.bs.modal', function () {
+
+        // 1. Select de Clientes (Busca dinâmica)
+        $('.select2-clientes').select2({
+            dropdownParent: $('#modal-importar-legado'), // Importante para o search funcionar dentro do modal
+            ajax: {
+                url: 'ajax_router.php?action=getClienteOptions',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term }; // O que o usuário digita
+                },
+                processResults: function (data) {
+                    // O retorno deve ser { results: [ {id:1, text:'Nome'}, ... ] } ou { data: ... }
+                    // Ajuste conforme seu retorno padrão. Se for 'data', mapeie para 'results'.
+                    return {
+                        results: data.data || data
+                    };
+                }
+            },
+            placeholder: 'Busque o cliente...',
+            minimumInputLength: 0
+        });
+
+        // 2. Select de Produtos (Busca dinâmica)
+        $('.select2-produtos').select2({
+            dropdownParent: $('#modal-importar-legado'),
+            ajax: {
+                url: 'ajax_router.php?action=getProdutosSecundariosOptions',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term };
+                },
+                processResults: function (data) {
+                    return { results: data.results || [] };
+                }
+            },
+            placeholder: 'Busque o produto acabado...',
+            minimumInputLength: 0
+        });
+
+        // 3. Select de Endereços (Busca dinâmica)
+        $('.select2-enderecos').select2({
+            dropdownParent: $('#modal-importar-legado'),
+            ajax: {
+                url: 'ajax_router.php?action=buscarEnderecosSelect',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results || []
+                    };
+                }
+            },
+            placeholder: 'Busque o endereço (Câmara/Rua)...',
+            minimumInputLength: 0,
+            language: {
+                noResults: function () {
+                    return "Nenhum endereço encontrado";
+                },
+                searching: function () {
+                    return "Buscando...";
+                }
+            }
+        });
+    });
+
+    $('.select2-lotes-finalizados').select2({
+        theme: 'bootstrap-5',
+        dropdownParent: $('#modal-lote-novo'), // Confirme se o ID do modal é este
+        placeholder: 'Busque pelo número do lote...',
+        allowClear: true,
+        ajax: {
+            url: 'ajax_router.php?action=getLotesFinalizadosOptions', // Rota Nova
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    // MUDANÇA 1: O PHP espera $_GET['term'], então enviamos 'term'
+                    term: params.term
+                };
+            },
+            processResults: function (data) {
+                // MUDANÇA 2: Simplificação Total!
+                // Como o PHP já retorna { "results": [ {id: 1, text: "Lote A"}, ... ] }
+                // nós passamos o objeto 'data' direto. O Select2 entende nativamente.
+                return data;
+            },
+            cache: true
+        }
+    });
+
     // Inicializa selects do Header (Aba 1) já no load para garantir presença do search
     initSelect2($('#lote_fornecedor_id_novo'), 'Selecione o fornecedor');
     initSelect2($('#lote_cliente_id_novo'), 'Selecione o cliente');
@@ -1130,7 +1228,7 @@ $(document).ready(function () {
 
     // Função reutilizável para atualizar a tabela principal
     function recarregarTabelaLotes() {
-        let idTabelaPrincipal = '#tabela-lotes-novo'; 
+        let idTabelaPrincipal = '#tabela-lotes-novo';
 
         if ($.fn.DataTable && $.fn.DataTable.isDataTable(idTabelaPrincipal)) {
             // reload(null, false) recarrega os dados e mantém a paginação atual
@@ -2133,7 +2231,7 @@ $(document).ready(function () {
                             });
 
                             // 2. ATUALIZA A TABELA PRINCIPAL (Para corrigir o "12g / 14g")
-                           recarregarTabelaLotes();
+                            recarregarTabelaLotes();
 
                             Swal.fire('Excluído!', response.message || 'Item removido.', 'success');
                         } else {
@@ -2462,43 +2560,43 @@ $(document).ready(function () {
         sairModoEdicao();
     });
 
-    $('#item_receb_lote_origem_id').on('change', function () {
-        const loteId = $(this).val();
-        if (!loteId) return;
-
-        // Feedback visual de carregamento
-        const $btnSalvar = $('#btn-adicionar-item-recebimento');
-        const textoOriginal = $btnSalvar.html();
-        $btnSalvar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Carregando...');
-
-        $.getJSON('ajax_router.php?action=getDadosLoteReprocesso', { lote_id: loteId })
-            .done(function (resp) {
-                if (resp.success) {
-                    const d = resp.dados;
-
-                    // Preenchimento dos campos
-                    // Nota: As chaves aqui (ex: d.lote_nota_fiscal) devem bater com o SQL do Repository
-                    $('[name="item_receb_nota_fiscal"]').val(d.lote_nota_fiscal);
-                    $('[name="item_receb_peso_nota_fiscal"]').val(d.lote_peso_nota_fiscal);
-                    $('#item_receb_total_caixas').val(d.lote_total_caixas);
-
-                    // Campos calculados/laboratório
-                    $('#calc_peso_medio_fazenda').val(d.lote_peso_medio_fazenda);
-                    $('#item_receb_peso_medio_ind').val(d.lote_peso_medio_industria);
-                    $('[name="item_receb_gram_faz"]').val(d.lote_gramatura_fazenda);
-                    $('[name="item_receb_gram_lab"]').val(d.lote_gramatura_lab);
-                } else {
-                    notificacaoErro('Erro', resp.message || 'Dados não encontrados');
-                }
-            })
-            .fail(function (jqXHR) {
-                console.error("Erro detalhado:", jqXHR.responseText);
-                notificacaoErro('Erro', 'Falha ao buscar dados do lote. Verifique o console.');
-            })
-            .always(function () {
-                $btnSalvar.prop('disabled', false).html(textoOriginal);
-            });
-    });
+    /* $('#item_receb_lote_origem_id').on('change', function () {
+         const loteId = $(this).val();
+         if (!loteId) return;
+ 
+         // Feedback visual de carregamento
+         const $btnSalvar = $('#btn-adicionar-item-recebimento');
+         const textoOriginal = $btnSalvar.html();
+         $btnSalvar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Carregando...');
+ 
+         $.getJSON('ajax_router.php?action=getDadosLoteReprocesso', { lote_id: loteId })
+             .done(function (resp) {
+                 if (resp.success) {
+                     const d = resp.dados;
+ 
+                     // Preenchimento dos campos
+                     // Nota: As chaves aqui (ex: d.lote_nota_fiscal) devem bater com o SQL do Repository
+                     $('[name="item_receb_nota_fiscal"]').val(d.lote_nota_fiscal);
+                     $('[name="item_receb_peso_nota_fiscal"]').val(d.lote_peso_nota_fiscal);
+                     $('#item_receb_total_caixas').val(d.lote_total_caixas);
+ 
+                     // Campos calculados/laboratório
+                     $('#calc_peso_medio_fazenda').val(d.lote_peso_medio_fazenda);
+                     $('#item_receb_peso_medio_ind').val(d.lote_peso_medio_industria);
+                     $('[name="item_receb_gram_faz"]').val(d.lote_gramatura_fazenda);
+                     $('[name="item_receb_gram_lab"]').val(d.lote_gramatura_lab);
+                 } else {
+                     notificacaoErro('Erro', resp.message || 'Dados não encontrados');
+                 }
+             })
+             .fail(function (jqXHR) {
+                 console.error("Erro detalhado:", jqXHR.responseText);
+                 notificacaoErro('Erro', 'Falha ao buscar dados do lote. Verifique o console.');
+             })
+             .always(function () {
+                 $btnSalvar.prop('disabled', false).html(textoOriginal);
+             });
+     });*/
 
     // Evento para Gerar Relatório A PARTIR DA LISTA (DataTables)
     $tabelaLotes.on('click', '.btn-imprimir-relatorio-lista', function (e) {
@@ -2647,4 +2745,540 @@ $(document).ready(function () {
         e.stopPropagation();
     });
 
+    // --- IMPORTAÇÃO DE LOTE LEGADO ---
+    $('#btn-salvar-legado').on('click', function () {
+        const $btn = $(this);
+        const $form = $('#form-importar-legado');
+
+        // Validação HTML5 simples
+        if (!$form[0].checkValidity()) {
+            $form[0].reportValidity();
+            return;
+        }
+
+        // Token CSRF
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+        Swal.fire({
+            title: 'Confirma Importação?',
+            text: "Este lote será registrado como FINALIZADO e o saldo inserido no estoque. A operação será auditada.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#343a40',
+            confirmButtonText: 'Sim, Importar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                // Prepara dados
+                let formData = new FormData($form[0]);
+
+                // Se o seu ajax_router espera a action na URL, ou no FormData, mande nos dois para garantir
+                // Mas baseado no nosso histórico, mande na URL:
+                const urlAction = 'ajax_router.php?action=importarLoteLegado';
+
+                formData.append('csrf_token', csrfToken);
+
+                $.ajax({
+                    url: urlAction,
+                    type: 'POST',
+                    data: formData,
+                    processData: false, // Necessário para FormData
+                    contentType: false, // Necessário para FormData
+                    dataType: 'json',
+                    beforeSend: function () {
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $('#modal-importar-legado').modal('hide');
+                            $form[0].reset();
+
+                            // Limpa os Select2 se estiver usando
+                            $('.select2-clientes, .select2-produtos, .select2-enderecos').val(null).trigger('change');
+
+                            Swal.fire('Sucesso!', response.message, 'success');
+
+                            // Se estiver na tela de estoque, recarrega. Se estiver em lotes, não precisa fazer nada visualmente, 
+                            // pois o lote legado não aparece na lista de produção ativa.
+                        } else {
+                            notificacaoErro('Erro', response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        notificacaoErro('Erro', 'Falha na comunicação: ' + error);
+                    },
+                    complete: function () {
+                        $btn.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Confirmar Importação');
+                    }
+                });
+            }
+        });
+    });
+
+    // --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
+
+    // 1. Ao selecionar produto, guarda o peso da embalagem
+    $('.select2-produtos').on('select2:select', function (e) {
+        var data = e.params.data;
+
+        // Debug: Veja no console (F12) se o peso está aparecendo
+        console.log("Produto Selecionado:", data.text, "Peso Embalagem:", data.prod_peso_embalagem);
+
+        // Garante que seja float, trocando vírgula por ponto se necessário
+        let pesoString = String(data.prod_peso_embalagem || '0').replace(',', '.');
+        let pesoEmb = parseFloat(pesoString) || 0;
+
+        $('#hidden_peso_embalagem').val(pesoEmb);
+
+        if (pesoEmb === 0) {
+            notificacaoErro('Aviso', 'Produto sem peso padrão cadastrado. Digite manualmente.');
+        }
+
+        // Atualiza a interface
+        configurarCamposCalculo();
+        recalcularValores();
+    });
+
+    // 2. Monitora a troca do Radio Button (Modo de Cálculo)
+    $('input[name="modo_calculo"]').on('change', function () {
+        configurarCamposCalculo();
+    });
+
+    // 3. Monitora a digitação nos campos
+    $('#input_qtd_caixas, #input_peso_total').on('keyup change', function () {
+        recalcularValores();
+    });
+
+    function configurarCamposCalculo() {
+        let modo = $('input[name="modo_calculo"]:checked').val();
+        let pesoPadrao = parseFloat($('#hidden_peso_embalagem').val()) || 0;
+
+        // Se não tiver peso padrão (produto livre), libera tudo
+        if (pesoPadrao === 0) {
+            $('#input_qtd_caixas, #input_peso_total').prop('readonly', false).removeClass('bg-secondary text-white bg-opacity-25');
+            return;
+        }
+
+        // Classes visuais para "bloqueado"
+        const classeBloqueado = 'bg-secondary bg-opacity-10'; // Cinza claro
+
+        if (modo === 'caixa') {
+            // Usuário digita CAIXA -> Bloqueia PESO
+            $('#input_qtd_caixas').prop('readonly', false).removeClass(classeBloqueado).focus();
+            $('#input_peso_total').prop('readonly', true).addClass(classeBloqueado);
+        } else {
+            // Usuário digita PESO -> Bloqueia CAIXA
+            $('#input_peso_total').prop('readonly', false).removeClass(classeBloqueado).focus();
+            $('#input_qtd_caixas').prop('readonly', true).addClass(classeBloqueado);
+        }
+
+        // Força um recalculo imediato ao trocar o switch
+        recalcularValores();
+    }
+
+    function recalcularValores() {
+        let pesoPadrao = parseFloat($('#hidden_peso_embalagem').val()) || 0;
+
+        // Se peso for zero, não calcula nada (evita divisão por zero ou erros)
+        if (pesoPadrao === 0) return;
+
+        let modo = $('input[name="modo_calculo"]:checked').val();
+
+        if (modo === 'caixa') {
+            // MODO 1: Digitou CAIXAS -> Calcula PESO (Multiplicação)
+            let caixas = parseFloat($('#input_qtd_caixas').val()) || 0;
+            let pesoTotal = caixas * pesoPadrao;
+
+            $('#input_peso_total').val(pesoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 3 }));
+        }
+        else {
+            // MODO 2: Digitou PESO -> Calcula CAIXAS (Divisão)
+            let pesoTotalStr = $('#input_peso_total').val();
+            // Limpa pontos de milhar e troca vírgula decimal
+            let pesoTotal = parseFloat(pesoTotalStr.replace(/\./g, '').replace(',', '.')) || 0;
+
+            if (pesoTotal > 0) {
+                let caixas = pesoTotal / pesoPadrao;
+
+                // Debug: Veja se a conta está certa
+                console.log(pesoTotal + " / " + pesoPadrao + " = " + caixas);
+
+                // Arredonda para o inteiro mais próximo
+                $('#input_qtd_caixas').val(Math.round(caixas));
+            } else {
+                $('#input_qtd_caixas').val(0);
+            }
+        }
+    }
+
+    $('#modal-historico-legado').on('shown.bs.modal', function () {
+        carregarHistoricoLegado();
+    });
+
+    function carregarHistoricoLegado() {
+        $.ajax({
+            url: 'ajax_router.php?action=listarLotesLegadosRecentes',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                let html = '';
+                if (response.data.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center">Nenhum registro recente.</td></tr>';
+                } else {
+                    response.data.forEach(function (lote) {
+                        html += `
+                            <tr>
+                                <td>${lote.lote_completo_calculado}</td>
+                                <td>${lote.prod_descricao}</td>
+                                <td>${lote.item_emb_qtd_sec}</td>
+                                <td>${lote.data_formatada}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger btn-estornar-legado" 
+                                            data-id="${lote.lote_id}" title="Estornar/Cancelar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                $('#tabela-historico-legado tbody').html(html);
+            }
+        });
+    }
+
+    // Clique no botão de lixeira (Estornar)
+    $(document).on('click', '.btn-estornar-legado', function () {
+        let id = $(this).data('id');
+
+        Swal.fire({
+            title: 'Cancelar Importação?',
+            text: "Isso removerá o saldo do estoque. Esta ação é irreversível.",
+            icon: 'warning',
+            input: 'text',
+            inputLabel: 'Motivo do Estorno',
+            inputPlaceholder: 'Ex: Erro de digitação',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sim, Estornar',
+            preConfirm: (motivo) => {
+                if (!motivo) {
+                    Swal.showValidationMessage('Informe um motivo para auditoria');
+                }
+                return motivo;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'ajax_router.php?action=estornarLoteLegado',
+                    type: 'POST',
+                    data: {
+                        lote_id: id,
+                        motivo: result.value,
+                        csrf_token: $('meta[name="csrf-token"]').attr('content')
+                    },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire('Sucesso', res.message, 'success');
+
+                            // 1. Atualiza a lista do modal (Histórico)
+                            carregarHistoricoLegado();
+
+                            // 2. ATUALIZA A TABELA PRINCIPAL
+                            recarregarTabelaLotes();
+                        } else {
+                            Swal.fire('Erro', res.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // --- RESETAR MODAL AO FECHAR ---
+    $('#modal-importar-legado').on('hidden.bs.modal', function () {
+        // 1. Limpa o formulário HTML (inputs de texto, number, etc)
+        $(this).find('form')[0].reset();
+
+        // 2. Limpa os Select2
+        $('.select2-clientes, .select2-produtos, .select2-enderecos').val(null).trigger('change');
+
+        // 3. Reseta variáveis ocultas e estilo
+        $('#hidden_peso_embalagem').val(0);
+
+        // 4. Volta o switch para o padrão (Caixas) e reseta bloqueios visuais
+        $('#modo_calc_caixa').prop('checked', true);
+        configurarCamposCalculo(); // Reaplica a lógica visual (bloqueia peso, libera caixa)
+
+        // 5. Remove classes de validação do Bootstrap (se houver)
+        $(this).find('form').removeClass('was-validated');
+    });
+
+    // ======================================================
+    // LÓGICA DE REPROCESSO (Lote -> Produtos -> Dados)
+    // ======================================================
+
+    // 1. ALTERNAR ENTRE MATÉRIA-PRIMA E REPROCESSO (Com Inicialização Segura)
+    $(document).on('change', 'input[name="tipo_entrada_mp"]', function () {
+        let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+
+        if (tipo === 'LOTE_ORIGEM') {
+            // MODO REPROCESSO
+            $('#div-select-mp').hide();
+            $('#div-lote-origem').show();
+
+            // --- CORREÇÃO DO ERRO 'isConnected' ---
+            // Só inicializa o Select2 agora, garantindo que o modal existe
+            // Verificamos se já não foi inicializado antes para não duplicar
+            if (!$('.select2-lotes-finalizados').hasClass("select2-hidden-accessible")) {
+
+                $('.select2-lotes-finalizados').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#modal-gerenciar-lotes'), // Agora ele com certeza existe!
+                    placeholder: 'Busque pelo número do lote...',
+                    allowClear: true,
+                    ajax: {
+                        url: 'ajax_router.php?action=searchLotes',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term,
+                                status: 'FINALIZADO'
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.map(function (item) {
+                                    return {
+                                        id: item.lote_id,
+                                        text: item.lote_completo_calculado + ' (' + item.prod_descricao + ')',
+                                        lote_dados: item
+                                    };
+                                })
+                            };
+                        },
+                        cache: true
+                    }
+                });
+            }
+
+            // Exibe/Oculta o produto de origem dependendo se já tem lote selecionado
+            if ($('.select2-lotes-finalizados').val()) {
+                $('#div-produto-origem').show();
+            } else {
+                $('#div-produto-origem').hide();
+            }
+
+        } else {
+            // MODO MATÉRIA PRIMA
+            $('#div-select-mp').show();
+            $('#div-lote-origem').hide();
+            $('#div-produto-origem').hide();
+
+            $('.select2-lotes-finalizados').val(null).trigger('change');
+            $('#select-produto-origem').empty();
+        }
+    });
+
+    // 2. AO SELECIONAR O LOTE -> BUSCAR PRODUTOS
+    $('.select2-lotes-finalizados').on('select2:select', function (e) {
+        let loteId = e.params.data.id;
+
+        // Limpa campos anteriores
+        $('#select-produto-origem').empty().append('<option value="">Carregando...</option>');
+        $('#div-produto-origem').show();
+
+        // ROTA A: Listar Produtos (Não busca pesos ainda)
+        $.ajax({
+            url: 'ajax_router.php?action=listarProdutosDoLote',
+            data: { lote_id: loteId },
+            dataType: 'json',
+            success: function (res) {
+                let html = '<option value="">Selecione o produto a reprocessar...</option>';
+                if (res.data && res.data.length > 0) {
+                    res.data.forEach(function (p) {
+                        html += `<option value="${p.prod_codigo}">${p.prod_descricao}</option>`;
+                    });
+                } else {
+                    html = '<option value="">Nenhum produto neste lote.</option>';
+                }
+                $('#select-produto-origem').html(html);
+            }
+        });
+    });
+
+    // 3. AO SELECIONAR O PRODUTO -> BUSCAR PESOS E CAIXAS
+    $('#select-produto-origem').on('change', function () {
+        let produtoId = $(this).val();
+        let loteId = $('.select2-lotes-finalizados').val();
+
+        if (!produtoId || !loteId) return;
+
+        // ROTA B: Busca dados na tabela de Embalagem (Estoque)
+        $.ajax({
+            url: 'ajax_router.php?action=getDadosReprocessoPorProduto',
+            data: { lote_id: loteId, produto_id: produtoId },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success && res.data) {
+                    let d = res.data;
+
+                    // Preenche os campos
+                    $('input[name="item_receb_peso_nota_fiscal"]').val(formatarBR(d.peso_total_calculado));
+                    $('input[name="item_receb_total_caixas"]').val(d.total_caixas);
+                    $('input[name="item_receb_peso_medio_ind"]').val(formatarBR(d.prod_peso_embalagem));
+                    $('input[name="item_receb_nota_fiscal"]').val(d.referencia_nota);
+
+                    // Limpa campos que não fazem sentido no reprocesso
+                    $('input[name="item_receb_gram_faz"]').val('');
+                    $('input[name="item_receb_gram_lab"]').val('');
+
+                } else {
+                    // Se não tiver saldo, avisa mas não trava
+                    notificacaoErro('Aviso', res.message || 'Dados não encontrados.');
+                }
+            }
+        });
+    });
+
+    // LOGICA PARA BAIXA DE LOTES PARA REPROCESSO
+
+    // VARIÁVEL GLOBAL PARA GUARDAR A DISTRIBUIÇÃO
+    var distribuicaoBaixa = [];
+
+    $('#btn-adicionar-item-recebimento').on('click', function () {
+        let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+
+        // Se for Matéria Prima, salva normal (código antigo)
+        if (tipo === 'MATERIA_PRIMA') {
+            salvarRecebimentoNormal(); // *Supondo que vc tenha isolado a função antiga
+            return;
+        }
+
+        // SE FOR REPROCESSO:
+        let loteId = $('#item_receb_lote_origem_id').val();
+        let prodId = $('#select-produto-origem').val();
+        let qtdCaixasTotal = parseInt($('#item_receb_total_caixas').val()) || 0;
+
+        if (qtdCaixasTotal <= 0) {
+            notificacaoErro('Erro', 'Quantidade inválida.');
+            return;
+        }
+
+        // 1. Consulta endereços
+        $.ajax({
+            url: 'ajax_router.php?action=checkEstoqueParaBaixa',
+            data: { lote_id: loteId, produto_id: prodId },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    let saldos = res.data;
+
+                    // Se tiver só 1 endereço e o saldo cobrir tudo, baixa direto
+                    if (saldos.length === 1 && saldos[0].saldo_caixas >= qtdCaixasTotal) {
+                        distribuicaoBaixa = [{
+                            id: saldos[0].item_emb_id,
+                            qtd: qtdCaixasTotal
+                        }];
+                        enviarReprocessoParaBackend(); // Salva direto
+                    } else {
+                        // Vários endereços ou saldo complexo: ABRE MODAL PICKING
+                        abrirModalPicking(saldos, qtdCaixasTotal);
+                    }
+                }
+            }
+        });
+    });
+
+    function abrirModalPicking(saldos, totalAlvo) {
+        let html = '';
+        saldos.forEach(item => {
+            let nomeEnd = item.endereco_nome ? item.endereco_nome : 'Endereço Indefinido';
+            html += `
+                <tr>
+                    <td>${nomeEnd} (ID: ${item.item_emb_id})</td>
+                    <td class="text-center">${item.saldo_caixas}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm input-picking-qtd" 
+                            data-id="${item.item_emb_id}" 
+                            data-max="${item.saldo_caixas}" 
+                            min="0" value="0">
+                    </td>
+                </tr>
+            `;
+        });
+
+        $('#lista-picking-enderecos').html(html);
+        $('#picking-total-alvo').text(totalAlvo);
+        $('#picking-total-selecionado').text('0');
+        $('#picking-erro-msg').hide();
+
+        $('#modal-picking-reprocesso').modal('show');
+
+        // Evento para somar em tempo real
+        $('.input-picking-qtd').on('input', function () {
+            let total = 0;
+            $('.input-picking-qtd').each(function () {
+                total += parseInt($(this).val()) || 0;
+            });
+            $('#picking-total-selecionado').text(total);
+
+            // Validações visuais
+            if (total === totalAlvo) {
+                $('#picking-total-selecionado').removeClass('text-danger').addClass('text-success');
+                $('#btn-confirmar-picking').prop('disabled', false);
+            } else {
+                $('#picking-total-selecionado').removeClass('text-success').addClass('text-danger');
+                $('#btn-confirmar-picking').prop('disabled', true);
+            }
+        });
+
+        // Trigger inicial para travar botão
+        $('.input-picking-qtd').first().trigger('input');
+    }
+
+    $('#btn-confirmar-picking').on('click', function () {
+        distribuicaoBaixa = [];
+        let total = 0;
+        let totalAlvo = parseInt($('#picking-total-alvo').text());
+
+        $('.input-picking-qtd').each(function () {
+            let qtd = parseInt($(this).val()) || 0;
+            let id = $(this).data('id');
+            if (qtd > 0) {
+                distribuicaoBaixa.push({ id: id, qtd: qtd });
+            }
+            total += qtd;
+        });
+
+        if (total !== totalAlvo) {
+            $('#picking-erro-msg').text('A soma das quantidades deve ser igual ao total do reprocesso.').show();
+            return;
+        }
+
+        $('#modal-picking-reprocesso').modal('hide');
+        enviarReprocessoParaBackend();
+    });
+
+    function enviarReprocessoParaBackend() {
+        let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+        dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
+
+        $.ajax({
+            url: 'ajax_router.php?action=salvarReprocesso',
+            type: 'POST',
+            data: dadosForm,
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire('Sucesso', res.message, 'success');
+                    // Recarregar tabelas e limpar form...
+                } else {
+                    Swal.fire('Erro', res.message, 'error');
+                }
+            }
+        });
+    }
 }); 

@@ -25,7 +25,7 @@ class EstoqueRepository
      * @param float $quantidade A quantidade a ser alocada (normalmente 1 para cada leitura).
      * @return int O ID da alocação (seja ela nova ou atualizada).
      */
-    public function alocarItem(int $enderecoId, int $loteItemId, int $usuarioId, float $quantidade = 1.0): int
+    /* public function alocarItem(int $enderecoId, int $loteItemId, int $usuarioId, float $quantidade = 1.0): int
     {
         // Inicia uma transação para garantir a consistência dos dados
         $this->pdo->beginTransaction();
@@ -87,6 +87,83 @@ class EstoqueRepository
             $this->pdo->rollBack();
             // Relança a exceção para ser tratada pela API
             throw new Exception("Ocorreu um erro no banco de dados ao tentar alocar o item: " . $e->getMessage());
+        }
+    }*/
+
+    /**
+     * @doc: Aloca um item em um endereço de estoque.
+     * (Versão compatível com Transações Aninhadas)
+     */
+    public function alocarItem(int $enderecoId, int $loteItemId, int $usuarioId, float $quantidade = 1.0): int
+    {
+        // 1. VERIFICA SE JÁ EXISTE UMA TRANSAÇÃO EM ABERTO (vinda do Importar Lote)
+        $transacaoExterna = $this->pdo->inTransaction();
+
+        // Só abre transação nova se NÃO existir uma externa
+        if (!$transacaoExterna) {
+            $this->pdo->beginTransaction();
+        }
+
+        try {
+            // Passo 1: Verifica se já existe uma alocação
+            $stmtCheck = $this->pdo->prepare(
+                "SELECT alocacao_id, alocacao_quantidade FROM tbl_estoque_alocacoes 
+                 WHERE alocacao_lote_item_id = :lote_item_id AND alocacao_endereco_id = :endereco_id"
+            );
+            $stmtCheck->execute([
+                ':lote_item_id' => $loteItemId,
+                ':endereco_id' => $enderecoId
+            ]);
+            $alocacaoExistente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if ($alocacaoExistente) {
+                // Passo 2a: UPDATE
+                $novaQuantidade = $alocacaoExistente['alocacao_quantidade'] + $quantidade;
+                $alocacaoId = $alocacaoExistente['alocacao_id'];
+
+                $stmtUpdate = $this->pdo->prepare(
+                    "UPDATE tbl_estoque_alocacoes SET alocacao_quantidade = :quantidade WHERE alocacao_id = :id"
+                );
+                $stmtUpdate->execute([
+                    ':quantidade' => $novaQuantidade,
+                    ':id' => $alocacaoId
+                ]);
+
+                $idRetorno = $alocacaoId;
+            } else {
+                // Passo 2b: INSERT
+                $sql = "INSERT INTO tbl_estoque_alocacoes 
+                        (alocacao_endereco_id, alocacao_lote_item_id, alocacao_quantidade, alocacao_data, alocacao_usuario_id)
+                        VALUES 
+                        (:endereco_id, :lote_item_id, :quantidade, NOW(), :usuario_id)";
+
+                $stmtInsert = $this->pdo->prepare($sql);
+                $stmtInsert->execute([
+                    ':endereco_id' => $enderecoId,
+                    ':lote_item_id' => $loteItemId,
+                    ':quantidade' => $quantidade,
+                    ':usuario_id' => $usuarioId
+                ]);
+
+                $idRetorno = (int) $this->pdo->lastInsertId();
+            }
+
+            // 2. COMMIT CONDICIONAL
+            // Só damos commit se fomos nós que abrimos a transação.
+            // Se veio do 'importarLoteLegado', deixamos o pai dar o commit final.
+            if (!$transacaoExterna) {
+                $this->pdo->commit();
+            }
+
+            return $idRetorno;
+        } catch (Exception $e) {
+            // 3. ROLLBACK CONDICIONAL
+            // Só damos rollback se fomos nós que abrimos.
+            if (!$transacaoExterna && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            // Relança a exceção para o pai saber que deu erro
+            throw new Exception("Erro ao alocar item: " . $e->getMessage());
         }
     }
 
@@ -155,5 +232,4 @@ class EstoqueRepository
         $stmt->execute([':endereco_id' => $enderecoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    }
+}

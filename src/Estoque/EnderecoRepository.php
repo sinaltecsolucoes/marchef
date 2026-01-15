@@ -91,7 +91,7 @@ class EnderecoRepository
             $paramType = ($key === ':camara_id') ? PDO::PARAM_INT : PDO::PARAM_STR;
             $stmtFiltered->bindValue($key, $value, $paramType);
         }*/
-        $stmtFiltered->execute();
+        $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
         // --- Busca dos Dados da Página Atual ---

@@ -411,4 +411,37 @@ class ProdutoRepository
         $stmt->execute($queryParams);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Busca produtos secundários (Caixas/Acabados) para o Select2.
+     * Traz também o peso da embalagem para ajudar nos cálculos do modal.
+     */
+    public function getProdutosSecundariosOptions(string $term = ''): array
+    {
+        $term = "%" . $term . "%";
+
+        // Selecionamos 'prod_codigo as id' e 'prod_descricao as text' 
+        // para o Select2 entender automaticamente.
+        $sql = "SELECT 
+                    prod_codigo as id, 
+                    CONCAT(prod_descricao, ' (Cód: ', COALESCE(prod_codigo_interno, 'N/A'), ')') as text,
+                    prod_peso_embalagem,
+                    prod_unidade
+                FROM tbl_produtos 
+                WHERE prod_tipo_embalagem = 'SECUNDARIA' 
+                AND prod_situacao = 'A'
+                AND (prod_descricao LIKE :term1 OR 
+                     prod_codigo LIKE :term2 OR
+                     prod_codigo_interno LIKE :term3)
+                ORDER BY prod_descricao ASC 
+                LIMIT 30"; // Limita a 30 resultados para ser rápido
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':term1' => $term,
+            ':term2' => $term,
+            ':term3' => $term
+        ]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

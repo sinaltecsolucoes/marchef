@@ -129,6 +129,9 @@ switch ($action) {
     case 'getSecundariosPorPrimario':
         getSecundariosPorPrimario($produtoRepo);
         break;
+    case 'getProdutosSecundariosOptions':
+        getProdutosSecundariosOptions($produtoRepo);
+        break;
 
     // --- ROTAS DE ENTIDADES ---
     case 'listarEntidades':
@@ -314,7 +317,14 @@ switch ($action) {
         break;
     case 'gerarRelatorioMensalLotes':
         gerarRelatorioMensalLotes($loteNovoRepo);
-        break; 
+        break;
+    case 'listarLotesLegadosRecentes':
+        listarLotesLegadosRecentes($loteNovoRepo);
+        break;
+    case 'estornarLoteLegado':
+        estornarLoteLegado($loteNovoRepo);
+        break;
+
 
     // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
@@ -340,6 +350,21 @@ switch ($action) {
         break;
     case 'getClientesComLotesOptions':
         getClientesComLotesOptions($loteNovoRepo);
+        break;
+    case 'importarLoteLegado':
+        importarLoteLegado($loteNovoRepo);
+        break;
+    case 'listarProdutosDoLote':
+        listarProdutosDoLote($loteNovoRepo);
+        break;
+    case 'getDadosReprocessoPorProduto':
+        getDadosReprocessoPorProduto($loteNovoRepo);
+        break;
+    case 'checkEstoqueParaBaixa':
+        checkEstoqueParaBaixa($loteNovoRepo);
+        break;
+    case 'salvarReprocesso':
+        salvarReprocesso($loteNovoRepo);
         break;
 
 
@@ -839,6 +864,13 @@ function getSecundariosPorPrimario(ProdutoRepository $repo)
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erro ao buscar produtos.']);
     }
+}
+
+function getProdutosSecundariosOptions(ProdutoRepository $repo)
+{
+    $term = $_GET['term'] ?? '';
+    $data = $repo->getProdutosSecundariosOptions($term);
+    echo json_encode(['results' => $data]);
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ENTIDADES ---
@@ -1529,7 +1561,7 @@ function getDadosDoLoteItemNovo(LoteNovoRepository $repo)
 
 // --- FUNÇÕES DE CONTROLE PARA DETALHES DE RECEBIMENTO ---
 
-function adicionarItemRecebimento(LoteNovoRepository $repo)
+/* function adicionarItemRecebimento(LoteNovoRepository $repo)
 {
     try {
 
@@ -1583,6 +1615,74 @@ function adicionarItemRecebimento(LoteNovoRepository $repo)
         ]);
     } catch (Exception $e) {
 
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+} */
+
+function adicionarItemRecebimento(LoteNovoRepository $repo)
+{
+    try {
+        // Pega todos os dados do formulário
+        $dados = $_POST;
+
+        $tipoEntrada = $dados['tipo_entrada_mp'] ?? null;
+
+        if (!$tipoEntrada) {
+            throw new Exception('Tipo de entrada não informado.');
+        }
+
+        // --- CASO 1: MATÉRIA-PRIMA ---
+        if ($tipoEntrada === 'MATERIA_PRIMA') {
+            // No HTML, o select de MP deve ter o name="produto_mp_id" ou similar.
+            // Vamos assumir que você usa um campo específico ou o genérico.
+            // Se o seu select de MP já tem name="item_receb_produto_id", ok. 
+            // Se tiver outro nome, mapeie aqui:
+            if (empty($dados['item_receb_produto_id'])) {
+                // Se você usa 'produto_mp_id' no HTML, mude a linha acima para checar ele
+                throw new Exception('Selecione a matéria-prima.');
+            }
+
+            // Garante que não tem lote de origem vinculado
+            $dados['item_receb_lote_origem_id'] = null;
+        }
+
+        // --- CASO 2: REPROCESSO (LOTE_ORIGEM) ---
+        if ($tipoEntrada === 'LOTE_ORIGEM') {
+
+            // 1. Valida Lote de Origem
+            if (empty($dados['item_receb_lote_origem_id'])) {
+                throw new Exception('Selecione o lote de origem.');
+            }
+
+            // 2. Valida Produto de Origem (A GRANDE MUDANÇA)
+            // Precisamos pegar o ID do produto finalizado que o usuário escolheu no select novo
+            $prodOrigemId = $dados['lote_origem_produto_id'] ?? null; // O name do select novo
+
+            if (empty($prodOrigemId)) {
+                throw new Exception('Selecione qual produto deste lote será reprocessado.');
+            }
+
+            // 3. Mapeia para a coluna correta do banco
+            // A coluna 'item_receb_produto_id' vai guardar o ID do produto acabado (ex: Camarão Cozido)
+            $dados['item_receb_produto_id'] = $prodOrigemId;
+
+            // OBS: NÃO buscamos no banco para sobrescrever ($repo->getDados...).
+            // Confiamos nos valores de Peso e Caixas que vieram no $_POST ($dados),
+            // pois o JavaScript já calculou e o usuário já conferiu/editou.
+        }
+
+        // --- ENVIA PARA O REPOSITÓRIO ---
+        // Agora $dados tem o 'item_receb_produto_id' correto em ambos os casos.
+        $repo->adicionarItemRecebimento($dados);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Detalhe de recebimento adicionado com sucesso!'
+        ]);
+    } catch (Exception $e) {
         echo json_encode([
             'success' => false,
             'message' => $e->getMessage()
@@ -1821,65 +1921,6 @@ function gerarRelatorioLote()
     require_once __DIR__ . '/../views/lotes_novo/relatorio_lote.php';
 }
 
-/**
- * Gera o relatório mensal de abertura de lotes.
- */
-
-/* function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
-{
-    // Recebe a string "1,2,3"
-    $mesesStr = $_GET['meses'] ?? '';
-    $fornecedoresStr = $_GET['fornecedores'] ?? '';
-    $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
-
-    if (empty($mesesStr) || !$ano) {
-        die("Parâmetros inválidos.");
-    }
-
-    // Converte para array de inteiros seguros
-    $mesesArray = array_map('intval', explode(',', $mesesStr));
-
-    // Processa os fornecedores (se vier vazio, manda array vazio para o repo, que entende como "todos")
-    $fornecedoresArray = [];
-    if (!empty($fornecedoresStr)) {
-        $fornecedoresArray = array_map('intval', explode(',', $fornecedoresStr));
-    }
-
-    try {
-        $dados = $repo->getRelatorioMensalData($mesesArray, $ano, $fornecedoresArray);
-    } catch (Exception $e) {
-        die($e->getMessage());
-    }
-
-    // --- LÓGICA DO TÍTULO DO RELATÓRIO ---
-    $todosMeses = [1 => 'JAN', 2 => 'FEV', 3 => 'MAR', 4 => 'ABR', 5 => 'MAI', 6 => 'JUN', 7 => 'JUL', 8 => 'AGO', 9 => 'SET', 10 => 'OUT', 11 => 'NOV', 12 => 'DEZ'];
-
-    // Se selecionou os 12 meses
-    if (count($mesesArray) == 12) {
-        $periodoTexto = "ANO DE " . $ano . " (COMPLETO)";
-    }
-    // Se selecionou até 4 meses, mostra os nomes
-    elseif (count($mesesArray) <= 4) {
-        $nomes = [];
-        foreach ($mesesArray as $m) {
-            if (isset($todosMeses[$m])) $nomes[] = $todosMeses[$m];
-        }
-        $periodoTexto = implode(', ', $nomes) . ' / ' . $ano;
-    }
-    // Se forem muitos, resume
-    else {
-        $periodoTexto = count($mesesArray) . " MESES SELECIONADOS / " . $ano;
-    }
-
-    // Adiciona um sufixo no título se houver filtro de fornecedor
-    if (!empty($fornecedoresArray)) {
-        $qtdForn = count($fornecedoresArray);
-        $periodoTexto .= " [Filtro: $qtdForn Fornecedor(es)]";
-    }
-
-    require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
-} */
-
 function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
 {
     // 1. Recebe os parâmetros
@@ -1931,11 +1972,169 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
     // Chama a visualização (PDF)
     require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
 }
+function listarLotesLegadosRecentes(LoteNovoRepository $repo)
+{
+    // Instancia o repositório (Assumindo que $loteNovoRepo já está instanciado no início do arquivo)
+    // Se não estiver, faça: $repo = new \App\Lotes\LoteNovoRepository($pdo);
+    try {
+        $dados = $repo->listarLegadosRecentes();
+        echo json_encode(['success' => true, 'data' => $dados]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'data' => [], 'error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Rota para estornar/cancelar um lote legado.
+ */
+function estornarLoteLegado(LoteNovoRepository $repo)
+{
+    // 1. FILTROS
+    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    $motivo = filter_input(INPUT_POST, 'motivo', FILTER_SANITIZE_SPECIAL_CHARS);
+    $usuarioId = $_SESSION['codUsuario'] ?? 0;
+
+    // 2. VALIDAÇÃO BÁSICA
+    if (!$loteId || empty($motivo)) {
+        echo json_encode(['success' => false, 'message' => 'Dados inválidos. Verifique o ID do lote e o motivo.']);
+        return;
+    }
+
+    // 3. EXECUÇÃO
+    try {
+        // Chama o método do repositório
+        // O método já retorna um array ['success' => ..., 'message' => ...]
+        $resultado = $repo->estornarLoteLegado($loteId, $usuarioId, $motivo);
+
+        echo json_encode($resultado);
+    } catch (Exception $e) {
+        // Captura erros gerais que não foram tratados no repositório
+        echo json_encode(['success' => false, 'message' => 'Erro ao processar estorno: ' . $e->getMessage()]);
+    }
+}
 
 function getClientesComLotesOptions(LoteNovoRepository $repo)
 {
     // Retorna no formato { data: [...] } que o seu JS espera
     echo json_encode(['data' => $repo->getClientesComLotesOptions()]);
+}
+
+function importarLoteLegado(LoteNovoRepository $repo)
+{
+    // 1. FILTROS BÁSICOS
+    $loteCodigo = filter_input(INPUT_POST, 'lote_codigo', FILTER_SANITIZE_SPECIAL_CHARS);
+    $dataFab    = filter_input(INPUT_POST, 'data_fabricacao', FILTER_SANITIZE_SPECIAL_CHARS);
+    $clienteId  = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+    $produtoId  = filter_input(INPUT_POST, 'produto_id', FILTER_VALIDATE_INT);
+    $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+
+    // 2. TRATAMENTO DA QUANTIDADE (CAIXAS)
+    // O JS garante que esse campo tenha o valor correto (calculado ou digitado)
+    $qtdCaixas = filter_input(INPUT_POST, 'qtd_caixas', FILTER_VALIDATE_FLOAT);
+
+    // 3. TRATAMENTO DO PESO (Apenas para validação, já que o banco salva caixas)
+    $pesoRaw = $_POST['peso_total'] ?? '0';
+    $pesoFormatado = str_replace(',', '.', str_replace('.', '', $pesoRaw)); // 1.200,50 -> 1200.50
+
+    // O nome correto da função é filter_var, não filter_val
+    $pesoTotal = filter_var($pesoFormatado, FILTER_VALIDATE_FLOAT);
+
+    // 4. VALIDAÇÃO
+    if (!$loteCodigo || !$dataFab || !$clienteId || !$produtoId || !$enderecoId) {
+        echo json_encode(['success' => false, 'message' => 'Preencha os campos obrigatórios (Lote, Data, Cliente, Produto, Endereço).']);
+        return;
+    }
+
+    if (empty($qtdCaixas) || $qtdCaixas <= 0) {
+        echo json_encode(['success' => false, 'message' => 'A quantidade de Caixas deve ser maior que zero.']);
+        return;
+    }
+
+    $obs = filter_input(INPUT_POST, 'observacao', FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
+    $usuarioId = $_SESSION['codUsuario'] ?? 0;
+
+    try {
+        $dados = [
+            'lote_codigo'     => $loteCodigo,
+            'data_fabricacao' => $dataFab,
+            'cliente_id'      => $clienteId,
+            'produto_id'      => $produtoId,
+            'quantidade'      => $qtdCaixas,
+            'endereco_id'     => $enderecoId,
+            'observacao'      => $obs
+        ];
+
+        // Chama o repositório
+        $repo->importarLoteLegado($dados, $usuarioId);
+
+        echo json_encode(['success' => true, 'message' => 'Lote legado importado e estoque alocado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
+    }
+}
+
+function listarProdutosDoLote(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    if ($loteId) {
+        echo json_encode(['data' => $repo->listarProdutosDoLote($loteId)]);
+    } else {
+        echo json_encode(['data' => []]);
+    }
+}
+
+
+function getDadosReprocessoPorProduto(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    $prodId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+
+    if ($loteId && $prodId) {
+        $dados = $repo->getDadosReprocessoPorProduto($loteId, $prodId);
+
+        if ($dados) {
+            echo json_encode(['success' => true, 'data' => $dados]);
+        } else {
+            // Aqui evitamos aquele erro feio. Se não achou, retorna vazio mas com success=false controlado.
+            echo json_encode(['success' => false, 'message' => 'Nenhum saldo encontrado para este produto neste lote.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Parâmetros inválidos.']);
+    }
+}
+
+function checkEstoqueParaBaixa(LoteNovoRepository $repo)
+{
+    $loteId = filter_input(INPUT_GET, 'lote_id', FILTER_VALIDATE_INT);
+    $prodId = filter_input(INPUT_GET, 'produto_id', FILTER_VALIDATE_INT);
+
+    $saldos = $repo->getSaldosPorEndereco($loteId, $prodId);
+    echo json_encode(['success' => true, 'data' => $saldos]);
+}
+
+function salvarReprocesso(LoteNovoRepository $repo)
+{
+    try {
+        // Recebe os dados do formulário normal
+        $dadosForm = $_POST;
+
+        // Recebe o JSON da distribuição (quais endereços baixar)
+        $distribuicao = json_decode($_POST['distribuicao_estoque'], true);
+
+        if (empty($distribuicao)) {
+            throw new Exception("Erro: Nenhuma informação de baixa de estoque recebida.");
+        }
+
+        // Pega ID do usuário da sessão
+        $usuarioId = $_SESSION['user_id'] ?? 1; // Ajuste conforme sua sessão
+
+        // Salva tudo na transação
+        $repo->salvarReprocessoComBaixa($dadosForm, $distribuicao, $usuarioId);
+
+        echo json_encode(['success' => true, 'message' => 'Reprocesso salvo e estoque baixado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
+    }
 }
 
 // --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---

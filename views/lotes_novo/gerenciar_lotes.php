@@ -35,27 +35,36 @@ switch ($page) {
                 Gestão de Lotes
             </h6>
         </div>
+
         <div class="card-body">
             <div class="row align-items-center">
 
-                <div class="col-md-3 border-end pe-4">
+                <div class="col-md-5 border-end px-4">
                     <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
                         Entrada
                     </h5>
-                    <button class="btn btn-primary py-2" id="btn-adicionar-lote-novo">
-                        <i class="fas fa-plus me-2"></i> ABRIR NOVO LOTE
-                    </button>
-                    <small class="text-muted d-block mt-2">
-                        Clique para iniciar um novo lote.
-                    </small>
+
+                    <label class="form-label small fw-bold d-block">&nbsp;</label>
+
+                    <div class="d-flex flex-column flex-md-row gap-2">
+                        <button class="btn btn-primary py-2" id="btn-adicionar-lote-novo">
+                            <i class="fas fa-plus me-2"></i> ABRIR NOVO LOTE
+                        </button>
+
+                        <button class="btn btn-outline-dark py-2" data-bs-toggle="modal" data-bs-target="#modal-importar-legado">
+                            <i class="fas fa-history me-2"></i> IMPORTAR LOTE ANTIGO
+                        </button>
+
+                        <button class="btn btn-outline-danger py-2 ms-1" data-bs-toggle="modal" data-bs-target="#modal-historico-legado" title="Gerenciar Importações">
+                            <i class="fas fa-list"></i> GERENCIAR IMPORTAÇÕES
+                        </button>
+                    </div>
                 </div>
 
-                <div class="col-md-9 ps-4">
+                <div class="col-md-7 px-4">
                     <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
                         Relatório Lista de Lote
                     </h5>
-
-
 
                     <div id="form-relatorio-mensal" class="row g-3 align-items-end">
 
@@ -273,75 +282,80 @@ switch ($page) {
                             <input type="hidden" id="lote_status" name="lote_status" value="">
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Tipo de Entrada da Matéria-Prima</label>
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                        type="radio"
-                                        name="tipo_entrada_mp"
-                                        id="entrada_mp_materia"
-                                        value="MATERIA_PRIMA" checked>
-                                    <label class="form-check-label"
-                                        for="entrada_mp_materia">Entrada por Matéria-Prima</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                        type="radio"
-                                        name="tipo_entrada_mp"
-                                        id="entrada_mp_lote"
-                                        value="LOTE_ORIGEM">
-                                    <label class="form-check-label"
-                                        for="entrada_mp_lote">Entrada por Lote de Origem (Reprocesso)</label>
+                                <label class="form-label fw-bold">Tipo de Entrada</label>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_entrada_mp"
+                                            id="entrada_mp_materia" value="MATERIA_PRIMA" checked>
+                                        <label class="form-check-label" for="entrada_mp_materia">
+                                            Matéria-Prima
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_entrada_mp"
+                                            id="entrada_mp_lote" value="LOTE_ORIGEM">
+                                        <label class="form-check-label" for="entrada_mp_lote">
+                                            Reprocesso (Lote Origem)
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Produto (Matéria Prima) *</label>
-                                    <select class="form-select"
-                                        id="item_receb_produto_id"
-                                        name="item_receb_produto_id"
-                                        style="width: 100%;"></select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Origem Reprocesso</label>
-                                    <select class="form-select"
-                                        id="item_receb_lote_origem_id"
-                                        name="item_receb_lote_origem_id"
-                                        style="width: 100%;" disabled>
-                                        <option value="">Nenhum</option>
+                            <div class="row mb-3" id="div-select-mp">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold">Produto (Matéria Prima) *</label>
+                                    <select class="form-select" id="item_receb_produto_id" name="item_receb_produto_id" style="width: 100%;">
                                     </select>
                                 </div>
                             </div>
 
                             <div class="row g-3 mb-3">
+
+                                <div class="col-md-6" id="div-lote-origem" style="display: none;">
+                                    <label class="form-label fw-bold">Lote de Origem (Finalizado) *</label>
+                                    <select class="form-select select2-lotes-finalizados"
+                                        id="item_receb_lote_origem_id"
+                                        name="item_receb_lote_origem_id" style="width: 100%;">
+                                        <option value="">Buscar lote...</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6" id="div-produto-origem" style="display: none;">
+                                    <label class="form-label fw-bold text-primary">Produto a Reprocessar *</label>
+                                    <select class="form-select"
+                                        id="select-produto-origem"
+                                        name="lote_origem_produto_id" style="width: 100%;">
+                                        <option value="">Selecione um lote primeiro...</option>
+                                    </select>
+                                    <small class="text-muted" style="font-size: 0.75rem;">
+                                        Os pesos serão calculados com base neste item.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-3">
-                                    <label class="form-label">Nota Fiscal</label>
-                                    <input type="text"
-                                        class="form-control"
-                                        id="item_receb_nota_fiscal"
-                                        name="item_receb_nota_fiscal">
+                                    <label class="form-label">Nota Fiscal / Rastreio</label>
+                                    <input type="text" class="form-control"
+                                        id="item_receb_nota_fiscal" name="item_receb_nota_fiscal">
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label class="form-label">Peso NF (kg)</label>
-                                    <input type="text"
-                                        class="form-control text-end mask-peso-3"
+                                    <label class="form-label">Peso Entrada (kg) *</label>
+                                    <input type="text" class="form-control text-end mask-peso-3"
                                         id="item_receb_peso_nota_fiscal"
                                         name="item_receb_peso_nota_fiscal" placeholder="0,000">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label">Total Caixas</label>
-                                    <input type="number"
-                                        class="form-control text-end"
-                                        id="item_receb_total_caixas"
-                                        name="item_receb_total_caixas">
+                                    <input type="number" class="form-control text-end"
+                                        id="item_receb_total_caixas" name="item_receb_total_caixas">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label text-muted small">P.Médio Fazenda (Kg)</label>
-                                    <input type="text"
-                                        class="form-control bg-light text-end"
+                                    <input type="text" class="form-control bg-light text-end"
                                         id="calc_peso_medio_fazenda" readonly tabindex="-1">
                                 </div>
                             </div>
@@ -349,17 +363,21 @@ switch ($page) {
                             <div class="row g-3">
                                 <div class="col-md-3">
                                     <label class="form-label">P. Médio Indústria (kg)</label>
-                                    <input type="text" class="form-control text-end mask-peso-2" id="item_receb_peso_medio_ind" name="item_receb_peso_medio_ind" placeholder="0,00">
+                                    <input type="text" class="form-control text-end mask-peso-2"
+                                        id="item_receb_peso_medio_ind"
+                                        name="item_receb_peso_medio_ind" placeholder="0,00">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label">Gramatura Fazenda</label>
-                                    <input type="text" class="form-control text-end mask-peso-2" name="item_receb_gram_faz" placeholder="0,00">
+                                    <input type="text" class="form-control text-end mask-peso-2"
+                                        name="item_receb_gram_faz" placeholder="0,00">
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label">Gramatura Lab</label>
-                                    <input type="text" class="form-control text-end mask-peso-2" name="item_receb_gram_lab" placeholder="0,00">
+                                    <input type="text" class="form-control text-end mask-peso-2"
+                                        name="item_receb_gram_lab" placeholder="0,00">
                                 </div>
 
                                 <div class="col-md-3 d-flex align-items-end">
@@ -568,6 +586,165 @@ switch ($page) {
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-importar-legado" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Carga Inicial (Lote Legado)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning border-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> Utilize esta função apenas para implantar estoques existentes.
+                    O lote será criado como <strong>FINALIZADO</strong> e o saldo entrará imediatamente no estoque físico.
+                </div>
+
+                <form id="form-importar-legado">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Número Lote (Antigo) *</label>
+                            <input type="text" class="form-control uppercase" name="lote_codigo" placeholder="Ex: 120/24" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Data Fabricação *</label>
+                            <input type="date" class="form-control" name="data_fabricacao" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Fornecedor *</label>
+                            <select class="form-select select2-clientes" name="cliente_id" style="width:100%" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <hr class="my-3 text-muted">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Produto (Estoque) *</label>
+                            <select class="form-select select2-produtos" name="produto_id" style="width:100%" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <hr class="my-3 text-muted">
+
+                        <input type="hidden" id="hidden_peso_embalagem" value="0">
+
+                        <div class="col-12 mb-2">
+                            <label class="form-label fw-bold d-block">Modo de Cálculo:</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="modo_calculo" id="modo_calc_caixa" value="caixa" checked>
+                                <label class="form-check-label" for="modo_calc_caixa">Informar Caixas (Calcula Peso)</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="modo_calculo" id="modo_calc_peso" value="peso">
+                                <label class="form-check-label" for="modo_calc_peso">Informar Peso Total (Calcula Caixas)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Qtd. Volumes (Caixas) *</label>
+                            <input type="number" class="form-control" id="input_qtd_caixas" name="qtd_caixas" required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Peso Total (Kg) *</label>
+                            <input type="text" class="form-control mask-peso-3" id="input_peso_total" name="peso_total" readonly required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Local (Endereço Câmara) *</label>
+                            <select class="form-select select2-enderecos" name="endereco_id" style="width:100%" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Observações / Histórico</label>
+                            <textarea class="form-control" name="observacao" rows="2" placeholder="Informações adicionais para auditoria..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-dark fw-bold" id="btn-salvar-legado">
+                    <i class="fas fa-check-circle me-2"></i> Confirmar Importação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modal-historico-legado" aria-hidden="true" data-bs-focus="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Histórico de Importações (Legado)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped" id="tabela-historico-legado" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Lote</th>
+                                <th>Produto</th>
+                                <th>Qtd</th>
+                                <th>Data Imp.</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-picking-reprocesso" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-boxes"></i> Confirmar Retirada de Estoque</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> O produto selecionado está disponível em múltiplos endereços.
+                    Informe quantas caixas serão retiradas de cada local para totalizar <strong><span id="picking-total-alvo">0</span></strong> caixas.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Endereço / Pallet</th>
+                                <th class="text-center">Saldo Atual</th>
+                                <th class="text-center" width="150px">Retirar (Qtd)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-picking-enderecos">
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" class="text-end fw-bold">Total Selecionado:</td>
+                                <td class="text-center fw-bold"><span id="picking-total-selecionado">0</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div id="picking-erro-msg" class="text-danger fw-bold text-center mt-2" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirmar-picking">Confirmar e Salvar</button>
             </div>
         </div>
     </div>
