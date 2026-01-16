@@ -366,6 +366,9 @@ switch ($action) {
     case 'salvarReprocesso':
         salvarReprocesso($loteNovoRepo);
         break;
+    case 'editarItemRecebimento':
+        editarItemRecebimento($loteNovoRepo);
+        break;
 
 
     // --- ROTA DE PERMISSÕES ---
@@ -1706,7 +1709,12 @@ function getItensRecebimento(LoteNovoRepository $repo)
 
 function excluirItemRecebimento(LoteNovoRepository $repo)
 {
+    // 1. Pega o ID do item que veio do Javascript
     $itemId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+
+    // 2. Pega o ID do Usuário da Sessão (O QUE FALTOU)
+    // Se não tiver sessão (login), usa 1 ou trata o erro
+    $usuarioId = $_SESSION['user_id'] ?? 1;
 
     if (!$itemId) {
         echo json_encode(['success' => false, 'message' => 'ID do item inválido.']);
@@ -1714,7 +1722,8 @@ function excluirItemRecebimento(LoteNovoRepository $repo)
     }
 
     try {
-        if ($repo->excluirItemRecebimento($itemId)) {
+        // 3. Passamos os DOIS parâmetros obrigatórios
+        if ($repo->excluirItemRecebimento($itemId, $usuarioId)) {
             echo json_encode(['success' => true, 'message' => 'Item removido com sucesso!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Erro ao remover o item.']);
@@ -2112,11 +2121,19 @@ function checkEstoqueParaBaixa(LoteNovoRepository $repo)
     echo json_encode(['success' => true, 'data' => $saldos]);
 }
 
-function salvarReprocesso(LoteNovoRepository $repo)
+/* function salvarReprocesso(LoteNovoRepository $repo)
 {
     try {
         // Recebe os dados do formulário normal
         $dadosForm = $_POST;
+
+        // --- Quando for produto Reprocesso ---
+        // Se o formulário enviou 'lote_origem_produto_id' (o dropdown do reprocesso),
+        // nós copiamos esse valor para 'item_receb_produto_id' (que o repositório espera).
+        if (!empty($dadosForm['lote_origem_produto_id'])) {
+            $dadosForm['item_receb_produto_id'] = $dadosForm['lote_origem_produto_id'];
+        }
+        // ---------------------------------------
 
         // Recebe o JSON da distribuição (quais endereços baixar)
         $distribuicao = json_decode($_POST['distribuicao_estoque'], true);
@@ -2133,11 +2150,100 @@ function salvarReprocesso(LoteNovoRepository $repo)
 
         echo json_encode(['success' => true, 'message' => 'Reprocesso salvo e estoque baixado com sucesso!']);
     } catch (Exception $e) {
+        // Log para ajudar no debug se der erro de novo
+        error_log("Erro no salvarReprocesso: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
+    }
+} */
+
+// --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
+
+
+
+/* function salvarReprocesso(LoteNovoRepository $repo)
+{
+    try {
+        $dadosForm = $_POST;
+
+        // Mapeamento de campos (Reprocesso -> Recebimento)
+        if (!empty($dadosForm['lote_origem_produto_id'])) {
+            $dadosForm['item_receb_produto_id'] = $dadosForm['lote_origem_produto_id'];
+        }
+
+        // Recebe a distribuição. Se vier vazio, é array vazio.
+        $distribuicao = isset($_POST['distribuicao_estoque']) ? json_decode($_POST['distribuicao_estoque'], true) : [];
+
+        // REMOVIDA A EXCEÇÃO QUE TRAVAVA QUANDO ERA VAZIO
+        // if (empty($distribuicao)) throw new Exception... (Apague isso)
+
+        $usuarioId = $_SESSION['user_id'] ?? 1;
+
+        // Salva
+        $repo->salvarReprocessoComBaixa($dadosForm, $distribuicao, $usuarioId);
+
+        echo json_encode(['success' => true, 'message' => 'Reprocesso salvo com sucesso!']);
+    } catch (Exception $e) {
+        // Log do erro real para você ver no servidor
+        error_log("Erro salvarReprocesso: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
+    }
+} */
+
+function salvarReprocesso(LoteNovoRepository $repo)
+{
+    try {
+        $dadosForm = $_POST;
+
+        // --- CORREÇÃO CRÍTICA DE MAPEAMENTO ---
+        // Verifica qual campo de produto veio preenchido e garante que 'item_receb_produto_id' tenha valor.
+
+        // 1. Se veio 'lote_origem_produto_id' (nome antigo/alternativo), usa ele.
+        if (!empty($dadosForm['lote_origem_produto_id'])) {
+            $dadosForm['item_receb_produto_id'] = $dadosForm['lote_origem_produto_id'];
+        }
+
+        // 2. Validação de Segurança no PHP:
+        // Se após o mapeamento o ID do produto ainda for vazio/zero, paramos aqui antes de tentar gravar no banco.
+        if (empty($dadosForm['item_receb_produto_id'])) {
+            throw new Exception("Erro: O Produto não foi identificado. Verifique se selecionou o produto no dropdown.");
+        }
+
+        // Recebe a distribuição. 
+        $distribuicao = isset($_POST['distribuicao_estoque']) ? json_decode($_POST['distribuicao_estoque'], true) : [];
+        $usuarioId = $_SESSION['user_id'] ?? 1;
+
+        // Salva
+        $repo->salvarReprocessoComBaixa($dadosForm, $distribuicao, $usuarioId);
+
+        echo json_encode(['success' => true, 'message' => 'Reprocesso salvo com sucesso!']);
+    } catch (Exception $e) {
+        // Log para debug
+        error_log("Erro salvarReprocesso: " . $e->getMessage());
+
+        // Retorna erro legível para o SweetAlert
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+function editarItemRecebimento(LoteNovoRepository $repo)
+{
+    $dados = $_POST;
+    $usuarioId = $_SESSION['user_id'] ?? 1;
+
+    try {
+        // Remove campos de formatação (máscaras) antes de enviar
+        // Opcional: tratamentos de dados aqui
+
+        $repo->editarItemRecebimento($dados, $usuarioId);
+        echo json_encode(['success' => true, 'message' => 'Item atualizado com sucesso!']);
+    } catch (Exception $e) {
+        http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
     }
 }
 
-// --- FUNÇÃO DE CONTROLE PARA ETIQUETAS ---
 
 /**
  * Função de controle universal para impressão de etiquetas de lote.

@@ -15,8 +15,8 @@ $paginas_e_acoes_disponiveis = [
 
     'Páginas Módulo Cadastro' => [
         'usuarios'               => 'Gerenciar Usuários',
-        'clientes'               => 'Gerenciar Clientes',
-        'fornecedores'           => 'Gerenciar Fornecedores',
+        'clientes'               => 'Gerenciar Fornecedores',
+        'fornecedores'           => 'Gerenciar Fazenda (Origem)',
         'transportadoras'        => 'Gerenciar Transportadoras',
         'produtos'               => 'Gerenciar Produtos',
         'fichas_tecnicas'        => 'Gestão de Fichas Técnicas',

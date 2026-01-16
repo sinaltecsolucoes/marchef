@@ -1036,7 +1036,7 @@ $(document).ready(function () {
     }
 
     function desbloquearFormularioRecebimento() {
-        console.log('Desbloqueando formulário de recebimento (Modo Edição)');
+        // console.log('Desbloqueando formulário de recebimento (Modo Edição)');
 
         loteBloqueado = false; // Destrava flag global
 
@@ -1233,7 +1233,7 @@ $(document).ready(function () {
         if ($.fn.DataTable && $.fn.DataTable.isDataTable(idTabelaPrincipal)) {
             // reload(null, false) recarrega os dados e mantém a paginação atual
             $(idTabelaPrincipal).DataTable().ajax.reload(null, false);
-            console.log('Tabela atualizada via Ajax.');
+            // console.log('Tabela atualizada via Ajax.');
         } else {
             console.log('Tabela não encontrada ou não é DataTables.');
         }
@@ -2433,8 +2433,78 @@ $(document).ready(function () {
     });
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
-    $(document).on('click', '.btn-editar-item-recebimento', function () {
+    /* $(document).on('click', '.btn-editar-item-recebimento', function () {
+ 
+         const id = $(this).data('id');
+ 
+         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
+             if (!res.success) {
+                 notificacaoErro('Erro', res.message);
+                 return;
+             }
+ 
+             const data = res.data;
+ 
+             // Entra em modo edição
+             modoEdicao = true;
+             dadosOriginaisEdicao = { ...data };
+ 
+             // IDs
+             $('#item_receb_id').val(data.item_receb_id);
+             $('#item_receb_lote_id').val(data.item_receb_lote_id);
+ 
+             // Radio button
+             if (data.item_receb_lote_origem_id) {
+                 $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true);
+             } else {
+                 $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
+             }
+ 
+             // Selects
+             $('#item_receb_produto_id')
+                 .val(data.item_receb_produto_id)
+                 .trigger('change');
+ 
+             if (data.item_receb_lote_origem_id) {
+                 const option = new Option(
+                     data.lote_origem_label || 'Lote selecionado',
+                     data.item_receb_lote_origem_id,
+                     true,
+                     true
+                 );
+                 $('#item_receb_lote_origem_id')
+                     .append(option)
+                     .trigger('change');
+             } else {
+                 $('#item_receb_lote_origem_id').val(null).trigger('change');
+             }
+ 
+             // Inputs
+             $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
+             $('#item_receb_peso_nota_fiscal').val(floatToBr(data.item_receb_peso_nota_fiscal, 3));
+             $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
+             $('#item_receb_peso_medio_ind').val(floatToBr(data.item_receb_peso_medio_ind, 2));
+             $('input[name="item_receb_gram_faz"]').val(floatToBr(data.item_receb_gram_faz, 2));
+             $('input[name="item_receb_gram_lab"]').val(floatToBr(data.item_receb_gram_lab, 2));
+             $('#item_receb_peso_nota_fiscal').trigger('input');
+ 
+             // Botão principal
+             $('#btn-adicionar-item-recebimento')
+                 .html('<i class="fas fa-save me-2"></i> Atualizar Item')
+                 .removeClass('btn-success')
+                 .addClass('btn-warning');
+ 
+             // exibe botão cancelar
+             $('#btn-cancelar-edicao').removeClass('d-none');
+ 
+             // Aplica as regras de UI, com tudo já preenchido
+             aplicarModoEntrada();
+ 
+         }, 'json');
+     }); */
 
+
+    $(document).on('click', '.btn-editar-item-recebimento', function () {
         const id = $(this).data('id');
 
         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
@@ -2449,109 +2519,212 @@ $(document).ready(function () {
             modoEdicao = true;
             dadosOriginaisEdicao = { ...data };
 
-            // IDs
+            // 1. Preenche IDs Ocultos e Status
             $('#item_receb_id').val(data.item_receb_id);
             $('#item_receb_lote_id').val(data.item_receb_lote_id);
+            $('#lote_status').val(data.lote_status);
 
-            // Radio button
+            // 2. LÓGICA DE DECISÃO: REPROCESSO vs MATÉRIA PRIMA
             if (data.item_receb_lote_origem_id) {
-                $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true);
+                // === MODO REPROCESSO ===
+
+                // A. Muda o Radio Button
+                $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true).trigger('change');
+
+                // B. Preenche o Lote de Origem
+                // CORREÇÃO AQUI: Monta o texto bonito usando os dados que vieram do SQL acima
+                let textoLote = 'Lote ' + data.item_receb_lote_origem_id; // Fallback
+
+                if (data.lote_origem_numero) {
+                    textoLote = data.lote_origem_numero;
+                    // Se tiver o nome do produto do lote de origem, adiciona também
+                    if (data.lote_origem_produto_nome) {
+                        textoLote += ' (' + data.lote_origem_produto_nome + ')';
+                    }
+                } else if (data.lote_origem_label) {
+                    // Caso seu PHP já mande o label pronto
+                    textoLote = data.lote_origem_label;
+                }
+
+                // Verifica se já existe a opção, senão cria
+                if ($('.select2-lotes-finalizados').find("option[value='" + data.item_receb_lote_origem_id + "']").length === 0) {
+                    const optionLote = new Option(textoLote, data.item_receb_lote_origem_id, true, true);
+                    $('.select2-lotes-finalizados').append(optionLote);
+                }
+
+                // Define o valor e dispara o change.select2 (apenas update visual, sem ajax)
+                $('.select2-lotes-finalizados').val(data.item_receb_lote_origem_id).trigger('change.select2');
+
+                // C. Preenche o Produto de Origem (Específico do Reprocesso)
+                const $selectProdOrigem = $('#select-produto-origem');
+                $selectProdOrigem.empty(); // Limpa carregamento anterior
+                const optionProd = new Option(data.prod_descricao, data.item_receb_produto_id, true, true);
+                $selectProdOrigem.append(optionProd).trigger('change');
+
+                // Garante que a div do produto esteja visível
+                $('#div-produto-origem').show();
+
             } else {
-                $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
-            }
+                // === MODO MATÉRIA PRIMA ===
 
-            // Selects
-            $('#item_receb_produto_id')
-                .val(data.item_receb_produto_id)
-                .trigger('change');
+                // A. Muda o Radio Button
+                $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true).trigger('change');
 
-            if (data.item_receb_lote_origem_id) {
-                const option = new Option(
-                    data.lote_origem_label || 'Lote selecionado',
-                    data.item_receb_lote_origem_id,
-                    true,
-                    true
-                );
-                $('#item_receb_lote_origem_id')
-                    .append(option)
+                // B. Preenche o Produto Principal
+                $('#item_receb_produto_id')
+                    .val(data.item_receb_produto_id)
                     .trigger('change');
-            } else {
-                $('#item_receb_lote_origem_id').val(null).trigger('change');
             }
 
-            // Inputs
+            // 3. Inputs Comuns (Texto e Números)
             $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-            $('#item_receb_peso_nota_fiscal').val(floatToBr(data.item_receb_peso_nota_fiscal, 3));
+            $('#item_receb_peso_nota_fiscal').val(formatarBR(data.item_receb_peso_nota_fiscal, 3)); // Use sua função formatarBR
             $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-            $('#item_receb_peso_medio_ind').val(floatToBr(data.item_receb_peso_medio_ind, 2));
-            $('input[name="item_receb_gram_faz"]').val(floatToBr(data.item_receb_gram_faz, 2));
-            $('input[name="item_receb_gram_lab"]').val(floatToBr(data.item_receb_gram_lab, 2));
+            $('#item_receb_peso_medio_ind').val(formatarBR(data.item_receb_peso_medio_ind, 2));
+
+            // Gramaturas (geralmente só MP, mas preenchemos se tiver)
+            $('input[name="item_receb_gram_faz"]').val(formatarBR(data.item_receb_gram_faz, 2));
+            $('input[name="item_receb_gram_lab"]').val(formatarBR(data.item_receb_gram_lab, 2));
+
+            // Força recálculo visual se houver listeners
             $('#item_receb_peso_nota_fiscal').trigger('input');
 
-            // Botão principal
+            // 4. Ajusta Botões (Salvar vs Adicionar)
             $('#btn-adicionar-item-recebimento')
-                .html('<i class="fas fa-save me-2"></i> Atualizar Item')
+                .html('<i class="fas fa-save me-2"></i> Salvar Alteração')
                 .removeClass('btn-success')
                 .addClass('btn-warning');
 
-            // exibe botão cancelar
             $('#btn-cancelar-edicao').removeClass('d-none');
 
-            // Aplica as regras de UI, com tudo já preenchido
-            aplicarModoEntrada();
+            // Foca no primeiro campo editável
+            setTimeout(() => { $('#item_receb_peso_nota_fiscal').focus(); }, 100);
 
         }, 'json');
     });
 
+
     // --- BOTÃO SALVAR (ADICIONAR / ATUALIZAR) ---
+    /* $('#btn-adicionar-item-recebimento').on('click', function () {
+ 
+         const id = $('#item_receb_id').val();
+         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
+ 
+         // Cria o FormData baseado no form
+         const formData = new FormData($('#form-recebimento-detalhe')[0]);
+         formData.append('csrf_token', csrfToken);
+ 
+         // CONVERTE OS VALORES FORMATADOS DE VOLTA PARA PADRÃO SQL (PONTO)
+         // Precisamos pegar os valores visuais, converter e sobrescrever no FormData
+         formData.set('item_receb_peso_nota_fiscal', brToFloat($('#item_receb_peso_nota_fiscal').val()));
+         formData.set('item_receb_peso_medio_ind', brToFloat($('#item_receb_peso_medio_ind').val()));
+         formData.set('item_receb_gram_faz', brToFloat($('[name="item_receb_gram_faz"]').val()));
+         formData.set('item_receb_gram_lab', brToFloat($('[name="item_receb_gram_lab"]').val()));
+ 
+         // AJAX com FormData (processData: false)
+         $.ajax({
+             url: `ajax_router.php?action=${action}`,
+             type: 'POST',
+             data: formData,
+             processData: false,
+             contentType: false,
+             dataType: 'json'
+         }).done(function (res) {
+             if (!res.success) {
+                 notificacaoErro('Erro', res.message);
+                 return;
+             }
+             notificacaoSucesso('Sucesso', res.message);
+ 
+             // Limpa o formulários
+             limparFormularioDetalhes();
+ 
+             recarregarTabelaLotes();
+ 
+             // Sai do modo edição (se estiver)
+             sairModoEdicao();
+ 
+             // Reaplica regras do rádio selecionado
+ 
+             aplicarModoEntrada();
+ 
+             // Mantém o lote atual
+             $('#item_receb_lote_id').val(loteIdAtual);
+ 
+             // Recarrega tabela
+             recarregarItensRecebimento(loteIdAtual);
+         });
+     }); */
+
     $('#btn-adicionar-item-recebimento').on('click', function () {
+        let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
 
-        const id = $('#item_receb_id').val();
-        const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
+        // FLUXO MATÉRIA PRIMA
+        if (tipo === 'MATERIA_PRIMA') {
+            salvarRecebimentoNormal();
+            return;
+        }
 
-        // Cria o FormData baseado no form
-        const formData = new FormData($('#form-recebimento-detalhe')[0]);
-        formData.append('csrf_token', csrfToken);
+        // FLUXO REPROCESSO
+        let loteId = $('.select2-lotes-finalizados').val(); // Pega do Select2 direto
+        let prodId = $('#select-produto-origem').val();
+        let qtdCaixasTotal = parseFloat($('#item_receb_total_caixas').val()) || 0;
 
-        // CONVERTE OS VALORES FORMATADOS DE VOLTA PARA PADRÃO SQL (PONTO)
-        // Precisamos pegar os valores visuais, converter e sobrescrever no FormData
-        formData.set('item_receb_peso_nota_fiscal', brToFloat($('#item_receb_peso_nota_fiscal').val()));
-        formData.set('item_receb_peso_medio_ind', brToFloat($('#item_receb_peso_medio_ind').val()));
-        formData.set('item_receb_gram_faz', brToFloat($('[name="item_receb_gram_faz"]').val()));
-        formData.set('item_receb_gram_lab', brToFloat($('[name="item_receb_gram_lab"]').val()));
+        if (!loteId || !prodId) {
+            notificacaoErro('Atenção', 'Selecione o lote de origem e o produto.');
+            return;
+        }
+        if (qtdCaixasTotal <= 0) {
+            notificacaoErro('Erro', 'Quantidade de caixas inválida.');
+            return;
+        }
 
-        // AJAX com FormData (processData: false)
+        // Consulta endereços
         $.ajax({
-            url: `ajax_router.php?action=${action}`,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json'
-        }).done(function (res) {
-            if (!res.success) {
-                notificacaoErro('Erro', res.message);
-                return;
+            url: 'ajax_router.php?action=checkEstoqueParaBaixa',
+            data: { lote_id: loteId, produto_id: prodId },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    let saldos = res.data;
+
+                    // CASO 1: SEM ALOCAÇÃO NENHUMA
+                    if (saldos.length === 0) {
+                        Swal.fire({
+                            title: 'Item sem Alocação Definida',
+                            text: "Este item consta no estoque mas não tem endereço de alocação (Kardex antigo ou Legado). Deseja registrar o reprocesso sem realizar baixa de endereço específico?",
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Sim, continuar',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                distribuicaoBaixa = []; // Lista vazia
+                                enviarReprocessoParaBackend();
+                            }
+                        });
+                        return;
+                    }
+
+                    // CASO 2: TEM ALOCAÇÃO -> Abre modal ou baixa direto
+                    if (saldos.length === 1 && parseFloat(saldos[0].saldo_caixas) >= qtdCaixasTotal) {
+                        distribuicaoBaixa = [{
+                            id: saldos[0].item_emb_id,
+                            qtd: qtdCaixasTotal
+                        }];
+                        enviarReprocessoParaBackend();
+                    } else {
+                        abrirModalPicking(saldos, qtdCaixasTotal);
+                    }
+                }
+            },
+            error: function () {
+                // Se der erro ao checar estoque, permite tentar salvar sem baixa? 
+                // Melhor avisar o erro.
+                notificacaoErro('Erro', 'Falha ao consultar alocações do estoque.');
             }
-            notificacaoSucesso('Sucesso', res.message);
-
-            // Limpa o formulários
-            limparFormularioDetalhes();
-
-            recarregarTabelaLotes();
-
-            // Sai do modo edição (se estiver)
-            sairModoEdicao();
-
-            // Reaplica regras do rádio selecionado
-
-            aplicarModoEntrada();
-
-            // Mantém o lote atual
-            $('#item_receb_lote_id').val(loteIdAtual);
-
-            // Recarrega tabela
-            recarregarItensRecebimento(loteIdAtual);
         });
     });
 
@@ -2559,44 +2732,6 @@ $(document).ready(function () {
         limparFormularioDetalhes();
         sairModoEdicao();
     });
-
-    /* $('#item_receb_lote_origem_id').on('change', function () {
-         const loteId = $(this).val();
-         if (!loteId) return;
- 
-         // Feedback visual de carregamento
-         const $btnSalvar = $('#btn-adicionar-item-recebimento');
-         const textoOriginal = $btnSalvar.html();
-         $btnSalvar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Carregando...');
- 
-         $.getJSON('ajax_router.php?action=getDadosLoteReprocesso', { lote_id: loteId })
-             .done(function (resp) {
-                 if (resp.success) {
-                     const d = resp.dados;
- 
-                     // Preenchimento dos campos
-                     // Nota: As chaves aqui (ex: d.lote_nota_fiscal) devem bater com o SQL do Repository
-                     $('[name="item_receb_nota_fiscal"]').val(d.lote_nota_fiscal);
-                     $('[name="item_receb_peso_nota_fiscal"]').val(d.lote_peso_nota_fiscal);
-                     $('#item_receb_total_caixas').val(d.lote_total_caixas);
- 
-                     // Campos calculados/laboratório
-                     $('#calc_peso_medio_fazenda').val(d.lote_peso_medio_fazenda);
-                     $('#item_receb_peso_medio_ind').val(d.lote_peso_medio_industria);
-                     $('[name="item_receb_gram_faz"]').val(d.lote_gramatura_fazenda);
-                     $('[name="item_receb_gram_lab"]').val(d.lote_gramatura_lab);
-                 } else {
-                     notificacaoErro('Erro', resp.message || 'Dados não encontrados');
-                 }
-             })
-             .fail(function (jqXHR) {
-                 console.error("Erro detalhado:", jqXHR.responseText);
-                 notificacaoErro('Erro', 'Falha ao buscar dados do lote. Verifique o console.');
-             })
-             .always(function () {
-                 $btnSalvar.prop('disabled', false).html(textoOriginal);
-             });
-     });*/
 
     // Evento para Gerar Relatório A PARTIR DA LISTA (DataTables)
     $tabelaLotes.on('click', '.btn-imprimir-relatorio-lista', function (e) {
@@ -3148,49 +3283,49 @@ $(document).ready(function () {
     // VARIÁVEL GLOBAL PARA GUARDAR A DISTRIBUIÇÃO
     var distribuicaoBaixa = [];
 
-    $('#btn-adicionar-item-recebimento').on('click', function () {
-        let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-
-        // Se for Matéria Prima, salva normal (código antigo)
-        if (tipo === 'MATERIA_PRIMA') {
-            salvarRecebimentoNormal(); // *Supondo que vc tenha isolado a função antiga
-            return;
-        }
-
-        // SE FOR REPROCESSO:
-        let loteId = $('#item_receb_lote_origem_id').val();
-        let prodId = $('#select-produto-origem').val();
-        let qtdCaixasTotal = parseInt($('#item_receb_total_caixas').val()) || 0;
-
-        if (qtdCaixasTotal <= 0) {
-            notificacaoErro('Erro', 'Quantidade inválida.');
-            return;
-        }
-
-        // 1. Consulta endereços
-        $.ajax({
-            url: 'ajax_router.php?action=checkEstoqueParaBaixa',
-            data: { lote_id: loteId, produto_id: prodId },
-            dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    let saldos = res.data;
-
-                    // Se tiver só 1 endereço e o saldo cobrir tudo, baixa direto
-                    if (saldos.length === 1 && saldos[0].saldo_caixas >= qtdCaixasTotal) {
-                        distribuicaoBaixa = [{
-                            id: saldos[0].item_emb_id,
-                            qtd: qtdCaixasTotal
-                        }];
-                        enviarReprocessoParaBackend(); // Salva direto
-                    } else {
-                        // Vários endereços ou saldo complexo: ABRE MODAL PICKING
-                        abrirModalPicking(saldos, qtdCaixasTotal);
+    /*    $('#btn-adicionar-item-recebimento').on('click', function () {
+            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+    
+            // Se for Matéria Prima, salva normal (código antigo)
+            if (tipo === 'MATERIA_PRIMA') {
+                salvarRecebimentoNormal(); // *Supondo que vc tenha isolado a função antiga
+                return;
+            }
+    
+            // SE FOR REPROCESSO:
+            let loteId = $('#item_receb_lote_origem_id').val();
+            let prodId = $('#select-produto-origem').val();
+            let qtdCaixasTotal = parseInt($('#item_receb_total_caixas').val()) || 0;
+    
+            if (qtdCaixasTotal <= 0) {
+                notificacaoErro('Erro', 'Quantidade inválida.');
+                return;
+            }
+    
+            // 1. Consulta endereços
+            $.ajax({
+                url: 'ajax_router.php?action=checkEstoqueParaBaixa',
+                data: { lote_id: loteId, produto_id: prodId },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        let saldos = res.data;
+    
+                        // Se tiver só 1 endereço e o saldo cobrir tudo, baixa direto
+                        if (saldos.length === 1 && saldos[0].saldo_caixas >= qtdCaixasTotal) {
+                            distribuicaoBaixa = [{
+                                id: saldos[0].item_emb_id,
+                                qtd: qtdCaixasTotal
+                            }];
+                            enviarReprocessoParaBackend(); // Salva direto
+                        } else {
+                            // Vários endereços ou saldo complexo: ABRE MODAL PICKING
+                            abrirModalPicking(saldos, qtdCaixasTotal);
+                        }
                     }
                 }
-            }
-        });
-    });
+            });
+        }); */
 
     function abrirModalPicking(saldos, totalAlvo) {
         let html = '';
@@ -3262,9 +3397,250 @@ $(document).ready(function () {
         enviarReprocessoParaBackend();
     });
 
+    /* function enviarReprocessoParaBackend() {
+         // 1. Serializa os dados do formulário
+         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+ 
+         // --- INJEÇÃO MANUAL DOS IDs ---
+         // O serializeArray pode falhar se o campo estiver 'disabled' ou oculto de forma complexa.
+         // Aqui nós garantimos que o valor selecionado no Select2 seja enviado.
+ 
+         let loteId = $('.select2-lotes-finalizados').val();
+         let prodId = $('#select-produto-origem').val();
+ 
+         // Removemos entradas duplicadas ou vazias antigas para evitar confusão no PHP
+         dadosForm = dadosForm.filter(function (item) {
+             return item.name !== 'lote_origem_produto_id' && item.name !== 'item_receb_lote_origem_id';
+         });
+ 
+         // Adicionamos os valores corretos manualmente
+         if (loteId) {
+             dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
+         }
+         if (prodId) {
+             dadosForm.push({ name: 'lote_origem_produto_id', value: prodId });
+         }
+         // -----------------------------------------------
+ 
+         // 2. Adiciona o JSON da distribuição de estoque
+         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
+ 
+         // 3. Adiciona o token manualmente para garantir
+         let csrfToken = $('meta[name="csrf-token"]').attr('content');
+         dadosForm.push({ name: 'csrf_token', value: csrfToken });
+ 
+         $.ajax({
+             url: 'ajax_router.php?action=salvarReprocesso',
+             type: 'POST',
+             data: dadosForm,
+             dataType: 'json',
+             success: function (res) {
+                 if (res.success) {
+                     Swal.fire('Sucesso', res.message, 'success');
+ 
+                     // A. Limpa os inputs do formulário
+                     $('#form-recebimento-detalhe')[0].reset();
+ 
+                     // B. Limpa os Select2 (Lote e Produto)
+                     $('.select2-lotes-finalizados').val(null).trigger('change');
+                     $('#select-produto-origem').empty();
+ 
+                     // C. Limpa campos hidden e variáveis globais
+                     $('#item_receb_id').val('');
+                     distribuicaoBaixa = [];
+ 
+                     // D. FORÇA A VOLTA VISUAL PARA MATÉRIA-PRIMA
+                     // Isso dispara o evento 'change' que esconde as divs de reprocesso e mostra a de MP
+                     $('#entrada_mp_materia').prop('checked', true).trigger('change');
+ 
+                     // E. Atualiza as tabelas da tela
+                     if (typeof carregarItensRecebimento === 'function') {
+                         carregarItensRecebimento(loteIdAtual);
+                     }
+                     if (typeof recarregarTabelaLotes === 'function') {
+                         recarregarTabelaLotes();
+                     }
+                 } else {
+                     Swal.fire('Erro', res.message, 'error');
+                 }
+             },
+             error: function (xhr) {
+                 // Tratamento de erro caso o servidor devolva 403/500
+                 let msg = 'Erro desconhecido';
+                 if (xhr.responseJSON && xhr.responseJSON.message) {
+                     msg = xhr.responseJSON.message;
+                 }
+                 Swal.fire('Erro', 'Falha ao salvar: ' + msg, 'error');
+             }
+         });
+     } */
+
+    // Função corrigida para salvar Reprocesso
+    /* function enviarReprocessoParaBackend() {
+         // 1. Pega os dados brutos
+         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+ 
+         // 2. Pega os valores REAIS dos campos de Reprocesso
+         let loteId = $('.select2-lotes-finalizados').val();
+         let prodId = $('#select-produto-origem').val();
+ 
+         // 3. LIMPEZA CRÍTICA: Remove campos duplicados ou vazios que causam confusão
+         // Removemos o 'item_receb_produto_id' original (que vem da aba Matéria Prima e está vazio ou oculto)
+         dadosForm = dadosForm.filter(function (item) {
+             return item.name !== 'item_receb_produto_id' &&
+                 item.name !== 'item_receb_lote_origem_id' &&
+                 item.name !== 'lote_origem_produto_id';
+         });
+ 
+         // 4. INJEÇÃO DOS DADOS CORRETOS
+         // Aqui está o pulo do gato: Enviamos com o nome que o banco espera ('item_receb_produto_id')
+         if (loteId) {
+             dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
+         }
+ 
+         if (prodId) {
+             // Mandamos o ID do produto de reprocesso como se fosse o produto principal
+             dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
+         }
+ 
+         // 5. Adiciona distribuição de estoque e token
+         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
+         let csrfToken = $('meta[name="csrf-token"]').attr('content');
+         dadosForm.push({ name: 'csrf_token', value: csrfToken });
+ 
+         // 6. Envia
+         $.ajax({
+             url: 'ajax_router.php?action=salvarReprocesso',
+             type: 'POST',
+             data: dadosForm,
+             dataType: 'json',
+             success: function (res) {
+                 if (res.success) {
+                     Swal.fire('Sucesso', res.message, 'success');
+ 
+                     // Reseta tudo
+                     $('#form-recebimento-detalhe')[0].reset();
+                     $('.select2-lotes-finalizados').val(null).trigger('change');
+                     $('#select-produto-origem').empty();
+                     $('#item_receb_id').val('');
+                     distribuicaoBaixa = [];
+ 
+                     // Força volta para Matéria Prima visualmente
+                     $('#entrada_mp_materia').prop('checked', true).trigger('change');
+ 
+                     // Atualiza tabelas
+                     if (typeof carregarItensRecebimento === 'function') carregarItensRecebimento(loteIdAtual);
+                     if (typeof recarregarTabelaLotes === 'function') recarregarTabelaLotes();
+ 
+                 } else {
+                     Swal.fire('Erro', res.message, 'error');
+                 }
+             },
+             error: function (xhr) {
+                 let msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Erro desconhecido';
+                 Swal.fire('Erro', 'Falha ao salvar: ' + msg, 'error');
+             }
+         });
+     } */
+
+
+    /* function enviarReprocessoParaBackend() {
+         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+ 
+         let loteId = $('.select2-lotes-finalizados').val();
+         let prodId = $('#select-produto-origem').val();
+ 
+         // Limpeza de campos duplicados ou inúteis
+         dadosForm = dadosForm.filter(function (item) {
+             return item.name !== 'item_receb_produto_id' &&
+                 item.name !== 'item_receb_lote_origem_id' &&
+                 item.name !== 'lote_origem_produto_id';
+         });
+ 
+         // INJEÇÃO MANUAL (Garante que o PHP receba os IDs)
+         if (loteId) dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
+         if (prodId) dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
+ 
+         // Estoque e Token
+         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
+         let csrfToken = $('meta[name="csrf-token"]').attr('content');
+         dadosForm.push({ name: 'csrf_token', value: csrfToken });
+ 
+         // Debug: Veja no console o que está sendo enviado
+         console.log("Enviando Reprocesso:", dadosForm);
+ 
+         $.ajax({
+             url: 'ajax_router.php?action=salvarReprocesso',
+             type: 'POST',
+             data: dadosForm,
+             dataType: 'json',
+             success: function (res) {
+                 if (res.success) {
+                     Swal.fire('Sucesso', res.message, 'success');
+ 
+                     // Reset Total (Função que criamos antes)
+                     if (typeof resetarFormularioRecebimento === 'function') {
+                         resetarFormularioRecebimento();
+                     } else {
+                         // Fallback se a função não existir
+                         $('#form-recebimento-detalhe')[0].reset();
+                         window.location.reload();
+                     }
+ 
+                     if (loteIdAtual) carregarItensRecebimento(loteIdAtual);
+                     recarregarTabelaLotes();
+ 
+                 } else {
+                     Swal.fire('Erro', res.message, 'error');
+                 }
+             },
+             error: function (xhr) {
+                 let msg = 'Erro desconhecido';
+                 if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                 // Mostra erro detalhado na tela para facilitar
+                 Swal.fire('Erro 500', 'Falha ao salvar. Verifique se o produto está selecionado. <br>Detalhe: ' + msg, 'error');
+             }
+         });
+     } */
+
     function enviarReprocessoParaBackend() {
         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+
+        // Valores dos campos Select2
+        let loteId = $('.select2-lotes-finalizados').val();
+        let prodId = $('#select-produto-origem').val();
+
+        // 1. VALIDAÇÃO PRÉVIA (Evita enviar requisição se estiver vazio)
+        if (!loteId) {
+            Swal.fire('Atenção', 'Selecione o Lote de Origem.', 'warning');
+            return;
+        }
+        if (!prodId) {
+            Swal.fire('Atenção', 'Selecione o Produto para reprocessar.', 'warning');
+            return;
+        }
+
+        // 2. LIMPEZA (Remove campos vazios ou duplicados que vêm do HTML oculto)
+        dadosForm = dadosForm.filter(function (item) {
+            return item.name !== 'item_receb_produto_id' &&
+                item.name !== 'item_receb_lote_origem_id' &&
+                item.name !== 'lote_origem_produto_id';
+        });
+
+        // 3. INJEÇÃO DOS DADOS (Envia com os dois nomes para garantir que o PHP pegue)
+        // Lote Origem
+        dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
+
+        // Produto (Envia duplicado intencionalmente para casar com qualquer lógica do PHP)
+        dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
+        dadosForm.push({ name: 'lote_origem_produto_id', value: prodId });
+
+        // Estoque e Token
         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
+        let csrfToken = $('meta[name="csrf-token"]').attr('content');
+        dadosForm.push({ name: 'csrf_token', value: csrfToken });
+
+        console.log("Enviando Reprocesso (Payload):", dadosForm);
 
         $.ajax({
             url: 'ajax_router.php?action=salvarReprocesso',
@@ -3274,11 +3650,250 @@ $(document).ready(function () {
             success: function (res) {
                 if (res.success) {
                     Swal.fire('Sucesso', res.message, 'success');
-                    // Recarregar tabelas e limpar form...
+
+                    // Reset da tela
+                    if (typeof resetarFormularioRecebimento === 'function') {
+                        resetarFormularioRecebimento();
+                    } else {
+                        $('#form-recebimento-detalhe')[0].reset();
+                        $('.select2-lotes-finalizados').val(null).trigger('change');
+                        $('#select-produto-origem').empty();
+                        $('#entrada_mp_materia').prop('checked', true).trigger('change');
+                    }
+
+                    if (loteIdAtual) recarregarItensRecebimento(loteIdAtual);
+                    recarregarTabelaLotes();
+
                 } else {
                     Swal.fire('Erro', res.message, 'error');
                 }
+            },
+            error: function (xhr) {
+                let msg = 'Erro desconhecido';
+                if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                Swal.fire('Erro', 'Falha ao salvar.<br>' + msg, 'error');
             }
         });
     }
+
+    // Função para salvar Matéria Prima (Fluxo Padrão)
+    function salvarRecebimentoNormal() {
+        var formData = $('#form-recebimento-detalhe').serialize();
+        // Adiciona token CSRF
+        formData += '&csrf_token=' + $('meta[name="csrf-token"]').attr('content');
+
+        // Verifica se é edição ou inserção
+        var action = modoEdicao ? 'editarItemRecebimento' : 'adicionarItemRecebimento';
+
+        $.ajax({
+            url: 'ajax_router.php?action=' + action,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    Swal.fire('Sucesso', response.message, 'success');
+
+                    // Reset total
+                    resetarFormularioRecebimento();
+
+                    // Recarrega tabelas
+                    if (loteIdAtual) recarregarItensRecebimento(loteIdAtual);
+                    recarregarTabelaLotes();
+                } else {
+                    notificacaoErro('Erro', response.message);
+                }
+            },
+            error: function () {
+                notificacaoErro('Erro', 'Erro ao processar requisição.');
+            }
+        });
+    }
+
+    // Função auxiliar para limpar tudo e voltar ao estado inicial
+    function resetarFormularioRecebimento() {
+        $('#form-recebimento-detalhe')[0].reset();
+        $('#item_receb_id').val('');
+        $('#item_receb_lote_origem_id').val('');
+
+        // Limpa Select2
+        $('.select2-lotes-finalizados').val(null).trigger('change');
+        $('#select-produto-origem').empty();
+        $('#item_receb_produto_id').val(null).trigger('change');
+
+        // Reseta variáveis globais
+        modoEdicao = false;
+        dadosOriginaisEdicao = null;
+        distribuicaoBaixa = [];
+
+        // Volta visualmente para Matéria Prima
+        $('#entrada_mp_materia').prop('checked', true).trigger('change');
+
+        // Restaura botões
+        $('#btn-adicionar-item-recebimento')
+            .html('<i class="fas fa-plus"></i> Salvar')
+            .removeClass('btn-warning').addClass('btn-success');
+        $('#btn-cancelar-edicao').addClass('d-none');
+    }
+
+    // Botão Cancelar Edição
+    $('#btn-cancelar-edicao').on('click', function () {
+        resetarFormularioRecebimento();
+    });
+
+    // Ao fechar o modal, reseta tudo
+    $('#modal-lote-novo').on('hidden.bs.modal', function () {
+        resetarFormularioRecebimento();
+    });
+
+    // Função para carregar e desenhar a tabela de itens do recebimento
+    /* function carregarItensRecebimento(loteId) {
+         if (!loteId) return;
+ 
+         // Limpa a tabela e mostra um "Carregando..."
+         const $tbody = $('#tabela-itens-recebimento');
+         $tbody.html('<tr><td colspan="7" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Carregando itens...</td></tr>');
+ 
+         $.ajax({
+             url: 'ajax_router.php?action=getItensRecebimento',
+             type: 'GET',
+             data: { lote_id: loteId },
+             dataType: 'json',
+             success: function (res) {
+                 $tbody.empty(); // Limpa o loading
+ 
+                 if (res.success && res.data && res.data.length > 0) {
+                     let html = '';
+ 
+                     res.data.forEach(function (item) {
+                         // Formata valores
+                         let peso = formatarBR(item.item_receb_peso_nota_fiscal, 3);
+                         let caixas = item.item_receb_total_caixas || 0;
+                         let medio = formatarBR(item.item_receb_peso_medio_ind, 2);
+ 
+                         // Lógica visual para diferenciar MP de Reprocesso
+                         let origemBadge = '<span class="badge bg-success">Matéria Prima</span>';
+                         let prodDisplay = item.prod_descricao;
+ 
+                         if (item.item_receb_lote_origem_id) {
+                             // Se for reprocesso, mostra de qual lote veio
+                             let loteRef = item.lote_origem_numero ? item.lote_origem_numero : item.item_receb_lote_origem_id;
+                             origemBadge = `<span class="badge bg-warning text-dark" title="Reprocesso do Lote ${loteRef}">Reprocesso</span>`;
+                             prodDisplay += `<br><small class="text-muted"><i class="fas fa-history"></i> Lote Origem: ${loteRef}</small>`;
+                         }
+ 
+                         html += `
+                             <tr>
+                                 <td>${prodDisplay}</td>
+                                 <td class="text-center align-middle">${origemBadge}</td>
+                                 <td class="text-center align-middle">${item.item_receb_nota_fiscal || '-'}</td>
+                                 <td class="text-end align-middle">${peso} kg</td>
+                                 <td class="text-center align-middle">${caixas}</td>
+                                 <td class="text-end align-middle">${medio} kg</td>
+                                 <td class="text-center align-middle">
+                                     <div class="btn-group btn-group-sm">
+                                         <button type="button" class="btn btn-outline-primary btn-editar-item-recebimento" 
+                                                 data-id="${item.item_receb_id}" title="Editar">
+                                             <i class="fas fa-edit"></i>
+                                         </button>
+                                         <button type="button" class="btn btn-outline-danger btn-excluir-item-recebimento" 
+                                                 data-id="${item.item_receb_id}" title="Excluir">
+                                             <i class="fas fa-trash-alt"></i>
+                                         </button>
+                                     </div>
+                                 </td>
+                             </tr>
+                         `;
+                     });
+ 
+                     $tbody.html(html);
+                 } else {
+                     $tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">Nenhum item lançado neste lote.</td></tr>');
+                 }
+             },
+             error: function () {
+                 $tbody.html('<tr><td colspan="7" class="text-center text-danger">Erro ao carregar itens.</td></tr>');
+             }
+         });
+     } */
+
+    // --- Torna a função global (opcional, mas recomendável para debug) ---
+    /* window.carregarItensRecebimento = carregarItensRecebimento;*/
+
+    // ======================================================
+    // CÁLCULO AUTOMÁTICO: Peso x Peso Médio = Caixas
+    // ======================================================
+    $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('input', function () {
+
+        // 1. Pega os valores e converte de BR (1.200,50) para Float (1200.50)
+        let pesoTotal = parseFloat($('#item_receb_peso_nota_fiscal').val().replace(/\./g, '').replace(',', '.')) || 0;
+        let pesoMedio = parseFloat($('#item_receb_peso_medio_ind').val().replace(/\./g, '').replace(',', '.')) || 0;
+
+        // 2. Só calcula se tiver peso médio válido (evita divisão por zero)
+        if (pesoMedio > 0) {
+            let caixas = pesoTotal / pesoMedio;
+
+            // Arredonda para inteiro (opcional, depende da sua regra de negócio)
+            // Se aceitar meia caixa, use .toFixed(2)
+            let caixasArredondado = Math.round(caixas);
+
+            // 3. Joga o valor no input de Caixas
+            $('#item_receb_total_caixas').val(caixasArredondado);
+        }
+    });
+
+    // =========================================================================
+    // CORREÇÃO FINAL: CÁLCULO IMEDIATO (Sem Delay e Compatível com Máscaras)
+    // =========================================================================
+
+    // 1. Ao selecionar o produto, preenchemos o peso médio visualmente
+    $('#select-produto-origem').on('select2:select', function (e) {
+        const data = e.params.data;
+        let pesoPadrao = parseFloat(data.prod_peso_embalagem) || 0;
+
+        console.log("Produto Selecionado:", data.text, "| Peso Padrão:", pesoPadrao);
+
+        if (pesoPadrao === 0) {
+            notificacaoErro('Atenção', 'Este produto não tem peso de embalagem definido no cadastro. O cálculo automático não funcionará.');
+            $('#item_receb_peso_medio_ind').val('');
+        } else {
+            // Preenche o campo visual. O cálculo vai ler deste campo depois.
+            $('#item_receb_peso_medio_ind').val(formatarBR(pesoPadrao, 3));
+        }
+
+        // Tenta calcular imediatamente
+        calcularCaixasReprocesso();
+    });
+
+    // 2. Monitora TODOS os eventos de digitação para garantir resposta imediata
+    // O setTimeout(..., 50) é o segredo para funcionar com máscaras de dinheiro
+    $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('keyup input change paste', function () {
+        setTimeout(function () {
+            calcularCaixasReprocesso();
+        }, 50);
+    });
+
+    // Função de Cálculo Robusta
+    function calcularCaixasReprocesso() {
+        // Pega o valor VISUAL do campo Peso Total
+        let valorPesoTotal = $('#item_receb_peso_nota_fiscal').val() || '';
+        // Remove pontos de milhar e troca vírgula por ponto
+        let pesoTotal = parseFloat(valorPesoTotal.replace(/\./g, '').replace(',', '.')) || 0;
+
+        // Pega o valor VISUAL do campo Peso Médio (Melhor que usar variável global)
+        let valorPesoMedio = $('#item_receb_peso_medio_ind').val() || '';
+        let pesoBase = parseFloat(valorPesoMedio.replace(/\./g, '').replace(',', '.')) || 0;
+
+        // Só calcula se tivermos os dois valores positivos
+        if (pesoTotal > 0 && pesoBase > 0) {
+            let caixas = pesoTotal / pesoBase;
+            let caixasArredondado = Math.round(caixas);
+
+            // Só atualiza o campo se o valor for diferente (evita loop ou piscar tela)
+            if ($('#item_receb_total_caixas').val() != caixasArredondado) {
+                $('#item_receb_total_caixas').val(caixasArredondado);
+            }
+        }
+    }
+
 }); 

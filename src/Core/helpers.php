@@ -87,6 +87,7 @@ function sanitize_upper(array $data): array
         'id',
         'ficha_id',
         'resumo_id', // IDs geralmente não precisam de uppercase
+        'distribuicao_estoque',
         'html_content', // Conteúdo rico
         'template_conteudo_zpl', 
         'template_descricao',    

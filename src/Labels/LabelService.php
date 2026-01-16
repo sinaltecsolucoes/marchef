@@ -140,6 +140,10 @@ class LabelService
 
     private function substituirPlaceholders(string $zpl, array $dados): string
     {
+        if (strpos($zpl, '^CI28') === false) {
+            $zpl = str_replace('^XA', '^XA^CI28', $zpl);
+        }
+        
         // --- LÓGICA DE FONTE DINÂMICA ---
         $nomeProduto = $dados['prod_descricao'] ?? '';
         $tamanhoNome = strlen($nomeProduto);
