@@ -394,6 +394,8 @@ class EnderecoRepository
     public function desalocarItem(int $alocacaoId, int $usuarioId): bool
     {
         try {
+            $this->pdo->beginTransaction();
+
             $dadosAntigos = $this->pdo->prepare("SELECT * FROM tbl_estoque_alocacoes WHERE alocacao_id = ?");
             $dadosAntigos->execute([$alocacaoId]);
             $dadosAntigos = $dadosAntigos->fetch(PDO::FETCH_ASSOC);
@@ -414,7 +416,6 @@ class EnderecoRepository
                 null,
                 ""
             );
-
 
             // REGISTRA NO KARDEX (SAÍDA)
             // Destino NULL significa que saiu do Estoque (para expedição ou correção)
@@ -779,7 +780,7 @@ class EnderecoRepository
 
         $stmt = $this->pdo->prepare($sqlItens);
         $stmt->execute([
-            ':term_produto' => $likeTerm,
+            ':term_prod' => $likeTerm,
             ':term_lote' => $likeTerm
         ]);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

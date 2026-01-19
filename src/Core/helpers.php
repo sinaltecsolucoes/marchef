@@ -92,6 +92,7 @@ function sanitize_upper(array $data): array
         'template_conteudo_zpl', 
         'template_descricao',    
         'zpl_file_upload',
+        'template_layout_json',
 
         // 4. Parâmetros do DataTables (ESSENCIAIS para não quebrar as listas)
         'draw',

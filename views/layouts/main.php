@@ -548,6 +548,9 @@
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'designer'): ?>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
         <script src="<?php echo BASE_URL; ?>/js/etiqueta_designer.js"></script>
     <?php endif; ?>
 

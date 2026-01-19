@@ -37,36 +37,52 @@ $(document).ready(function () {
                 }
             },
             {
+                // --- COLUNA 1: PESO (EMB.) ---
                 "data": "peso_embalagem",
                 "className": "text-center align-middle font-small",
                 "render": function (data) {
-                    return parseFloat(data).toFixed(3);
+                    let val = parseFloat(data);
+                    
+                    // Lógica: Se for inteiro (ex: 10), mostra sem decimais. 
+                    // Se tiver decimal (ex: 18.144), mostra com 3 casas e vírgula.
+                    if (Number.isInteger(val)) {
+                         return val + 'kg';
+                    }
+                    
+                    return val.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + 'kg';
                 }
             },
             {
+                // --- COLUNA 2: TOTAL CAIXAS ---
                 "data": "total_caixas",
                 "className": "text-center align-middle fw-bold font-small",
                 "render": function (data) {
-                    const valor = parseFloat(data);
-                    const numeroFormatado = valor.toFixed(3);
-                    if (valor < 0) {
-                        // Se for negativo, adiciona a classe de cor vermelha
-                        return `<span class="text-danger">${numeroFormatado}</span>`;
+                    let val = parseFloat(data);
+                    
+                    // Lógica: Transforma em Inteiro (sem casas decimais)
+                    let formatado = parseInt(val).toLocaleString('pt-BR'); 
+
+                    if (val < 0) {
+                        return `<span class="text-danger">${formatado}</span>`;
                     }
-                    return numeroFormatado;
+                    return formatado;
                 }
             },
             {
+                // --- COLUNA 3: PESO TOTAL (KG) ---
                 "data": "peso_total",
                 "className": "text-center align-middle fw-bold font-small",
                 "render": function (data) {
-                    const valor = parseFloat(data);
-                    const numeroFormatado = valor.toFixed(3);
-                    if (valor < 0) {
-                        // Se for negativo, adiciona a classe de cor vermelha
-                        return `<span class="text-danger">${numeroFormatado}</span>`;
+                    let val = parseFloat(data);
+                    
+                    // Lógica: Padrão PT-BR completo (milhar com ponto, decimal com vírgula, 3 casas)
+                    // Ex: 1.680,000
+                    let formatado = val.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+                    if (val < 0) {
+                        return `<span class="text-danger">${formatado}</span>`;
                     }
-                    return numeroFormatado;
+                    return formatado;
                 }
             }
         ],

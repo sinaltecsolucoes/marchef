@@ -1311,7 +1311,7 @@ class LoteNovoRepository
         return $success;
     }
 
-    public function getVisaoGeralEstoque(array $params): array
+   /* public function getVisaoGeralEstoque(array $params): array
     {
         // Parâmetros do DataTables
         $draw = $params['draw'] ?? 1;
@@ -1411,13 +1411,116 @@ class LoteNovoRepository
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data
         ];
-    }
+    } */
 
     /**
      * Busca os detalhes completos de um único item de lote do novo sistema.
      * @param int $loteItemId ID do item da tabela tbl_lotes_novo_embalagem
      * @return array|null
      */
+
+    public function getVisaoGeralEstoque(array $params): array
+    {
+        // Parâmetros do DataTables
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+
+        // --- MUDANÇA PRINCIPAL AQUI ---
+        // Em vez de olhar tabela de movimento (tbl_estoque), olhamos a tabela de SALDO ATUAL (alocacoes)
+        // Agrupamos tudo o que está alocado, ignorando o endereço específico.
+        $baseQuery = "
+        FROM tbl_estoque_alocacoes ea
+        JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
+        JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
+        JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+        LEFT JOIN tbl_entidades e ON lnh.lote_cliente_id = e.ent_codigo
+    ";
+
+        // Agrupamos por Produto e Lote. 
+        // Assim, se tiver 10 caixas na Camara 1 e 20 na Camara 2, ele vai mostrar uma linha só com 30 caixas.
+        $groupByClause = "GROUP BY p.prod_codigo, lnh.lote_id";
+
+        $whereClause = "";
+        $queryParams = [];
+
+        // --- FILTROS DE PESQUISA ---
+        if (!empty($searchValue)) {
+            $searchableColumns = [
+                'p.prod_descricao',
+                'lnh.lote_completo_calculado',
+                'p.prod_codigo_interno',
+                'COALESCE(NULLIF(e.ent_nome_fantasia, \'\'), e.ent_razao_social)'
+            ];
+            $searchConditions = [];
+
+            foreach ($searchableColumns as $index => $column) {
+                $placeholder = ":search{$index}";
+                $searchConditions[] = "{$column} LIKE {$placeholder}";
+                $queryParams[$placeholder] = '%' . $searchValue . '%';
+            }
+
+            $whereClause = "WHERE (" . implode(' OR ', $searchConditions) . ")";
+        }
+
+        // --- CONTAGENS (Obrigatório para o DataTables) ---
+
+        // Total sem filtro
+        $totalRecordsQuery = "SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$groupByClause}) as subquery";
+        $totalRecords = $this->pdo->query($totalRecordsQuery)->fetchColumn();
+
+        // Total com filtro
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$whereClause} {$groupByClause}) as subquery");
+        $stmtFiltered->execute($queryParams);
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        // --- BUSCA DOS DADOS ---
+        $sqlData = "
+        SELECT 
+            p.prod_tipo as tipo_produto,
+            p.prod_subtipo as subtipo,
+            p.prod_classificacao as classificacao,
+            p.prod_codigo_interno as codigo_interno,
+            p.prod_descricao as descricao_produto,
+            p.prod_peso_embalagem as peso_embalagem,
+            lnh.lote_completo_calculado as lote,
+            COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social) as cliente_lote_nome,
+            lnh.lote_data_fabricacao as data_fabricacao,
+            
+            -- AQUI ESTÁ A MÁGICA: Somamos a quantidade alocada
+            SUM(ea.alocacao_quantidade) as total_caixas,
+            
+            -- Calculamos o peso total baseado na soma
+            (SUM(ea.alocacao_quantidade) * p.prod_peso_embalagem) as peso_total
+        
+        {$baseQuery}
+        {$whereClause}
+        {$groupByClause}
+
+        -- Ordenação Padrão (Pode ser melhorada para pegar o order do DataTables)
+        ORDER BY p.prod_descricao ASC, lnh.lote_completo_calculado ASC
+        LIMIT :start, :length
+    ";
+
+        $stmt = $this->pdo->prepare($sqlData);
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+
+        foreach ($queryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw" => (int) $draw,
+            "recordsTotal" => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data" => $data
+        ];
+    }
     public function findLoteNovoItemDetalhes(int $loteItemId): ?array
     {
         $sql = "

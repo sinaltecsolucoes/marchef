@@ -3171,11 +3171,11 @@ function desalocarItemEndereco(EnderecoRepository $repo)
         // 2. Validação do Usuário
         // Precisamos garantir que existe um usuário logado para assinar o histórico
         //if (!isset($_SESSION['codUsuario'])) {
-        if (!isset($_SESSION['usu_codigo'])) {
+        if (!isset($_SESSION['codUsuario'])) {
             throw new Exception("Sessão inválida ou expirada");
         }
         //$usuarioId = (int)$_SESSION['codUsuario'];
-        $usuarioId = (int)$_SESSION['usu_codigo'];
+        $usuarioId = (int)$_SESSION['codUsuario'];
 
         // 3. Chama o Repositório, passando os DOIS parâmetros
         if ($repo->desalocarItem($alocacaoId, $usuarioId)) {

@@ -192,7 +192,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 painel.empty();
                 if (response.success && response.data.length > 0) {
                     let tableHtml = '<table class="table table-sm table-hover">';
-                    tableHtml += `<thead class="table-light"><tr><th>Câmara</th><th class="text-end">Total Caixas</th><th class="text-end">Total Quilos (kg)</th></tr></thead><tbody>`;
+                    tableHtml += `<thead class="table-light">
+                                    <tr>
+                                       <th>Câmara</th>
+                                       <th class="text-end">Total Caixas</th>
+                                       <th class="text-end">Total Quilos (kg)</th>
+                                       </tr>
+                                    </thead>
+                                <tbody>`;
                     response.data.forEach(function (camara) {
                         tableHtml += `<tr><td>${camara.camara_nome}</td><td class="text-end">${parseFloat(camara.total_caixas).toFixed(3)}</td><td class="text-end">${parseFloat(camara.total_quilos).toFixed(3)}</td></tr>`;
                     });
