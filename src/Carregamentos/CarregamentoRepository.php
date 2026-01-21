@@ -1491,7 +1491,7 @@ class CarregamentoRepository
         $lote = null;
 
         // Padrão para extrair os dados do QR Code
-        $pattern = '/241(.+?)10(.+?)11/';
+        $pattern = '/241(.+?)10(.+?)11(\d{6})/';
 
         if (preg_match($pattern, $qrCodeContent, $matches)) {
             $codigoProduto = $matches[1] ?? null;
