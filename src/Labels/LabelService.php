@@ -143,7 +143,7 @@ class LabelService
         if (strpos($zpl, '^CI28') === false) {
             $zpl = str_replace('^XA', '^XA^CI28', $zpl);
         }
-        
+
         // --- LÓGICA DE FONTE DINÂMICA ---
         $nomeProduto = $dados['prod_descricao'] ?? '';
         $tamanhoNome = strlen($nomeProduto);
@@ -176,13 +176,25 @@ class LabelService
         $dadosQrCode = $this->buildGs1DataString($dados, $dadosBarras1D);
 
         // --- LÓGICA DE CAMPOS COMPOSTOS ---
-        $partesClasse = array_filter([$dados['prod_classificacao'], $dados['prod_classe']]);
+        /*  $partesClasse = array_filter([$dados['prod_classificacao'], $dados['prod_classe']]);
+          $linhaProdutoClasse = implode(' ', $partesClasse);*/
+
+        // Removemos a barra '/' da classificação caso ela exista
+        $classificacaoLimpa = isset($dados['prod_classificacao'])
+            ? str_replace('/', '', $dados['prod_classificacao'])
+            : '';
+
+        // Montamos o array usando a variável limpa
+        $partesClasse = array_filter([$classificacaoLimpa, $dados['prod_classe']]);
         $linhaProdutoClasse = implode(' ', $partesClasse);
 
         $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
+        $nomeEspecie = "Espécie: " . ($dados['prod_especie'] ?? '');
+        $nomeOrigem = "Origem: " . ($dados['prod_origem'] ?? '');
 
         $linhaClassificacao = "CLASSIFICAÇÃO: " . $this->buildClassificationLine($dados);
         $linhaDescricao = "CLASSIFICAÇÃO: " . $this->construirLinhaClassificacao($dados);
+        $linhaConteudo = $this->construirFraseConteudo($dados);
 
         $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
         $codigoInternoProduto = "COD.: " . ($dados['prod_codigo_interno'] ?? '');
@@ -221,8 +233,11 @@ class LabelService
             '{fonte_produto_nome}' => $comandoFonte,
             'linhaProduto' => $linhaProdutoClasse,
             'linhaEspecie' => $linhaEspecieOrigem,
+            'nomeEspecie' => $nomeEspecie,
+            'nomeOrigem' => $nomeOrigem,
             'linhaClassificacao' => $linhaClassificacao,
             'linhaDescricao' => $linhaDescricao,
+            'linhaPecas' => $linhaConteudo,
             '{linha_lote_completo}' => $linhaLote,
             'linhaLote' => $linhaLote,
             'linhaDatas' => $linhaFabEValidade,
@@ -308,7 +323,7 @@ class LabelService
                 $valorGramas = $pesoParaFormatar * 1000;
 
                 // Convertemos para float e depois string para remover zeros decimais  desnecessários (300.0 vira 300)
-                $pesoFormatado = (string)((float)$valorGramas);
+                $pesoFormatado = (string) ((float) $valorGramas);
                 $sufixo = 'g';
             } else {
                 // Lógica para quilos (>=1kg)
@@ -355,7 +370,7 @@ class LabelService
                 $valorGramas = $pesoParaFormatar * 1000;
 
                 // Convertemos para float e depois string para remover zeros decimais  desnecessários (300.0 vira 300)
-                $pesoFormatado = (string)((float)$valorGramas);
+                $pesoFormatado = (string) ((float) $valorGramas);
                 $sufixo = 'g';
             } else {
                 // Lógica para quilos (>=1kg)
@@ -387,5 +402,52 @@ class LabelService
         }
         $stringGs1 .= "21" . "0000001"; // Número de série fixo
         return $stringGs1;
+    }
+
+    private function construirFraseConteudo(array $produto): string
+    {
+        // 1. Pega as peças (Ex: "450 A 550") vindo do banco
+        $pecas = $produto['prod_total_pecas'] ?? '';
+
+        // Se não tiver informação de peças, retorna vazio para não quebrar o layout?
+        // Ou retorna um texto padrão. Vou assumir que se não tiver peças, não mostra a frase.
+        if (empty($pecas)) {
+            return '';
+        }
+
+        // 2. Lógica do Peso (Reaproveitada para garantir o valor correto)
+        $pesoParaFormatar = 0;
+        if (($produto['prod_tipo_embalagem'] ?? '') === 'SECUNDARIA' && !empty($produto['prod_primario_id'])) {
+            $produtoPrimario = $this->produtoRepo->find($produto['prod_primario_id']);
+            if ($produtoPrimario) {
+                $pesoParaFormatar = (float) ($produtoPrimario['prod_peso_embalagem'] ?? 0);
+            }
+        } else if (($produto['prod_tipo_embalagem'] ?? '') === 'PRIMARIA') {
+            $pesoParaFormatar = (float) ($produto['prod_peso_embalagem'] ?? 0);
+        }
+
+        // 3. Formatação do Peso (g ou kg)
+        $textoPeso = '';
+        if ($pesoParaFormatar > 0) {
+            if ($pesoParaFormatar < 1) {
+                $valorGramas = $pesoParaFormatar * 1000;
+                $pesoFormatado = (string) ((float) $valorGramas);
+                $textoPeso = $pesoFormatado . 'g';
+            } else {
+                $pesoFormatado = str_replace('.', ',', (string) $pesoParaFormatar);
+                $textoPeso = $pesoFormatado . 'kg';
+            }
+        }
+
+        // 4. Montagem da Frase
+        // Resultado esperado: "ESTA EMBALAGEM CONTÉM ENTRE 450 A 550 PEÇAS/5kg"
+
+        $frase = "ESTA EMBALAGEM CONTÉM ENTRE {$pecas} PEÇAS";
+
+        if (!empty($textoPeso)) {
+            $frase .= "/" . $textoPeso;
+        }
+
+        return $frase;
     }
 }
