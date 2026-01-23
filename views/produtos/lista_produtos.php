@@ -5,98 +5,138 @@
 
 <h4 class="fw-bold mb-3">Gestão de Produtos</h4>
 
-
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 fw-bold text-primary">Gerenciar Registros</h6>
+        <h6 class="m-0 fw-bold text-primary">
+            Gestão de Produtos
+        </h6>
     </div>
+
     <div class="card-body">
         <div class="row align-items-center">
-            <p>Gerencie todos os produtos</p>
 
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <!-- Botões Adicionar Produto e Imprimir Listagem de Produtos -->
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary" id="btn-adicionar-produto-main">
-                        <i class="fas fa-plus me-2"></i> Adicionar Produto
+            <div class="col-md-4 border-end px-4">
+                <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">Gerenciar Produtos</h5>
+                
+                <label class="form-label small fw-bold d-block">&nbsp;</label>
+                
+                <div class="d-flex flex-column flex-md-row gap-2">
+                    <button class="btn btn-primary py-2" id="btn-adicionar-produto-main">
+                        <i class="fas fa-plus me-2"></i> Novo Produto
                     </button>
-
-                    <button class="btn btn-secondary" id="btn-imprimir-relatorio">
-                        <i class="fas fa-print me-2"></i> Imprimir Listagem
+                    
+                    <button class="btn btn-secondary py-2" id="btn-imprimir-relatorio">
+                        <i class="fas fa-print me-2"></i> Relatório
                     </button>
                 </div>
+            </div>
 
-                <!-- Filtro por Tipo de Embalagem -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <label class="form-label mb-0 text-nowrap">Tipo:</label>
+            <div class="col-md-8 px-4">
+                <div class="row g-2">
+                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
+                        Filtros Avançados
+                    </h5>
 
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-todos" value="Todos" checked>
-                        <label class="form-check-label" for="filtro-tipo-todos">Todos</label>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Tipo Embalagem</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownTipo" data-bs-toggle="dropdown" aria-expanded="false">
+                                Tipo Embalagem
+                            </button>
+                            <ul class="dropdown-menu shadow" id="filter-tipo-container" aria-labelledby="dropdownTipo" style="min-width: 200px;">
+                                <li class="px-2 pb-2 border-bottom">
+                                    <div class="form-check">
+                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="tipo_todos" checked>
+                                        <label class="form-check-label fw-bold" for="tipo_todos">Marcar Todos</label>
+                                    </div>
+                                </li>
+                                <li class="px-2 pt-2">
+                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="PRIMARIA"><label class="form-check-label">Primária</label></div>
+                                </li>
+                                <li class="px-2">
+                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="SECUNDARIA"><label class="form-check-label">Secundária</label></div>
+                                </li>
+                                <li class="px-2">
+                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="MATERIA-PRIMA"><label class="form-check-label">Matéria-Prima</label></div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-prim" value="PRIMARIA">
-                        <label class="form-check-label" for="filtro-tipo-prim">Primário</label>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Situação</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownSituacao" data-bs-toggle="dropdown" aria-expanded="false">
+                                Situação
+                            </button>
+                            <ul class="dropdown-menu shadow" id="filter-situacao-container" aria-labelledby="dropdownSituacao" style="min-width: 180px;">
+                                <li class="px-2 pb-2 border-bottom">
+                                    <div class="form-check">
+                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="sit_todos" checked>
+                                        <label class="form-check-label fw-bold" for="sit_todos">Marcar Todos</label>
+                                    </div>
+                                </li>
+                                <li class="px-2 pt-2">
+                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="A"><label class="form-check-label">Ativo</label></div>
+                                </li>
+                                <li class="px-2">
+                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="I"><label class="form-check-label">Inativo</label></div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-sec" value="SECUNDARIA">
-                        <label class="form-check-label" for="filtro-tipo-sec">Secundário</label>
+
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Marcas</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownMarca" data-bs-toggle="dropdown" aria-expanded="false">
+                                Marcas
+                            </button>
+                            <ul class="dropdown-menu shadow scrollable-menu" id="filter-marca-container" aria-labelledby="dropdownMarca" style="min-width: 250px; max-height: 300px; overflow-y: auto;">
+                                <li class="px-2 pb-2 border-bottom">
+                                    <div class="form-check">
+                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="marca_todos" checked>
+                                        <label class="form-check-label fw-bold" for="marca_todos">Todas as Marcas</label>
+                                    </div>
+                                </li>
+                                <div id="lista-marcas-dinamica">
+                                    <li class="text-center text-muted small py-2"><i class="fas fa-spinner fa-spin"></i></li>
+                                </div>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_tipo" id="filtro-tipo-mp" value="MATERIA-PRIMA">
-                        <label class="form-check-label" for="filtro-tipo-mp">Matéria-Prima</label>
+
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-info fw-bold text-white" id="btn-aplicar-filtros" title="Aplicar Filtros">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
                     </div>
+
                 </div>
-
-                <!-- Filtro por Situação -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <label class="form-label mb-0 text-nowrap">Filtrar por Situação:</label>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-todos"
-                            value="Todos" checked>
-                        <label class="form-check-label" for="filtro-situacao-todos">Todos</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-ativo"
-                            value="A">
-                        <label class="form-check-label" for="filtro-situacao-ativo">Ativo</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="filtro_situacao" id="filtro-situacao-inativo"
-                            value="I">
-                        <label class="form-check-label" for="filtro-situacao-inativo">Inativo</label>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
 </div>
 
-<!-- Tabela de Produtos -->
 <div class="card shadow mb-4 card-custom">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Registros de Produtos</h6>
-    </div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-bordered table-hover" id="tabela-produtos" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th class="text-center align-middle">Situação</th>
-                        <th class="text-center align-middle">Cód. Interno</th>
-                        <th class="text-center align-middle">Descrição</th>
-                        <th class="text-center align-middle">Descrição Etiqueta</th>
-                        <th class="text-center align-middle">Tipo</th>
-                        <th class="text-center align-middle">Embalagem</th>
-                        <th class="text-center align-middle">Peso</th>
-                        <th class="text-center align-middle">Unid.</th>
-                        <th class="text-center align-middle">Ações</th>
+                        <th class="text-center">Sit.</th>
+                        <th class="text-center">Cód.</th>
+                        <th>Descrição</th>
+                        <th>Marca</th>
+                        <th>Desc. Etiqueta</th>
+                        <th class="text-center">Tipo</th>
+                        <th class="text-center">Emb.</th>
+                        <th class="text-center">Peso</th>
+                        <th>Unid.</th>
+                        <th class="text-center">Ações</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Dados carregados via AJAX -->
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
     </div>
@@ -356,7 +396,7 @@
                         </div>
 
                     </div>
-                </form> 
+                </form>
             </div>
             <div class="modal-footer">
                 <button type="submit" form="form-produto" class="btn btn-primary"><i class="fas fa-save me-2"></i>Salvar

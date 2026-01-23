@@ -20,7 +20,7 @@ class ProdutoRepository
     /**
      * Busca dados para o DataTables, com paginação, busca e ordenação.
      */
-    public function findAllForDataTable(array $params): array
+    /*   public function findAllForDataTable(array $params): array
     {
         // Parâmetros do DataTables
         $draw = $params['draw'] ?? 1;
@@ -31,8 +31,11 @@ class ProdutoRepository
         $orderDir = $params['order'][0]['dir'] ?? 'asc';
 
         // Filtros
-        $filtroSituacao = !empty($params['filtro_situacao']) ? $params['filtro_situacao'] : 'Todos';
-        $filtroTipo = !empty($params['filtro_tipo']) ? $params['filtro_tipo'] : 'Todos';
+        // $filtroSituacao = !empty($params['filtro_situacao']) ? $params['filtro_situacao'] : 'Todos';
+        // $filtroTipo = !empty($params['filtro_tipo']) ? $params['filtro_tipo'] : 'Todos';
+        $filtroSituacao = $params['filtro_situacao'] ?? [];
+        $filtroTipo = $params['filtro_tipo'] ?? [];
+        $filtroMarcas = $params['filtro_marcas'] ?? [];
 
         // Colunas para ordenação e busca
         $columns = ['prod_situacao', 'prod_codigo_interno', 'prod_classe', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_peso_embalagem'];
@@ -50,23 +53,55 @@ class ProdutoRepository
         $queryParams = [];
 
         // Filtro por Situação
-        if ($filtroSituacao !== 'TODOS') {
-            $situacao = ($filtroSituacao === 'Ativo' || $filtroSituacao === 'A') ? 'A' : (($filtroSituacao === 'Inativo' || $filtroSituacao === 'I') ? 'I' : '');
-            if ($situacao) {
-                $whereConditions[] = "prod_situacao = :situacao";
-                $queryParams[':situacao'] = $situacao;
+        if (!empty($filtroSituacao) && !in_array('TODOS', $filtroSituacao)) {
+            // $situacao = ($filtroSituacao === 'Ativo' || $filtroSituacao === 'A') ? 'A' : (($filtroSituacao === 'Inativo' || $filtroSituacao === 'I') ? 'I' : '');
+
+            // Cria placeholders: :sit0, :sit1, etc.
+            $placeholders = [];
+            foreach ($filtroSituacao as $i => $val) {
+                $key = ":sit{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
             }
+            $whereConditions[] = "prod_situacao IN (" . implode(',', $placeholders) . ")";
+          
         }
 
         // Filtro de Tipo de Embalagem 
-        if ($filtroTipo !== 'TODOS') {
-            $whereConditions[] = "prod_tipo_embalagem = :tipo";
-            $queryParams[':tipo'] = $filtroTipo;
+        if (!empty($filtroTipo) && !in_array('TODOS', $filtroTipo)) {
+            $placeholders = [];
+            foreach ($filtroTipo as $i => $val) {
+                $key = ":tipo{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            $whereConditions[] = "prod_tipo_embalagem IN (" . implode(',', $placeholders) . ")";
+            // $queryParams[':tipo'] = $filtroTipo;
+        }
+
+        // Filtro Marcas
+        if (!empty($filtroMarcas) && !in_array('TODOS', $filtroMarcas)) {
+            $placeholders = [];
+            foreach ($filtroMarcas as $i => $val) {
+                $key = ":marca{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            $whereConditions[] = "prod_marca IN (" . implode(',', $filtroMarcas);
         }
 
         // Filtro por Busca
         if (!empty($searchValue)) {
-            $searchableColumns = ['prod_codigo_interno', 'prod_classe', 'prod_descricao', 'prod_tipo', 'prod_tipo_embalagem', 'prod_situacao', 'prod_peso_embalagem'];
+            $searchableColumns = [
+                'prod_codigo_interno',
+                'prod_classe',
+                'prod_descricao',
+                'prod_tipo',
+                'prod_tipo_embalagem',
+                'prod_situacao',
+                'prod_peso_embalagem',
+                'prod_marca'
+            ];
             $searchConditions = [];
             $searchTerm = '%' . $searchValue . '%';
             foreach ($searchableColumns as $index => $column) {
@@ -109,7 +144,133 @@ class ProdutoRepository
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data ?? []
         ];
+    } */
+
+
+
+    public function findAllForDataTable(array $params): array
+    {
+        // Parâmetros do DataTables
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+        $orderColumnIndex = $params['order'][0]['column'] ?? 1;
+        $orderDir = $params['order'][0]['dir'] ?? 'asc';
+
+        // Mapeamento de Colunas
+        $columns = [
+            0 => 'prod_situacao',
+            1 => 'prod_codigo_interno',
+            2 => 'prod_descricao',
+            3 => 'prod_marca',
+            4 => 'prod_tipo',
+            5 => 'prod_tipo_embalagem',
+            6 => 'prod_peso_embalagem',
+            7 => 'prod_codigo' // Ações
+        ];
+        $orderColumn = $columns[$orderColumnIndex] ?? 'prod_descricao';
+
+        // --- PREPARAÇÃO DOS FILTROS (Lógica Robusta) ---
+        $whereConditions = [];
+        $queryParams = [];
+
+        // 1. FILTRO SITUAÇÃO
+        $filtroSituacao = $params['filtro_situacao'] ?? [];
+        // Se vier string "TODOS" ou array contendo "TODOS" ou vazio, ignora o filtro.
+        if (!empty($filtroSituacao) && $filtroSituacao !== 'TODOS' && !in_array('TODOS', (array)$filtroSituacao)) {
+            $placeholders = [];
+            foreach ((array)$filtroSituacao as $i => $val) {
+                $key = ":sit_{$i}"; // Nome único para o parâmetro
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            if (!empty($placeholders)) {
+                $whereConditions[] = "prod_situacao IN (" . implode(',', $placeholders) . ")";
+            }
+        }
+
+        // 2. FILTRO TIPO DE EMBALAGEM
+        $filtroTipo = $params['filtro_tipo'] ?? [];
+        if (!empty($filtroTipo) && $filtroTipo !== 'TODOS' && !in_array('TODOS', (array)$filtroTipo)) {
+            $placeholders = [];
+            foreach ((array)$filtroTipo as $i => $val) {
+                $key = ":tipo_{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            if (!empty($placeholders)) {
+                $whereConditions[] = "prod_tipo_embalagem IN (" . implode(',', $placeholders) . ")";
+            }
+        }
+
+        // 3. FILTRO MARCAS
+        $filtroMarcas = $params['filtro_marcas'] ?? [];
+        if (!empty($filtroMarcas) && $filtroMarcas !== 'TODOS' && !in_array('TODOS', (array)$filtroMarcas)) {
+            $placeholders = [];
+            foreach ((array)$filtroMarcas as $i => $val) {
+                $key = ":marca_{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            if (!empty($placeholders)) {
+                $whereConditions[] = "prod_marca IN (" . implode(',', $placeholders) . ")";
+            }
+        }
+
+        // 4. BUSCA GLOBAL (Search Box)
+        if (!empty($searchValue)) {
+            $term = '%' . $searchValue . '%';
+            $whereConditions[] = "(
+                prod_codigo_interno LIKE :search_cod OR 
+                prod_descricao LIKE :search_desc OR 
+                prod_marca LIKE :search_marca OR
+                prod_tipo LIKE :search_tipo
+            )";
+            $queryParams[':search_cod'] = $term;
+            $queryParams[':search_desc'] = $term;
+            $queryParams[':search_marca'] = $term;
+            $queryParams[':search_tipo'] = $term;
+        }
+
+        // Montagem da Query
+        $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        // Count Total
+        $totalRecords = $this->pdo->query("SELECT COUNT(prod_codigo) FROM tbl_produtos")->fetchColumn();
+
+        // Count Filtered
+        $stmtCount = $this->pdo->prepare("SELECT COUNT(prod_codigo) FROM tbl_produtos $whereClause");
+        foreach ($queryParams as $k => $v) {
+            $stmtCount->bindValue($k, $v);
+        }
+        $stmtCount->execute();
+        $totalFiltered = $stmtCount->fetchColumn();
+
+        // Data Query
+        $sql = "SELECT * FROM tbl_produtos $whereClause ORDER BY $orderColumn $orderDir LIMIT :start, :length";
+        $stmt = $this->pdo->prepare($sql);
+
+        // Bind dos parâmetros de filtro
+        foreach ($queryParams as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+
+        // Bind da paginação (INT obrigatório)
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw" => intval($draw),
+            "recordsTotal" => intval($totalRecords),
+            "recordsFiltered" => intval($totalFiltered),
+            "data" => $data
+        ];
     }
+
 
     /**
      * Busca um único produto pelo ID.
@@ -350,7 +511,7 @@ class ProdutoRepository
         return (int) $stmt->fetchColumn();
     }
 
-    public function getDadosRelatorioGeral(string $filtroSituacao = 'Todos', string $search = '', string $filtroTipo = 'Todos'): array
+   /* public function getDadosRelatorioGeral(string $filtroSituacao = 'Todos', string $search = '', string $filtroTipo = 'Todos'): array
     {
         $filtroSituacao = !empty($filtroSituacao) ? $filtroSituacao : 'Todos';
         $filtroTipo = !empty($filtroTipo) ? $filtroTipo : 'Todos';
@@ -410,12 +571,79 @@ class ProdutoRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($queryParams);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    } */
 
     /**
      * Busca produtos secundários (Caixas/Acabados) para o Select2.
      * Traz também o peso da embalagem para ajudar nos cálculos do modal.
      */
+
+    public function getDadosRelatorioGeral(array $filtroSituacao, string $search, array $filtroTipo, array $filtroMarcas): array
+    {
+        // A lógica é IDÊNTICA à do DataTable, só sem LIMIT e ORDER BY fixo
+        $whereConditions = [];
+        $queryParams = [];
+
+        if (!empty($filtroSituacao) && !in_array('TODOS', $filtroSituacao)) {
+            $placeholders = [];
+            foreach ($filtroSituacao as $i => $val) {
+                $key = ":sit{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            $whereConditions[] = "p.prod_situacao IN (" . implode(',', $placeholders) . ")";
+        }
+
+        if (!empty($filtroTipo) && !in_array('TODOS', $filtroTipo)) {
+            $placeholders = [];
+            foreach ($filtroTipo as $i => $val) {
+                $key = ":tipo{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            $whereConditions[] = "p.prod_tipo_embalagem IN (" . implode(',', $placeholders) . ")";
+        }
+
+        if (!empty($filtroMarcas) && !in_array('TODOS', $filtroMarcas)) {
+            $placeholders = [];
+            foreach ($filtroMarcas as $i => $val) {
+                $key = ":marca{$i}";
+                $placeholders[] = $key;
+                $queryParams[$key] = $val;
+            }
+            $whereConditions[] = "p.prod_marca IN (" . implode(',', $placeholders) . ")";
+        }
+
+        if (!empty($search)) {
+            $searchableColumns = ['p.prod_codigo_interno', 'p.prod_descricao', 'p.prod_tipo', 'p.prod_marca'];
+            $searchConditions = [];
+            $searchTerm = '%' . $search . '%';
+            foreach ($searchableColumns as $index => $column) {
+                $key = ":search_rel_" . $index;
+                $searchConditions[] = "$column LIKE $key";
+                $queryParams[$key] = $searchTerm;
+            }
+            $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
+        }
+
+        $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+        $sql = "SELECT 
+                    p.prod_codigo, p.prod_codigo_interno, p.prod_descricao, p.prod_tipo_embalagem, 
+                    p.prod_ean13, p.prod_dun14, p.prod_ncm, p.prod_situacao, p.prod_marca,
+                    prim.prod_descricao AS nome_primario,
+                    prim.prod_codigo_interno AS codigo_primario,
+                    prim.prod_ean13 AS ean_primario
+                FROM tbl_produtos p
+                LEFT JOIN tbl_produtos prim ON p.prod_primario_id = prim.prod_codigo
+                $whereClause
+                ORDER BY p.prod_tipo_embalagem ASC, p.prod_descricao ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($queryParams);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getProdutosSecundariosOptions(string $term = ''): array
     {
         $term = "%" . $term . "%";
@@ -443,5 +671,15 @@ class ProdutoRepository
             ':term3' => $term
         ]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getDistinctMarcas(): array
+    {
+        // Busca apenas marcas não vazias e ordenadas
+        $stmt = $this->pdo->query("SELECT DISTINCT prod_marca 
+                                   FROM tbl_produtos 
+                                   WHERE prod_marca IS NOT NULL AND prod_marca <> '' 
+                                   ORDER BY prod_marca ASC");
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

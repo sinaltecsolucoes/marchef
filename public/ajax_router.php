@@ -132,6 +132,9 @@ switch ($action) {
     case 'getProdutosSecundariosOptions':
         getProdutosSecundariosOptions($produtoRepo);
         break;
+    case 'getMarcasOptions':
+        getMarcasOptions($produtoRepo);
+        break;
 
     // --- ROTAS DE ENTIDADES ---
     case 'listarEntidades':
@@ -874,6 +877,17 @@ function getProdutosSecundariosOptions(ProdutoRepository $repo)
     $term = $_GET['term'] ?? '';
     $data = $repo->getProdutosSecundariosOptions($term);
     echo json_encode(['results' => $data]);
+}
+
+function getMarcasOptions(ProdutoRepository $repo)
+{
+    try {
+        // Retorna apenas a lista simples de strings
+        $marcas = $repo->getDistinctMarcas();
+        echo json_encode(['success' => true, 'data' => $marcas]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ENTIDADES ---

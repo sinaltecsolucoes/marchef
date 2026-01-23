@@ -184,6 +184,126 @@ $(document).ready(function () {
         }
     }
 
+    // =================================================================
+    // 1. CARREGAMENTO DE MARCAS PARA O FILTRO
+    // =================================================================
+    /* function carregarFiltroMarcas() {
+         $.ajax({
+             url: 'ajax_router.php?action=getMarcasOptions',
+             type: 'GET',
+             dataType: 'json',
+             success: function (response) {
+                 if (response.success) {
+                     let html = '';
+                     if (response.data.length === 0) {
+                         html = '<li class="text-muted small text-center">Nenhuma marca cad.</li>';
+                     } else {
+                         response.data.forEach(function (marca, index) {
+                             // Sanitiza a marca para usar como ID
+                             let idSafe = 'marca-' + index;
+                             html += `
+                                 <li>
+                                     <div class="form-check dropdown-item-custom">
+                                         <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}">
+                                         <label class="form-check-label" for="${idSafe}">${marca}</label>
+                                     </div>
+                                 </li>`;
+                         });
+                     }
+                     $('#lista-marcas-dinamica').html(html);
+                 }
+             }
+         });
+     } */
+
+    function carregarFiltroMarcas() {
+        $.ajax({
+            url: 'ajax_router.php?action=getMarcasOptions',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    let html = '';
+                    if (response.data.length === 0) {
+                        html = '<li class="text-muted small text-center py-2">Nenhuma marca cadastrada</li>';
+                    } else {
+                        response.data.forEach(function (marca, index) {
+                            // Correção para marcas com espaços ou caracteres especiais no ID
+                            let idSafe = 'marca_' + index;
+                            html += `
+                                <li class="px-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}">
+                                        <label class="form-check-label" for="${idSafe}">${marca}</label>
+                                    </div>
+                                </li>`;
+                        });
+                    }
+                    $('#lista-marcas-dinamica').html(html);
+                }
+            }
+        });
+    }
+
+
+    carregarFiltroMarcas();
+
+    // =================================================================
+    // 2. LÓGICA GENÉRICA DOS DROPDOWNS COM CHECKBOX (Select All)
+    // =================================================================
+    function setupDropdownCheckboxes(containerId) {
+        const $container = $('#' + containerId);
+        const $checkAll = $container.find('.check-all');
+
+        // Quando clicar em "Todos"
+        $container.on('change', '.check-all', function () {
+            const isChecked = $(this).is(':checked');
+            // Marca/Desmarca todos os filhos
+            $container.find('.filter-check').prop('checked', isChecked);
+
+            // Recarrega a tabela automaticamente (opcional, pode deixar pro botão filtrar)
+            // tableProdutos.ajax.reload(); 
+        });
+
+        // Quando clicar em um Item individual
+        $container.on('change', '.filter-check', function () {
+            const totalItems = $container.find('.filter-check').length;
+            const totalChecked = $container.find('.filter-check:checked').length;
+
+            // Se todos estiverem marcados, marca o "Todos", senão desmarca
+            $checkAll.prop('checked', totalItems === totalChecked);
+
+            // Se nenhum estiver marcado, poderiamos forçar "Todos" ou deixar vazio (que o backend trata como todos)
+            if (totalChecked === 0) {
+                $checkAll.prop('checked', true); // UX: Resetar para todos se o usuário desmarcar tudo
+                // $container.find('.filter-check').prop('checked', true); // Opcional: remarcar visualmente
+            }
+        });
+    }
+
+    // Aplica a lógica nos 3 filtros
+    setupDropdownCheckboxes('filter-tipo-container');
+    setupDropdownCheckboxes('filter-situacao-container');
+    setupDropdownCheckboxes('filter-marca-container');
+
+    // Função auxiliar para coletar os valores marcados
+    function getSelectedValues(containerId) {
+        const $container = $('#' + containerId);
+        // Verifica se "Todos" está marcado
+        if ($container.find('.check-all').is(':checked')) {
+            return ['TODOS'];
+        }
+
+        // Coleta os individuais
+        let values = [];
+        $container.find('.filter-check:checked').each(function () {
+            values.push($(this).val());
+        });
+
+        // Fallback de segurança: se nada marcado, retorna TODOS
+        return values.length > 0 ? values : ['TODOS'];
+    }
+
     // Controla o texto do switch Ativo/Inativo
     $modalProduto.on('change', '#prod_situacao', function () {
         const isChecked = $(this).is(':checked');
@@ -200,45 +320,61 @@ $(document).ready(function () {
             "url": "ajax_router.php?action=listarProdutos",
             "type": "POST",
             "data": function (d) {
-                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
-                d.filtro_tipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
+                // d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+                // d.filtro_tipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
+
+                d.filtro_situacao = getSelectedValues('filter-situacao-container');
+                d.filtro_tipo = getSelectedValues('filter-tipo-container');
+                d.filtro_marcas = getSelectedValues('filter-marca-container');
             }
         },
         "responsive": true,
         "columns": [
+
+            //  <th class="text-center">Sit.</th>
             {
                 "data": "prod_situacao",
                 "className": "text-center align-middle",
                 "render": data => (data === 'A') ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>'
             },
+            //<th class="text-center">Cód.</th>
             {
                 "data": "prod_codigo_interno",
                 "className": "text-center align-middle font-small"
             },
+            //<th>Descrição</th>
             {
                 "data": "prod_descricao",
                 "className": "align-middle font-small"
             },
+            // <th>Marca</th>
+            { "data": "prod_marca", "defaultContent": "-" },
+            //<th>Desc. Etiqueta</th>
             {
                 "data": "prod_classe",
                 "className": "align-middle font-small"
             },
+            //<th class="text-center">Tipo</th>
             {
                 "data": "prod_tipo",
                 "className": "col-centralizavel align-middle font-small"
             },
+            // <th class="text-center">Emb.</th>
             {
                 "data": "prod_tipo_embalagem",
                 "className": "col-centralizavel align-middle font-small"
             },
+            // <th class="text-center">Peso</th>
             {
                 "data": "prod_peso_embalagem",
                 "className": "col-centralizavel align-middle font-small"
             },
+            // <th>Unid.</th>   
             {
                 "data": "prod_unidade",
                 "className": "text-center align-middle font-small"
             },
+            //<th class="text-center">Ações</th>
             {
                 "data": "prod_codigo",
                 "orderable": false,
@@ -254,8 +390,18 @@ $(document).ready(function () {
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
-    $('input[name="filtro_situacao"]').on('change', () => tableProdutos.ajax.reload());
-    $('input[name="filtro_tipo"]').on('change', () => tableProdutos.ajax.reload());
+    // Botão "Aplicar Filtros" (o pequeno botão verde no menu)
+    $('#btn-aplicar-filtros').on('click', function () {
+        tableProdutos.ajax.reload();
+    });
+
+    // Recarregar tabela ao fechar o dropdown (Opcional, dá uma sensação de "Aplicar")
+    $('.dropdown').on('hidden.bs.dropdown', function () {
+        // tableProdutos.ajax.reload(); // Descomente se quiser reload automático ao sair do menu
+    });
+
+    // $('input[name="filtro_situacao"]').on('change', () => tableProdutos.ajax.reload());
+    // $('input[name="filtro_tipo"]').on('change', () => tableProdutos.ajax.reload());
 
     $tipoEmbalagemSelect.on('change', toggleEmbalagemFields);
     $pesoEmbalagemSecundariaInput.on('keyup', calcularUnidades);
@@ -331,9 +477,9 @@ $(document).ready(function () {
             if (response.success) {
                 $modalProduto.modal('hide');
                 tableProdutos.ajax.reload(null, false);
-                notificacaoSucesso('Sucesso!', response.message); 
+                notificacaoSucesso('Sucesso!', response.message);
             } else {
-                notificacaoErro('Erro ao Salvar', response.message); 
+                notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
             // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); 
@@ -485,21 +631,41 @@ $(document).ready(function () {
     });
 
     // Evento do Botão de Imprimir Relatório
+    /*  $('#btn-imprimir-relatorio').on('click', function () {
+          // 1. Filtro de Situação
+          // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
+          let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+  
+          // 2. Filtro de Tipo
+          // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
+          let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
+  
+          // 3. Termo de Busca
+          let termoBusca = $('.dataTables_filter input').val() || '';
+  
+          // 4. Monta a URL com todos os parâmetros
+          let urlRelatorio = `index.php?page=relatorio_produtos&filtro=${filtroSituacao}&tipo=${filtroTipo}&search=${encodeURIComponent(termoBusca)}`;
+  
+          window.open(urlRelatorio, '_blank');
+      });*/
+
+    // =================================================================
+    // 4. RELATÓRIO
+    // =================================================================
     $('#btn-imprimir-relatorio').on('click', function () {
-        // 1. Filtro de Situação
-        // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
-        let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+        // Pega os arrays
+        let sit = getSelectedValues('filter-situacao-container');
+        let tipo = getSelectedValues('filter-tipo-container');
+        let marca = getSelectedValues('filter-marca-container');
+        let search = $('.dataTables_filter input').val() || '';
 
-        // 2. Filtro de Tipo
-        // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
-        let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
+        // Transforma arrays em strings separadas por vírgula para passar na URL
+        let url = `views/produtos/relatorio_lista.php?modo=pdf` +
+            `&filtro=${sit.join(',')}` +
+            `&tipo=${tipo.join(',')}` +
+            `&marcas=${encodeURIComponent(marca.join(','))}` + // Encode para evitar erros com espaços na marca
+            `&search=${encodeURIComponent(search)}`;
 
-        // 3. Termo de Busca
-        let termoBusca = $('.dataTables_filter input').val() || '';
-
-        // 4. Monta a URL com todos os parâmetros
-        let urlRelatorio = `index.php?page=relatorio_produtos&filtro=${filtroSituacao}&tipo=${filtroTipo}&search=${encodeURIComponent(termoBusca)}`;
-
-        window.open(urlRelatorio, '_blank');
+        window.open(url, '_blank');
     });
 });
