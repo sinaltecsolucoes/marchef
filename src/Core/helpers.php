@@ -76,7 +76,7 @@ function sanitize_upper(array $data): array
         'ficha_medidas_emb_secundaria',
         'tipo_entrada_mp',
         'itemType',
-        
+
 
         // 3. Tokens e Sistema
         'csrf_token',
@@ -89,10 +89,11 @@ function sanitize_upper(array $data): array
         'resumo_id', // IDs geralmente não precisam de uppercase
         'distribuicao_estoque',
         'html_content', // Conteúdo rico
-        'template_conteudo_zpl', 
-        'template_descricao',    
+        'template_conteudo_zpl',
+        'template_descricao',
         'zpl_file_upload',
         'template_layout_json',
+
 
         // 4. Parâmetros do DataTables (ESSENCIAIS para não quebrar as listas)
         'draw',
@@ -101,6 +102,9 @@ function sanitize_upper(array $data): array
         'start',
         'length',
         'search',
+        'sit',
+        'tipo',
+        'marca',
 
         // 5. Filtros de Listagem (ESSENCIAIS para os dados aparecerem)
         'filtro_situacao',
@@ -108,7 +112,11 @@ function sanitize_upper(array $data): array
         'tipo_entidade',
         'filtro_data_inicio',
         'filtro_data_fim',
-        'filtro_status'
+        'filtro_status',
+        'filter-situacao-container',
+        'filter-tipo-container',
+        'filter-marca-container',
+
     ];
 
     foreach ($data as $key => $value) {

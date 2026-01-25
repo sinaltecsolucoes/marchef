@@ -2356,7 +2356,11 @@ function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
 
         $publicUrl = 'temp_labels/' . $filename;
 
-        echo json_encode(['success' => true, 'pdfUrl' => $publicUrl]);
+        echo json_encode([
+            'success' => true,
+            'pdfUrl' => $publicUrl,
+            'fileName' => $filename
+        ]);
     } catch (Throwable $e) { // Throwable pega tanto Exception quanto Error (erros fatais)
         error_log($e->getTraceAsString());
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);

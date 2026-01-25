@@ -2077,7 +2077,29 @@ $(document).ready(function () {
             dataType: 'json'
         }).done(function (response) {
             if (response.success) {
-                window.open(BASE_URL + '/' + response.pdfUrl, '_blank'); // Abre o PDF direto
+                // window.open(BASE_URL + '/' + response.pdfUrl, '_blank'); // Abre o PDF direto
+
+                // --- (FORÇAR DOWNLOAD) ---
+                const link = document.createElement('a');
+                link.href = BASE_URL + '/' + response.pdfUrl;
+
+                // O atributo download instrui o navegador a baixar
+                // Usa o nome enviado pelo PHP ou um genérico
+                link.download = response.fileName || 'etiqueta_producao.pdf';
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Opcional: Feedback visual rápido (Toast)
+               /* Swal.fire({
+                    icon: 'success',
+                    title: 'Download Iniciado',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });*/
             } else {
                 notificacaoErro('Erro ao gerar etiqueta', response.message);
             }
@@ -2322,7 +2344,27 @@ $(document).ready(function () {
             dataType: 'json'
         }).done(function (response) {
             if (response.success) {
-                window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+                // window.open(BASE_URL + '/' + response.pdfUrl, '_blank');
+
+                // --- (FORÇAR DOWNLOAD) ---
+                const link = document.createElement('a');
+                link.href = BASE_URL + '/' + response.pdfUrl;
+                link.download = response.fileName || 'etiqueta_embalagem.pdf';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                 // Opcional: Feedback visual rápido
+                /* Swal.fire({
+                    icon: 'success',
+                    title: 'Download Iniciado',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });*/
+
             } else {
                 notificacaoErro('Erro ao gerar etiqueta', response.message);
             }

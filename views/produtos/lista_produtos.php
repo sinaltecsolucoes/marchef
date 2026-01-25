@@ -12,110 +12,99 @@
         </h6>
     </div>
 
-    <div class="card-body">
-        <div class="row align-items-center">
+   <div class="card-body">
+    <div class="row">
+        <div class="col-md-4 border-end px-4">
+            <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">Gerenciar Produtos</h5>
 
-            <div class="col-md-4 border-end px-4">
-                <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">Gerenciar Produtos</h5>
-                
-                <label class="form-label small fw-bold d-block">&nbsp;</label>
-                
-                <div class="d-flex flex-column flex-md-row gap-2">
-                    <button class="btn btn-primary py-2" id="btn-adicionar-produto-main">
-                        <i class="fas fa-plus me-2"></i> Novo Produto
-                    </button>
-                    
-                    <button class="btn btn-secondary py-2" id="btn-imprimir-relatorio">
-                        <i class="fas fa-print me-2"></i> Relatório
-                    </button>
-                </div>
+            <label class="form-label small fw-bold d-block">&nbsp;</label>
+
+            <div class="d-flex flex-column flex-md-row gap-2">
+                <button class="btn btn-primary py-2 w-100" id="btn-adicionar-produto-main">
+                    <i class="fas fa-plus me-2"></i> Adicionar Produto
+                </button>
+
+                <button class="btn btn-outline-secondary py-2 w-100" id="btn-imprimir-relatorio">
+                    <i class="fas fa-print me-2"></i> Imprimir Listagem
+                </button>
             </div>
+        </div>
 
-            <div class="col-md-8 px-4">
-                <div class="row g-2">
-                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
-                        Filtros Avançados
-                    </h5>
+        <div class="col-md-8 px-4">
+            <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
+                Filtros Avançados
+            </h5>
 
-                    <div class="col-md-4">
-                        <label class="form-label small fw-bold">Tipo Embalagem</label>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownTipo" data-bs-toggle="dropdown" aria-expanded="false">
-                                Tipo Embalagem
-                            </button>
-                            <ul class="dropdown-menu shadow" id="filter-tipo-container" aria-labelledby="dropdownTipo" style="min-width: 200px;">
-                                <li class="px-2 pb-2 border-bottom">
-                                    <div class="form-check">
-                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="tipo_todos" checked>
-                                        <label class="form-check-label fw-bold" for="tipo_todos">Marcar Todos</label>
-                                    </div>
-                                </li>
-                                <li class="px-2 pt-2">
-                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="PRIMARIA"><label class="form-check-label">Primária</label></div>
-                                </li>
-                                <li class="px-2">
-                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="SECUNDARIA"><label class="form-check-label">Secundária</label></div>
-                                </li>
-                                <li class="px-2">
-                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="MATERIA-PRIMA"><label class="form-check-label">Matéria-Prima</label></div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Situação</label>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownSituacao" data-bs-toggle="dropdown" aria-expanded="false">
-                                Situação
-                            </button>
-                            <ul class="dropdown-menu shadow" id="filter-situacao-container" aria-labelledby="dropdownSituacao" style="min-width: 180px;">
-                                <li class="px-2 pb-2 border-bottom">
-                                    <div class="form-check">
-                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="sit_todos" checked>
-                                        <label class="form-check-label fw-bold" for="sit_todos">Marcar Todos</label>
-                                    </div>
-                                </li>
-                                <li class="px-2 pt-2">
-                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="A"><label class="form-check-label">Ativo</label></div>
-                                </li>
-                                <li class="px-2">
-                                    <div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="I"><label class="form-check-label">Inativo</label></div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Marcas</label>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownMarca" data-bs-toggle="dropdown" aria-expanded="false">
-                                Marcas
-                            </button>
-                            <ul class="dropdown-menu shadow scrollable-menu" id="filter-marca-container" aria-labelledby="dropdownMarca" style="min-width: 250px; max-height: 300px; overflow-y: auto;">
-                                <li class="px-2 pb-2 border-bottom">
-                                    <div class="form-check">
-                                        <input class="form-check-input check-all" type="checkbox" value="TODOS" id="marca_todos" checked>
-                                        <label class="form-check-label fw-bold" for="marca_todos">Todas as Marcas</label>
-                                    </div>
-                                </li>
-                                <div id="lista-marcas-dinamica">
-                                    <li class="text-center text-muted small py-2"><i class="fas fa-spinner fa-spin"></i></li>
-                                </div>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <button type="button" class="btn btn-info fw-bold text-white" id="btn-aplicar-filtros" title="Aplicar Filtros">
-                            <i class="fas fa-filter"></i> Filtrar
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Tipo Embalagem</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownTipo" data-bs-toggle="dropdown" aria-expanded="false">
+                            Todos
                         </button>
+                        <ul class="dropdown-menu shadow w-100" id="filter-tipo-container" aria-labelledby="dropdownTipo">
+                            <li class="px-2 pb-2 border-bottom">
+                                <div class="form-check">
+                                    <input class="form-check-input check-all" type="checkbox" value="TODOS" id="tipo_todos" checked>
+                                    <label class="form-check-label fw-bold cursor-pointer" for="tipo_todos">Marcar Todos</label>
+                                </div>
+                            </li>
+                            <li class="px-2 pt-2"><div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="PRIMARIA"><label class="form-check-label">Primária</label></div></li>
+                            <li class="px-2"><div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="SECUNDARIA"><label class="form-check-label">Secundária</label></div></li>
+                            <li class="px-2"><div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="MATERIA-PRIMA"><label class="form-check-label">Matéria-Prima</label></div></li>
+                        </ul>
                     </div>
+                </div>
 
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Situação</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownSituacao" data-bs-toggle="dropdown" aria-expanded="false">
+                            Todos
+                        </button>
+                        <ul class="dropdown-menu shadow w-100" id="filter-situacao-container" aria-labelledby="dropdownSituacao">
+                            <li class="px-2 pb-2 border-bottom">
+                                <div class="form-check">
+                                    <input class="form-check-input check-all" type="checkbox" value="TODOS" id="sit_todos" checked>
+                                    <label class="form-check-label fw-bold cursor-pointer" for="sit_todos">Marcar Todos</label>
+                                </div>
+                            </li>
+                            <li class="px-2 pt-2"><div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="A"><label class="form-check-label">Ativo</label></div></li>
+                            <li class="px-2"><div class="form-check"><input class="form-check-input filter-check" type="checkbox" value="I"><label class="form-check-label">Inativo</label></div></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Marcas</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="dropdownMarca" data-bs-toggle="dropdown" aria-expanded="false">
+                            Todas
+                        </button>
+                        <ul class="dropdown-menu shadow w-100 scrollable-menu" id="filter-marca-container" aria-labelledby="dropdownMarca" style="max-height: 300px; overflow-y: auto;">
+                            <li class="px-2 pb-2 border-bottom">
+                                <div class="form-check">
+                                    <input class="form-check-input check-all" type="checkbox" value="TODOS" id="marca_todos" checked>
+                                    <label class="form-check-label fw-bold cursor-pointer" for="marca_todos">Todas as Marcas</label>
+                                </div>
+                            </li>
+                            <div id="lista-marcas-dinamica">
+                                <li class="text-center text-muted small py-2"><i class="fas fa-spinner fa-spin"></i></li>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-info fw-bold text-white w-100" id="btn-aplicar-filtros">
+                        <i class="fas fa-filter me-2"></i> Filtrar
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <div class="card shadow mb-4 card-custom">

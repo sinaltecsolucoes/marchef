@@ -56,7 +56,15 @@ $(document).ready(function () {
         let partes = [];
 
         // 1. Tipo do Produto
-        if (tipo) partes.push(tipo);
+        // if (tipo) partes.push(tipo);
+
+        if (tipo) {
+            if (tipo === 'CAMARAO') {
+                partes.push('CAMARÃO');
+            } else {
+                partes.push(tipo);
+            }
+        }
 
         // 2. Adiciona "CINZA" se for Camarão
         if (tipo === 'CAMARAO') partes.push('CINZA');
@@ -216,6 +224,35 @@ $(document).ready(function () {
          });
      } */
 
+    /*  function carregarFiltroMarcas() {
+         $.ajax({
+             url: 'ajax_router.php?action=getMarcasOptions',
+             type: 'GET',
+             dataType: 'json',
+             success: function (response) {
+                 if (response.success) {
+                     let html = '';
+                     if (response.data.length === 0) {
+                         html = '<li class="text-muted small text-center py-2">Nenhuma marca cadastrada</li>';
+                     } else {
+                         response.data.forEach(function (marca, index) {
+                             // Correção para marcas com espaços ou caracteres especiais no ID
+                             let idSafe = 'marca_' + index;
+                             html += `
+                                 <li class="px-2">
+                                     <div class="form-check">
+                                         <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}">
+                                         <label class="form-check-label" for="${idSafe}">${marca}</label>
+                                     </div>
+                                 </li>`;
+                         });
+                     }
+                     $('#lista-marcas-dinamica').html(html);
+                 }
+             }
+         });
+     } */
+
     function carregarFiltroMarcas() {
         $.ajax({
             url: 'ajax_router.php?action=getMarcasOptions',
@@ -224,26 +261,32 @@ $(document).ready(function () {
             success: function (response) {
                 if (response.success) {
                     let html = '';
+                    const isTodosMarcado = $('#marca_todos').is(':checked');
+                    const checkedStr = isTodosMarcado ? 'checked' : '';
+
                     if (response.data.length === 0) {
                         html = '<li class="text-muted small text-center py-2">Nenhuma marca cadastrada</li>';
                     } else {
                         response.data.forEach(function (marca, index) {
-                            // Correção para marcas com espaços ou caracteres especiais no ID
                             let idSafe = 'marca_' + index;
                             html += `
-                                <li class="px-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}">
-                                        <label class="form-check-label" for="${idSafe}">${marca}</label>
-                                    </div>
-                                </li>`;
+                            <li class="px-2">
+                                <div class="form-check">
+                                    <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}" ${checkedStr}>
+                                    <label class="form-check-label" for="${idSafe}">${marca}</label>
+                                </div>
+                            </li>`;
                         });
                     }
                     $('#lista-marcas-dinamica').html(html);
+
+                    // Inicializa a lógica do dropdown DEPOIS de inserir as marcas
+                    setupDropdownFilterLogic('filter-marca-container', 'dropdownMarca', 'Todas as Marcas');
                 }
             }
         });
     }
+
 
 
     carregarFiltroMarcas();
@@ -303,6 +346,112 @@ $(document).ready(function () {
         // Fallback de segurança: se nada marcado, retorna TODOS
         return values.length > 0 ? values : ['TODOS'];
     }
+
+    // --- LÓGICA VISUAL DOS FILTROS DROPDOWN ---
+
+    /**
+     * Função genérica para gerenciar o texto do botão dropdown
+     * CORREÇÃO: Sincronização inicial para evitar delay e texto errado.
+     */
+    function setupDropdownFilterLogic(containerId, buttonId, defaultText) {
+
+        const $container = $('#' + containerId);
+        const $btn = $('#' + buttonId);
+        const $checkAll = $container.find('.check-all');
+        const $items = $container.find('.filter-check');
+
+        // --- CORREÇÃO 1: SINCRONIZAÇÃO INICIAL (O PULO DO GATO) ---
+        // Se o botão "Todos" vier marcado do HTML, forçamos todos os filhos a ficarem marcados também.
+        if ($checkAll.is(':checked')) {
+            $items.prop('checked', true);
+        }
+
+        // Chama a atualização de texto logo de cara para corrigir o título do botão
+        atualizarTexto();
+
+        // --- EVENTO 1: CLIQUE NO "MARCAR TODOS" ---
+        $checkAll.on('click', function () {
+            const isChecked = $(this).is(':checked');
+            $items.prop('checked', isChecked);
+            atualizarTexto();
+        });
+
+        // --- EVENTO 2: CLIQUE EM UM ITEM INDIVIDUAL ---
+        $items.on('click', function (e) {
+            const $this = $(this);
+            const wasAllChecked = $checkAll.is(':checked'); // Estado ANTES do clique
+
+            // LÓGICA DE ISOLAMENTO:
+            // Se estava tudo marcado e o usuário clica em um item, ele quer FILTRAR só por aquele.
+            if (wasAllChecked) {
+                e.preventDefault(); // Impede o comportamento padrão para controlarmos manualmente
+
+                // 1. Desmarca tudo
+                $items.prop('checked', false);
+                $checkAll.prop('checked', false);
+
+                // 2. Marca SÓ o que foi clicado
+                $this.prop('checked', true);
+            }
+
+            // SE NÃO ESTAVA TUDO MARCADO (Seleção parcial):
+            // Deixa o navegador marcar/desmarcar nativamente e só conferimos se "encheu" a lista.
+
+            // Verifica status final para atualizar o pai
+            const total = $items.length;
+            const checkedCount = $items.filter(':checked').length;
+
+            $checkAll.prop('checked', total === checkedCount);
+
+            atualizarTexto();
+        });
+
+        function atualizarTexto() {
+            const $checked = $items.filter(':checked');
+            const count = $checked.length;
+            const total = $items.length;
+
+            // 1. NENHUM SELECIONADO
+            if (count === 0) {
+                $btn.text("Nenhum Selecionado");
+                $btn.attr('title', "Selecione pelo menos uma opção");
+                $btn.removeClass('btn-secondary text-white').addClass('btn-outline-secondary');
+            }
+            // 2. TODOS SELECIONADOS
+            else if (count === total) {
+                $btn.text(defaultText);
+                $btn.attr('title', defaultText);
+                $btn.removeClass('btn-secondary text-white').addClass('btn-outline-secondary');
+            }
+            // 3. SELEÇÃO PARCIAL
+            else {
+                $btn.removeClass('btn-outline-secondary').addClass('btn-secondary text-white');
+
+                if (count <= 3) {
+                    let labels = [];
+                    $checked.each(function () {
+                        labels.push($(this).next('label').text().trim());
+                    });
+                    $btn.text(labels.join(', '));
+                    $btn.attr('title', labels.join(', '));
+                } else {
+                    $btn.text(count + ' selecionados');
+                }
+            }
+        }
+
+
+        // Inicializa texto ao carregar
+        atualizarTexto();
+    }
+
+    // --- INICIALIZAÇÃO DA LÓGICA ---
+    $(document).ready(function () {
+        // Aplica a lógica para cada filtro
+        setupDropdownFilterLogic('filter-tipo-container', 'dropdownTipo', 'Todos Tipos');
+        setupDropdownFilterLogic('filter-situacao-container', 'dropdownSituacao', 'Todas Situações');
+        // setupDropdownFilterLogic('filter-marca-container', 'dropdownMarca', 'Todas as Marcas');
+    });
 
     // Controla o texto do switch Ativo/Inativo
     $modalProduto.on('change', '#prod_situacao', function () {
@@ -635,17 +784,17 @@ $(document).ready(function () {
           // 1. Filtro de Situação
           // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
           let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
-  
+     
           // 2. Filtro de Tipo
           // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
           let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
-  
+     
           // 3. Termo de Busca
           let termoBusca = $('.dataTables_filter input').val() || '';
-  
+     
           // 4. Monta a URL com todos os parâmetros
           let urlRelatorio = `index.php?page=relatorio_produtos&filtro=${filtroSituacao}&tipo=${filtroTipo}&search=${encodeURIComponent(termoBusca)}`;
-  
+     
           window.open(urlRelatorio, '_blank');
       });*/
 
@@ -660,11 +809,17 @@ $(document).ready(function () {
         let search = $('.dataTables_filter input').val() || '';
 
         // Transforma arrays em strings separadas por vírgula para passar na URL
-        let url = `views/produtos/relatorio_lista.php?modo=pdf` +
+        let urlRelatorio = `index.php?page=relatorio_produtos` +
+            `&filtro=${sit.join(',')}` +
+            `&tipo=${tipo.join(',')}` +
+            `&marcas=${encodeURIComponent(marca.join(','))}` +
+            `&search=${encodeURIComponent(search)}`;
+
+       /* let url = `views/produtos/relatorio_lista.php?modo=pdf` +
             `&filtro=${sit.join(',')}` +
             `&tipo=${tipo.join(',')}` +
             `&marcas=${encodeURIComponent(marca.join(','))}` + // Encode para evitar erros com espaços na marca
-            `&search=${encodeURIComponent(search)}`;
+            `&search=${encodeURIComponent(search)}`;*/
 
         window.open(url, '_blank');
     });
