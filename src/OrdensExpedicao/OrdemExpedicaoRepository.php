@@ -74,7 +74,7 @@ class OrdemExpedicaoRepository
             ':usuario_id' => $usuarioId
         ]);
         $newId = (int) $this->pdo->lastInsertId();
-        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_header', null, $data,"");
+        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_header', null, $data, "");
         return $newId;
     }
 
@@ -157,7 +157,7 @@ class OrdemExpedicaoRepository
             ':numero_pedido' => $data['oep_numero_pedido'] ?: null
         ]);
         $newId = (int) $this->pdo->lastInsertId();
-        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_pedidos', null, $data,"");
+        $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_pedidos', null, $data, "");
         return $newId;
     }
 
@@ -253,7 +253,7 @@ class OrdemExpedicaoRepository
                 ':oei_id' => $existingItem['oei_id']
             ]);
             $newId = $existingItem['oei_id'];  // Retorna o ID existente
-            $this->auditLogger->log('UPDATE', $newId, 'tbl_ordens_expedicao_itens', $existingItem, $data,"");
+            $this->auditLogger->log('UPDATE', $newId, 'tbl_ordens_expedicao_itens', $existingItem, $data, "");
         } else {
             // Se não existir, insere novo
             $sql = "INSERT INTO tbl_ordens_expedicao_itens (oei_pedido_id, oei_alocacao_id, oei_quantidade, oei_observacao)
@@ -266,7 +266,7 @@ class OrdemExpedicaoRepository
                 ':observacao' => $data['oei_observacao'] ?? null
             ]);
             $newId = (int) $this->pdo->lastInsertId();
-            $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_itens', null, $data,"");
+            $this->auditLogger->log('CREATE', $newId, 'tbl_ordens_expedicao_itens', null, $data, "");
         }
 
         return $newId;
@@ -297,12 +297,21 @@ class OrdemExpedicaoRepository
                                AND oei_status = 'PENDENTE')";
         $sql = "SELECT DISTINCT
                     lne.item_emb_id AS id,
-                    CONCAT(lnh.lote_completo_calculado, ' [Saldo Total: ', FORMAT(SUM(ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') AS text
+                    CONCAT(
+                        lnh.lote_completo_calculado, 
+                        -- Lógica para adicionar o nome do cliente se existir
+                        CASE 
+                            WHEN ent.ent_codigo IS NOT NULL THEN CONCAT(' - ', COALESCE(ent.ent_nome_fantasia, ent.ent_razao_social))
+                            ELSE '' 
+                        END,
+                        ' [Saldo Total: ', FORMAT(SUM(ea.alocacao_quantidade - {$subQueryReservado}), 3, 'de_DE'), ']') 
+                        AS text
                 FROM tbl_estoque_alocacoes ea
                 JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
                 JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                LEFT JOIN tbl_entidades ent ON lnh.lote_cliente_id = ent.ent_codigo 
                 WHERE lne.item_emb_prod_sec_id = :produto_id
-                GROUP BY lne.item_emb_id, lnh.lote_completo_calculado
+                GROUP BY lne.item_emb_id, lnh.lote_completo_calculado, ent.ent_codigo, ent.ent_nome_fantasia, ent.ent_razao_social
                 HAVING SUM(ea.alocacao_quantidade - {$subQueryReservado}) > 0
                 ORDER BY lnh.lote_completo_calculado";
 
@@ -359,7 +368,7 @@ class OrdemExpedicaoRepository
             $deletePedidoStmt->execute([':pedido_id' => $pedidoId]);
 
             // Registrar no log de auditoria
-            $this->auditLogger->log('DELETE', $pedidoId, 'tbl_ordens_expedicao_pedidos', null, null,"");
+            $this->auditLogger->log('DELETE', $pedidoId, 'tbl_ordens_expedicao_pedidos', null, null, "");
             $this->pdo->commit();
         } catch (Exception $e) {
             $this->pdo->rollBack();
@@ -388,7 +397,7 @@ class OrdemExpedicaoRepository
         $stmt->execute([':item_id' => $itemId]);
 
         // Registrar no log de auditoria
-        $this->auditLogger->log('DELETE', $itemId, 'tbl_ordens_expedicao_itens', null, null,"");
+        $this->auditLogger->log('DELETE', $itemId, 'tbl_ordens_expedicao_itens', null, null, "");
     }
 
     /**
@@ -509,7 +518,7 @@ class OrdemExpedicaoRepository
         ]);
 
         // 5. Registra na auditoria
-        $this->auditLogger->log('UPDATE', $oeiId, 'tbl_ordens_expedicao_itens', $itemAtual, $data,"");
+        $this->auditLogger->log('UPDATE', $oeiId, 'tbl_ordens_expedicao_itens', $itemAtual, $data, "");
 
         return $success;
     }
@@ -765,8 +774,6 @@ class OrdemExpedicaoRepository
 
         $stmt = $this->pdo->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
     }
 
     /**
@@ -795,5 +802,4 @@ class OrdemExpedicaoRepository
 
         return $result ?: null;
     }
-
 }

@@ -287,8 +287,6 @@ $(document).ready(function () {
         });
     }
 
-
-
     carregarFiltroMarcas();
 
     // =================================================================
@@ -807,6 +805,7 @@ $(document).ready(function () {
         let tipo = getSelectedValues('filter-tipo-container');
         let marca = getSelectedValues('filter-marca-container');
         let search = $('.dataTables_filter input').val() || '';
+        // let timestamp = new Date().getTime();
 
         // Transforma arrays em strings separadas por vírgula para passar na URL
         let urlRelatorio = `index.php?page=relatorio_produtos` +
@@ -815,12 +814,13 @@ $(document).ready(function () {
             `&marcas=${encodeURIComponent(marca.join(','))}` +
             `&search=${encodeURIComponent(search)}`;
 
-       /* let url = `views/produtos/relatorio_lista.php?modo=pdf` +
-            `&filtro=${sit.join(',')}` +
-            `&tipo=${tipo.join(',')}` +
-            `&marcas=${encodeURIComponent(marca.join(','))}` + // Encode para evitar erros com espaços na marca
-            `&search=${encodeURIComponent(search)}`;*/
+        /* let url = `views/produtos/relatorio_lista.php?modo=pdf` +
+             `&filtro=${sit.join(',')}` +
+             `&tipo=${tipo.join(',')}` +
+             `&marcas=${encodeURIComponent(marca.join(','))}` + // Encode para evitar erros com espaços na marca
+             `&search=${encodeURIComponent(search)}`;*/
 
-        window.open(url, '_blank');
+        window.open(urlRelatorio, '_blank');
+
     });
 });

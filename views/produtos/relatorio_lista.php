@@ -10,18 +10,24 @@ use App\Produtos\ProdutoRepository;
 // --- 1. CONFIGURAÇÕES INICIAIS E FILTROS ---
 if (!isset($_SESSION['codUsuario'])) die("Acesso negado.");
 
-// Captura Filtros (Com fallback para 'Todos')
-$modo = filter_input(INPUT_GET, 'modo', FILTER_DEFAULT) ?? 'html';
-$filtroSituacao = filter_input(INPUT_GET, 'filtro', FILTER_DEFAULT) ?? 'Todos';
-$filtroTipo = filter_input(INPUT_GET, 'tipo', FILTER_DEFAULT) ?? 'Todos';
-$search = filter_input(INPUT_GET, 'search', FILTER_DEFAULT) ?? '';
+// 1. Captura Filtros (Recebe como STRING da URL)
+$modo              = filter_input(INPUT_GET, 'modo', FILTER_DEFAULT) ?? 'html';
+$filtroSituacaoStr = filter_input(INPUT_GET, 'filtro', FILTER_DEFAULT) ?? 'TODOS';
+$filtroTipoStr     = filter_input(INPUT_GET, 'tipo', FILTER_DEFAULT) ?? 'TODOS';
+$filtroMarcasStr   = filter_input(INPUT_GET, 'marcas', FILTER_DEFAULT) ?? 'TODOS';
+$search            = filter_input(INPUT_GET, 'search', FILTER_DEFAULT) ?? '';
+
+// 2. Converte para ARRAYS
+$filtroSituacao = ($filtroSituacaoStr === 'TODOS' || empty($filtroSituacaoStr)) ? ['TODOS'] : explode(',', $filtroSituacaoStr);
+$filtroTipo     = ($filtroTipoStr === 'TODOS' || empty($filtroTipoStr)) ? ['TODOS'] : explode(',', $filtroTipoStr);
+$filtroMarcas   = ($filtroMarcasStr === 'TODOS' || empty($filtroMarcasStr)) ? ['TODOS'] : explode(',', $filtroMarcasStr);
 
 // --- 2. BUSCA DE DADOS ---
 try {
     $pdo = Database::getConnection();
     $produtoRepo = new ProdutoRepository($pdo);
-    // Passamos os filtros para o repositório
-    $produtos = $produtoRepo->getDadosRelatorioGeral($filtroSituacao, $search, $filtroTipo);
+    // Passamos os ARRAYS, que é o que a função pede
+    $produtos = $produtoRepo->getDadosRelatorioGeral($filtroSituacao, $search, $filtroTipo, $filtroMarcas);
 } catch (Exception $e) {
     die("Erro ao buscar produtos: " . $e->getMessage());
 }
@@ -30,31 +36,56 @@ try {
 
 // A) Subtítulo Visual
 $subtituloParts = [];
-if (strtoupper($filtroSituacao) !== 'TODOS') {
-    $subtituloParts[] = "Situação: " . strtoupper($filtroSituacao);
+
+// 1. Situação (COM TRADUÇÃO A -> ATIVO, I -> INATIVO)
+if (!in_array('TODOS', $filtroSituacao)) {
+    // Traduz cada sigla do array
+    $sitLegiveis = array_map(function ($sigla) {
+        if ($sigla === 'A') return 'ATIVO';
+        if ($sigla === 'I') return 'INATIVO';
+        return $sigla;
+    }, $filtroSituacao);
+
+    $subtituloParts[] = "Situação: " . implode(', ', $sitLegiveis);
 }
-if (strtoupper($filtroTipo) !== 'TODOS') {
-    $subtituloParts[] = "Tipo: " . strtoupper($filtroTipo);
+
+// 2. Tipo
+if (!in_array('TODOS', $filtroTipo)) {
+    $subtituloParts[] = "Tipo Embalagem: " . implode(', ', $filtroTipo);
 }
+
+// 3. Marcas
+if (!in_array('TODOS', $filtroMarcas)) {
+    $qtd = count($filtroMarcas);
+    // Se tiver muitas marcas, mostra só a quantidade para não poluir
+    $txtMarcas = ($qtd > 3) ? "$qtd marcas" : implode(', ', $filtroMarcas);
+    $subtituloParts[] = "Marcas: " . $txtMarcas;
+}
+
+// 4. Busca
 if (!empty($search)) {
     $subtituloParts[] = "Busca: '" . htmlspecialchars($search) . "'";
 }
+
 $textoSubtitulo = !empty($subtituloParts) ? "[ " . implode(" | ", $subtituloParts) . " ]" : "[ Geral ]";
 
-// B) Nome do Arquivo (Cache)
-$sufixoArquivo = "_" . strtoupper($filtroSituacao) . "_" . strtoupper($filtroTipo);
-if (!empty($search)) {
-    $sufixoArquivo .= "_BUSCA";
-}
-$sufixoArquivo = preg_replace('/[^A-Z0-9_]/', '', $sufixoArquivo);
-$nomeArquivo = 'listagem_produtos' . $sufixoArquivo . '.pdf';
+// B) Nome do Arquivo
+// Cria um hash único baseado nos filtros para o cache funcionar, mas mantém nome limpo
+$sufixoArquivo = md5($filtroSituacaoStr . $filtroTipoStr . $filtroMarcasStr . $search);
+$nomeArquivo = 'listagem_produtos_' . substr($sufixoArquivo, 0, 8) . '.pdf';
 
 // C) Pastas
 $pastaRelatorios = __DIR__ . '/../../public/uploads/relatorios_gerais';
+
+// Garante que a pasta existe (segurança extra)
+if (!is_dir($pastaRelatorios)) {
+    mkdir($pastaRelatorios, 0777, true);
+}
+
 $caminhoFisico = $pastaRelatorios . '/' . $nomeArquivo;
 $urlPublica = BASE_URL . '/uploads/relatorios_gerais/' . $nomeArquivo;
 
-// Verifica existência
+// Verifica existência para cache (opcional)
 $arquivoExiste = file_exists($caminhoFisico);
 $dataArquivo = $arquivoExiste ? date('d/m/Y H:i', filemtime($caminhoFisico)) : '';
 
@@ -83,7 +114,9 @@ ob_start();
 
     <style>
         @page {
-            margin: 20px 15px;
+            size: landscape;
+            margin: 20px 15px 50px 15px;
+            /* top right bottom left — 50px bottom reserva espaço pro rodapé */
         }
 
         body {
@@ -162,7 +195,7 @@ ob_start();
             font-weight: bold;
             text-transform: uppercase;
             font-size: 8px;
-            text-align: left;
+            text-align: center;
         }
 
         .text-center {
@@ -223,7 +256,12 @@ ob_start();
                 const data = "<?= $dataArquivo ?>";
                 const urlUrl = "<?= $urlPublica ?>";
                 // URL para forçar nova geração
-                const urlGerar = "index.php?page=relatorio_produtos&filtro=<?= $filtroSituacao ?>&tipo=<?= $filtroTipo ?>&search=<?= urlencode($search) ?>&modo=pdf&force=true";
+                const urlGerar = "index.php?page=relatorio_produtos" +
+                    "&filtro=<?= implode(',', $filtroSituacao) ?>" +
+                    "&tipo=<?= implode(',', $filtroTipo) ?>" +
+                    "&marcas=<?= implode(',', $filtroMarcas) ?>" +
+                    "&search=<?= urlencode($search) ?>" +
+                    "&modo=pdf&force=true";
 
                 if (existe) {
                     Swal.fire({
@@ -271,11 +309,11 @@ ob_start();
             <thead>
                 <tr>
                     <th width="8%">Cód. Int.</th>
-                    <th width="28%">Descrição</th>
-                    <th width="12%">Tipo</th>
-                    <th width="24%">Produto Base (Se Secundário)</th>
-                    <th width="12%">EAN</th>
-                    <th width="10%">DUN</th>
+                    <th width="31%">Descrição</th>
+                    <th width="8%">Tipo</th>
+                    <th width="31%">Produto Base (Se Secundário)</th>
+                    <th width="8%">EAN</th>
+                    <th width="8%">DUN</th>
                     <th width="6%">NCM</th>
                 </tr>
             </thead>
@@ -338,10 +376,43 @@ ob_start();
             </tbody>
         </table>
     </div>
+
+    <script type="text/php">
+        if (isset($pdf)) {
+            $font = $fontMetrics->getFont("helvetica", "normal");
+            $size = 7;
+            $color = [0.4, 0.4, 0.4];  // cinza
+
+            $y = $pdf->get_height() - 30; 
+            $w = $pdf->get_width();
+
+            // Margens laterais iguais às do page
+            $left_margin_pt  = 12;
+            $right_margin_pt = 12;
+
+            // Texto esquerdo
+            $pdf->page_text($left_margin_pt, $y, "Gerado eletronicamente pelo sistema", $font, $size, $color);
+
+            // Texto direito (página X de Y) 
+            $pdf->page_text($w - $right_margin_pt - 55, $y, "Página {PAGE_NUM} de {PAGE_COUNT}", $font, $size, $color);
+
+            // Linha horizontal full entre as margens (sem sobras)
+            $pdf->page_line(
+                $left_margin_pt,          // x1
+                $y - 8,                   // y1 (8pt acima do texto)
+                $w - $right_margin_pt,    // x2
+                $y - 8,                   // y2
+                [0.5, 0.5, 0.5],          // cor cinza
+                0.5                       // espessura
+            );
+        }
+</script>
 </body>
 
 </html>
+
 <?php
+
 $html = ob_get_clean();
 
 if ($modo === 'pdf') {
@@ -351,10 +422,12 @@ if ($modo === 'pdf') {
         $options->set('isRemoteEnabled', true); // Necessário para o Logo em base64 ou imagens locais
         $options->set('isHtml5ParserEnabled', true);
         $options->set('defaultFont', 'sans-serif');
+        $options->set('isPhpEnabled', true);
 
         $dompdf = new \Dompdf\Dompdf($options);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
+        // $dompdf->setPaper('A4', 'portrait'); // Para o formato da pagina Retrato
+        $dompdf->setPaper('A4', 'landscape'); // Para o formato da pagina Paisagem
         $dompdf->render();
         $output = $dompdf->output();
 

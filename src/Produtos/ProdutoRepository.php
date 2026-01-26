@@ -146,8 +146,6 @@ class ProdutoRepository
         ];
     } */
 
-
-
     public function findAllForDataTable(array $params): array
     {
         // Parâmetros do DataTables
