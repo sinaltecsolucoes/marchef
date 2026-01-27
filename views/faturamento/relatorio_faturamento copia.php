@@ -24,57 +24,62 @@ try {
     if (!$header || empty($itens)) {
         die("Nenhum dado encontrado para este resumo.");
     }
+
 } catch (Exception $e) {
     die("Erro ao conectar ao banco: " . $e->getMessage());
 }
 
-// --- FUNÇÕES DE FORMATAÇÃO ---
+// --- FUNÇÕES PÚBLICAS DE FORMATAÇÃO (EM PHP) ---
 function formatCaixa($val)
 {
-    return number_format((float) $val, 0);
+    return number_format((float) $val, 0); // Sempre inteiro
 }
+
 function formatQuilo($val)
 {
     $num = (float) $val;
-    return ($num % 1 === 0) ? number_format($num, 0) : number_format($num, 3, ',', '.');
+    if ($num % 1 === 0) { // Se for inteiro
+        return number_format($num, 0);
+    }
+    return number_format($num, 3, ',', '.'); // Se tiver decimal
 }
+
 function formatCurrency($val)
 {
     return 'R$ ' . number_format((float) $val, 2, ',', '.');
 }
+
 function formatCnpjCpf($value)
 {
+    // Remove qualquer caractere que não seja número
     $value = preg_replace('/\D/', '', $value);
     $len = strlen($value);
-    if ($len === 11) return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $value);
-    elseif ($len === 14) return preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $value);
+
+    if ($len === 11) { // É um CPF
+        return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $value);
+    } elseif ($len === 14) { // É um CNPJ
+        return preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $value);
+    }
+
+    // Se não for CPF ou CNPJ, retorna o valor original (ou N/A)
     return htmlspecialchars($value ?: 'N/A');
 }
 
 /**
- * FUNÇÃO AJUSTADA: Agora retorna uma LINHA (TR) para ficar dentro da tabela
- * Mantendo o estilo exato do seu código original
+ * FUNÇÃO PARA DESENHAR O CABEÇALHO
  */
-function renderTotalFazendaRow($nomeFazenda, $caixas, $quilos, $valor)
-{
-    echo "
-    <tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
-        <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$nomeFazenda}):</td>
-        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($caixas) . " (CX)</td>
-        <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($quilos) . " (KG)</td>
-        <td class='text-center align-middle' style='font-weight: bold;'></td> 
-        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCurrency($valor) . "</td>
-    </tr>";
-}
-
 function renderReportHeader($header)
 {
+    // 1. Prepara dados da OE
     $oe_numero = htmlspecialchars($header['ordem_expedicao_numero']);
     $data_geracao = (new DateTime($header['fat_data_geracao']))->format('d/m/Y H:i:s');
     $usuario = htmlspecialchars($header['usuario_nome']);
+
+    // 2. Prepara dados da Transportadora
     $transp_nome = htmlspecialchars($header['transportadora_razao'] ?: $header['transportadora_nome'] ?: 'N/A');
     $transp_cnpj = formatCnpjCpf($header['transportadora_cnpj']);
     $transp_ie = htmlspecialchars($header['transportadora_ie'] ?: 'N/A');
+
     $transp_end = 'N/A';
     if ($header['transportadora_end_logradouro']) {
         $transp_end = htmlspecialchars($header['transportadora_end_logradouro']) . ', ' .
@@ -83,19 +88,30 @@ function renderReportHeader($header)
             htmlspecialchars($header['transportadora_end_cidade']) . '/' .
             htmlspecialchars($header['transportadora_end_uf']);
     }
+
+    // 3. Prepara dados do Motorista
     $motorista = htmlspecialchars($header['fat_motorista_nome'] ?: 'N/A');
     $cpf = formatCnpjCpf($header['fat_motorista_cpf']);
     $placa = htmlspecialchars($header['fat_veiculo_placa'] ?: 'N/A');
 
+    // 4. Renderiza o HTML
     echo '<div class="report-header">';
-    echo '  <div class="row g-0 align-items-center">';
-    echo '    <div class="col-3 text-start"><img src="img/logo_marchef.png" alt="Logo Marchef" style="max-width: 150px;"></div>';
+    echo '  <div class="row g-0 align-items-center">'; // g-0 remove o gutter, align-items-start para alinhamento no topo
+
+    // Coluna 1: Logo
+    echo '    <div class="col-3 text-start">';
+    echo '      <img src="img/logo_marchef.png" alt="Logo Marchef" style="max-width: 150px;">';
+    echo '    </div>';
+
+    // Coluna 2: Dados da Geração
     echo '    <div class="col-4 text-start">';
     echo '      <h5 class="mb-1">Resumo para Faturamento</h5>';
     echo "      <p class='mb-0'><strong>Ordem de Expedição:</strong> $oe_numero</p>";
     echo "      <p class='mb-0'><strong>Data de Geração:</strong> $data_geracao</p>";
     echo "      <p class='mb-0'><strong>Gerado por:</strong> $usuario</p>";
     echo '    </div>';
+
+    // Coluna 3: Dados de Transporte
     echo '    <div class="col-5 text-start transport-details">';
     echo "      <p class='mb-0'><strong>Transportadora:</strong> $transp_nome</p>";
     echo "      <p class='mb-0'><strong>CNPJ:</strong> $transp_cnpj <strong>IE:</strong> $transp_ie</p>";
@@ -103,10 +119,12 @@ function renderReportHeader($header)
     echo "      <p class='mb-0'><strong>Motorista:</strong> $motorista <strong>CPF:</strong> $cpf</p>";
     echo "      <p class='mb-0'><strong>Placa Veículo:</strong> $placa</p>";
     echo '    </div>';
-    echo '  </div>';
+
+    echo '  </div>'; // Fecha a .row
     echo '  <button class="btn btn-primary mt-3 no-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>';
     echo '</div>';
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -124,32 +142,25 @@ function renderReportHeader($header)
     <div class="container">
         <?php
         $currentFazenda = '';
-        $firstFazenda = true;
-
-        // VARIÁVEIS DE CONTROLE
-        $currentCliente = '';
-        $currentPedido = '';
-        $tabelaAberta = false;
-
-        // Totais
-        $totalFazendaCaixas = 0;
-        $totalFazendaQuilos = 0;
-        $totalFazendaValor = 0;
-        $totalClientePedidoCaixas = 0;
-        $totalClientePedidoQuilos = 0;
-        $totalClientePedidoValor = 0;
-
+        $firstFazenda = true; // Flag para controlar o primeiro cabeçalho
+        
         foreach ($itens as $index => $item):
 
             $qtdCaixas = (float) ($item['fati_qtd_caixas'] ?? 0);
             $qtdQuilos = (float) ($item['fati_qtd_quilos'] ?? 0);
             $precoUnit = (float) ($item['fati_preco_unitario'] ?? 0);
-            $valorTotal = ($item['fati_preco_unidade_medida'] == 'CX') ? ($qtdCaixas * $precoUnit) : ($qtdQuilos * $precoUnit);
+            $valorTotal = 0;
+            if ($item['fati_preco_unidade_medida'] == 'CX') {
+                $valorTotal = $qtdCaixas * $precoUnit;
+            } else {
+                $valorTotal = $qtdQuilos * $precoUnit;
+            }
 
             // 1. Mudança de Fazenda
             if ($item['fazenda_nome'] !== $currentFazenda):
-                if (!$firstFazenda):
-                    // Fecha totais do último pedido da fazenda anterior
+                if (!$firstFazenda): // Se não for a primeira fazenda, fecha os totais e painéis anteriores
+        
+                    // Fechar o subtotal do Cliente/Pedido anterior
                     echo "<tr>
                            <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
                             <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
@@ -158,36 +169,39 @@ function renderReportHeader($header)
                             <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
                           </tr>";
 
-                    // --- AQUI ESTÁ A CORREÇÃO VISUAL ---
-                    // Chamamos a função para imprimir a LINHA de total ANTES de fechar a tabela
-                    renderTotalFazendaRow($currentFazenda, $totalFazendaCaixas, $totalFazendaQuilos, $totalFazendaValor);
+                    // Fechar o total da Fazenda anterior
+                    echo "<tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
+                            <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$currentFazenda}):</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($totalFazendaCaixas) . " (CX)</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($totalFazendaQuilos) . " (KG)</td>
+                            <td class='text-center align-middle' style='font-weight: bold;'></td> 
+                            <td class='text-center align-middle' style='font-weight: bold;'>" . formatCurrency($totalFazendaValor) . "</td>
+                        </tr>";
 
-                    echo "</tbody></table></div></div>"; // Agora sim fecha a tabela
-
-                    echo "<div class='page-break'></div>";
-
-                    $tabelaAberta = false;
-                    $currentCliente = '';
-                    $currentPedido = '';
+                    echo "</tbody></table></div></div>"; // Fecha a tabela, client-info e o INVOICE-PANEL
+        
+                    echo "<div class='page-break'></div>"; // FORÇA QUEBRA DE PÁGINA
                 endif;
 
-                $firstFazenda = false;
+                $firstFazenda = false; // Desmarca a flag
+        
                 $currentFazenda = $item['fazenda_nome'];
                 $totalFazendaCaixas = 0;
                 $totalFazendaQuilos = 0;
                 $totalFazendaValor = 0;
+                $currentCliente = '';
+                $currentPedido = '';
 
+                // ### CHAMA O CABEÇALHO DO RELATÓRIO AQUI ###
                 renderReportHeader($header);
+
                 echo "<h5 class='section-title mt-1'>FAZENDA: " . htmlspecialchars($currentFazenda) . "</h5>";
             endif;
 
-            // 2. Mudança de Cliente/Pedido
+            // 2. Mudança de Cliente/Pedido (Início do Painel-no-Painel)
             $chaveClientePedido = $item['cliente_nome'] . $item['fatn_numero_pedido'];
-
             if ($chaveClientePedido !== $currentCliente . $currentPedido):
-
-                if ($tabelaAberta):
-                    // Fecha subtotal do pedido anterior (dentro da mesma fazenda)
+                if ($index > 0 && $currentCliente != ''): // Fecha a tabela e o painel do cliente anterior
                     echo "<tr>
                             <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
                             <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
@@ -195,8 +209,9 @@ function renderReportHeader($header)
                             <td class='text-center align-middle total-row'></td> 
                             <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
                         </tr>";
-                    echo "</tbody></table></div></div>";
-                    $tabelaAberta = false;
+                    echo "</tbody></table></div></div>"; // Fecha table, client-info e invoice-panel
+        
+
                 endif;
 
                 $currentCliente = $item['cliente_nome'];
@@ -205,24 +220,33 @@ function renderReportHeader($header)
                 $totalClientePedidoQuilos = 0;
                 $totalClientePedidoValor = 0;
 
+                // INICIA O CONTAINER MAIOR
                 echo "<div class='invoice-panel'>";
-                $tabelaAberta = true;
 
+                // Exibe os dados cadastrais do cliente
                 echo "<div class='client-info'>";
                 echo "<strong>CLIENTE:</strong> " . htmlspecialchars($item['cliente_razao_social']) . " (Fantasia: " . htmlspecialchars($item['cliente_nome']) . ")<br>";
                 echo "<strong>CNPJ/CPF:</strong> " . formatCnpjCpf($item['ent_cnpj'] ?: $item['ent_cpf']) . " <strong>IE:</strong> " . htmlspecialchars($item['ent_inscricao_estadual']) . "<br>";
                 echo "<strong>Endereço:</strong> " . htmlspecialchars($item['end_logradouro']) . ", " . htmlspecialchars($item['end_numero']) . " - " . htmlspecialchars($item['end_bairro']) . ", " . htmlspecialchars($item['end_cidade']) . "/" . htmlspecialchars($item['end_uf']) . " - CEP: " . htmlspecialchars($item['end_cep']);
                 echo "</div>";
 
-                echo "<div class='p-2'>";
+                // Inicia a tabela de itens
+                echo "<div class='p-2'>"; // Um padding para a tabela não colar no painel
+        
                 $condPag = htmlspecialchars($item['condicao_pag_descricao'] ?: 'N/A');
                 $obs = htmlspecialchars($item['fatn_observacao'] ?: 'Nenhuma');
+
                 $numNF = htmlspecialchars($item['fatn_numero_nota_fiscal'] ?: 'N/A');
 
                 echo "<div class='pedido-info mb-1'>";
+                // Linha única para Pedido e Condição de Pagamento
                 echo "  <p class='mb-0'><strong>N° Pedido Cliente:</strong> " . htmlspecialchars($currentPedido ?: 'N/A') .
-                    "  <span class='mx-2'>|</span>  <strong>Cond. Pagamento:</strong> $condPag" .
-                    "  <span class='mx-2'>|</span>  <strong>N° Nota Fiscal:</strong> $numNF</p>";
+                    "  <span class='mx-2'>|</span>  " .
+                    "<strong>Cond. Pagamento:</strong> $condPag" .
+                    "  <span class='mx-2'>|</span>  " . // Adiciona mais um separador
+                    "<strong>N° Nota Fiscal:</strong> $numNF</p>"; // Adiciona a NF        
+        
+                // Linha separada para Observação
                 echo "  <p class='mb-0'><strong>Observação do Pedido:</strong> $obs</p>";
                 echo "</div>";
 
@@ -249,9 +273,10 @@ function renderReportHeader($header)
             $totalFazendaQuilos += $qtdQuilos;
             $totalFazendaValor += $valorTotal;
 
+            // 3. Exibe a linha do item
             echo "<tr>
                     <td>" . htmlspecialchars($item['produto_descricao']) . "</td>
-                    <td class='text-center align-middle'>" . htmlspecialchars($item['lote_completo_calculado']) . "</td>
+                    <td class='text-center align-middle'    >" . htmlspecialchars($item['lote_completo_calculado']) . "</td>
                     <td class='text-center align-middle'>" . formatCurrency($precoUnit) . "</td>
                     <td class='text-center align-middle'>" . formatCaixa($qtdCaixas) . "</td>
                     <td class='text-center align-middle'>" . formatQuilo($qtdQuilos) . "</td>
@@ -261,23 +286,29 @@ function renderReportHeader($header)
 
         endforeach;
 
-        // 4. Fecha o último bloco (Último Cliente e Última Fazenda)
-        if ($tabelaAberta) {
-            echo "<tr>
-                <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
-                <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
-                <td class='text-center align-middle total-row'>" . formatQuilo($totalClientePedidoQuilos) . "</td>
-                <td class='text-center align-middle total-row'></td> 
-                <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
-                </tr>";
+        // 4. Fecha os últimos totais (do último cliente e última fazenda)
+        echo "<tr>
+               <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
+               <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
+               <td class='text-center align-middle total-row'>" . formatQuilo($totalClientePedidoQuilos) . "</td>
+               <td class='text-center align-middle total-row'></td> 
+               <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
+            </tr>";
 
-            // --- CORREÇÃO VISUAL PARA O ÚLTIMO BLOCO TAMBÉM ---
-            renderTotalFazendaRow($currentFazenda, $totalFazendaCaixas, $totalFazendaQuilos, $totalFazendaValor);
-
-            echo "</tbody></table></div></div>";
-        }
+        echo "<tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
+         <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$currentFazenda}):</td>
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($totalFazendaCaixas) . " (CX)</td>
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($totalFazendaQuilos) . " (KG)</td>
+        <td class='text-center align-middle' style='font-weight: bold;'></td> 
+        <td class='text-center align-middle' style='font-weight: bold;'>" . formatCurrency($totalFazendaValor) . "</td>
+      </tr>";
+        echo "</tbody></table></div></div>"; // Fecha table, p-2, client-info e invoice-panel
+        
+        // Total da Fazenda com todos os campos
+        
         ?>
     </div>
+
 </body>
 
 </html>

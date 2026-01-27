@@ -231,9 +231,12 @@ class FaturamentoRepository
      */
     public function getResumoSalvo(int $resumoId): array
     {
+        // >>> SINCRONIZA ANTES DE EXIBIR <<<
+        $this->sincronizarResumo($resumoId);
+
         $dados = [
             'header' => null,
-            'notas' => [] // Vamos retornar uma estrutura aninhada
+            'notas' => [] // Retornar uma estrutura aninhada
         ];
 
         // 1. Busca o cabeçalho do resumo (Tabela 1) e dados da Transportadora
@@ -246,6 +249,7 @@ class FaturamentoRepository
                     JOIN tbl_ordens_expedicao_header oeh ON fr.fat_ordem_expedicao_id = oeh.oe_id
                     LEFT JOIN tbl_entidades t ON fr.fat_transportadora_id = t.ent_codigo
                     WHERE fr.fat_id = :resumo_id";
+
         $stmtHeader = $this->pdo->prepare($sqlHeader);
         $stmtHeader->execute([':resumo_id' => $resumoId]);
         $dados['header'] = $stmtHeader->fetch(PDO::FETCH_ASSOC);
@@ -296,7 +300,7 @@ class FaturamentoRepository
 
         $itensDoResumo = $stmtNotas->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Agora, vamos processar essa lista de itens em uma hierarquia (PHP)
+        // 3. Agrupamento
         $notasAgrupadas = [];
         foreach ($itensDoResumo as $row) {
             // A chave da "Nota" é o ID dela
@@ -319,7 +323,7 @@ class FaturamentoRepository
             $notasAgrupadas[$notaKey]['itens'][] = $row;
         }
 
-        // 4. Finalmente, agrupamos as NOTAS por FAZENDA
+        // 4. Agrupamos as NOTAS por FAZENDA
         $gruposDeFazenda = [];
         foreach ($notasAgrupadas as $nota) {
             $fazendaNome = $nota['fazenda_nome_principal'];
@@ -377,6 +381,8 @@ class FaturamentoRepository
      */
     public function getDadosCompletosParaRelatorio(int $resumoId): array
     {
+        $this->sincronizarResumo($resumoId);
+
         $sql = "
             SELECT
                 -- Nível 3 (Item)
@@ -397,12 +403,13 @@ class FaturamentoRepository
                 fazenda.ent_nome_fantasia AS fazenda_nome,
                 
                 -- Dados do Produto/Lote (do Item)
+                prod.prod_codigo_interno,
                 prod.prod_descricao AS produto_descricao,
                 lote.lote_completo_calculado,
                 
                 -- Dados completos do Cliente (da Nota)
                 cliente.ent_razao_social AS cliente_razao_social,
-                cliente.ent_nome_fantasia AS cliente_nome,
+                COALESCE(NULLIF(cliente.ent_nome_fantasia, ''), cliente.ent_razao_social) AS cliente_nome,
                 cliente.ent_cnpj,
                 cliente.ent_inscricao_estadual,
                 
@@ -432,10 +439,11 @@ class FaturamentoRepository
             -- Ordenação crucial para o relatório
             ORDER BY
                 fazenda_nome,
-                cliente_nome,
                 nota.fatn_numero_pedido,
+                cliente_nome,                
                 prod.prod_descricao
         ";
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':resumo_id' => $resumoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -703,5 +711,99 @@ class FaturamentoRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $entidadeId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Helper privado para inserir itens (usado no salvarResumo e no sincronizar)
+     */
+    private function inserirItensAgrupados(int $resumoId, array $itensAgrupados)
+    {
+        // Cache simples para IDs de nota criados nesta execução
+        $notasMap = [];
+
+        $sqlNotaGrupoSelect = "SELECT fatn_id FROM tbl_faturamento_notas_grupo WHERE fatn_resumo_id = :resumo_id AND fatn_cliente_id = :cliente_id AND fatn_numero_pedido = :pedido_num LIMIT 1";
+        $stmtNotaGrupoSelect = $this->pdo->prepare($sqlNotaGrupoSelect);
+
+        $sqlNotaGrupoInsert = "INSERT INTO tbl_faturamento_notas_grupo (fatn_resumo_id, fatn_cliente_id, fatn_numero_pedido) VALUES (:resumo_id, :cliente_id, :pedido_num)";
+        $stmtNotaGrupoInsert = $this->pdo->prepare($sqlNotaGrupoInsert);
+
+        $sqlItemCheck = "SELECT fati_id FROM tbl_faturamento_itens WHERE fati_nota_id = :nota_id AND fati_produto_id = :prod_id AND fati_lote_id = :lote_id";
+        $stmtItemCheck = $this->pdo->prepare($sqlItemCheck);
+
+        $sqlItensInsert = "INSERT INTO tbl_faturamento_itens (fati_nota_id, fati_fazenda_id, fati_produto_id, fati_lote_id, fati_qtd_caixas, fati_qtd_quilos) VALUES (:nota_id, :fazenda_id, :produto_id, :lote_id, :qtd_caixas, :qtd_quilos)";
+        $stmtItensInsert = $this->pdo->prepare($sqlItensInsert);
+
+        foreach ($itensAgrupados as $item) {
+            // 1. Identificar ou Criar a Nota (Grupo)
+            $notaKey = $item['cliente_id'] . '_' . $item['oep_numero_pedido'];
+            $notaId = null;
+
+            if (isset($notasMap[$notaKey])) {
+                $notaId = $notasMap[$notaKey];
+            } else {
+                // Verifica se já existe no banco (para o caso de sync)
+                $stmtNotaGrupoSelect->execute([
+                    ':resumo_id' => $resumoId,
+                    ':cliente_id' => $item['cliente_id'],
+                    ':pedido_num' => $item['oep_numero_pedido']
+                ]);
+                $notaId = $stmtNotaGrupoSelect->fetchColumn();
+
+                if (!$notaId) {
+                    // Cria se não existir
+                    $stmtNotaGrupoInsert->execute([
+                        ':resumo_id' => $resumoId,
+                        ':cliente_id' => $item['cliente_id'],
+                        ':pedido_num' => $item['oep_numero_pedido']
+                    ]);
+                    $notaId = (int) $this->pdo->lastInsertId();
+                }
+                $notasMap[$notaKey] = $notaId;
+            }
+
+            // 2. Verificar se o Item já existe nessa Nota (para evitar duplicidade no sync)
+            $stmtItemCheck->execute([
+                ':nota_id' => $notaId,
+                ':prod_id' => $item['produto_id'],
+                ':lote_id' => $item['lote_id']
+            ]);
+
+            if (!$stmtItemCheck->fetch()) {
+                // Se não existe, insere
+                $stmtItensInsert->execute([
+                    ':nota_id' => $notaId,
+                    ':fazenda_id' => $item['fazenda_id'],
+                    ':produto_id' => $item['produto_id'],
+                    ':lote_id' => $item['lote_id'],
+                    ':qtd_caixas' => $item['total_caixas'],
+                    ':qtd_quilos' => $item['total_quilos']
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Sincroniza o faturamento com a Ordem de Expedição.
+     * Adiciona itens/pedidos novos. (Não remove itens para não perder edições manuais, nem atualiza qtds)
+     */
+    public function sincronizarResumo(int $resumoId)
+    {
+        // 1. Pega o ID da Ordem Original
+        $stmt = $this->pdo->prepare("SELECT fat_ordem_expedicao_id, fat_status FROM tbl_faturamento_resumos WHERE fat_id = :id");
+        $stmt->execute([':id' => $resumoId]);
+        $header = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$header || $header['fat_status'] === 'FATURADO' || $header['fat_status'] === 'CANCELADO') {
+            return; // Não sincroniza se já estiver finalizado
+        }
+
+        // 2. Busca os dados atuais da OE (que podem ter mudado)
+        $itensAtuaisOE = $this->getDadosAgrupadosPorOrdemExpedicao($header['fat_ordem_expedicao_id']);
+
+        // 3. Usa o helper para inserir o que falta
+        // Como o helper verifica duplicidade antes de inserir, ele serve perfeitamente para o Sync
+        if (!empty($itensAtuaisOE)) {
+            $this->inserirItensAgrupados($resumoId, $itensAtuaisOE);
+        }
     }
 }
