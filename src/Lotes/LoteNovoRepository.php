@@ -2166,12 +2166,17 @@ class LoteNovoRepository
 
     public function adicionarItemRecebimento(array $data)
     {
+        // Gramaturas geralmente podem ser nulas
+        // $gramFaz = !empty($data['item_receb_gram_faz']) ? $data['item_receb_gram_faz'] : null;
+        // $gramLab = !empty($data['item_receb_gram_lab']) ? $data['item_receb_gram_lab'] : null;
+
+        $pesoNf = $this->numeroParaSql($data['item_receb_peso_nota_fiscal'] ?? 0);
+        $pesoMedio = $this->numeroParaSql($data['item_receb_peso_medio_ind'] ?? 0);
+        $gramFaz = $this->numeroParaSql($data['item_receb_gram_faz'] ?? null);
+        $gramLab = $this->numeroParaSql($data['item_receb_gram_lab'] ?? null);
+
         // Tratamento de nulos para campos opcionais
         $loteOrigem = !empty($data['item_receb_lote_origem_id']) ? $data['item_receb_lote_origem_id'] : null;
-
-        // Gramaturas geralmente podem ser nulas
-        $gramFaz = !empty($data['item_receb_gram_faz']) ? $data['item_receb_gram_faz'] : null;
-        $gramLab = !empty($data['item_receb_gram_lab']) ? $data['item_receb_gram_lab'] : null;
 
         $sql = "INSERT INTO tbl_lote_novo_recebdetalhes (
                     item_receb_lote_id, item_receb_produto_id, item_receb_lote_origem_id,
@@ -2191,9 +2196,10 @@ class LoteNovoRepository
             ':produto_id' => $data['item_receb_produto_id'],
             ':lote_origem' => $loteOrigem,
             ':nf' => $data['item_receb_nota_fiscal'],
-            ':peso_nf' => !empty($data['item_receb_peso_nota_fiscal']) ? $data['item_receb_peso_nota_fiscal'] : 0,
+            //':peso_nf' => !empty($data['item_receb_peso_nota_fiscal']) ? $data['item_receb_peso_nota_fiscal'] : 0,
+            ':peso_nf' => $pesoNf,
             ':total_caixas' => !empty($data['item_receb_total_caixas']) ? $data['item_receb_total_caixas'] : 0,
-            ':peso_medio' => !empty($data['item_receb_peso_medio_ind']) ? $data['item_receb_peso_medio_ind'] : 0,
+            ':peso_medio' => $pesoMedio,
 
             ':gram_faz' => $gramFaz,
             ':gram_lab' => $gramLab

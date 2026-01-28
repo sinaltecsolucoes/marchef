@@ -76,11 +76,14 @@ try {
     // Se AprovQuilo for negativo (perda), a porcentagem  será negativa.
     $rendimento = ($totalRecebidoKg > 0) ? ($aprovQuilo / $totalRecebidoKg) * 100 : 0;
 
+    // Cálculo do Resultado (Recuperação Total: Saída Calculada / Entrada * 100)
+    $rendResultado = ($totalRecebidoKg > 0) ? ($pesoBeneficiadoTotal / $totalRecebidoKg) * 100 : 0;
+
     // 1. LÓGICA DE COR PARA APROVEITAMENTO (Texto)
     // Se for maior que 0: Azul. Caso contrário (negativo ou zero): Vermelho.
     $corAprov = ($aprovQuilo > 0) ? '#007bff' : '#dc3545'; // Azul Bootstrap vs Vermelho Bootstrap
 
-    // 2. LÓGICA DE COR PARA SITUAÇÃO (Fundo do Badge)
+    // 2. LÓGICA DE COR PARA SITUAÇÃO E RESULTADO TOTAL (Fundo do Badge)
     // Traduzindo a lógica JS para PHP/CSS
     $status = strtoupper($h['lote_status']); // Garante maiúsculas para comparar
     $bgBadge = '#6c757d'; // bg-secondary (Cinza padrão)
@@ -102,10 +105,21 @@ try {
             break;
     }
 
+    // Lógica de Cor para o Badge de Resultado (Independente do Status do Lote)
+    // Exemplo: < 95% (Alerta/Vermelho), 95-99% (Ok/Azul), >= 100% (Ganho/Verde)
+    if ($rendResultado >= 100) {
+        $bgResultado = '#28a745'; // Verde
+    } elseif ($rendResultado >= 95) {
+        $bgResultado = '#17a2b8'; // Azul
+    } else {
+        $bgResultado = '#dc3545'; // Vermelho
+    }
+
     // --- EMBALAGEM (SECUNDÁRIA) ---
     $totalEmbaladoKg = 0;
     foreach ($embalagem as $e) {
-        $pesoUn = ($e['prod_unidade'] == 'KG') ? 1 : (float)$e['prod_peso_embalagem'];
+        //$pesoUn = ($e['prod_unidade'] == 'KG') ? 1 : (float)$e['prod_peso_embalagem'];
+        $pesoUn = (float)$e['prod_peso_embalagem'];
         $qtd = (float)$e['item_emb_qtd_sec'];
         $totalEmbaladoKg += ($pesoUn * $qtd);
     }
@@ -316,13 +330,34 @@ ob_start();
         <!-- LINHA 06: PESO MEDIO (IND) E APROVEITAMENTO -->
         <tr>
             <td><strong>P. Médio (Ind):</strong></td>
-            <td><?= number_format($recebimento[0]['item_receb_peso_medio_ind'], 2, ',', '.') ?? '-' ?> kg/cx</td>
+            <td>
+                <?= !empty($recebimento[0]['item_receb_peso_medio_ind'])
+                    ? number_format($recebimento[0]['item_receb_peso_medio_ind'], 2, ',', '.') . ' kg/cx'
+                    : '-' ?>
+            </td>
+
             <td><strong>Aprov. (kg / %):</strong></td>
             <td>
                 <span style="color: <?= $corAprov ?>; font-weight: bold;">
                     <?= number_format($aprovQuilo, 2, ',', '.') ?> kg /
                     <?= number_format($rendimento, 2, ',', '.') ?> %
+                </span>&nbsp;&nbsp; &nbsp;&nbsp;
+
+                <span style="white-space: nowrap;">
+                    <span style="font-weight: bold;">Resultado:</span>
+
+                    <span style="background-color: <?= $bgResultado ?>; 
+                         color: #ffffff; 
+                         padding: 2px 6px; 
+                         border-radius: 3px; 
+                         font-size: 9px;
+                         font-weight: bold;
+                         margin-left: 5px;
+                         vertical-align: middle;">
+                        <?= number_format($rendResultado, 2, ',', '.') ?> %
+                    </span>
                 </span>
+
             </td>
         </tr>
 
@@ -446,13 +481,6 @@ ob_start();
             <?php endforeach; ?>
         </tbody>
     </table>
-
-    <br><br><br><br><br><br><br><br><br><br>
-
-    <div style="text-align: center;">
-        <div class="signature-line"></div>
-        <p>Responsável pelos dados</p>
-    </div>
 </body>
 
 </html>

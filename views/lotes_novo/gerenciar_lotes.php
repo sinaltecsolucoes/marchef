@@ -354,7 +354,7 @@ switch ($page) {
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label class="form-label text-muted small">P.Médio Fazenda (Kg)</label>
+                                    <label class="form-label">P.Médio Fazenda (Kg)</label>
                                     <input type="text" class="form-control bg-light text-end"
                                         id="calc_peso_medio_fazenda" readonly tabindex="-1">
                                 </div>
@@ -399,12 +399,12 @@ switch ($page) {
                             <table class="table table-sm table-hover table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Produto</th>
+                                        <th class="text-center align-middle">Produto</th>
                                         <th class="text-center align-middle">Origem</th>
                                         <th class="text-center align-middle">NF</th>
                                         <th class="text-center align-middle">Peso NF</th>
                                         <th class="text-center align-middle">Caixas</th>
-                                        <th class="text-center align-middle">Peso Médio</th>
+                                        <th class="text-center align-middle">Peso Médio (Ind.)</th>
                                         <th class="text-center align-middle">Ações</th>
                                     </tr>
                                 </thead>

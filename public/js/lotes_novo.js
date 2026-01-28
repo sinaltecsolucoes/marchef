@@ -20,6 +20,7 @@ $(document).ready(function () {
     let modoEdicao = false;
     let dadosOriginaisEdicao = null;
     let loteBloqueado = false;
+    let bloqueiaAjaxReprocesso = false;
 
     // ==================================================
     // SELECT2: helper centralizado
@@ -962,6 +963,12 @@ $(document).ready(function () {
 
         $label.text('Peso Reprocesso (kg)');
 
+        // Muda Label "P.Médio Fazenda" para "Peso Emb. Primaria"
+        $('#calc_peso_medio_fazenda').parent().find('label').text('Peso Emb. Primaria');
+
+        // Muda Label "P. Médio Indústria" para "Peso Emb. Secundária"
+        $('#item_receb_peso_medio_ind').parent().find('label').text('Peso Emb. Secundária');
+
         // 2. READONLY (Campos numéricos)
         $('#item_receb_total_caixas').prop('readonly', true).addClass('bg-light');
         $('#item_receb_peso_medio_ind').prop('readonly', true).addClass('bg-light');
@@ -983,6 +990,12 @@ $(document).ready(function () {
         let $label = $inputPeso.parent().find('label');
 
         $label.text('Peso NF (kg)');
+
+        // REVERTE Label "Peso Emb. Primaria" para "P.Médio Fazenda (Kg)"
+        $('#calc_peso_medio_fazenda').parent().find('label').text('P.Médio Fazenda (Kg)');
+
+        // REVERTE Label "Peso Emb. Secundária" para "P. Médio Indústria (kg)"
+        $('#item_receb_peso_medio_ind').parent().find('label').text('P. Médio Indústria (kg)');
 
         // 2. READONLY (Libera campos)
         $('#item_receb_total_caixas').prop('readonly', false).removeClass('bg-light');
@@ -1114,12 +1127,18 @@ $(document).ready(function () {
     }
 
     function calcularPesoMedioFazenda() {
-        const peso = parseFloat($('#item_receb_peso_nota_fiscal').val());
-        const caixas = parseInt($('#item_receb_total_caixas').val(), 10);
+        // Pega valores brutos e converte (PT-BR -> Float)
+        const valPeso = $('#item_receb_peso_nota_fiscal').val();
+        const valCaixas = $('#item_receb_total_caixas').val();
 
-        if (peso > 0 && caixas > 0) {
-            const resultado = (peso / caixas).toFixed(2);
-            $('#calc_peso_medio_fazenda').val(resultado);
+        const pesoNF = brToFloat(valPeso);
+        const totalCaixas = parseInt(valCaixas) || 0;
+
+        if (pesoNF > 0 && totalCaixas > 0) {
+            const media = pesoNF / totalCaixas;
+
+            const mediaFormatada = floatToBr(media, 2);
+            $('#calc_peso_medio_fazenda').val(mediaFormatada);
         } else {
             $('#calc_peso_medio_fazenda').val('');
         }
@@ -2092,14 +2111,14 @@ $(document).ready(function () {
                 document.body.removeChild(link);
 
                 // Opcional: Feedback visual rápido (Toast)
-               /* Swal.fire({
-                    icon: 'success',
-                    title: 'Download Iniciado',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000
-                });*/
+                /* Swal.fire({
+                     icon: 'success',
+                     title: 'Download Iniciado',
+                     toast: true,
+                     position: 'top-end',
+                     showConfirmButton: false,
+                     timer: 2000
+                 });*/
             } else {
                 notificacaoErro('Erro ao gerar etiqueta', response.message);
             }
@@ -2350,12 +2369,12 @@ $(document).ready(function () {
                 const link = document.createElement('a');
                 link.href = BASE_URL + '/' + response.pdfUrl;
                 link.download = response.fileName || 'etiqueta_embalagem.pdf';
-                
+
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
 
-                 // Opcional: Feedback visual rápido
+                // Opcional: Feedback visual rápido
                 /* Swal.fire({
                     icon: 'success',
                     title: 'Download Iniciado',
@@ -2460,18 +2479,45 @@ $(document).ready(function () {
     });
 
     // CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA
-    $('#item_receb_peso_nota_fiscal, #item_receb_total_caixas').on('input', function () {
-        // Usa brToFloat para entender o valor com ponto e vírgula
-        const pesoNF = brToFloat($('#item_receb_peso_nota_fiscal').val());
-        const totalCaixas = parseInt($('#item_receb_total_caixas').val()) || 0;
+    /* $('#item_receb_peso_nota_fiscal, #item_receb_total_caixas').on('keyup input paste propertychange', function () {
+        setTimeout(function () {
+            calcularPesoMedioFazenda();
+        }, 50);
+    });*/
 
-        if (totalCaixas > 0 && pesoNF > 0) {
-            const media = pesoNF / totalCaixas;
-            // Exibe com vírgula e 2 casas decimais
-            $('#calc_peso_medio_fazenda').val(floatToBr(media, 2));
-        } else {
-            $('#calc_peso_medio_fazenda').val('');
-        }
+    // =========================================================================
+    // 1. LISTENER MESTRE DO CAMPO PESO (Decide qual conta fazer)
+    // =========================================================================
+    $('#item_receb_peso_nota_fiscal').on('keyup input paste propertychange', function () {
+        setTimeout(function () {
+            // Verifica qual modo está ativo (Matéria Prima ou Reprocesso)
+            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+
+            if (tipo === 'LOTE_ORIGEM') {
+                // --- MODO REPROCESSO ---
+                // Se digitar o peso, calcula quantas caixas dá
+                calcularCaixasReprocesso();
+            } else {
+                // --- MODO MATÉRIA PRIMA ---
+                // Se digitar o peso, calcula o peso médio (se já tiver caixas)
+                calcularPesoMedioFazenda();
+            }
+        }, 50); // Delay para a máscara
+    });
+
+    // =========================================================================
+    // 2. LISTENER DAS CAIXAS (Só impacta Matéria Prima)
+    // =========================================================================
+    $('#item_receb_total_caixas').on('keyup input paste propertychange', function () {
+        setTimeout(function () {
+            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+
+            // No modo matéria prima, se mudar as caixas, recalcula o peso médio fazenda
+            if (tipo === 'MATERIA_PRIMA') {
+                calcularPesoMedioFazenda();
+            }
+            // No modo Reprocesso, esse campo é calculado/bloqueado, então não faz nada
+        }, 50);
     });
 
     // --- BOTÃO EDITAR ITEM (DETALHES) ---
@@ -2601,7 +2647,10 @@ $(document).ready(function () {
                 const $selectProdOrigem = $('#select-produto-origem');
                 $selectProdOrigem.empty(); // Limpa carregamento anterior
                 const optionProd = new Option(data.prod_descricao, data.item_receb_produto_id, true, true);
+
+                bloqueiaAjaxReprocesso = true; // 1. Ativa o bloqueio
                 $selectProdOrigem.append(optionProd).trigger('change');
+                bloqueiaAjaxReprocesso = false; // 2. Desativa o bloqueio
 
                 // Garante que a div do produto esteja visível
                 $('#div-produto-origem').show();
@@ -3200,19 +3249,30 @@ $(document).ready(function () {
     $(document).on('change', 'input[name="tipo_entrada_mp"]', function () {
         let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
 
+        // Limpa os campos visuais
+        $('#item_receb_nota_fiscal').val('');
+        $('#item_receb_peso_nota_fiscal').val('');
+        $('#item_receb_total_caixas').val('');
+        $('#item_receb_peso_medio_ind').val('');
+        $('input[name="item_receb_gram_faz"]').val('');
+        $('input[name="item_receb_gram_lab"]').val('');
+        $('#calc_peso_medio_fazenda').val('');
+
         if (tipo === 'LOTE_ORIGEM') {
             // MODO REPROCESSO
             $('#div-select-mp').hide();
             $('#div-lote-origem').show();
 
-            // --- CORREÇÃO DO ERRO 'isConnected' ---
+            // Aplica os labels e bloqueios de Reprocesso
+            aplicarModoReprocesso();
+
             // Só inicializa o Select2 agora, garantindo que o modal existe
             // Verificamos se já não foi inicializado antes para não duplicar
             if (!$('.select2-lotes-finalizados').hasClass("select2-hidden-accessible")) {
 
                 $('.select2-lotes-finalizados').select2({
                     theme: 'bootstrap-5',
-                    dropdownParent: $('#modal-gerenciar-lotes'), // Agora ele com certeza existe!
+                    dropdownParent: $('#modal-gerenciar-lotes'),
                     placeholder: 'Busque pelo número do lote...',
                     allowClear: true,
                     ajax: {
@@ -3254,6 +3314,9 @@ $(document).ready(function () {
             $('#div-lote-origem').hide();
             $('#div-produto-origem').hide();
 
+            // Aplica os labels e desbloqueios de MP
+            aplicarModoMateriaPrima();
+
             $('.select2-lotes-finalizados').val(null).trigger('change');
             $('#select-produto-origem').empty();
         }
@@ -3288,6 +3351,10 @@ $(document).ready(function () {
 
     // 3. AO SELECIONAR O PRODUTO -> BUSCAR PESOS E CAIXAS
     $('#select-produto-origem').on('change', function () {
+        if (bloqueiaAjaxReprocesso) {
+            return; // Se estivermos editando, para aqui e não busca o padrão
+        }
+
         let produtoId = $(this).val();
         let loteId = $('.select2-lotes-finalizados').val();
 
@@ -3682,10 +3749,15 @@ $(document).ready(function () {
         let csrfToken = $('meta[name="csrf-token"]').attr('content');
         dadosForm.push({ name: 'csrf_token', value: csrfToken });
 
+        // ==========================================================
+        // DECIDE SE É SALVAR (NOVO) OU EDITAR (ATUALIZAR)
+        // ==========================================================
+        let action = modoEdicao ? 'editarItemRecebimento' : 'salvarReprocesso';
+
         console.log("Enviando Reprocesso (Payload):", dadosForm);
 
         $.ajax({
-            url: 'ajax_router.php?action=salvarReprocesso',
+            url: 'ajax_router.php?action=' + action,
             type: 'POST',
             data: dadosForm,
             dataType: 'json',
@@ -3865,24 +3937,25 @@ $(document).ready(function () {
     // ======================================================
     // CÁLCULO AUTOMÁTICO: Peso x Peso Médio = Caixas
     // ======================================================
-    $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('input', function () {
+    /* $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('input', function () {
+ 
+         // 1. Pega os valores e converte de BR (1.200,50) para Float (1200.50)
+         let pesoTotal = parseFloat($('#item_receb_peso_nota_fiscal').val().replace(/\./g, '').replace(',', '.')) || 0;
+         let pesoMedio = parseFloat($('#item_receb_peso_medio_ind').val().replace(/\./g, '').replace(',', '.')) || 0;
+ 
+         // 2. Só calcula se tiver peso médio válido (evita divisão por zero)
+         if (pesoMedio > 0) {
+             let caixas = pesoTotal / pesoMedio;
+ 
+             // Arredonda para inteiro (opcional, depende da sua regra de negócio)
+             // Se aceitar meia caixa, use .toFixed(2)
+             let caixasArredondado = Math.round(caixas);
+ 
+             // 3. Joga o valor no input de Caixas
+             $('#item_receb_total_caixas').val(caixasArredondado);
+         }
+     });*/
 
-        // 1. Pega os valores e converte de BR (1.200,50) para Float (1200.50)
-        let pesoTotal = parseFloat($('#item_receb_peso_nota_fiscal').val().replace(/\./g, '').replace(',', '.')) || 0;
-        let pesoMedio = parseFloat($('#item_receb_peso_medio_ind').val().replace(/\./g, '').replace(',', '.')) || 0;
-
-        // 2. Só calcula se tiver peso médio válido (evita divisão por zero)
-        if (pesoMedio > 0) {
-            let caixas = pesoTotal / pesoMedio;
-
-            // Arredonda para inteiro (opcional, depende da sua regra de negócio)
-            // Se aceitar meia caixa, use .toFixed(2)
-            let caixasArredondado = Math.round(caixas);
-
-            // 3. Joga o valor no input de Caixas
-            $('#item_receb_total_caixas').val(caixasArredondado);
-        }
-    });
 
     // =========================================================================
     // CORREÇÃO FINAL: CÁLCULO IMEDIATO (Sem Delay e Compatível com Máscaras)
@@ -3904,37 +3977,36 @@ $(document).ready(function () {
         }
 
         // Tenta calcular imediatamente
-        calcularCaixasReprocesso();
+        //  calcularCaixasReprocesso();
     });
 
     // 2. Monitora TODOS os eventos de digitação para garantir resposta imediata
-    // O setTimeout(..., 50) é o segredo para funcionar com máscaras de dinheiro
-    $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('keyup input change paste', function () {
-        setTimeout(function () {
-            calcularCaixasReprocesso();
-        }, 50);
-    });
+    // O setTimeout(..., 50) é o segredo para funcionar com máscaras
+    /*  $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('keyup input change paste', function () {
+          setTimeout(function () {
+              calcularCaixasReprocesso();
+          }, 50);
+      });*/
 
-    // Função de Cálculo Robusta
+    // Função de Cálculo
     function calcularCaixasReprocesso() {
         // Pega o valor VISUAL do campo Peso Total
-        let valorPesoTotal = $('#item_receb_peso_nota_fiscal').val() || '';
+        let valPesoTotal = $('#item_receb_peso_nota_fiscal').val();
         // Remove pontos de milhar e troca vírgula por ponto
-        let pesoTotal = parseFloat(valorPesoTotal.replace(/\./g, '').replace(',', '.')) || 0;
+        let pesoTotal = parseFloat(valPesoTotal.replace(/\./g, '').replace(',', '.')) || 0;
 
-        // Pega o valor VISUAL do campo Peso Médio (Melhor que usar variável global)
-        let valorPesoMedio = $('#item_receb_peso_medio_ind').val() || '';
-        let pesoBase = parseFloat(valorPesoMedio.replace(/\./g, '').replace(',', '.')) || 0;
+        // Pega o peso da Embalagem Secundária (que está em 'item_receb_peso_medio_ind')
+        let valPesoUnitario = $('#item_receb_peso_medio_ind').val();
+        let pesoUnitario = parseFloat(valPesoUnitario.replace(/\./g, '').replace(',', '.')) || 0;
 
         // Só calcula se tivermos os dois valores positivos
-        if (pesoTotal > 0 && pesoBase > 0) {
-            let caixas = pesoTotal / pesoBase;
-            let caixasArredondado = Math.round(caixas);
+        if (pesoTotal > 0 && pesoUnitario > 0) {
+            let caixas = pesoTotal / pesoUnitario;
 
-            // Só atualiza o campo se o valor for diferente (evita loop ou piscar tela)
-            if ($('#item_receb_total_caixas').val() != caixasArredondado) {
-                $('#item_receb_total_caixas').val(caixasArredondado);
-            }
+            // Arredondamos para inteiro, pois não existe meia caixa no estoque
+            $('#item_receb_total_caixas').val(Math.floor(caixas));
+        } else {
+            $('#item_receb_total_caixas').val('');
         }
     }
 
