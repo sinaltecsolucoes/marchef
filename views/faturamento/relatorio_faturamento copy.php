@@ -52,14 +52,14 @@ function formatCnpjCpf($value)
 }
 
 /**
- * FUNÇÃO AJUSTADA: Agora retorna uma LINHA (TR) para ficar dentro da tabela
- * Mantendo o estilo exato do seu código original
+ * FUNÇÃO PARA LINHA DE TOTAL DA FAZENDA
+ * Ajustado colspan para 4 devido à nova coluna de Código
  */
 function renderTotalFazendaRow($nomeFazenda, $caixas, $quilos, $valor)
 {
     echo "
     <tr class='total-row' style='background-color: #e9ecef; border-top: 2px solid #adb5bd;'>
-        <td colspan='3' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$nomeFazenda}):</td>
+        <td colspan='4' class='text-end' style='font-weight: bold;'>Total da Fazenda ({$nomeFazenda}):</td>
         <td class='text-center align-middle' style='font-weight: bold;'>" . formatCaixa($caixas) . " (CX)</td>
         <td class='text-center align-middle' style='font-weight: bold;'>" . formatQuilo($quilos) . " (KG)</td>
         <td class='text-center align-middle' style='font-weight: bold;'></td> 
@@ -151,19 +151,17 @@ function renderReportHeader($header)
                 if (!$firstFazenda):
                     // Fecha totais do último pedido da fazenda anterior
                     echo "<tr>
-                           <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
+                           <td colspan='4' class='text-end total-row'>Subtotal Pedido:</td>
                             <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
                             <td class='text-center align-middle total-row'>" . formatQuilo($totalClientePedidoQuilos) . "</td>
                             <td class='text-center align-middle total-row'></td> 
                             <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
                           </tr>";
 
-                    // --- AQUI ESTÁ A CORREÇÃO VISUAL ---
-                    // Chamamos a função para imprimir a LINHA de total ANTES de fechar a tabela
+                    // Imprime total da fazenda
                     renderTotalFazendaRow($currentFazenda, $totalFazendaCaixas, $totalFazendaQuilos, $totalFazendaValor);
 
-                    echo "</tbody></table></div></div>"; // Agora sim fecha a tabela
-
+                    echo "</tbody></table></div></div>";
                     echo "<div class='page-break'></div>";
 
                     $tabelaAberta = false;
@@ -187,9 +185,8 @@ function renderReportHeader($header)
             if ($chaveClientePedido !== $currentCliente . $currentPedido):
 
                 if ($tabelaAberta):
-                    // Fecha subtotal do pedido anterior (dentro da mesma fazenda)
                     echo "<tr>
-                            <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
+                            <td colspan='4' class='text-end total-row'>Subtotal Pedido:</td>
                             <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
                             <td class='text-center align-middle total-row'>" . formatQuilo($totalClientePedidoQuilos) . "</td>
                             <td class='text-center align-middle total-row'></td> 
@@ -229,6 +226,7 @@ function renderReportHeader($header)
                 echo "<table class='table table-sm table-bordered mt-2 item-table'>
                         <thead class='table-light'>
                             <tr>
+                                <th class='text-center align-middle' style='width: 80px;'>Cód.</th> 
                                 <th class='text-center align-middle'>Produto</th>
                                 <th class='text-center align-middle'>Lote</th>
                                 <th class='text-center align-middle'>Preço Unit.</th>
@@ -249,7 +247,9 @@ function renderReportHeader($header)
             $totalFazendaQuilos += $qtdQuilos;
             $totalFazendaValor += $valorTotal;
 
+            // --- AQUI ENTRA O CÓDIGO DO PRODUTO ---
             echo "<tr>
+                    <td class='text-center align-middle'>" . htmlspecialchars($item['prod_codigo_interno'] ?? '') . "</td>
                     <td>" . htmlspecialchars($item['produto_descricao']) . "</td>
                     <td class='text-center align-middle'>" . htmlspecialchars($item['lote_completo_calculado']) . "</td>
                     <td class='text-center align-middle'>" . formatCurrency($precoUnit) . "</td>
@@ -261,17 +261,16 @@ function renderReportHeader($header)
 
         endforeach;
 
-        // 4. Fecha o último bloco (Último Cliente e Última Fazenda)
+        // 4. Fecha o último bloco
         if ($tabelaAberta) {
             echo "<tr>
-                <td colspan='3' class='text-end total-row'>Subtotal Pedido:</td>
+                <td colspan='4' class='text-end total-row'>Subtotal Pedido:</td>
                 <td class='text-center align-middle total-row'>" . formatCaixa($totalClientePedidoCaixas) . "</td>
                 <td class='text-center align-middle total-row'>" . formatQuilo($totalClientePedidoQuilos) . "</td>
                 <td class='text-center align-middle total-row'></td> 
                 <td class='text-center align-middle total-row'>" . formatCurrency($totalClientePedidoValor) . "</td>
                 </tr>";
 
-            // --- CORREÇÃO VISUAL PARA O ÚLTIMO BLOCO TAMBÉM ---
             renderTotalFazendaRow($currentFazenda, $totalFazendaCaixas, $totalFazendaQuilos, $totalFazendaValor);
 
             echo "</tbody></table></div></div>";
