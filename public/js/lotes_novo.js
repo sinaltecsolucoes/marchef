@@ -3112,6 +3112,9 @@ $(document).ready(function () {
 
                             Swal.fire('Sucesso!', response.message, 'success');
 
+                            // ATUALIZA A TABELA PRINCIPAL
+                            recarregarTabelaLotes();
+
                             // Se estiver na tela de estoque, recarrega. Se estiver em lotes, não precisa fazer nada visualmente, 
                             // pois o lote legado não aparece na lista de produção ativa.
                         } else {

@@ -247,7 +247,7 @@ $(document).ready(function () {
             ajustarResponsividadeTabelas();
         }, 100); // tempo ideal para evitar sobrecarga
     });
-   
+
     function carregarOrdemCompleta(id) {
         $.ajax({
             url: 'ajax_router.php?action=getOrdemExpedicaoCompleta',
@@ -256,7 +256,11 @@ $(document).ready(function () {
             dataType: 'json',
             success: function (response) {
                 if (response.success) {
+                    // 1. Renderiza a tela primeiro
                     renderizarDetalhes(response.data);
+
+                    // 2. Aplica o bloqueio passando o objeto correto
+                    aplicarBloqueioReprocesso(response.data.header);
                 } else {
                     notificacaoErro('Erro ao Carregar', response.message);
                 }
@@ -265,6 +269,37 @@ $(document).ready(function () {
                 notificacaoErro('Erro de Conexão', 'Não foi possível carregar os detalhes da ordem.');
             }
         });
+    }
+
+    // Função para verificar e bloquear se for Reprocesso
+    function aplicarBloqueioReprocesso(dadosOE) {
+        if (dadosOE.oe_tipo_operacao === 'REPROCESSO') {
+
+            // 1. Aviso Visual
+            if ($('#aviso-reprocesso').length === 0) {
+                $('.card-body').first().prepend(`
+                    <div id="aviso-reprocesso" class="alert alert-warning border-left-warning shadow-sm">
+                        <i class="fas fa-lock me-2"></i>
+                        <strong>Modo Leitura:</strong> Esta é uma Ordem de Reprocesso Interno. 
+                        As alterações devem ser feitas no módulo de <strong>Gestão de Lotes (Recebimento)</strong>.
+                    </div>
+                `);
+            }
+
+            // 2. Desabilitar Botões de Ação
+            $('#btn-confirmar-add-item').prop('disabled', true).hide();
+            $('#btn-salvar-header').prop('disabled', true).hide();
+
+            // 3. Desabilitar Botões de Exclusão/Edição na Tabela (usando delegate se for dinâmico)
+            $('#pedidos-container').addClass('disable-actions'); // CSS Class helper
+            $('.btn-remover-item, .btn-editar-item').remove(); // Remove botões existentes
+
+            // 4. Desabilitar Inputs
+            $('input, select, textarea').prop('disabled', true);
+
+            // Manter apenas o botão de voltar ativo
+            $('.btn-secondary').prop('disabled', false);
+        }
     }
 
     function resetModalEstoqueParaAbrir() {

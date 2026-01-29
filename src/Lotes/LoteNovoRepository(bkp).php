@@ -990,7 +990,8 @@ class LoteNovoRepository
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
-            "draw" => intval($params['draw']),
+            // "draw" => intval($params['draw']),
+            "draw" => intval($draw),
             "recordsTotal" => (int) $totalRecords,
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data

@@ -115,10 +115,10 @@ class OrdemExpedicaoRepository
                             lne.item_emb_id,                
                             p_sec.prod_codigo_interno,
                             p_sec.prod_descricao,
-                            p_prim.prod_peso_embalagem AS peso_primario,
-                            p_sec.prod_peso_embalagem AS peso_secundario,
+                            COALESCE(p_prim.prod_peso_embalagem, 0) AS peso_primario,
+                            COALESCE(p_sec.prod_peso_embalagem, 0) AS peso_secundario,
                             cam.camara_industria AS industria,
-                            COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social) AS cliente_lote_nome,
+                            COALESCE(ent_lote.ent_nome_fantasia, ent_lote.ent_razao_social, 'N/A') AS cliente_lote_nome,
                             lnh.lote_completo_calculado,
                             ee.endereco_completo
                         FROM tbl_ordens_expedicao_itens i
@@ -127,10 +127,11 @@ class OrdemExpedicaoRepository
                         JOIN tbl_lotes_novo_embalagem lne ON ea.alocacao_lote_item_id = lne.item_emb_id
                         JOIN tbl_produtos p_sec ON lne.item_emb_prod_sec_id = p_sec.prod_codigo
                         
-                        JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
-                        JOIN tbl_produtos p_prim ON lnp.item_prod_produto_id = p_prim.prod_codigo
+                        LEFT JOIN tbl_lotes_novo_producao lnp ON lne.item_emb_prod_prim_id = lnp.item_prod_id
+                        -- LEFT JOIN tbl_produtos p_prim ON lnp.item_prod_produto_id = p_prim.prod_codigo 
+                        LEFT JOIN tbl_produtos p_prim ON lnp.item_prod_id = p_prim.prod_codigo
 
-                        JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+                        LEFT JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
                         LEFT JOIN tbl_entidades ent_lote ON lnh.lote_cliente_id = ent_lote.ent_codigo
 
                         JOIN tbl_estoque_enderecos ee ON ea.alocacao_endereco_id = ee.endereco_id

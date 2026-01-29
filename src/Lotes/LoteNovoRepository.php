@@ -601,40 +601,6 @@ class LoteNovoRepository
     /**
      * Reativa um lote que foi cancelado, mudando seu status para 'EM ANDAMENTO'.
      *
-     * @param int $loteId O ID do lote a ser reativado.
-     * @return bool
-     * @throws Exception
-     */
-    /* public function reativarLote(int $loteId): bool
-    {
-        // 1. Busca os dados do lote para validação e auditoria
-        $stmtLote = $this->pdo->prepare("SELECT lote_status FROM tbl_lotes_novo_header WHERE lote_id = :id");
-        $stmtLote->execute([':id' => $loteId]);
-        $loteAtual = $stmtLote->fetch(PDO::FETCH_ASSOC);
-
-        if (!$loteAtual) {
-            throw new Exception("Lote não encontrado.");
-        }
-
-        // 2. Regra de negócio: Só se pode reativar um lote que esteja 'CANCELADO'
-        if ($loteAtual['lote_status'] !== 'CANCELADO') {
-            throw new Exception("Apenas lotes com o status 'CANCELADO' podem ser reativados.");
-        }
-
-        // 3. Atualiza o status do lote para 'EM ANDAMENTO'
-        $stmtUpdate = $this->pdo->prepare("UPDATE tbl_lotes_novo_header SET lote_status = 'EM ANDAMENTO' WHERE lote_id = :id");
-        $success = $stmtUpdate->execute([':id' => $loteId]);
-
-        if ($success) {
-            $this->auditLogger->log('REACTIVATE', $loteId, 'tbl_lotes_novo_header', ['lote_status' => 'CANCELADO'], ['lote_status' => 'EM ANDAMENTO'], "");
-        }
-
-        return $success;
-    } */
-
-    /**
-     * Reativa um lote que foi cancelado, mudando seu status para 'EM ANDAMENTO'.
-     *
      * @param int $loteId O ID do lote.
      * @param string $motivo O motivo da reativação.
      * @return bool
@@ -853,157 +819,6 @@ class LoteNovoRepository
             throw $e;
         }
     }
-
-    /**
-     * Busca os dados para a tabela de listagem de novos lotes (server-side).
-     *
-     * @param array $params Parâmetros do DataTables (busca, paginação, etc.).
-     * @return array
-     */
-    /* public function findAllForDataTable(array $params): array
-    {
-        // 1. Parâmetros básicos do DataTables
-        $draw = $params['draw'] ?? 1;
-        $start = $params['start'] ?? 0;
-        $length = $params['length'] ?? 10;
-        $searchValue = $params['search']['value'] ?? '';
-
-        // 2. Definição da Query Base e Joins
-        // Importante: Usamos LEFT JOIN para garantir que traga o lote mesmo se não tiver detalhes
-        $baseQuery = "FROM tbl_lotes_novo_header l         
-                      LEFT JOIN tbl_entidades c ON l.lote_cliente_id = c.ent_codigo
-                      LEFT JOIN tbl_entidades f ON l.lote_fornecedor_id = f.ent_codigo
-                      LEFT JOIN tbl_lote_novo_recebdetalhes r ON l.lote_id = r.item_receb_lote_id";
-
-        // 3. Contagem Total (Sem filtros)
-        $totalRecords = $this->pdo->query("SELECT COUNT(l.lote_id) FROM tbl_lotes_novo_header l")->fetchColumn();
-
-        // 4. Lógica de Pesquisa (Filtro)
-        $whereClause = "";
-        $queryParams = [];
-
-        if (!empty($searchValue)) {
-            $searchTerm = '%' . $searchValue . '%';
-
-            // 2. Termo Numérico (Para Pesos e Gramaturas)
-            // Remove 'g', 'kg', espaços e converte formato BR (1.000,50) para US (1000.50)
-
-            // Remove letras (g, kg) e espaços
-            $cleanVal = preg_replace('/[a-zA-Z\s]/', '', $searchValue);
-
-            // Se tiver vírgula, assumimos que é decimal BR
-            if (strpos($cleanVal, ',') !== false) {
-                $cleanVal = str_replace('.', '', $cleanVal); // Remove ponto de milhar
-                $cleanVal = str_replace(',', '.', $cleanVal); // Troca vírgula por ponto
-            }
-
-            // Proteção: Se sobrou string vazia (ex: user digitou só "kg"), usa o original para não quebrar
-            $searchNumeric = empty($cleanVal) ? $searchTerm : '%' . $cleanVal . '%';
-
-            $whereClause = " WHERE (
-                    l.lote_completo_calculado LIKE :search0 OR
-                    l.lote_numero LIKE :search1 OR
-                    c.ent_razao_social LIKE :search2 OR
-                    c.ent_nome_fantasia LIKE :search3 OR
-
-                    -- Busca nos detalhes via SUBQUERY (EXISTS)
-                    -- Isso garante que o lote seja encontrado, mas o JOIN principal traga TODOS os itens para somar corretamente
-
-                    EXISTS(
-                        SELECT 1 FROM tbl_lote_novo_recebdetalhes sub_d
-                        WHERE sub_d.item_receb_lote_id = l.lote_id
-                        AND(
-                            sub_d.item_receb_gram_faz LIKE :search4 OR                      -- Gramatura Fazenda
-                            sub_d.item_receb_gram_lab LIKE :search5 OR                      -- Gramatura Lab
-                            CAST(sub_d.item_receb_peso_nota_fiscal AS CHAR) LIKE :search6   -- Peso (nota individual)
-                        )
-                    ) OR 
-                     
-                        -- 2. Busca pelo SOMATÓRIO TOTAL
-                        -- Calcula a soma de todas as notas desse lote e verifica se bate com a pesquisa
-                        CAST((
-                            SELECT SUM(sub_s.item_receb_peso_nota_fiscal) 
-                            FROM tbl_lote_novo_recebdetalhes sub_s 
-                            WHERE sub_s.item_receb_lote_id = l.lote_id
-                        ) AS CHAR) LIKE :search8 OR
-
-                    DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :search7           -- Data (Formato BR)
-            )";
-
-            $queryParams[':search0'] = $searchTerm;
-            $queryParams[':search1'] = $searchTerm;
-            $queryParams[':search2'] = $searchTerm;
-            $queryParams[':search3'] = $searchTerm;
-
-            $queryParams[':search4'] = $searchNumeric;
-            $queryParams[':search5'] = $searchNumeric;
-            $queryParams[':search6'] = $searchNumeric;
-            $queryParams[':search7'] = $searchTerm;
-            $queryParams[':search8'] = $searchNumeric;
-        }
-
-        // 5. Contagem dos Filtrados (Considerando DISTINCT por causa do JOIN 1:N)
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause");
-        $stmtFiltered->execute($queryParams);
-        $totalFiltered = $stmtFiltered->fetchColumn();
-
-        // 6. MAPEAMENTO DE COLUNAS PARA ORDENAÇÃO
-        // A ordem aqui deve ser EXATAMENTE a mesma ordem das colunas no Javascript
-        $columnsMap = [
-            0 => 'l.lote_completo_calculado',
-            1 => 'cliente_razao_social',            // Alias definido no SELECT abaixo
-            2 => 'gramaturas_fazenda',              // Alias do group_concat (ordenação aqui é string)
-            3 => 'gramaturas_laboratorio',          // Alias do group_concat
-            4 => 'peso_total_nota',                 // Alias da soma
-            5 => 'l.lote_data_fabricacao',
-            6 => 'l.lote_status'
-        ];
-
-        // Pega a ordenação enviada pelo DataTables (ou usa padrão)
-        $colIndex = $params['order'][0]['column'] ?? 2; // Padrão: Data (índice 2)
-        $dir = $params['order'][0]['dir'] ?? 'desc';    // Padrão: Decrescente
-
-        // Proteção: Se o índice não existir no mapa, volta para data
-        $orderBy = $columnsMap[$colIndex] ?? 'l.lote_data_fabricacao';
-
-        // Validação simples de segurança para direção
-        $dir = strtoupper($dir) === 'ASC' ? 'ASC' : 'DESC';
-
-        // 7. Query Final com Agrupamento e Ordenação
-        $sqlData = "SELECT l.*, 
-                    COALESCE(NULLIF(c.ent_nome_fantasia,''), c.ent_razao_social) AS cliente_razao_social, 
-                    
-                    -- Agregações
-                    GROUP_CONCAT(DISTINCT r.item_receb_gram_faz SEPARATOR ' / ') as gramaturas_fazenda,
-                    GROUP_CONCAT(DISTINCT r.item_receb_gram_lab SEPARATOR ' / ') as gramaturas_laboratorio,
-                    SUM(r.item_receb_peso_nota_fiscal) as peso_total_nota
-                    
-                    $baseQuery $whereClause 
-                    
-                    GROUP BY l.lote_id
-                    ORDER BY $orderBy $dir 
-                    LIMIT :start, :length";
-
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-
-        if (!empty($queryParams)) {
-            foreach ($queryParams as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
-        }
-        $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return [
-            "draw" => intval($draw),
-            "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalFiltered,
-            "data" => $data
-        ];
-    } */
-
 
     public function findAllForDataTable(array $params): array
     {
@@ -1310,108 +1125,6 @@ class LoteNovoRepository
         }
         return $success;
     }
-
-   /* public function getVisaoGeralEstoque(array $params): array
-    {
-        // Parâmetros do DataTables
-        $draw = $params['draw'] ?? 1;
-        $start = $params['start'] ?? 0;
-        $length = $params['length'] ?? 10;
-        $searchValue = $params['search']['value'] ?? '';
-
-        // Query Base para funcionar com lançamentos antigos e novos
-        $baseQuery = "
-        FROM tbl_estoque es
-        JOIN tbl_produtos p ON es.estoque_produto_id = p.prod_codigo
-        
-        -- Join para buscar o item de embalagem (para compatibilidade com registros antigos)
-        LEFT JOIN tbl_lotes_novo_embalagem lne ON es.estoque_lote_item_id = lne.item_emb_id
-        
-        -- Join inteligente para buscar o cabeçalho do lote:
-        -- Tenta primeiro pelo novo campo 'estoque_lote_item_id'. 
-        -- Se for nulo (registro antigo), tenta pelo caminho antigo através de 'lne.item_emb_lote_id'.
-        LEFT JOIN tbl_lotes_novo_header lnh ON lnh.lote_id = CASE 
-                                                                WHEN lne.item_emb_id IS NOT NULL THEN lne.item_emb_lote_id 
-                                                                ELSE es.estoque_lote_item_id 
-                                                             END
-        LEFT JOIN tbl_entidades e ON lnh.lote_cliente_id = e.ent_codigo
-        ";
-
-        // Agrupamento correto que já implementamos
-        $groupByClause = "GROUP BY p.prod_codigo, lnh.lote_id";
-
-        $whereClause = "";
-        $queryParams = []; // Array para guardar os parâmetros da busca
-
-        if (!empty($searchValue)) {
-            $searchableColumns = [
-                'p.prod_descricao',
-                'lnh.lote_completo_calculado',
-                'p.prod_codigo_interno',
-                'COALESCE(NULLIF(e.ent_nome_fantasia, \'\'), e.ent_razao_social)'
-            ];
-            $searchConditions = [];
-
-            foreach ($searchableColumns as $index => $column) {
-                $placeholder = ":search{$index}";
-                $searchConditions[] = "{$column} LIKE {$placeholder}";
-                $queryParams[$placeholder] = '%' . $searchValue . '%';
-            }
-
-            $whereClause = "WHERE (" . implode(' OR ', $searchConditions) . ")";
-        }
-
-        // Contagem Total
-        $totalRecordsQuery = "SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$groupByClause}) as subquery";
-        $totalRecords = $this->pdo->query($totalRecordsQuery)->fetchColumn();
-
-        // Contagem Filtrada
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(*) FROM (SELECT 1 {$baseQuery} {$whereClause} {$groupByClause}) as subquery");
-        $stmtFiltered->execute($queryParams);
-        $totalFiltered = $stmtFiltered->fetchColumn();
-
-        // Query Principal para buscar os dados
-        $sqlData = "
-        SELECT 
-            p.prod_tipo as tipo_produto,
-            p.prod_subtipo as subtipo,
-            p.prod_classificacao as classificacao,
-            p.prod_codigo_interno as codigo_interno,
-            p.prod_descricao as descricao_produto,
-            p.prod_peso_embalagem as peso_embalagem,
-            COALESCE(lnh.lote_completo_calculado, 'Lote Avulso') as lote,
-            COALESCE(NULLIF(e.ent_nome_fantasia, ''), e.ent_razao_social) as cliente_lote_nome,
-            lnh.lote_data_fabricacao as data_fabricacao,
-            SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) as total_caixas,
-            SUM(CASE WHEN es.estoque_tipo_movimento LIKE 'ENTRADA%' THEN es.estoque_quantidade ELSE -es.estoque_quantidade END) * p.prod_peso_embalagem as peso_total
-        
-        {$baseQuery}
-        {$whereClause}
-        
-        {$groupByClause}
-
-        ORDER BY descricao_produto ASC, lote ASC
-        LIMIT :start, :length
-        ";
-
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
-
-        foreach ($queryParams as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-
-        $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return [
-            "draw" => (int) $draw,
-            "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalFiltered,
-            "data" => $data
-        ];
-    } */
 
     /**
      * Busca os detalhes completos de um único item de lote do novo sistema.
@@ -2232,101 +1945,7 @@ class LoteNovoRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /* public function excluirItemRecebimento(int $itemId, int $usuarioId): bool
-    {
-        // 1. Busca os dados antigos para o histórico (Snapshot)
-        $stmtGet = $this->pdo->prepare("SELECT * FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id");
-        $stmtGet->execute([':id' => $itemId]);
-        $dadosAntigos = $stmtGet->fetch(PDO::FETCH_ASSOC);
-
-        if (!$dadosAntigos) {
-            return false; // Item não existe
-        }
-
-        // 2. Executa a exclusão
-        $stmt = $this->pdo->prepare("DELETE FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id");
-        $success = $stmt->execute([':id' => $itemId]);
-
-        // 3. Registra o Log se deu certo
-        if ($success) {
-            $this->auditLogger->log(
-                'EXCLUSAO',                       // Ação
-                $itemId, // ID Ref
-                'tbl_lote_novo_recebdetalhes',    // Tabela
-                $dadosAntigos,       // Dados Antigos (JSON)
-                null,                             // Dados Novos (Null no delete)
-                'Item de recebimento excluído via interface.', // Descrição
-
-            );
-            return true;
-        }
-
-        return false;
-    } */
-
-
-    /*  public function excluirItemRecebimento(int $id, int $usuarioId)
-    {
-        try {
-            $this->pdo->beginTransaction();
-
-            // 1. Verifica o item antes de excluir (para auditoria ou validações)
-            $sqlCheck = "SELECT * FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id";
-            $stmtCheck = $this->pdo->prepare($sqlCheck);
-            $stmtCheck->execute([':id' => $id]);
-            $item = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-            if (!$item) {
-                throw new Exception("Item não encontrado.");
-            }
-
-            // 2. TENTATIVA DE ESTORNO DE ESTOQUE (Opcional / Avançado)
-            // Se foi um Reprocesso, tecnicamente deveríamos devolver o saldo para o estoque.
-            // Como é complexo saber para qual endereço devolver, vamos apenas limpar o Kardex por enquanto
-            // para destravar a exclusão. O usuário deverá fazer um Ajuste de Estoque manual se necessário.
-            
-            // 3. LIMPEZA DE DEPENDÊNCIAS (Para evitar Erro de Foreign Key)
-            
-            // A. Remove registros do Kardex ligados a este recebimento
-            $sqlDelKardex = "DELETE FROM tbl_kardex 
-                             WHERE kardex_tabela_ref = 'tbl_lote_novo_recebdetalhes' 
-                             AND kardex_ref_id = :id";
-            $stmtDelK = $this->pdo->prepare($sqlDelKardex);
-            $stmtDelK->execute([':id' => $id]);
-
-            // B. Remove registros de Auditoria ligados a este recebimento (se houver link direto)
-            // Geralmente auditoria não se apaga, mas se for auditoria de "criação deste item", 
-            // as vezes é necessário limpar se houver FK. Se não houver FK na auditoria, pode pular.
-            // Vamos assumir que não tem FK estrita na auditoria, mas vamos limpar por precaução de integridade.
-            $sqlDelAudit = "DELETE FROM tbl_auditoria 
-                            WHERE audit_tabela = 'tbl_lote_novo_recebdetalhes' 
-                            AND audit_registro_id = :id";
-            $stmtDelA = $this->pdo->prepare($sqlDelAudit);
-            $stmtDelA->execute([':id' => $id]);
-
-            // 4. EXCLUI O ITEM DE FATO
-            $sqlFinal = "DELETE FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id";
-            $stmtFinal = $this->pdo->prepare($sqlFinal);
-            $stmtFinal->execute([':id' => $id]);
-
-            // 5. REGISTRA LOG DA EXCLUSÃO NA AUDITORIA (Novo registro)
-            $sqlLog = "INSERT INTO tbl_auditoria (audit_user_id, audit_acao, audit_tabela, audit_registro_id, audit_detalhes, audit_data) 
-                       VALUES (:user, 'EXCLUIR_ITEM_RECEB', 'tbl_lote_novo_recebdetalhes', :id, 'Exclusão de item do lote (e seus vínculos de kardex)', NOW())";
-            $stmtLog = $this->pdo->prepare($sqlLog);
-            $stmtLog->execute([':user' => $usuarioId, ':id' => $id]); // Salvamos o ID antigo apenas como referência texto
-
-            $this->pdo->commit();
-            return true;
-
-        } catch (Exception $e) {
-            $this->pdo->rollBack();
-            throw $e;
-        }
-    }*/
-
-
-
-    public function excluirItemRecebimento(int $itemId, int $usuarioId)
+    /* public function excluirItemRecebimento(int $itemId, int $usuarioId)
     {
         try {
             $this->pdo->beginTransaction();
@@ -2437,9 +2056,68 @@ class LoteNovoRepository
             $this->pdo->rollBack();
             throw $e;
         }
+    }*/
+
+    public function excluirItemRecebimento(int $itemId, int $userId)
+    {
+        try {
+            $this->pdo->beginTransaction();
+
+            // 1. Verifica se existe vínculo com OE (pelo ID do item recebido)
+            // A "etiqueta" que gravamos foi: "REF_RECEB: {ID}"
+            $tagBusca = "REF_RECEB: " . $itemId;
+
+            // Busca os itens de OE que têm essa tag
+            $sqlBuscaItens = "SELECT i.oei_id, i.oei_pedido_id, p.oep_ordem_id 
+                              FROM tbl_ordens_expedicao_itens i
+                              JOIN tbl_ordens_expedicao_pedidos p ON i.oei_pedido_id = p.oep_id
+                              WHERE i.oei_observacao = :tag";
+
+            $stmtBusca = $this->pdo->prepare($sqlBuscaItens);
+            $stmtBusca->execute([':tag' => $tagBusca]);
+            $itensOE = $stmtBusca->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($itensOE)) {
+                // Guarda IDs para verificação posterior
+                $pedidoIdsAfetados = array_unique(array_column($itensOE, 'oei_pedido_id'));
+                $oeIdsAfetadas = array_unique(array_column($itensOE, 'oep_ordem_id'));
+
+                // 2. Remove os Itens da OE (Libera a reserva)
+                $sqlDelItem = "DELETE FROM tbl_ordens_expedicao_itens WHERE oei_observacao = :tag";
+                $stmtDel = $this->pdo->prepare($sqlDelItem);
+                $stmtDel->execute([':tag' => $tagBusca]);
+
+                // 3. Limpeza de Pedidos Vazios
+                foreach ($pedidoIdsAfetados as $pedId) {
+                    $qtdItens = $this->pdo->query("SELECT COUNT(*) FROM tbl_ordens_expedicao_itens WHERE oei_pedido_id = $pedId")->fetchColumn();
+                    if ($qtdItens == 0) {
+                        $this->pdo->exec("DELETE FROM tbl_ordens_expedicao_pedidos WHERE oep_id = $pedId");
+                    }
+                }
+
+                // 4. Limpeza de Headers (OEs) Vazios
+                foreach ($oeIdsAfetadas as $ordemId) {
+                    $qtdPedidos = $this->pdo->query("SELECT COUNT(*) FROM tbl_ordens_expedicao_pedidos WHERE oep_ordem_id = $ordemId")->fetchColumn();
+                    if ($qtdPedidos == 0) {
+                        $this->pdo->exec("DELETE FROM tbl_ordens_expedicao_header WHERE oe_id = $ordemId");
+                    }
+                }
+            }
+
+            // 5. Exclui o item do Recebimento (Lote Novo)
+            $sqlDelReceb = "DELETE FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id";
+            $stmtDelReceb = $this->pdo->prepare($sqlDelReceb);
+            $stmtDelReceb->execute([':id' => $itemId]);
+
+            $this->auditLogger->log('EXCLUIR_ITEM_RECEB', $itemId, 'tbl_lote_novo_recebdetalhes', null, null, "Item excluído e reserva estornada.");
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
-
-
 
     public function getLotesFinalizadosParaSelect(string $term = ''): array
     {
@@ -2463,15 +2141,6 @@ class LoteNovoRepository
     /**
      * Busca um único item de detalhe para preencher o formulário de edição.
      */
-    /* public function getItemRecebimento(int $itemId): ?array
-    {
-        $sql = "SELECT * FROM tbl_lote_novo_recebdetalhes WHERE item_receb_id = :id";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':id' => $itemId]);
-        $res = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $res ?: null;
-    }*/
-
     public function getItemRecebimento(int $itemId): array
     {
         $sql = "SELECT 
@@ -2495,7 +2164,7 @@ class LoteNovoRepository
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $itemId]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -2771,7 +2440,7 @@ class LoteNovoRepository
      * Importa um lote antigo (Legado) para permitir reprocesso.
      * Cria o lote já finalizado e lança o estoque, respeitando a estrutura exata do banco.
      */
-    public function importarLoteLegado(array $dados, int $usuarioId)
+    /*  public function importarLoteLegado(array $dados, int $usuarioId)
     {
         $this->pdo->beginTransaction();
 
@@ -2903,6 +2572,210 @@ class LoteNovoRepository
             $this->pdo->rollBack();
             throw $e;
         }
+    } */
+
+
+    public function importarLoteLegado(array $dados, int $usuarioId)
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            // =================================================================================
+            // 1. CRIAR O CABEÇALHO DO LOTE (tbl_lotes_novo_header)
+            // =================================================================================
+            $sqlHeader = "INSERT INTO tbl_lotes_novo_header 
+            (lote_numero, lote_completo_calculado, lote_data_fabricacao, 
+             lote_cliente_id, lote_status, lote_observacao, 
+             lote_usuario_id, lote_data_finalizacao)
+            VALUES 
+            (:numero, :completo, :data_fab, 
+             :cliente, 'FINALIZADO', :obs, 
+             :user, NOW())";
+
+            // --- LÓGICA DE EXTRAÇÃO DE NÚMERO ---
+            $codigoOriginal = $dados['lote_codigo']; // Ex: "3615/25-10 3842"
+
+            // Verifica se existe uma barra "/"
+            if (strpos($codigoOriginal, '/') !== false) {
+                // Explode a string na barra e pega a primeira parte (índice 0)
+                // Ex: de "3615/25..." vira "3615"
+                $parteAntesDaBarra = explode('/', $codigoOriginal)[0];
+            } else {
+                // Se não tiver barra, usa o código inteiro
+                $parteAntesDaBarra = $codigoOriginal;
+            }
+
+            // Agora sim, removemos qualquer "sujeira" (letras/espaços) que tenha sobrado DESSA parte
+            // Ex: se for "LOTE 3615/2025", o explode pega "LOTE 3615", e o replace vira "3615"
+            $numeroSerial = preg_replace('/[^0-9]/', '', $parteAntesDaBarra);
+
+            if (empty($numeroSerial)) $numeroSerial = '0000';
+
+            $stmtH = $this->pdo->prepare($sqlHeader);
+            $stmtH->execute([
+                ':numero'   => substr($numeroSerial, 0, 50),
+                ':completo' => $dados['lote_codigo'],
+                ':data_fab' => $dados['data_fabricacao'],
+                ':cliente'  => $dados['cliente_id'],
+                ':obs'      => 'CARGA INICIAL (LEGADO). ' . ($dados['observacao'] ?? ''),
+                ':user'     => $usuarioId
+            ]);
+
+            $loteId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 2. BUSCAR PRODUTO PRIMÁRIO E PESOS ASSOCIADOS
+            // =================================================================================
+            // O produto informado é o secundário (ex: caixa de 10kg)
+            $sqlBuscaSecundario = "SELECT prod_primario_id, prod_peso_embalagem AS peso_sec
+                               FROM tbl_produtos 
+                               WHERE prod_codigo = :prod_sec_id 
+                               AND prod_tipo_embalagem = 'SECUNDARIA'
+                               LIMIT 1";
+
+            $stmtSec = $this->pdo->prepare($sqlBuscaSecundario);
+            $stmtSec->execute([':prod_sec_id' => $dados['produto_id']]);
+            $secData = $stmtSec->fetch(PDO::FETCH_ASSOC);
+
+            if (!$secData || !$secData['prod_primario_id']) {
+                throw new Exception("Produto secundário inválido ou sem primário associado (ID {$dados['produto_id']}).");
+            }
+
+            $prodPrimId = $secData['prod_primario_id'];
+            $pesoSec = (float) $secData['peso_sec'] ?: 10.0;  // Default se não definido
+
+            // Buscar peso do primário
+            $sqlBuscaPrimario = "SELECT prod_peso_embalagem AS peso_prim
+                             FROM tbl_produtos 
+                             WHERE prod_codigo = :prod_prim_id 
+                             AND prod_tipo_embalagem = 'PRIMARIA'
+                             LIMIT 1";
+
+            $stmtPrim = $this->pdo->prepare($sqlBuscaPrimario);
+            $stmtPrim->execute([':prod_prim_id' => $prodPrimId]);
+            $primData = $stmtPrim->fetch(PDO::FETCH_ASSOC);
+
+            if (!$primData) {
+                throw new Exception("Produto primário não encontrado (ID {$prodPrimId}).");
+            }
+
+            $pesoPrim = (float) $primData['peso_prim'] ?: 1.0;  // Default se não definido
+
+            if ($pesoPrim <= 0 || $pesoSec <= 0) {
+                throw new Exception("Pesos de embalagem inválidos para os produtos.");
+            }
+
+            // Peso total informado pelo usuário (em kg)
+            $pesoTotal = (float) $dados['peso_total'];  // Assumindo que o form envia 'peso_total'
+
+            if ($pesoTotal <= 0) {
+                throw new Exception("Peso total inválido.");
+            }
+
+            // Calcular quantidades
+            $qtdPrim = $pesoTotal / $pesoPrim;  // Ex: 186 / 1 = 186 sacos
+            $qtdSec = floor($pesoTotal / $pesoSec);  // Ex: 186 / 10 = 18.6 → 18 caixas
+
+            // =================================================================================
+            // 3. CRIAR O ITEM DE PRODUÇÃO PRIMÁRIA (tbl_lotes_novo_producao)
+            // =================================================================================
+            $sqlProducao = "INSERT INTO tbl_lotes_novo_producao
+            (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo)
+            VALUES
+            (:lote_id, :prod_prim_id, :qtd_prim, :qtd_saldo)";  // Saldo inicial = quantidade
+
+            $stmtProd = $this->pdo->prepare($sqlProducao);
+            $stmtProd->execute([
+                ':lote_id' => $loteId,
+                ':prod_prim_id' => $prodPrimId,
+                ':qtd_prim' => $qtdPrim,
+                ':qtd_saldo'=>$qtdPrim
+            ]);
+
+            $itemProdId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 4. CRIAR O ITEM DE EMBALAGEM SECUNDÁRIA (tbl_lotes_novo_embalagem)
+            // =================================================================================
+            $sqlItem = "INSERT INTO tbl_lotes_novo_embalagem
+            (item_emb_lote_id, 
+             item_emb_prod_sec_id, 
+             item_emb_prod_prim_id, 
+             item_emb_qtd_sec, 
+             item_emb_qtd_prim_cons, 
+             item_emb_qtd_finalizada, 
+             item_emb_data_cadastro
+            )
+            VALUES
+            (:lote_id, 
+             :prod_sec_id, 
+             :item_prod_id,     -- Link ao item de produção
+             :qtd_sec,          -- Quantidade secundária calculada
+             :qtd_prim_cons,    -- Consumo primário
+             :qtd_fin,          -- Finalizada com qtd_sec
+             NOW())";
+
+            $stmtI = $this->pdo->prepare($sqlItem);
+            $stmtI->execute([
+                ':lote_id' => $loteId,
+                ':prod_sec_id' => $dados['produto_id'],
+                ':item_prod_id' => $itemProdId,
+                ':qtd_sec' => $qtdSec,
+                ':qtd_prim_cons' => $qtdPrim,  // Consumo é a qtd_prim total
+                ':qtd_fin' => $qtdSec
+            ]);
+
+            $itemLoteId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 5. ALOCAR NO ESTOQUE (tbl_estoque_alocacoes)
+            // =================================================================================
+            $estoqueRepo = new \App\Estoque\EstoqueRepository($this->pdo);
+
+            $estoqueRepo->alocarItem(
+                (int)$dados['endereco_id'],
+                (int)$itemLoteId,
+                (int)$usuarioId,
+                (float)$qtdSec  // Aloca baseado na qtd secundária (caixas)
+            );
+
+            // =================================================================================
+            // 6. REGISTRAR NO KARDEX (tbl_estoque_movimento)
+            // =================================================================================
+            // Verifica se você já criou o ENUM 'CARGA_INICIAL', senão use 'AJUSTE_INVENTARIO'
+            $tipoMovimento = 'CARGA_INICIAL';
+
+            $this->movimentoRepo->registrar(
+                $tipoMovimento,                                        // string $tipo
+                $itemLoteId,                                     // int $loteItemId
+                $qtdSec,                                         // float $quantidade (em caixas)
+                $usuarioId,                                       // int $usuarioId
+                null,                                              // ?int $origemId
+                $dados['endereco_id'],                            // ?int $destinoId
+                'Importação de Saldo Legado: ' . $dados['lote_codigo'], // ?string $obs
+                $loteId                                              // ?int $docRef (Lote ID como referência)
+            );
+
+            // =================================================================================
+            // 7. AUDITORIA (tbl_auditoria_logs)
+            // =================================================================================
+            if (isset($this->auditLogger)) {
+                $this->auditLogger->log(
+                    'IMPORTACAO',                        // $acao
+                    $loteId,                       // $registroId
+                    'tbl_lotes_novo_header',    // $tabelaAfetada
+                    null,                        // $dadosAntigos
+                    $dados,                        // $dadosNovos (Salvamos o input para referência)
+                    'Carga Inicial de Lote Legado com Produção Primária' // $observacao
+                );
+            }
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -3020,45 +2893,6 @@ class LoteNovoRepository
     }
 
     /**
-     * Lista os produtos que foram produzidos num lote específico (Origem).
-     */
-    /*  public function listarProdutosDoLote(int $loteId): array
-    {
-        // Busca na tabela de embalagem quais produtos foram gerados nesse lote
-        $sql = "SELECT DISTINCT p.prod_codigo, p.prod_descricao
-                FROM tbl_lotes_novo_embalagem e
-                JOIN tbl_produtos p ON e.item_emb_prod_sec_id = p.prod_codigo
-                WHERE e.item_emb_lote_id = :lote_id
-                ORDER BY p.prod_descricao";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':lote_id' => $loteId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } */
-
-    /**
-     * Busca os totais (Peso e Caixas) de um PRODUTO ESPECÍFICO dentro de um LOTE.
-     * Usado para preencher o formulário quando o usuário seleciona o produto.
-     */
-    /*  public function getDadosReprocessoPorProduto(int $loteOrigemId, int $produtoId): array
-    {
-        $sql = "SELECT 
-                    SUM(e.item_emb_qtd_sec * p.prod_peso_embalagem) AS peso_total_calculado,
-                    SUM(e.item_emb_qtd_sec) AS total_caixas,
-                    p.prod_peso_embalagem
-                FROM tbl_lotes_novo_embalagem e
-                JOIN tbl_produtos p ON e.item_emb_prod_sec_id = p.prod_codigo
-                WHERE e.item_emb_lote_id = :lote_id 
-                AND e.item_emb_prod_sec_id = :prod_id";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':lote_id' => $loteOrigemId, ':prod_id' => $produtoId]);
-        $dados = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $dados ?: []; // Retorna vazio se não achar
-    } */
-
-    /**
      * Lista produtos que existem no estoque de um lote (Origem).
      */
     public function listarProdutosDoLote(int $loteId): array
@@ -3073,31 +2907,6 @@ class LoteNovoRepository
         $stmt->execute([':lote_id' => $loteId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    /**
-     * Calcula o total de peso e caixas de um produto específico num lote.
-     */
-    /* public function getDadosReprocessoPorProduto(int $loteOrigemId, int $produtoId): array
-    {
-        $sql = "SELECT 
-                    -- Peso Total = Qtd Caixas * Peso da Embalagem
-                    SUM(e.item_emb_qtd_sec * p.prod_peso_embalagem) AS peso_total_calculado,
-                    -- Total de Caixas
-                    SUM(e.item_emb_qtd_sec) AS total_caixas,
-                    -- Peso Unitário
-                    p.prod_peso_embalagem
-                FROM tbl_lotes_novo_embalagem e
-                JOIN tbl_produtos p ON e.item_emb_prod_sec_id = p.prod_codigo
-                WHERE e.item_emb_lote_id = :lote_id 
-                AND e.item_emb_prod_sec_id = :prod_id";
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':lote_id' => $loteOrigemId, ':prod_id' => $produtoId]);
-        $dados = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Se não achar nada, retorna array vazio
-        return $dados ?: [];
-    } */
 
     /**
      * Busca saldo de REPROCESSO olhando para o ESTOQUE (Embalagem)
@@ -3172,7 +2981,7 @@ class LoteNovoRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':lote_id' => $loteId, ':prod_id' => $prodId]);
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -3275,43 +3084,6 @@ class LoteNovoRepository
         }
     }
 
-    // *Nota: Crie este método privado copiando a lógica do seu 'adicionarItemRecebimento' original,
-    // mas removendo a parte de criar transação nova, para usar a transação atual.
-    /* private function adicionarItemRecebimentoInterno(array $data)
-    {
-        // ... (Mesma lógica do seu INSERT INTO tbl_lote_novo_recebdetalhes) ...
-        // ... Retorna o ID inserido ...
-        // Copie o SQL aqui para garantir que rode dentro do beginTransaction acima
-        $loteOrigem = !empty($data['item_receb_lote_origem_id']) ? $data['item_receb_lote_origem_id'] : null;
-        $gramFaz = !empty($data['item_receb_gram_faz']) ? $data['item_receb_gram_faz'] : null;
-        $gramLab = !empty($data['item_receb_gram_lab']) ? $data['item_receb_gram_lab'] : null;
-
-        $sql = "INSERT INTO tbl_lote_novo_recebdetalhes (
-                    item_receb_lote_id, item_receb_produto_id, item_receb_lote_origem_id,
-                    item_receb_nota_fiscal, item_receb_peso_nota_fiscal, 
-                    item_receb_total_caixas, item_receb_peso_medio_ind,
-                    item_receb_gram_faz, item_receb_gram_lab
-                ) VALUES (
-                    :lote_id, :produto_id, :lote_origem,
-                    :nf, :peso_nf, :total_caixas, :peso_medio,
-                    :gram_faz, :gram_lab
-                )";
-        $stmt = $this->pdo->prepare($sql);
-        // ... bind params e execute ...
-        $stmt->execute([
-            ':lote_id' => $data['item_receb_lote_id'],
-            ':produto_id' => $data['item_receb_produto_id'],
-            ':lote_origem' => $loteOrigem,
-            ':nf' => $data['item_receb_nota_fiscal'],
-            ':peso_nf' => !empty($data['item_receb_peso_nota_fiscal']) ? $data['item_receb_peso_nota_fiscal'] : 0,
-            ':total_caixas' => !empty($data['item_receb_total_caixas']) ? $data['item_receb_total_caixas'] : 0,
-            ':peso_medio' => !empty($data['item_receb_peso_medio_ind']) ? $data['item_receb_peso_medio_ind'] : 0,
-            ':gram_faz' => $gramFaz,
-            ':gram_lab' => $gramLab
-        ]);
-        return $this->pdo->lastInsertId();
-    } */
-
     // Método privado usado tanto pelo 'adicionarItemRecebimento' quanto pelo 'salvarReprocessoComBaixa'
     private function adicionarItemRecebimentoInterno(array $data)
     {
@@ -3409,138 +3181,158 @@ class LoteNovoRepository
         return true;
     }
 
-    /**
-     * Passo 2 do Reprocesso:
-     * Em vez de baixar estoque, cria uma ORDEM DE EXPEDIÇÃO (OE) do tipo REPROCESSO.
-     * O estoque fica "Reservado" (Logicamente) pela existência da OE Pendente.
-     */
     public function salvarReprocessoGerandoOE(array $dadosRecebimento, int $usuarioId)
     {
         try {
             $this->pdo->beginTransaction();
 
-            // 1. DADOS INICIAIS
-            $loteOrigemId = $dadosRecebimento['item_receb_lote_origem_id'];
-            // O frontend manda a quantidade total em CAIXAS (unidade de estoque)
+            // DADOS DO FORMULÁRIO
+            $lotePaiId = $dadosRecebimento['item_receb_lote_id']; // O Lote que está sendo Produzido
+            $loteOrigemId = $dadosRecebimento['item_receb_lote_origem_id']; // O Lote que será consumido
             $qtdCaixasSolicitada = (float) $dadosRecebimento['item_receb_total_caixas'];
 
-            if ($qtdCaixasSolicitada <= 0) {
-                throw new Exception("A quantidade para reprocesso deve ser maior que zero.");
-            }
+            if ($qtdCaixasSolicitada <= 0) throw new Exception("Quantidade inválida.");
 
-            // 2. SALVAR O ITEM NO RECEBIMENTO (Histórico)
+            // 1. SALVA O ITEM NO RECEBIMENTO (Tabela de Lotes)
             $recebId = $this->adicionarItemRecebimentoInterno($dadosRecebimento);
 
-            // 3. CRIAR CABEÇALHO DA OE
-            // Gera número sequencial
-            $stmtNum = $this->pdo->query("SELECT MAX(CAST(oe_numero AS UNSIGNED)) FROM tbl_ordens_expedicao_header");
-            $proxNum = ($stmtNum->fetchColumn() ?: 0) + 1;
-            // Formata se necessário (ex: 20250001)
-            $numeroFormatado = $proxNum;
+            // BUSCA O NÚMERO COMPLETO DO LOTE PAI PARA USAR NA OE
+            $stmtLote = $this->pdo->prepare("SELECT lote_completo_calculado FROM tbl_lotes_novo_header WHERE lote_id = :id");
+            $stmtLote->execute([':id' => $lotePaiId]);
+            $lotePaiNum = $stmtLote->fetchColumn(); // Ex: "LOTE 0042/25"
 
-            $sqlHeader = "INSERT INTO tbl_ordens_expedicao_header 
-                (oe_numero, oe_data, oe_usuario_id, oe_status, oe_tipo_operacao) 
-                VALUES 
-                (:num, NOW(), :user, 'EM ELABORAÇÃO', 'REPROCESSO')";
+            // 2. AGRUPAMENTO: Verifica se já existe OE para este Lote Pai
+            // Define o padrão do número da OE
+            $numeroOEEsperado = "REP." . $lotePaiNum; // Ex: "REP. LOTE 0042/25"
 
-            $stmtH = $this->pdo->prepare($sqlHeader);
-            $stmtH->execute([
-                ':num' => $numeroFormatado,
-                ':user' => $usuarioId
-            ]);
-            $oeId = $this->pdo->lastInsertId();
+            // Busca se já existe OE com esse número exato
+            $sqlBuscaOE = "SELECT oe_id FROM tbl_ordens_expedicao_header 
+                           WHERE oe_numero = :num 
+                           AND oe_tipo_operacao = 'REPROCESSO' 
+                           AND oe_status = 'EM ELABORAÇÃO' 
+                           LIMIT 1";
+            $stmtBusca = $this->pdo->prepare($sqlBuscaOE);
+            $stmtBusca->execute([':num' => $numeroOEEsperado]);
+            $oeExistente = $stmtBusca->fetch(PDO::FETCH_ASSOC);
 
-            // 4. CRIAR O PEDIDO (CRIAR EM ENTIDADES UM CLIENTE INTERNO E COLOCAR A ID DELE...)
-            $idClienteInterno = 303;
+            if ($oeExistente) {
+                // USA A OE JÁ ABERTA
+                $oeId = $oeExistente['oe_id'];
+            } else {
+                // CRIA UMA NOVA OE (HEADER)
+                // Removemos 'oe_observacao' pois não existe na tabela
+                $sqlHeader = "INSERT INTO tbl_ordens_expedicao_header 
+                    (oe_numero, oe_data, oe_usuario_id, oe_status, oe_tipo_operacao) 
+                    VALUES 
+                    (:num, NOW(), :user, 'EM ELABORAÇÃO', 'REPROCESSO')";
 
-            $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
+                $stmtH = $this->pdo->prepare($sqlHeader);
+                $stmtH->execute([
+                    ':num'  => $numeroOEEsperado, // Ex: REP.100
+                    ':user' => $usuarioId
+                ]);
+                $oeId = $this->pdo->lastInsertId();
+            }
+
+            // 3. CRIA O PEDIDO
+            /* $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
                 (oep_ordem_id, oep_cliente_id, oep_numero_pedido) 
                 VALUES 
-                (:oe_id, :cli_id, :num_pedido)";
+                (:oe_id, 1, :desc_pedido)";
+
+            // Define o padrão do Pedido
+            $descPedido = "PEDIDO: REPROCESSO " . $lotePaiNum;
 
             $stmtP = $this->pdo->prepare($sqlPedido);
             $stmtP->execute([
-                ':oe_id' => $oeId,
-                ':cli_id' => $idClienteInterno,
-                ':num_pedido' => 'REP-LOTE-' . $loteOrigemId
+                ':oe_id'       => $oeId,
+                ':desc_pedido' => $descPedido
             ]);
-            $pedidoId = $this->pdo->lastInsertId();
+            $pedidoId = $this->pdo->lastInsertId();*/
 
-            // =================================================================
-            // 5. BUSCA INTELIGENTE DE ALOCAÇÕES (CORREÇÃO BASEADA NO SQL)
-            // =================================================================
-            // O JOIN conecta a Alocação -> Item Embalagem -> Lote Pai
-            $sqlEstoque = "SELECT 
-                                a.alocacao_id, 
-                                a.alocacao_quantidade 
+            // 3. VERIFICA SE JÁ EXISTE PEDIDO NA OE (AGRUPAMENTO POR PEDIDO)
+            $descPedido = "PEDIDO: REPROCESSO " . $lotePaiNum;
+            $sqlBuscaPedido = "SELECT oep_id FROM tbl_ordens_expedicao_pedidos 
+                   WHERE oep_ordem_id = :oe_id 
+                   AND oep_numero_pedido = :desc_pedido 
+                   AND oep_cliente_id = 1 
+                   LIMIT 1";
+            $stmtBuscaPedido = $this->pdo->prepare($sqlBuscaPedido);
+            $stmtBuscaPedido->execute([
+                ':oe_id' => $oeId,
+                ':desc_pedido' => $descPedido
+            ]);
+            $pedidoExistente = $stmtBuscaPedido->fetch(PDO::FETCH_ASSOC);
+
+            if ($pedidoExistente) {
+                // USA O PEDIDO EXISTENTE
+                $pedidoId = $pedidoExistente['oep_id'];
+            } else {
+                // CRIA UM NOVO PEDIDO
+                $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
+        (oep_ordem_id, oep_cliente_id, oep_numero_pedido) 
+        VALUES 
+        (:oe_id, 1, :desc_pedido)";  // Cliente fixo como 1 (INTERNO)
+
+                $stmtP = $this->pdo->prepare($sqlPedido);
+                $stmtP->execute([
+                    ':oe_id' => $oeId,
+                    ':desc_pedido' => $descPedido
+                ]);
+                $pedidoId = $this->pdo->lastInsertId();
+            }
+
+            // 4. RESERVA AUTOMÁTICA (Busca Alocações)
+            // Faz o Join para achar onde o lote está guardado
+            $sqlEstoque = "SELECT a.alocacao_id, a.alocacao_quantidade 
                            FROM tbl_estoque_alocacoes a
                            JOIN tbl_lotes_novo_embalagem e ON a.alocacao_lote_item_id = e.item_emb_id
                            WHERE e.item_emb_lote_id = :lote_id 
                              AND a.alocacao_quantidade > 0
-                           ORDER BY a.alocacao_data ASC"; // FIFO: Pega as alocações mais antigas
+                           ORDER BY a.alocacao_data ASC";
 
             $stmtEstoque = $this->pdo->prepare($sqlEstoque);
             $stmtEstoque->execute([':lote_id' => $loteOrigemId]);
             $alocacoes = $stmtEstoque->fetchAll(PDO::FETCH_ASSOC);
 
-            // Calcula o total disponível no estoque para conferência
             $totalEstoque = array_sum(array_column($alocacoes, 'alocacao_quantidade'));
-
             if ($totalEstoque < $qtdCaixasSolicitada) {
-                throw new Exception("Saldo insuficiente! O lote possui $totalEstoque caixas alocadas, mas você solicitou $qtdCaixasSolicitada.");
+                throw new Exception("Saldo insuficiente no estoque. Disponível: $totalEstoque cx.");
             }
 
-            // 6. DISTRIBUIÇÃO DA QUANTIDADE (Loop de Reserva)
+            // 5. CRIA OS ITENS DA OE
             $qtdRestante = $qtdCaixasSolicitada;
 
+            // Usaremos 'oei_observacao' para linkar com o ID do recebimento (para poder estornar depois)
             $sqlItem = "INSERT INTO tbl_ordens_expedicao_itens 
                 (oei_pedido_id, oei_alocacao_id, oei_quantidade, oei_status, oei_observacao) 
-                VALUES 
-                (:ped_id, :aloc_id, :qtd, 'PENDENTE', :obs)";
+                VALUES (:ped_id, :aloc_id, :qtd, 'PENDENTE', :obs)";
             $stmtItem = $this->pdo->prepare($sqlItem);
 
             foreach ($alocacoes as $aloc) {
-                if ($qtdRestante <= 0) break; // Já pegamos tudo que precisava
+                if ($qtdRestante <= 0) break;
 
-                $qtdDisponivelNestaAlocacao = (float) $aloc['alocacao_quantidade'];
-                $qtdParaPegar = 0;
+                $qtdParaPegar = min($qtdRestante, (float)$aloc['alocacao_quantidade']);
 
-                if ($qtdDisponivelNestaAlocacao >= $qtdRestante) {
-                    // Esta alocação tem saldo suficiente para cobrir o resto do pedido
-                    $qtdParaPegar = $qtdRestante;
-                } else {
-                    // Esta alocação tem menos do que precisamos, pega tudo dela e vai pra próxima
-                    $qtdParaPegar = $qtdDisponivelNestaAlocacao;
-                }
-
-                // Insere o Item na OE vinculado ao endereço físico (alocacao_id)
                 $stmtItem->execute([
-                    ':ped_id' => $pedidoId,
+                    ':ped_id'  => $pedidoId,
                     ':aloc_id' => $aloc['alocacao_id'],
-                    ':qtd' => $qtdParaPegar,
-                    ':obs' => "Reprocesso Lote #$loteOrigemId"
+                    ':qtd'     => $qtdParaPegar,
+                    ':obs'     => "REF_RECEB: " . $recebId // LINK VITAL PARA O ESTORNO
                 ]);
-
                 $qtdRestante -= $qtdParaPegar;
             }
 
-            // 7. AUDITORIA E SUCESSO
-            $this->auditLogger->log(
-                'CRIAR_OE_REPROCESSO',
-                $oeId,
-                'tbl_ordens_expedicao_header',
-                null,
-                $dadosRecebimento,
-                "OE #$numeroFormatado criada para reprocesso."
-            );
+            // Auditoria
+            //  $this->auditLogger->log('CRIAR_OE_REPROCESSO', $oeId, 'tbl_ordens_expedicao_header', null, $dadosRecebimento, "Adicionado Lote $loteOrigemId na OE $numeroOEEsperado");
+
+            $msgAudit = $pedidoExistente ? "Adicionado ao Pedido Existente na OE $numeroOEEsperado." : "Novo Pedido criado na OE $numeroOEEsperado.";
+            $this->auditLogger->log('CRIAR_OE_REPROCESSO', $oeId, 'tbl_ordens_expedicao_header', null, $dadosRecebimento, "Adicionado Lote $loteOrigemId - $msgAudit");
 
             $this->pdo->commit();
-            return ['success' => true, 'oe_id' => $oeId, 'message' => "Solicitação enviada com sucesso! OE #$numeroFormatado gerada."];
+            return ['success' => true, 'oe_id' => $oeId, 'message' => "Lote inserido na OE de Reprocesso #$numeroOEEsperado."];
         } catch (Exception $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-            // Repassa o erro para o JS mostrar no SweetAlert
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             throw $e;
         }
     }

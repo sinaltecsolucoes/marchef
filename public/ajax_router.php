@@ -332,7 +332,7 @@ switch ($action) {
         break;
 
 
-        // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
+    // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
         adicionarItemRecebimento($loteNovoRepo);
         break;
@@ -2045,7 +2045,7 @@ function getClientesComLotesOptions(LoteNovoRepository $repo)
     echo json_encode(['data' => $repo->getClientesComLotesOptions()]);
 }
 
-function importarLoteLegado(LoteNovoRepository $repo)
+/* function importarLoteLegado(LoteNovoRepository $repo)
 {
     // 1. FILTROS BÁSICOS
     $loteCodigo = filter_input(INPUT_POST, 'lote_codigo', FILTER_SANITIZE_SPECIAL_CHARS);
@@ -2086,6 +2086,66 @@ function importarLoteLegado(LoteNovoRepository $repo)
             'cliente_id'      => $clienteId,
             'produto_id'      => $produtoId,
             'quantidade'      => $qtdCaixas,
+            'endereco_id'     => $enderecoId,
+            'observacao'      => $obs
+        ];
+
+        // Chama o repositório
+        $repo->importarLoteLegado($dados, $usuarioId);
+
+        echo json_encode(['success' => true, 'message' => 'Lote legado importado e estoque alocado com sucesso!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]);
+    }
+}*/
+
+function importarLoteLegado(LoteNovoRepository $repo)
+{
+    // 1. FILTROS BÁSICOS
+    $loteCodigo = filter_input(INPUT_POST, 'lote_codigo', FILTER_SANITIZE_SPECIAL_CHARS);
+    $dataFab    = filter_input(INPUT_POST, 'data_fabricacao', FILTER_SANITIZE_SPECIAL_CHARS);
+    $clienteId  = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
+    $produtoId  = filter_input(INPUT_POST, 'produto_id', FILTER_VALIDATE_INT);
+    $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
+
+    // 2. TRATAMENTO DA QUANTIDADE (CAIXAS)
+    // O JS garante que esse campo tenha o valor correto (calculado ou digitado)
+    $qtdCaixas = filter_input(INPUT_POST, 'qtd_caixas', FILTER_VALIDATE_FLOAT);
+
+    // 3. TRATAMENTO DO PESO (Apenas para validação, já que o banco salva caixas)
+    $pesoRaw = $_POST['peso_total'] ?? '0';
+    $pesoFormatado = str_replace(',', '.', str_replace('.', '', $pesoRaw)); // 1.200,50 -> 1200.50
+
+    // O nome correto da função é filter_var, não filter_val
+    $pesoTotal = filter_var($pesoFormatado, FILTER_VALIDATE_FLOAT);
+
+    // 4. VALIDAÇÃO
+    if (!$loteCodigo || !$dataFab || !$clienteId || !$produtoId || !$enderecoId) {
+        echo json_encode(['success' => false, 'message' => 'Preencha os campos obrigatórios (Lote, Data, Cliente, Produto, Endereço).']);
+        return;
+    }
+
+    if (empty($qtdCaixas) || $qtdCaixas <= 0) {
+        echo json_encode(['success' => false, 'message' => 'A quantidade de Caixas deve ser maior que zero.']);
+        return;
+    }
+
+    if (empty($pesoTotal) || $pesoTotal <= 0) {
+        echo json_encode(['success' => false, 'message' => 'O peso total deve ser maior que zero.']);
+        return;
+    }
+
+    $obs = filter_input(INPUT_POST, 'observacao', FILTER_SANITIZE_SPECIAL_CHARS) ?? '';
+    $usuarioId = $_SESSION['codUsuario'] ?? 0;
+
+    try {
+        $dados = [
+            'lote_codigo'     => $loteCodigo,
+            'data_fabricacao' => $dataFab,
+            'cliente_id'      => $clienteId,
+            'produto_id'      => $produtoId,
+            'quantidade'      => $qtdCaixas,  // Mantido para compatibilidade, mas repo usa peso_total para cálculos
+            'peso_total'      => $pesoTotal,  // Adicionado: Necessário para cálculos no repo
             'endereco_id'     => $enderecoId,
             'observacao'      => $obs
         ];
