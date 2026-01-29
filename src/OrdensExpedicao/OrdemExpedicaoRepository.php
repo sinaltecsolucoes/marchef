@@ -32,6 +32,7 @@ class OrdemExpedicaoRepository
 
         $sqlData = "SELECT 
                     oe.oe_id, oe.oe_numero, oe.oe_data, oe.oe_status,
+                    oe.oe_tipo_operacao,
                     oe.oe_carregamento_id,
                     c.car_numero AS carregamento_numero,
                     u.usu_nome AS usuario_nome

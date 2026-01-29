@@ -2747,77 +2747,165 @@ $(document).ready(function () {
          });
      }); */
 
+    /*  $('#btn-adicionar-item-recebimento').on('click', function () {
+            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
+    
+            // FLUXO MATÉRIA PRIMA
+            if (tipo === 'MATERIA_PRIMA') {
+                salvarRecebimentoNormal();
+                return;
+            }
+    
+            // FLUXO REPROCESSO
+            let loteId = $('.select2-lotes-finalizados').val(); // Pega do Select2 direto
+            let prodId = $('#select-produto-origem').val();
+            let qtdCaixasTotal = parseFloat($('#item_receb_total_caixas').val()) || 0;
+    
+            if (!loteId || !prodId) {
+                notificacaoErro('Atenção', 'Selecione o lote de origem e o produto.');
+                return;
+            }
+            if (qtdCaixasTotal <= 0) {
+                notificacaoErro('Erro', 'Quantidade de caixas inválida.');
+                return;
+            }
+    
+            // Consulta endereços
+            $.ajax({
+                url: 'ajax_router.php?action=checkEstoqueParaBaixa',
+                data: { lote_id: loteId, produto_id: prodId },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        let saldos = res.data;
+    
+                        // CASO 1: SEM ALOCAÇÃO NENHUMA
+                        if (saldos.length === 0) {
+                            Swal.fire({
+                                title: 'Item sem Alocação Definida',
+                                text: "Este item consta no estoque mas não tem endereço de alocação (Kardex antigo ou Legado). Deseja registrar o reprocesso sem realizar baixa de endereço específico?",
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#3085d6',
+                                cancelButtonColor: '#d33',
+                                confirmButtonText: 'Sim, continuar',
+                                cancelButtonText: 'Cancelar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    distribuicaoBaixa = []; // Lista vazia
+                                    enviarReprocessoParaBackend();
+                                }
+                            });
+                            return;
+                        }
+    
+                        // CASO 2: TEM ALOCAÇÃO -> Abre modal ou baixa direto
+                        if (saldos.length === 1 && parseFloat(saldos[0].saldo_caixas) >= qtdCaixasTotal) {
+                            distribuicaoBaixa = [{
+                                id: saldos[0].item_emb_id,
+                                qtd: qtdCaixasTotal
+                            }];
+                            enviarReprocessoParaBackend();
+                        } else {
+                            abrirModalPicking(saldos, qtdCaixasTotal);
+                        }
+                    }
+                },
+                error: function () {
+                    // Se der erro ao checar estoque, permite tentar salvar sem baixa? 
+                    // Melhor avisar o erro.
+                    notificacaoErro('Erro', 'Falha ao consultar alocações do estoque.');
+                }
+            });
+        }); */
+
+    // No clique do botão Adicionar/Salvar
     $('#btn-adicionar-item-recebimento').on('click', function () {
         let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
 
-        // FLUXO MATÉRIA PRIMA
-        if (tipo === 'MATERIA_PRIMA') {
-            salvarRecebimentoNormal();
+        // VALIDAÇÃO BÁSICA
+        if (tipo === 'LOTE_ORIGEM') {
+            // Validações de reprocesso (se tem lote selecionado, peso, etc)
+            let loteId = $('.select2-lotes-finalizados').val();
+            let qtdCaixas = $('#item_receb_total_caixas').val();
+
+            if (!loteId || !qtdCaixas || qtdCaixas <= 0) {
+                Swal.fire('Atenção', 'Selecione um lote de origem e informe uma quantidade válida.', 'warning');
+                return;
+            }
+
+            // Vamos direto para a criação da OE de Reserva
+
+            Swal.fire({
+                title: 'Confirmar Solicitação?',
+                text: "Será gerada uma Ordem de Expedição para o setor de estoque separar este material.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, solicitar ao estoque',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarReprocessoGerandoOE();
+                }
+            });
+
             return;
         }
 
-        // FLUXO REPROCESSO
-        let loteId = $('.select2-lotes-finalizados').val(); // Pega do Select2 direto
+        // Fluxo normal (Matéria Prima)
+        salvarRecebimentoNormal();
+    });
+
+    function enviarReprocessoGerandoOE() {
+        let dadosForm = $('#form-recebimento-detalhe').serializeArray();
+
+        // Adiciona os dados extras necessários
+        let loteId = $('.select2-lotes-finalizados').val();
         let prodId = $('#select-produto-origem').val();
-        let qtdCaixasTotal = parseFloat($('#item_receb_total_caixas').val()) || 0;
 
-        if (!loteId || !prodId) {
-            notificacaoErro('Atenção', 'Selecione o lote de origem e o produto.');
-            return;
-        }
-        if (qtdCaixasTotal <= 0) {
-            notificacaoErro('Erro', 'Quantidade de caixas inválida.');
-            return;
-        }
+        dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
+        dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
+        dadosForm.push({ name: 'lote_origem_produto_id', value: prodId });
 
-        // Consulta endereços
+        // CSRF Token
+        let csrfToken = $('meta[name="csrf-token"]').attr('content');
+        dadosForm.push({ name: 'csrf_token', value: csrfToken });
+
+        // Chama o método PHP novo
         $.ajax({
-            url: 'ajax_router.php?action=checkEstoqueParaBaixa',
-            data: { lote_id: loteId, produto_id: prodId },
+            url: 'ajax_router.php?action=salvarReprocessoGerandoOE',
+            type: 'POST',
+            data: dadosForm,
             dataType: 'json',
             success: function (res) {
                 if (res.success) {
-                    let saldos = res.data;
+                    Swal.fire('Solicitado!', res.message, 'success');
 
-                    // CASO 1: SEM ALOCAÇÃO NENHUMA
-                    if (saldos.length === 0) {
-                        Swal.fire({
-                            title: 'Item sem Alocação Definida',
-                            text: "Este item consta no estoque mas não tem endereço de alocação (Kardex antigo ou Legado). Deseja registrar o reprocesso sem realizar baixa de endereço específico?",
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonColor: '#3085d6',
-                            cancelButtonColor: '#d33',
-                            confirmButtonText: 'Sim, continuar',
-                            cancelButtonText: 'Cancelar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                distribuicaoBaixa = []; // Lista vazia
-                                enviarReprocessoParaBackend();
-                            }
-                        });
-                        return;
-                    }
-
-                    // CASO 2: TEM ALOCAÇÃO -> Abre modal ou baixa direto
-                    if (saldos.length === 1 && parseFloat(saldos[0].saldo_caixas) >= qtdCaixasTotal) {
-                        distribuicaoBaixa = [{
-                            id: saldos[0].item_emb_id,
-                            qtd: qtdCaixasTotal
-                        }];
-                        enviarReprocessoParaBackend();
+                    // Reset do formulário
+                    if (typeof resetarFormularioRecebimento === 'function') {
+                        resetarFormularioRecebimento();
                     } else {
-                        abrirModalPicking(saldos, qtdCaixasTotal);
+                        $('#form-recebimento-detalhe')[0].reset();
+                        $('.select2-lotes-finalizados').val(null).trigger('change');
+                        $('#select-produto-origem').empty();
                     }
+
+                    if (loteIdAtual) recarregarItensRecebimento(loteIdAtual);
+                    recarregarTabelaLotes(); // Importante para ver se mudou status
+                } else {
+                    Swal.fire('Erro', res.message, 'error');
                 }
             },
-            error: function () {
-                // Se der erro ao checar estoque, permite tentar salvar sem baixa? 
-                // Melhor avisar o erro.
-                notificacaoErro('Erro', 'Falha ao consultar alocações do estoque.');
+            error: function (xhr) {
+                // Tratamento de erro aprimorado para mostrar a mensagem do backend se existir
+                let msg = 'Falha na comunicação com o servidor.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                Swal.fire('Erro', msg, 'error');
             }
         });
-    });
+    }
 
     $('#btn-cancelar-edicao').on('click', function () {
         limparFormularioDetalhes();

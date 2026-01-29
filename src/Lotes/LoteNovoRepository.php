@@ -3408,4 +3408,140 @@ class LoteNovoRepository
 
         return true;
     }
+
+    /**
+     * Passo 2 do Reprocesso:
+     * Em vez de baixar estoque, cria uma ORDEM DE EXPEDIÇÃO (OE) do tipo REPROCESSO.
+     * O estoque fica "Reservado" (Logicamente) pela existência da OE Pendente.
+     */
+    public function salvarReprocessoGerandoOE(array $dadosRecebimento, int $usuarioId)
+    {
+        try {
+            $this->pdo->beginTransaction();
+
+            // 1. DADOS INICIAIS
+            $loteOrigemId = $dadosRecebimento['item_receb_lote_origem_id'];
+            // O frontend manda a quantidade total em CAIXAS (unidade de estoque)
+            $qtdCaixasSolicitada = (float) $dadosRecebimento['item_receb_total_caixas'];
+
+            if ($qtdCaixasSolicitada <= 0) {
+                throw new Exception("A quantidade para reprocesso deve ser maior que zero.");
+            }
+
+            // 2. SALVAR O ITEM NO RECEBIMENTO (Histórico)
+            $recebId = $this->adicionarItemRecebimentoInterno($dadosRecebimento);
+
+            // 3. CRIAR CABEÇALHO DA OE
+            // Gera número sequencial
+            $stmtNum = $this->pdo->query("SELECT MAX(CAST(oe_numero AS UNSIGNED)) FROM tbl_ordens_expedicao_header");
+            $proxNum = ($stmtNum->fetchColumn() ?: 0) + 1;
+            // Formata se necessário (ex: 20250001)
+            $numeroFormatado = $proxNum;
+
+            $sqlHeader = "INSERT INTO tbl_ordens_expedicao_header 
+                (oe_numero, oe_data, oe_usuario_id, oe_status, oe_tipo_operacao) 
+                VALUES 
+                (:num, NOW(), :user, 'EM ELABORAÇÃO', 'REPROCESSO')";
+
+            $stmtH = $this->pdo->prepare($sqlHeader);
+            $stmtH->execute([
+                ':num' => $numeroFormatado,
+                ':user' => $usuarioId
+            ]);
+            $oeId = $this->pdo->lastInsertId();
+
+            // 4. CRIAR O PEDIDO (CRIAR EM ENTIDADES UM CLIENTE INTERNO E COLOCAR A ID DELE...)
+            $idClienteInterno = 303;
+
+            $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
+                (oep_ordem_id, oep_cliente_id, oep_numero_pedido) 
+                VALUES 
+                (:oe_id, :cli_id, :num_pedido)";
+
+            $stmtP = $this->pdo->prepare($sqlPedido);
+            $stmtP->execute([
+                ':oe_id' => $oeId,
+                ':cli_id' => $idClienteInterno,
+                ':num_pedido' => 'REP-LOTE-' . $loteOrigemId
+            ]);
+            $pedidoId = $this->pdo->lastInsertId();
+
+            // =================================================================
+            // 5. BUSCA INTELIGENTE DE ALOCAÇÕES (CORREÇÃO BASEADA NO SQL)
+            // =================================================================
+            // O JOIN conecta a Alocação -> Item Embalagem -> Lote Pai
+            $sqlEstoque = "SELECT 
+                                a.alocacao_id, 
+                                a.alocacao_quantidade 
+                           FROM tbl_estoque_alocacoes a
+                           JOIN tbl_lotes_novo_embalagem e ON a.alocacao_lote_item_id = e.item_emb_id
+                           WHERE e.item_emb_lote_id = :lote_id 
+                             AND a.alocacao_quantidade > 0
+                           ORDER BY a.alocacao_data ASC"; // FIFO: Pega as alocações mais antigas
+
+            $stmtEstoque = $this->pdo->prepare($sqlEstoque);
+            $stmtEstoque->execute([':lote_id' => $loteOrigemId]);
+            $alocacoes = $stmtEstoque->fetchAll(PDO::FETCH_ASSOC);
+
+            // Calcula o total disponível no estoque para conferência
+            $totalEstoque = array_sum(array_column($alocacoes, 'alocacao_quantidade'));
+
+            if ($totalEstoque < $qtdCaixasSolicitada) {
+                throw new Exception("Saldo insuficiente! O lote possui $totalEstoque caixas alocadas, mas você solicitou $qtdCaixasSolicitada.");
+            }
+
+            // 6. DISTRIBUIÇÃO DA QUANTIDADE (Loop de Reserva)
+            $qtdRestante = $qtdCaixasSolicitada;
+
+            $sqlItem = "INSERT INTO tbl_ordens_expedicao_itens 
+                (oei_pedido_id, oei_alocacao_id, oei_quantidade, oei_status, oei_observacao) 
+                VALUES 
+                (:ped_id, :aloc_id, :qtd, 'PENDENTE', :obs)";
+            $stmtItem = $this->pdo->prepare($sqlItem);
+
+            foreach ($alocacoes as $aloc) {
+                if ($qtdRestante <= 0) break; // Já pegamos tudo que precisava
+
+                $qtdDisponivelNestaAlocacao = (float) $aloc['alocacao_quantidade'];
+                $qtdParaPegar = 0;
+
+                if ($qtdDisponivelNestaAlocacao >= $qtdRestante) {
+                    // Esta alocação tem saldo suficiente para cobrir o resto do pedido
+                    $qtdParaPegar = $qtdRestante;
+                } else {
+                    // Esta alocação tem menos do que precisamos, pega tudo dela e vai pra próxima
+                    $qtdParaPegar = $qtdDisponivelNestaAlocacao;
+                }
+
+                // Insere o Item na OE vinculado ao endereço físico (alocacao_id)
+                $stmtItem->execute([
+                    ':ped_id' => $pedidoId,
+                    ':aloc_id' => $aloc['alocacao_id'],
+                    ':qtd' => $qtdParaPegar,
+                    ':obs' => "Reprocesso Lote #$loteOrigemId"
+                ]);
+
+                $qtdRestante -= $qtdParaPegar;
+            }
+
+            // 7. AUDITORIA E SUCESSO
+            $this->auditLogger->log(
+                'CRIAR_OE_REPROCESSO',
+                $oeId,
+                'tbl_ordens_expedicao_header',
+                null,
+                $dadosRecebimento,
+                "OE #$numeroFormatado criada para reprocesso."
+            );
+
+            $this->pdo->commit();
+            return ['success' => true, 'oe_id' => $oeId, 'message' => "Solicitação enviada com sucesso! OE #$numeroFormatado gerada."];
+        } catch (Exception $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            // Repassa o erro para o JS mostrar no SweetAlert
+            throw $e;
+        }
+    }
 }

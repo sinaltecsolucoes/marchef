@@ -327,9 +327,12 @@ switch ($action) {
     case 'estornarLoteLegado':
         estornarLoteLegado($loteNovoRepo);
         break;
+    case 'salvarReprocessoGerandoOE':
+        salvarReprocessoGerandoOE($loteNovoRepo);
+        break;
 
 
-    // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
+        // --- ROTAS DE DETALHES DE RECEBIMENTO (NOVO) ---
     case 'adicionarItemRecebimento':
         adicionarItemRecebimento($loteNovoRepo);
         break;
@@ -2038,7 +2041,7 @@ function estornarLoteLegado(LoteNovoRepository $repo)
 
 function getClientesComLotesOptions(LoteNovoRepository $repo)
 {
-    // Retorna no formato { data: [...] } que o seu JS espera
+    // Retorna no formato { data: [...] } que o JS espera
     echo json_encode(['data' => $repo->getClientesComLotesOptions()]);
 }
 
@@ -2105,7 +2108,6 @@ function listarProdutosDoLote(LoteNovoRepository $repo)
         echo json_encode(['data' => []]);
     }
 }
-
 
 function getDadosReprocessoPorProduto(LoteNovoRepository $repo)
 {
@@ -2255,6 +2257,31 @@ function editarItemRecebimento(LoteNovoRepository $repo)
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
+    }
+}
+
+function salvarReprocessoGerandoOE(LoteNovoRepository $repo)
+{
+
+    $dados = $_POST;
+    $usuarioId = $_SESSION['user_id'] ?? 1;
+
+    try {
+        // Verifica sessão básica
+        if (!isset($_SESSION['codUsuario'])) {
+            throw new Exception("Sessão expirada. Faça login novamente.");
+        }
+
+        // CORREÇÃO: Passando $_POST (dados) e o ID do Usuário
+        // O $loteRepo já está instanciado no início dessa seção do arquivo
+        $resultado = $repo->salvarReprocessoGerandoOE($dados, $usuarioId);
+
+        echo json_encode($resultado);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Erro ao solicitar reprocesso: ' . $e->getMessage()
+        ]);
     }
 }
 

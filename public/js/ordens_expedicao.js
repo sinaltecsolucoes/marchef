@@ -13,8 +13,23 @@ $(document).ready(function () {
         "columns": [
             {
                 "data": "oe_numero",
-                "className": "text-center align-middle"
+                "className": "text-center align-middle",
+                "render": function (data, type, row) {
+                    // CRIA O NÚMERO
+                    let html = '<span class="fw-bold text-dark">#' + data + '</span>';
 
+                    // ADICIONA O BADGE DO TIPO ABAIXO DO NÚMERO
+                    if (row.oe_tipo_operacao === 'REPROCESSO') {
+                        html += '<br><span class="badge bg-warning text-dark" style="font-size: 0.7em;">REPROCESSO</span>';
+                    } else if (row.oe_tipo_operacao === 'TRANSFERENCIA') {
+                        html += '<br><span class="badge bg-info text-dark" style="font-size: 0.7em;">TRANSF.</span>';
+                    } else {
+                        // Venda (padrão) - Opcional: não mostrar nada ou mostrar badge
+                        html += '<br><span class="badge bg-success" style="font-size: 0.7em;">VENDA</span>';
+                    }
+
+                    return html;
+                }
             },
             {
                 "data": "oe_data",
