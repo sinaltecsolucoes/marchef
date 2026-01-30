@@ -2575,7 +2575,7 @@ class LoteNovoRepository
     } */
 
 
-    public function importarLoteLegado(array $dados, int $usuarioId)
+    /* public function importarLoteLegado(array $dados, int $usuarioId)
     {
         $this->pdo->beginTransaction();
 
@@ -2767,6 +2767,208 @@ class LoteNovoRepository
                     null,                        // $dadosAntigos
                     $dados,                        // $dadosNovos (Salvamos o input para referência)
                     'Carga Inicial de Lote Legado com Produção Primária' // $observacao
+                );
+            }
+
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    } */
+
+    public function importarLoteLegado(array $dados, int $usuarioId)
+    {
+        // --- LOG DE DEPURAÇÃO (Ver no arquivo de log do Apache/PHP ou error_log) ---
+        error_log("==========================================");
+        error_log("DEBUG IMPORTAÇÃO LEGADO - DADOS RECEBIDOS:");
+        error_log(print_r($dados, true)); // Imprime o array inteiro
+        error_log("==========================================");
+
+        $this->pdo->beginTransaction();
+
+        try {
+            // =================================================================================
+            // 1. CRIAR O CABEÇALHO DO LOTE (tbl_lotes_novo_header)
+            // =================================================================================
+            $sqlHeader = "INSERT INTO tbl_lotes_novo_header 
+            (lote_numero, lote_completo_calculado, lote_data_fabricacao, 
+             lote_cliente_id, lote_status, lote_observacao, 
+             lote_usuario_id, lote_data_finalizacao)
+            VALUES 
+            (:numero, :completo, :data_fab, 
+             :cliente, 'FINALIZADO', :obs, 
+             :user, NOW())";
+
+            // --- LÓGICA DE EXTRAÇÃO DE NÚMERO ---
+            $codigoOriginal = $dados['lote_codigo'];
+
+            if (strpos($codigoOriginal, '/') !== false) {
+                $parteAntesDaBarra = explode('/', $codigoOriginal)[0];
+            } else {
+                $parteAntesDaBarra = $codigoOriginal;
+            }
+
+            $numeroSerial = preg_replace('/[^0-9]/', '', $parteAntesDaBarra);
+            if (empty($numeroSerial)) $numeroSerial = '0000';
+
+            $stmtH = $this->pdo->prepare($sqlHeader);
+            $stmtH->execute([
+                ':numero'   => substr($numeroSerial, 0, 50),
+                ':completo' => $dados['lote_codigo'],
+                ':data_fab' => $dados['data_fabricacao'],
+                ':cliente'  => $dados['cliente_id'],
+                ':obs'      => 'CARGA INICIAL (LEGADO). ' . ($dados['observacao'] ?? ''),
+                ':user'     => $usuarioId
+            ]);
+
+            $loteId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 2. BUSCAR PRODUTO PRIMÁRIO E PESOS ASSOCIADOS
+            // =================================================================================
+            $sqlBuscaSecundario = "SELECT prod_primario_id, prod_peso_embalagem AS peso_sec
+                               FROM tbl_produtos 
+                               WHERE prod_codigo = :prod_sec_id 
+                               AND prod_tipo_embalagem = 'SECUNDARIA'
+                               LIMIT 1";
+
+            $stmtSec = $this->pdo->prepare($sqlBuscaSecundario);
+            $stmtSec->execute([':prod_sec_id' => $dados['produto_id']]);
+            $secData = $stmtSec->fetch(PDO::FETCH_ASSOC);
+
+            if (!$secData || !$secData['prod_primario_id']) {
+                throw new Exception("Produto secundário inválido ou sem primário associado (ID {$dados['produto_id']}).");
+            }
+
+            $prodPrimId = $secData['prod_primario_id'];
+            $pesoSec = (float) $secData['peso_sec'] ?: 10.0;
+
+            $sqlBuscaPrimario = "SELECT prod_peso_embalagem AS peso_prim
+                             FROM tbl_produtos 
+                             WHERE prod_codigo = :prod_prim_id 
+                             AND prod_tipo_embalagem = 'PRIMARIA'
+                             LIMIT 1";
+
+            $stmtPrim = $this->pdo->prepare($sqlBuscaPrimario);
+            $stmtPrim->execute([':prod_prim_id' => $prodPrimId]);
+            $primData = $stmtPrim->fetch(PDO::FETCH_ASSOC);
+
+            if (!$primData) {
+                throw new Exception("Produto primário não encontrado (ID {$prodPrimId}).");
+            }
+
+            $pesoPrim = (float) $primData['peso_prim'] ?: 1.0;
+
+            if ($pesoPrim <= 0 || $pesoSec <= 0) {
+                throw new Exception("Pesos de embalagem inválidos para os produtos.");
+            }
+
+            $pesoTotal = (float) $dados['peso_total'];
+
+            if ($pesoTotal <= 0) {
+                throw new Exception("Peso total inválido.");
+            }
+
+            $qtdPrim = $pesoTotal / $pesoPrim;
+            $qtdSec = floor($pesoTotal / $pesoSec);
+
+            // =================================================================================
+            // 3. CRIAR O ITEM DE PRODUÇÃO PRIMÁRIA (ATUALIZADO COM VALIDADE)
+            // =================================================================================
+            // Alteração: Incluído 'item_prod_data_validade'
+            $sqlProducao = "INSERT INTO tbl_lotes_novo_producao
+            (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo, item_prod_data_validade)
+            VALUES
+            (:lote_id, :prod_prim_id, :qtd_prim, :qtd_saldo, :data_val)";
+
+            // Tratamento da Data de Validade (pode vir vazia se não calculada)
+            $dataValidade = !empty($dados['data_validade']) ? $dados['data_validade'] : null;
+
+            $stmtProd = $this->pdo->prepare($sqlProducao);
+            $stmtProd->execute([
+                ':lote_id'      => $loteId,
+                ':prod_prim_id' => $prodPrimId,
+                ':qtd_prim'     => $qtdPrim,
+                ':qtd_saldo'    => $qtdPrim,
+                ':data_val'     => $dataValidade // <--- Nova variável aqui
+            ]);
+
+            $itemProdId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 4. CRIAR O ITEM DE EMBALAGEM SECUNDÁRIA
+            // =================================================================================
+            $sqlItem = "INSERT INTO tbl_lotes_novo_embalagem
+            (item_emb_lote_id, 
+             item_emb_prod_sec_id, 
+             item_emb_prod_prim_id, 
+             item_emb_qtd_sec, 
+             item_emb_qtd_prim_cons, 
+             item_emb_qtd_finalizada, 
+             item_emb_data_cadastro
+            )
+            VALUES
+            (:lote_id, 
+             :prod_sec_id, 
+             :item_prod_id, 
+             :qtd_sec, 
+             :qtd_prim_cons, 
+             :qtd_fin, 
+             NOW())";
+
+            $stmtI = $this->pdo->prepare($sqlItem);
+            $stmtI->execute([
+                ':lote_id'        => $loteId,
+                ':prod_sec_id'    => $dados['produto_id'],
+                ':item_prod_id'   => $itemProdId,
+                ':qtd_sec'        => $qtdSec,
+                ':qtd_prim_cons'  => $qtdPrim,
+                ':qtd_fin'        => $qtdSec
+            ]);
+
+            $itemLoteId = $this->pdo->lastInsertId();
+
+            // =================================================================================
+            // 5. ALOCAR NO ESTOQUE
+            // =================================================================================
+            $estoqueRepo = new \App\Estoque\EstoqueRepository($this->pdo);
+
+            $estoqueRepo->alocarItem(
+                (int)$dados['endereco_id'],
+                (int)$itemLoteId,
+                (int)$usuarioId,
+                (float)$qtdSec
+            );
+
+            // =================================================================================
+            // 6. REGISTRAR NO KARDEX
+            // =================================================================================
+            $tipoMovimento = 'CARGA_INICIAL';
+
+            $this->movimentoRepo->registrar(
+                $tipoMovimento,
+                $itemLoteId,
+                $qtdSec,
+                $usuarioId,
+                null,
+                $dados['endereco_id'],
+                'Importação de Saldo Legado: ' . $dados['lote_codigo'],
+                $loteId
+            );
+
+            // =================================================================================
+            // 7. AUDITORIA
+            // =================================================================================
+            if (isset($this->auditLogger)) {
+                $this->auditLogger->log(
+                    'IMPORTACAO',
+                    $loteId,
+                    'tbl_lotes_novo_header',
+                    null,
+                    $dados,
+                    'Carga Inicial de Lote Legado com Produção Primária'
                 );
             }
 

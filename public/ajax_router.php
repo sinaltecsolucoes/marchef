@@ -788,7 +788,7 @@ function listarProdutos(ProdutoRepository $repo)
     echo json_encode($output);
 }
 
-function getProduto(ProdutoRepository $repo)
+/* function getProduto(ProdutoRepository $repo)
 {
     $id = filter_input(INPUT_POST, 'prod_codigo', FILTER_VALIDATE_INT);
     if (!$id) {
@@ -796,6 +796,26 @@ function getProduto(ProdutoRepository $repo)
         return;
     }
     $produto = $repo->find($id);
+    if ($produto) {
+        echo json_encode(['success' => true, 'data' => $produto]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Produto não encontrado.']);
+    }
+} */
+
+function getProduto(ProdutoRepository $repo)
+{
+    // AJUSTE AQUI: mudamos de 'prod_codigo' para 'id' para casar com o JS
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+        return;
+    }
+
+    // Aqui ele chama o método find() que você alterou no Repository (com o LEFT JOIN)
+    $produto = $repo->find($id);
+
     if ($produto) {
         echo json_encode(['success' => true, 'data' => $produto]);
     } else {
@@ -2104,6 +2124,7 @@ function importarLoteLegado(LoteNovoRepository $repo)
     // 1. FILTROS BÁSICOS
     $loteCodigo = filter_input(INPUT_POST, 'lote_codigo', FILTER_SANITIZE_SPECIAL_CHARS);
     $dataFab    = filter_input(INPUT_POST, 'data_fabricacao', FILTER_SANITIZE_SPECIAL_CHARS);
+    $dataValidade = filter_input(INPUT_POST, 'data_validade', FILTER_SANITIZE_SPECIAL_CHARS);
     $clienteId  = filter_input(INPUT_POST, 'cliente_id', FILTER_VALIDATE_INT);
     $produtoId  = filter_input(INPUT_POST, 'produto_id', FILTER_VALIDATE_INT);
     $enderecoId = filter_input(INPUT_POST, 'endereco_id', FILTER_VALIDATE_INT);
@@ -2142,6 +2163,7 @@ function importarLoteLegado(LoteNovoRepository $repo)
         $dados = [
             'lote_codigo'     => $loteCodigo,
             'data_fabricacao' => $dataFab,
+            'data_validade'   => $dataValidade,
             'cliente_id'      => $clienteId,
             'produto_id'      => $produtoId,
             'quantidade'      => $qtdCaixas,  // Mantido para compatibilidade, mas repo usa peso_total para cálculos

@@ -124,12 +124,11 @@ $(document).ready(function () {
             delay: 250,
             data: function (params) {
                 return {
-                    // MUDANÇA 1: O PHP espera $_GET['term'], então enviamos 'term'
+                    // O PHP espera $_GET['term'], então enviamos 'term'
                     term: params.term
                 };
             },
             processResults: function (data) {
-                // MUDANÇA 2: Simplificação Total!
                 // Como o PHP já retorna { "results": [ {id: 1, text: "Lote A"}, ... ] }
                 // nós passamos o objeto 'data' direto. O Select2 entende nativamente.
                 return data;
@@ -888,6 +887,37 @@ $(document).ready(function () {
             $feedback.html(`Consumo: <strong>${consumoCalculado.toFixed(3)}</strong> (Saldo restante: ${saldoRestante.toFixed(3)})`)
                 .removeClass('text-danger fw-bold').addClass('text-muted');
             $btnAdicionar.prop('disabled', false);
+        }
+    }
+
+    /**
+     * Calcula e preenche a validade automaticamente baseada no produto e data de fabricação.
+     * @param {jQuery} $selectProduto - O elemento Select/Select2 do produto
+     * @param {jQuery} $inputDataFab - O input da data de fabricação (Header ou campo específico)
+     * @param {jQuery} $inputValidadeDestino - O input onde a data calculada será escrita
+     */
+    function preencherValidadeAutomatica($selectProduto, $inputDataFab, $inputValidadeDestino) {
+        // Pega a opção selecionada (suporta Select2 e Select nativo)
+        const optionSelecionada = $selectProduto.find(':selected');
+
+        // Pega o atributo data (precisa vir do PHP assim: data-validade-meses="12")
+        const mesesValidade = optionSelecionada.data('validade-meses');
+
+        // Pega a data de fabricação
+        const dataFabricacaoStr = $inputDataFab.val();
+
+        if (mesesValidade && dataFabricacaoStr) {
+            // Cria o objeto Date (Adiciona T00:00:00 para evitar problemas de fuso horário)
+            const dataFabricacao = new Date(dataFabricacaoStr + 'T00:00:00');
+
+            // Usa sua função existente de cálculo
+            const dataValidadeCalculada = calcularValidadeArredondandoParaCima(dataFabricacao, parseInt(mesesValidade));
+
+            // Preenche o campo
+            $inputValidadeDestino.val(dataValidadeCalculada);
+        } else {
+            // Se faltar dados, limpa o campo (opcional, depende se quer manter edição manual)
+            $inputValidadeDestino.val('');
         }
     }
 
@@ -2419,18 +2449,24 @@ $(document).ready(function () {
 
         calcularConsumoEmbalagem();
     });
+    
+    // --- NOVO LOTE (MODO PADRÃO) ---
 
+    // Ao mudar o produto
     $('#item_prod_produto_id_novo').on('change', function () {
-        const optionSelecionada = $(this).find(':selected');
-        const mesesValidade = optionSelecionada.data('validade-meses');
-        const dataFabricacaoStr = $('#lote_data_fabricacao_novo').val();
+        preencherValidadeAutomatica(
+            $(this),
+            $('#lote_data_fabricacao_novo'),
+            $('#item_prod_data_validade_novo')
+        );
+    });
 
-        if (mesesValidade && dataFabricacaoStr) {
-            const dataFabricacao = new Date(dataFabricacaoStr + 'T00:00:00');
-            const dataValidadeCalculada = calcularValidadeArredondandoParaCima(dataFabricacao, parseInt(mesesValidade));
-            $('#item_prod_data_validade_novo').val(dataValidadeCalculada);
-        } else {
-            $('#item_prod_data_validade_novo').val('');
+    // Ao mudar a Data de Fabricação no Header, também deveria recalcular?
+    // Se sim, este listener faz a alteração:
+    $('#lote_data_fabricacao_novo').on('change', function () {
+        // Dispara o change do produto para recalcular, se já tiver produto selecionado
+        if ($('#item_prod_produto_id_novo').val()) {
+            $('#item_prod_produto_id_novo').trigger('change');
         }
     });
 
@@ -2478,13 +2514,6 @@ $(document).ready(function () {
         onAbaDetalhesExibida();
     });
 
-    // CÁLCULO AUTOMÁTICO: PESO MÉDIO FAZENDA
-    /* $('#item_receb_peso_nota_fiscal, #item_receb_total_caixas').on('keyup input paste propertychange', function () {
-        setTimeout(function () {
-            calcularPesoMedioFazenda();
-        }, 50);
-    });*/
-
     // =========================================================================
     // 1. LISTENER MESTRE DO CAMPO PESO (Decide qual conta fazer)
     // =========================================================================
@@ -2519,78 +2548,6 @@ $(document).ready(function () {
             // No modo Reprocesso, esse campo é calculado/bloqueado, então não faz nada
         }, 50);
     });
-
-    // --- BOTÃO EDITAR ITEM (DETALHES) ---
-    /* $(document).on('click', '.btn-editar-item-recebimento', function () {
- 
-         const id = $(this).data('id');
- 
-         $.get('ajax_router.php?action=getItemRecebimento', { item_id: id }, function (res) {
-             if (!res.success) {
-                 notificacaoErro('Erro', res.message);
-                 return;
-             }
- 
-             const data = res.data;
- 
-             // Entra em modo edição
-             modoEdicao = true;
-             dadosOriginaisEdicao = { ...data };
- 
-             // IDs
-             $('#item_receb_id').val(data.item_receb_id);
-             $('#item_receb_lote_id').val(data.item_receb_lote_id);
- 
-             // Radio button
-             if (data.item_receb_lote_origem_id) {
-                 $('input[name="tipo_entrada_mp"][value="LOTE_ORIGEM"]').prop('checked', true);
-             } else {
-                 $('input[name="tipo_entrada_mp"][value="MATERIA_PRIMA"]').prop('checked', true);
-             }
- 
-             // Selects
-             $('#item_receb_produto_id')
-                 .val(data.item_receb_produto_id)
-                 .trigger('change');
- 
-             if (data.item_receb_lote_origem_id) {
-                 const option = new Option(
-                     data.lote_origem_label || 'Lote selecionado',
-                     data.item_receb_lote_origem_id,
-                     true,
-                     true
-                 );
-                 $('#item_receb_lote_origem_id')
-                     .append(option)
-                     .trigger('change');
-             } else {
-                 $('#item_receb_lote_origem_id').val(null).trigger('change');
-             }
- 
-             // Inputs
-             $('#item_receb_nota_fiscal').val(data.item_receb_nota_fiscal);
-             $('#item_receb_peso_nota_fiscal').val(floatToBr(data.item_receb_peso_nota_fiscal, 3));
-             $('#item_receb_total_caixas').val(data.item_receb_total_caixas);
-             $('#item_receb_peso_medio_ind').val(floatToBr(data.item_receb_peso_medio_ind, 2));
-             $('input[name="item_receb_gram_faz"]').val(floatToBr(data.item_receb_gram_faz, 2));
-             $('input[name="item_receb_gram_lab"]').val(floatToBr(data.item_receb_gram_lab, 2));
-             $('#item_receb_peso_nota_fiscal').trigger('input');
- 
-             // Botão principal
-             $('#btn-adicionar-item-recebimento')
-                 .html('<i class="fas fa-save me-2"></i> Atualizar Item')
-                 .removeClass('btn-success')
-                 .addClass('btn-warning');
- 
-             // exibe botão cancelar
-             $('#btn-cancelar-edicao').removeClass('d-none');
- 
-             // Aplica as regras de UI, com tudo já preenchido
-             aplicarModoEntrada();
- 
-         }, 'json');
-     }); */
-
 
     $(document).on('click', '.btn-editar-item-recebimento', function () {
         const id = $(this).data('id');
@@ -2693,131 +2650,6 @@ $(document).ready(function () {
 
         }, 'json');
     });
-
-
-    // --- BOTÃO SALVAR (ADICIONAR / ATUALIZAR) ---
-    /* $('#btn-adicionar-item-recebimento').on('click', function () {
- 
-         const id = $('#item_receb_id').val();
-         const action = id ? 'atualizarItemRecebimento' : 'adicionarItemRecebimento';
- 
-         // Cria o FormData baseado no form
-         const formData = new FormData($('#form-recebimento-detalhe')[0]);
-         formData.append('csrf_token', csrfToken);
- 
-         // CONVERTE OS VALORES FORMATADOS DE VOLTA PARA PADRÃO SQL (PONTO)
-         // Precisamos pegar os valores visuais, converter e sobrescrever no FormData
-         formData.set('item_receb_peso_nota_fiscal', brToFloat($('#item_receb_peso_nota_fiscal').val()));
-         formData.set('item_receb_peso_medio_ind', brToFloat($('#item_receb_peso_medio_ind').val()));
-         formData.set('item_receb_gram_faz', brToFloat($('[name="item_receb_gram_faz"]').val()));
-         formData.set('item_receb_gram_lab', brToFloat($('[name="item_receb_gram_lab"]').val()));
- 
-         // AJAX com FormData (processData: false)
-         $.ajax({
-             url: `ajax_router.php?action=${action}`,
-             type: 'POST',
-             data: formData,
-             processData: false,
-             contentType: false,
-             dataType: 'json'
-         }).done(function (res) {
-             if (!res.success) {
-                 notificacaoErro('Erro', res.message);
-                 return;
-             }
-             notificacaoSucesso('Sucesso', res.message);
- 
-             // Limpa o formulários
-             limparFormularioDetalhes();
- 
-             recarregarTabelaLotes();
- 
-             // Sai do modo edição (se estiver)
-             sairModoEdicao();
- 
-             // Reaplica regras do rádio selecionado
- 
-             aplicarModoEntrada();
- 
-             // Mantém o lote atual
-             $('#item_receb_lote_id').val(loteIdAtual);
- 
-             // Recarrega tabela
-             recarregarItensRecebimento(loteIdAtual);
-         });
-     }); */
-
-    /*  $('#btn-adicionar-item-recebimento').on('click', function () {
-            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-    
-            // FLUXO MATÉRIA PRIMA
-            if (tipo === 'MATERIA_PRIMA') {
-                salvarRecebimentoNormal();
-                return;
-            }
-    
-            // FLUXO REPROCESSO
-            let loteId = $('.select2-lotes-finalizados').val(); // Pega do Select2 direto
-            let prodId = $('#select-produto-origem').val();
-            let qtdCaixasTotal = parseFloat($('#item_receb_total_caixas').val()) || 0;
-    
-            if (!loteId || !prodId) {
-                notificacaoErro('Atenção', 'Selecione o lote de origem e o produto.');
-                return;
-            }
-            if (qtdCaixasTotal <= 0) {
-                notificacaoErro('Erro', 'Quantidade de caixas inválida.');
-                return;
-            }
-    
-            // Consulta endereços
-            $.ajax({
-                url: 'ajax_router.php?action=checkEstoqueParaBaixa',
-                data: { lote_id: loteId, produto_id: prodId },
-                dataType: 'json',
-                success: function (res) {
-                    if (res.success) {
-                        let saldos = res.data;
-    
-                        // CASO 1: SEM ALOCAÇÃO NENHUMA
-                        if (saldos.length === 0) {
-                            Swal.fire({
-                                title: 'Item sem Alocação Definida',
-                                text: "Este item consta no estoque mas não tem endereço de alocação (Kardex antigo ou Legado). Deseja registrar o reprocesso sem realizar baixa de endereço específico?",
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonColor: '#3085d6',
-                                cancelButtonColor: '#d33',
-                                confirmButtonText: 'Sim, continuar',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    distribuicaoBaixa = []; // Lista vazia
-                                    enviarReprocessoParaBackend();
-                                }
-                            });
-                            return;
-                        }
-    
-                        // CASO 2: TEM ALOCAÇÃO -> Abre modal ou baixa direto
-                        if (saldos.length === 1 && parseFloat(saldos[0].saldo_caixas) >= qtdCaixasTotal) {
-                            distribuicaoBaixa = [{
-                                id: saldos[0].item_emb_id,
-                                qtd: qtdCaixasTotal
-                            }];
-                            enviarReprocessoParaBackend();
-                        } else {
-                            abrirModalPicking(saldos, qtdCaixasTotal);
-                        }
-                    }
-                },
-                error: function () {
-                    // Se der erro ao checar estoque, permite tentar salvar sem baixa? 
-                    // Melhor avisar o erro.
-                    notificacaoErro('Erro', 'Falha ao consultar alocações do estoque.');
-                }
-            });
-        }); */
 
     // No clique do botão Adicionar/Salvar
     $('#btn-adicionar-item-recebimento').on('click', function () {
@@ -3061,6 +2893,24 @@ $(document).ready(function () {
 
     // --- IMPORTAÇÃO DE LOTE LEGADO ---
     $('#btn-salvar-legado').on('click', function () {
+
+        // Serializa o formulário
+        var dadosFormulario = $('#form-importar-legado').serializeArray(); // ou .serialize()
+
+        // --- LOG DE DEBUG DO ENVIO ---
+        console.group("🚀 DEBUG ENVIO AJAX");
+        console.log("Dados sendo enviados:", dadosFormulario);
+
+        // Procura especificamente o campo data_validade no array
+        let campoValidade = dadosFormulario.find(item => item.name === 'data_validade');
+        if (campoValidade) {
+            console.log("✅ Campo 'data_validade' encontrado no pacote:", campoValidade.value);
+        } else {
+            console.error("❌ O campo 'data_validade' NÃO está no formulário serializado!");
+        }
+        console.groupEnd();
+        // -----------------------------
+
         const $btn = $(this);
         const $form = $('#form-importar-legado');
 
@@ -3133,27 +2983,98 @@ $(document).ready(function () {
     });
 
     // --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
-
-    // 1. Ao selecionar produto, guarda o peso da embalagem
+    // =================================================================
+    // LISTENER UNIFICADO: PRODUTO LEGADO (PESO + VALIDADE) + DEBUGS
+    // =================================================================
     $('.select2-produtos').on('select2:select', function (e) {
+        // Pega os dados vindos do PHP
         var data = e.params.data;
 
-        // Debug: Veja no console (F12) se o peso está aparecendo
-        console.log("Produto Selecionado:", data.text, "Peso Embalagem:", data.prod_peso_embalagem);
+        // IDs dos campos (Confirme se são estes no seu HTML)
+        const $inputDataFab = $('#lote_data_fabricacao_legado');
+        const $inputValidade = $('#lote_data_validade_legado');
+        const dataFabricacaoStr = $inputDataFab.val(); // Valor cru: YYYY-MM-DD
 
-        // Garante que seja float, trocando vírgula por ponto se necessário
-        let pesoString = String(data.prod_peso_embalagem || '0').replace(',', '.');
-        let pesoEmb = parseFloat(pesoString) || 0;
+        const mesesValidade = parseInt(data.validade_meses) || 0;
 
-        $('#hidden_peso_embalagem').val(pesoEmb);
+        // --- 1. PREPARAÇÃO DOS DADOS PARA O LOG ---
+        let dataValidadeCalculada = "Não calculada (Falta Data Fab)";
+        let pesoPrimarioLog = "N/A (Cálculo no Backend)"; // O select2 só traz dados do produto selecionado (secundário)
+        let pesoSecundarioLog = data.prod_peso_embalagem;
 
-        if (pesoEmb === 0) {
-            notificacaoErro('Aviso', 'Produto sem peso padrão cadastrado. Digite manualmente.');
+        // Tenta calcular para exibir no log
+        if (mesesValidade > 0 && dataFabricacaoStr) {
+            const dataFabObj = new Date(dataFabricacaoStr + 'T00:00:00');
+            if (!isNaN(dataFabObj.getTime())) {
+                dataValidadeCalculada = calcularValidadeArredondandoParaCima(dataFabObj, mesesValidade);
+            } else {
+                dataValidadeCalculada = "ERRO: Data Fab Inválida no JS";
+            }
         }
 
-        // Atualiza a interface
-        configurarCamposCalculo();
-        recalcularValores();
+        // --- 2. LOG DETALHADO NO CONSOLE ---
+        console.group("🔍 DEBUG IMPORTAÇÃO LOTE LEGADO");
+        console.log("📦 Descrição do Produto:", data.text);
+        console.log("📅 Data Fabricação (Campo):", dataFabricacaoStr || "VAZIO");
+        console.log("⏳ Validade Cadastrada (Meses):", mesesValidade);
+        console.log("🧮 Data Validade Calculada:", dataValidadeCalculada);
+        console.log("⚖️ Peso Secundário (JSON):", pesoSecundarioLog);
+        console.log("⚖️ Peso Primário:", pesoPrimarioLog);
+        console.groupEnd();
+
+        // --- 3. LÓGICA DE PREENCHIMENTO DO PESO ---
+        let pesoString = String(data.prod_peso_embalagem || '0').replace(',', '.');
+        let pesoEmb = parseFloat(pesoString) || 0;
+        $('#hidden_peso_embalagem').val(pesoEmb);
+
+        if (typeof configurarCamposCalculo === 'function') configurarCamposCalculo();
+        if (typeof recalcularValores === 'function') recalcularValores();
+
+        // --- 4. LÓGICA DE PREENCHIMENTO DA VALIDADE ---
+        // Salva a validade para uso futuro
+        $(this).data('validade-atual', mesesValidade);
+
+        // Só preenche se tivermos tudo válido
+        if (mesesValidade > 0 && dataFabricacaoStr) {
+            const dataFabObj = new Date(dataFabricacaoStr + 'T00:00:00');
+
+            // VERIFICAÇÃO CRÍTICA: Se a data for inválida, NÃO escreva no input
+            if (!isNaN(dataFabObj.getTime())) {
+                const resultado = calcularValidadeArredondandoParaCima(dataFabObj, mesesValidade);
+
+                // Mais uma verificação: O resultado é uma string válida?
+                if (resultado && resultado !== "Invalid Date") {
+                    $inputValidade.val(resultado);
+                    console.log("✅ Campo de validade preenchido com:", resultado);
+                } else {
+                    console.warn("⚠️ Resultado do cálculo inválido:", resultado);
+                    $inputValidade.val(''); // Limpa para não enviar lixo
+                }
+            }
+        } else {
+            // Se faltar data de fabricação, não faz nada (espera o usuário preencher a data)
+            console.log("ℹ️ Aguardando preenchimento da Data de Fabricação...");
+        }
+    });
+
+    // LISTENER DA DATA DE FABRICAÇÃO (RECALCULAR)
+    $('#lote_data_fabricacao_legado').on('change', function () {
+        const mesesValidade = $('.select2-produtos').data('validade-atual');
+        const dataFabricacaoStr = $(this).val();
+        const $inputValidade = $('#lote_data_validade_legado');
+
+        console.log("🔄 Data Fabricação Alterada para:", dataFabricacaoStr);
+
+        if (mesesValidade && dataFabricacaoStr) {
+            const dataFabObj = new Date(dataFabricacaoStr + 'T00:00:00');
+            if (!isNaN(dataFabObj.getTime())) {
+                const resultado = calcularValidadeArredondandoParaCima(dataFabObj, parseInt(mesesValidade));
+                if (resultado && resultado !== "Invalid Date") {
+                    $inputValidade.val(resultado);
+                    console.log("✅ Validade recalculada:", resultado);
+                }
+            }
+        }
     });
 
     // 2. Monitora a troca do Radio Button (Modo de Cálculo)
@@ -3483,50 +3404,6 @@ $(document).ready(function () {
     // VARIÁVEL GLOBAL PARA GUARDAR A DISTRIBUIÇÃO
     var distribuicaoBaixa = [];
 
-    /*    $('#btn-adicionar-item-recebimento').on('click', function () {
-            let tipo = $('input[name="tipo_entrada_mp"]:checked').val();
-    
-            // Se for Matéria Prima, salva normal (código antigo)
-            if (tipo === 'MATERIA_PRIMA') {
-                salvarRecebimentoNormal(); // *Supondo que vc tenha isolado a função antiga
-                return;
-            }
-    
-            // SE FOR REPROCESSO:
-            let loteId = $('#item_receb_lote_origem_id').val();
-            let prodId = $('#select-produto-origem').val();
-            let qtdCaixasTotal = parseInt($('#item_receb_total_caixas').val()) || 0;
-    
-            if (qtdCaixasTotal <= 0) {
-                notificacaoErro('Erro', 'Quantidade inválida.');
-                return;
-            }
-    
-            // 1. Consulta endereços
-            $.ajax({
-                url: 'ajax_router.php?action=checkEstoqueParaBaixa',
-                data: { lote_id: loteId, produto_id: prodId },
-                dataType: 'json',
-                success: function (res) {
-                    if (res.success) {
-                        let saldos = res.data;
-    
-                        // Se tiver só 1 endereço e o saldo cobrir tudo, baixa direto
-                        if (saldos.length === 1 && saldos[0].saldo_caixas >= qtdCaixasTotal) {
-                            distribuicaoBaixa = [{
-                                id: saldos[0].item_emb_id,
-                                qtd: qtdCaixasTotal
-                            }];
-                            enviarReprocessoParaBackend(); // Salva direto
-                        } else {
-                            // Vários endereços ou saldo complexo: ABRE MODAL PICKING
-                            abrirModalPicking(saldos, qtdCaixasTotal);
-                        }
-                    }
-                }
-            });
-        }); */
-
     function abrirModalPicking(saldos, totalAlvo) {
         let html = '';
         saldos.forEach(item => {
@@ -3596,212 +3473,6 @@ $(document).ready(function () {
         $('#modal-picking-reprocesso').modal('hide');
         enviarReprocessoParaBackend();
     });
-
-    /* function enviarReprocessoParaBackend() {
-         // 1. Serializa os dados do formulário
-         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
- 
-         // --- INJEÇÃO MANUAL DOS IDs ---
-         // O serializeArray pode falhar se o campo estiver 'disabled' ou oculto de forma complexa.
-         // Aqui nós garantimos que o valor selecionado no Select2 seja enviado.
- 
-         let loteId = $('.select2-lotes-finalizados').val();
-         let prodId = $('#select-produto-origem').val();
- 
-         // Removemos entradas duplicadas ou vazias antigas para evitar confusão no PHP
-         dadosForm = dadosForm.filter(function (item) {
-             return item.name !== 'lote_origem_produto_id' && item.name !== 'item_receb_lote_origem_id';
-         });
- 
-         // Adicionamos os valores corretos manualmente
-         if (loteId) {
-             dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
-         }
-         if (prodId) {
-             dadosForm.push({ name: 'lote_origem_produto_id', value: prodId });
-         }
-         // -----------------------------------------------
- 
-         // 2. Adiciona o JSON da distribuição de estoque
-         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
- 
-         // 3. Adiciona o token manualmente para garantir
-         let csrfToken = $('meta[name="csrf-token"]').attr('content');
-         dadosForm.push({ name: 'csrf_token', value: csrfToken });
- 
-         $.ajax({
-             url: 'ajax_router.php?action=salvarReprocesso',
-             type: 'POST',
-             data: dadosForm,
-             dataType: 'json',
-             success: function (res) {
-                 if (res.success) {
-                     Swal.fire('Sucesso', res.message, 'success');
- 
-                     // A. Limpa os inputs do formulário
-                     $('#form-recebimento-detalhe')[0].reset();
- 
-                     // B. Limpa os Select2 (Lote e Produto)
-                     $('.select2-lotes-finalizados').val(null).trigger('change');
-                     $('#select-produto-origem').empty();
- 
-                     // C. Limpa campos hidden e variáveis globais
-                     $('#item_receb_id').val('');
-                     distribuicaoBaixa = [];
- 
-                     // D. FORÇA A VOLTA VISUAL PARA MATÉRIA-PRIMA
-                     // Isso dispara o evento 'change' que esconde as divs de reprocesso e mostra a de MP
-                     $('#entrada_mp_materia').prop('checked', true).trigger('change');
- 
-                     // E. Atualiza as tabelas da tela
-                     if (typeof carregarItensRecebimento === 'function') {
-                         carregarItensRecebimento(loteIdAtual);
-                     }
-                     if (typeof recarregarTabelaLotes === 'function') {
-                         recarregarTabelaLotes();
-                     }
-                 } else {
-                     Swal.fire('Erro', res.message, 'error');
-                 }
-             },
-             error: function (xhr) {
-                 // Tratamento de erro caso o servidor devolva 403/500
-                 let msg = 'Erro desconhecido';
-                 if (xhr.responseJSON && xhr.responseJSON.message) {
-                     msg = xhr.responseJSON.message;
-                 }
-                 Swal.fire('Erro', 'Falha ao salvar: ' + msg, 'error');
-             }
-         });
-     } */
-
-    // Função corrigida para salvar Reprocesso
-    /* function enviarReprocessoParaBackend() {
-         // 1. Pega os dados brutos
-         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
- 
-         // 2. Pega os valores REAIS dos campos de Reprocesso
-         let loteId = $('.select2-lotes-finalizados').val();
-         let prodId = $('#select-produto-origem').val();
- 
-         // 3. LIMPEZA CRÍTICA: Remove campos duplicados ou vazios que causam confusão
-         // Removemos o 'item_receb_produto_id' original (que vem da aba Matéria Prima e está vazio ou oculto)
-         dadosForm = dadosForm.filter(function (item) {
-             return item.name !== 'item_receb_produto_id' &&
-                 item.name !== 'item_receb_lote_origem_id' &&
-                 item.name !== 'lote_origem_produto_id';
-         });
- 
-         // 4. INJEÇÃO DOS DADOS CORRETOS
-         // Aqui está o pulo do gato: Enviamos com o nome que o banco espera ('item_receb_produto_id')
-         if (loteId) {
-             dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
-         }
- 
-         if (prodId) {
-             // Mandamos o ID do produto de reprocesso como se fosse o produto principal
-             dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
-         }
- 
-         // 5. Adiciona distribuição de estoque e token
-         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
-         let csrfToken = $('meta[name="csrf-token"]').attr('content');
-         dadosForm.push({ name: 'csrf_token', value: csrfToken });
- 
-         // 6. Envia
-         $.ajax({
-             url: 'ajax_router.php?action=salvarReprocesso',
-             type: 'POST',
-             data: dadosForm,
-             dataType: 'json',
-             success: function (res) {
-                 if (res.success) {
-                     Swal.fire('Sucesso', res.message, 'success');
- 
-                     // Reseta tudo
-                     $('#form-recebimento-detalhe')[0].reset();
-                     $('.select2-lotes-finalizados').val(null).trigger('change');
-                     $('#select-produto-origem').empty();
-                     $('#item_receb_id').val('');
-                     distribuicaoBaixa = [];
- 
-                     // Força volta para Matéria Prima visualmente
-                     $('#entrada_mp_materia').prop('checked', true).trigger('change');
- 
-                     // Atualiza tabelas
-                     if (typeof carregarItensRecebimento === 'function') carregarItensRecebimento(loteIdAtual);
-                     if (typeof recarregarTabelaLotes === 'function') recarregarTabelaLotes();
- 
-                 } else {
-                     Swal.fire('Erro', res.message, 'error');
-                 }
-             },
-             error: function (xhr) {
-                 let msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Erro desconhecido';
-                 Swal.fire('Erro', 'Falha ao salvar: ' + msg, 'error');
-             }
-         });
-     } */
-
-
-    /* function enviarReprocessoParaBackend() {
-         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
- 
-         let loteId = $('.select2-lotes-finalizados').val();
-         let prodId = $('#select-produto-origem').val();
- 
-         // Limpeza de campos duplicados ou inúteis
-         dadosForm = dadosForm.filter(function (item) {
-             return item.name !== 'item_receb_produto_id' &&
-                 item.name !== 'item_receb_lote_origem_id' &&
-                 item.name !== 'lote_origem_produto_id';
-         });
- 
-         // INJEÇÃO MANUAL (Garante que o PHP receba os IDs)
-         if (loteId) dadosForm.push({ name: 'item_receb_lote_origem_id', value: loteId });
-         if (prodId) dadosForm.push({ name: 'item_receb_produto_id', value: prodId });
- 
-         // Estoque e Token
-         dadosForm.push({ name: 'distribuicao_estoque', value: JSON.stringify(distribuicaoBaixa) });
-         let csrfToken = $('meta[name="csrf-token"]').attr('content');
-         dadosForm.push({ name: 'csrf_token', value: csrfToken });
- 
-         // Debug: Veja no console o que está sendo enviado
-         console.log("Enviando Reprocesso:", dadosForm);
- 
-         $.ajax({
-             url: 'ajax_router.php?action=salvarReprocesso',
-             type: 'POST',
-             data: dadosForm,
-             dataType: 'json',
-             success: function (res) {
-                 if (res.success) {
-                     Swal.fire('Sucesso', res.message, 'success');
- 
-                     // Reset Total (Função que criamos antes)
-                     if (typeof resetarFormularioRecebimento === 'function') {
-                         resetarFormularioRecebimento();
-                     } else {
-                         // Fallback se a função não existir
-                         $('#form-recebimento-detalhe')[0].reset();
-                         window.location.reload();
-                     }
- 
-                     if (loteIdAtual) carregarItensRecebimento(loteIdAtual);
-                     recarregarTabelaLotes();
- 
-                 } else {
-                     Swal.fire('Erro', res.message, 'error');
-                 }
-             },
-             error: function (xhr) {
-                 let msg = 'Erro desconhecido';
-                 if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-                 // Mostra erro detalhado na tela para facilitar
-                 Swal.fire('Erro 500', 'Falha ao salvar. Verifique se o produto está selecionado. <br>Detalhe: ' + msg, 'error');
-             }
-         });
-     } */
 
     function enviarReprocessoParaBackend() {
         let dadosForm = $('#form-recebimento-detalhe').serializeArray();
@@ -3951,105 +3622,8 @@ $(document).ready(function () {
         resetarFormularioRecebimento();
     });
 
-    // Função para carregar e desenhar a tabela de itens do recebimento
-    /* function carregarItensRecebimento(loteId) {
-         if (!loteId) return;
- 
-         // Limpa a tabela e mostra um "Carregando..."
-         const $tbody = $('#tabela-itens-recebimento');
-         $tbody.html('<tr><td colspan="7" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Carregando itens...</td></tr>');
- 
-         $.ajax({
-             url: 'ajax_router.php?action=getItensRecebimento',
-             type: 'GET',
-             data: { lote_id: loteId },
-             dataType: 'json',
-             success: function (res) {
-                 $tbody.empty(); // Limpa o loading
- 
-                 if (res.success && res.data && res.data.length > 0) {
-                     let html = '';
- 
-                     res.data.forEach(function (item) {
-                         // Formata valores
-                         let peso = formatarBR(item.item_receb_peso_nota_fiscal, 3);
-                         let caixas = item.item_receb_total_caixas || 0;
-                         let medio = formatarBR(item.item_receb_peso_medio_ind, 2);
- 
-                         // Lógica visual para diferenciar MP de Reprocesso
-                         let origemBadge = '<span class="badge bg-success">Matéria Prima</span>';
-                         let prodDisplay = item.prod_descricao;
- 
-                         if (item.item_receb_lote_origem_id) {
-                             // Se for reprocesso, mostra de qual lote veio
-                             let loteRef = item.lote_origem_numero ? item.lote_origem_numero : item.item_receb_lote_origem_id;
-                             origemBadge = `<span class="badge bg-warning text-dark" title="Reprocesso do Lote ${loteRef}">Reprocesso</span>`;
-                             prodDisplay += `<br><small class="text-muted"><i class="fas fa-history"></i> Lote Origem: ${loteRef}</small>`;
-                         }
- 
-                         html += `
-                             <tr>
-                                 <td>${prodDisplay}</td>
-                                 <td class="text-center align-middle">${origemBadge}</td>
-                                 <td class="text-center align-middle">${item.item_receb_nota_fiscal || '-'}</td>
-                                 <td class="text-end align-middle">${peso} kg</td>
-                                 <td class="text-center align-middle">${caixas}</td>
-                                 <td class="text-end align-middle">${medio} kg</td>
-                                 <td class="text-center align-middle">
-                                     <div class="btn-group btn-group-sm">
-                                         <button type="button" class="btn btn-outline-primary btn-editar-item-recebimento" 
-                                                 data-id="${item.item_receb_id}" title="Editar">
-                                             <i class="fas fa-edit"></i>
-                                         </button>
-                                         <button type="button" class="btn btn-outline-danger btn-excluir-item-recebimento" 
-                                                 data-id="${item.item_receb_id}" title="Excluir">
-                                             <i class="fas fa-trash-alt"></i>
-                                         </button>
-                                     </div>
-                                 </td>
-                             </tr>
-                         `;
-                     });
- 
-                     $tbody.html(html);
-                 } else {
-                     $tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">Nenhum item lançado neste lote.</td></tr>');
-                 }
-             },
-             error: function () {
-                 $tbody.html('<tr><td colspan="7" class="text-center text-danger">Erro ao carregar itens.</td></tr>');
-             }
-         });
-     } */
-
-    // --- Torna a função global (opcional, mas recomendável para debug) ---
-    /* window.carregarItensRecebimento = carregarItensRecebimento;*/
-
-    // ======================================================
-    // CÁLCULO AUTOMÁTICO: Peso x Peso Médio = Caixas
-    // ======================================================
-    /* $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('input', function () {
- 
-         // 1. Pega os valores e converte de BR (1.200,50) para Float (1200.50)
-         let pesoTotal = parseFloat($('#item_receb_peso_nota_fiscal').val().replace(/\./g, '').replace(',', '.')) || 0;
-         let pesoMedio = parseFloat($('#item_receb_peso_medio_ind').val().replace(/\./g, '').replace(',', '.')) || 0;
- 
-         // 2. Só calcula se tiver peso médio válido (evita divisão por zero)
-         if (pesoMedio > 0) {
-             let caixas = pesoTotal / pesoMedio;
- 
-             // Arredonda para inteiro (opcional, depende da sua regra de negócio)
-             // Se aceitar meia caixa, use .toFixed(2)
-             let caixasArredondado = Math.round(caixas);
- 
-             // 3. Joga o valor no input de Caixas
-             $('#item_receb_total_caixas').val(caixasArredondado);
-         }
-     });*/
-
-
     // =========================================================================
-    // CORREÇÃO FINAL: CÁLCULO IMEDIATO (Sem Delay e Compatível com Máscaras)
+    // CÁLCULO IMEDIATO (Sem Delay e Compatível com Máscaras)
     // =========================================================================
 
     // 1. Ao selecionar o produto, preenchemos o peso médio visualmente
@@ -4070,14 +3644,6 @@ $(document).ready(function () {
         // Tenta calcular imediatamente
         //  calcularCaixasReprocesso();
     });
-
-    // 2. Monitora TODOS os eventos de digitação para garantir resposta imediata
-    // O setTimeout(..., 50) é o segredo para funcionar com máscaras
-    /*  $('#item_receb_peso_nota_fiscal, #item_receb_peso_medio_ind').on('keyup input change paste', function () {
-          setTimeout(function () {
-              calcularCaixasReprocesso();
-          }, 50);
-      });*/
 
     // Função de Cálculo
     function calcularCaixasReprocesso() {

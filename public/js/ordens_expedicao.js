@@ -16,7 +16,7 @@ $(document).ready(function () {
                 "className": "text-center align-middle",
                 "render": function (data, type, row) {
                     // CRIA O NÚMERO
-                    let html = '<span class="fw-bold text-dark">#' + data + '</span>';
+                    let html = '<span class="fw-bold text-dark">' + data + '</span>';
 
                     // ADICIONA O BADGE DO TIPO ABAIXO DO NÚMERO
                     if (row.oe_tipo_operacao === 'REPROCESSO') {

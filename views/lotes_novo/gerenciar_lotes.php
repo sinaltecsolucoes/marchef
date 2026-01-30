@@ -613,8 +613,12 @@ switch ($page) {
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Data Fabricação *</label>
-                            <input type="date" class="form-control" name="data_fabricacao" required>
+                            <input type="date" class="form-control" id="lote_data_fabricacao_legado" name="data_fabricacao" required>
+
+                            <input type="hidden" id="lote_data_validade_legado" name="data_validade">
                         </div>
+
+                        
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Fornecedor *</label>
                             <select class="form-select select2-clientes" name="cliente_id" style="width:100%" required>

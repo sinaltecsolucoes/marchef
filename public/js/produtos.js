@@ -823,4 +823,116 @@ $(document).ready(function () {
         window.open(urlRelatorio, '_blank');
 
     });
+
+
+    // =================================================================
+    // 5. VISUALIZAR DETALHES (CLIQUE NA LINHA)
+    // =================================================================
+
+    // Detecta clique na linha da tabela
+    // Detecta clique na linha da tabela
+    $('#tabela-produtos tbody').on('click', 'tr', function (e) {
+        if ($(e.target).closest('button, a, .btn').length) {
+            return;
+        }
+
+        const dataTable = $('#tabela-produtos').DataTable();
+        const rowData = dataTable.row(this).data();
+
+        // --- DEBUG: VAMOS DESCOBRIR O QUE TEM NA LINHA ---
+        console.log("CLIQUE NA LINHA - DADOS:", rowData);
+        // ------------------------------------------------
+
+        // Se rowData for undefined (clique em cabeçalho ou linha vazia), para.
+        if (!rowData) return;
+
+        // TENTATIVA 1: O nome padrão do banco
+        let idProduto = rowData.prod_codigo;
+
+        // TENTATIVA 2: Às vezes o DataTables usa 'id' se foi aliasado no SQL
+        if (!idProduto) idProduto = rowData.id;
+
+        // TENTATIVA 3: Se for array numérico (índices 0, 1, 2...)
+        if (!idProduto && Array.isArray(rowData)) idProduto = rowData[0]; // Supondo que ID é a primeira coluna
+
+        console.log("ID CAPTURADO:", idProduto); // Confirme se apareceu o número aqui
+
+        if (!idProduto) {
+            notificacaoErro('Erro', 'Não foi possível identificar o ID do produto nesta linha.');
+            return;
+        }
+
+        // Busca os dados completos no servidor
+        $.post('ajax_router.php?action=getProduto', { id: idProduto }, function (response) {
+            if (response.success) {
+                abrirModalDetalhes(response.data);
+            } else {
+                notificacaoErro('Erro', response.message);
+            }
+        }, 'json');
+    });
+
+    function abrirModalDetalhes(produto) {
+        // 1. Muda o Título
+        $('#modal-adicionar-produto .modal-title').text('Detalhes do Produto (Modo Leitura)');
+
+        // 2. Preenche os campos (Use os IDs do seu formulário)
+        $('#prod_descricao').val(produto.prod_descricao);
+        $('#prod_codigo_interno').val(produto.prod_codigo_interno);
+        $('#prod_tipo').val(produto.prod_tipo);
+        $('#prod_subtipo').val(produto.prod_subtipo);
+        $('#prod_classificacao').val(produto.prod_classificacao);
+        $('#prod_categoria').val(produto.prod_categoria);
+        $('#prod_origem').val(produto.prod_origem);
+        $('#prod_situacao').val(produto.prod_situacao);
+        $('#prod_unidade').val(produto.prod_unidade);
+        $('#prod_peso_embalagem').val(produto.prod_peso_embalagem);
+
+        // Lógica dos Blocos (Embalagem Primária/Secundária)
+        $('#prod_tipo_embalagem').val(produto.prod_tipo_embalagem).trigger('change');
+
+        // Se for secundária, preenche o Select2 do Pai
+        if (produto.prod_tipo_embalagem === 'SECUNDARIA' && produto.prod_primario_id) {
+            // Cria a option manualmente para o Select2 exibir o texto correto
+            const newOption = new Option(produto.nome_produto_pai, produto.prod_primario_id, true, true);
+            $('#prod_primario_id').append(newOption).trigger('change');
+        }
+
+        // 3. BLOQUEIA TUDO (Inputs, Selects, Textareas)
+        $formProduto.find('input, select, textarea').prop('disabled', true);
+
+        // 4. Esconde o botão de Salvar e ajusta o botão Fechar
+        $formProduto.closest('.modal-content').find('button[type="submit"]').hide();
+        $formProduto.closest('.modal-content').find('.btn-secondary').text('Fechar');
+
+        // 5. Abre o Modal
+        $modalProduto.modal('show');
+    }
+
+    // =================================================================
+    // 6. RESETAR MODAL AO FECHAR (CRUCIAL)
+    // =================================================================
+    $modalProduto.on('hidden.bs.modal', function () {
+        // 1. Reseta o Título
+        $(this).find('.modal-title').text('Adicionar Novo Produto');
+
+        // 2. Limpa o form
+        $formProduto[0].reset();
+
+        // 3. Desbloqueia os campos
+        $formProduto.find('input, select, textarea').prop('disabled', false);
+
+        // 4. Mostra o botão Salvar novamente
+        $(this).find('button[type="submit"]').show();
+        $(this).find('.btn-secondary').text('Cancelar');
+
+        // 5. Limpa Select2
+        $('#prod_primario_id').val(null).trigger('change');
+        $('#prod_tipo_embalagem').val('PRIMARIA').trigger('change'); // Volta ao padrão
+
+        // Remove classes de validação se houver
+        $formProduto.removeClass('was-validated');
+    });
+
+
 });

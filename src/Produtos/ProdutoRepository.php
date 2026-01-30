@@ -275,7 +275,13 @@ class ProdutoRepository
      */
     public function find(int $id): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM tbl_produtos WHERE prod_codigo = :id");
+        $sql = "SELECT p.*, 
+                       pai.prod_descricao AS nome_produto_pai 
+                FROM tbl_produtos p
+                LEFT JOIN tbl_produtos pai ON p.prod_primario_id = pai.prod_codigo
+                WHERE p.prod_codigo = :id";
+
+        $stmt = $this->pdo->prepare($sql);
         $stmt->execute([':id' => $id]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ?: null;
@@ -649,17 +655,19 @@ class ProdutoRepository
         // Selecionamos 'prod_codigo as id' e 'prod_descricao as text' 
         // para o Select2 entender automaticamente.
         $sql = "SELECT 
-                    prod_codigo as id, 
-                    CONCAT(prod_descricao, ' (Cód: ', COALESCE(prod_codigo_interno, 'N/A'), ')') as text,
-                    prod_peso_embalagem,
-                    prod_unidade
-                FROM tbl_produtos 
-                WHERE prod_tipo_embalagem = 'SECUNDARIA' 
-                AND prod_situacao = 'A'
-                AND (prod_descricao LIKE :term1 OR 
-                     prod_codigo LIKE :term2 OR
-                     prod_codigo_interno LIKE :term3)
-                ORDER BY prod_descricao ASC 
+                    p.prod_codigo as id, 
+                    CONCAT(p.prod_descricao, ' (Cód: ', COALESCE(p.prod_codigo_interno, 'N/A'), ')') as text,
+                    p.prod_peso_embalagem,
+                    p.prod_unidade,
+                    COALESCE(pai.prod_validade_meses, p.prod_validade_meses, 0) as validade_meses
+                FROM tbl_produtos p
+                LEFT JOIN tbl_produtos pai ON p.prod_primario_id = pai.prod_codigo
+                WHERE p.prod_tipo_embalagem = 'SECUNDARIA' 
+                AND p.prod_situacao = 'A'
+                AND (p.prod_descricao LIKE :term1 OR 
+                     p.prod_codigo LIKE :term2 OR
+                     p.prod_codigo_interno LIKE :term3)
+                ORDER BY p.prod_descricao ASC 
                 LIMIT 30"; // Limita a 30 resultados para ser rápido
 
         $stmt = $this->pdo->prepare($sql);

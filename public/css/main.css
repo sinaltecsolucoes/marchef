@@ -360,3 +360,13 @@ fieldset[disabled] label {
     align-items: center;
     flex-wrap: wrap;
 }
+
+/* Deixa o cursor como mãozinha ao passar na linha da tabela */
+#tabela-produtos tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+/* Efeito de hover para destacar a linha */
+#tabela-produtos tbody tr:hover {
+    background-color: #f1f1f1;
+}
