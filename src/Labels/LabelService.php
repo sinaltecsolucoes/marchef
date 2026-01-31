@@ -199,8 +199,8 @@ class LabelService
         $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
         $codigoInternoProduto = "COD.: " . ($dados['prod_codigo_interno'] ?? '');
 
-        $dataFab = isset($dados['lote_data_fabricacao']) ? date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
-        $dataVal = isset($dados['lote_item_data_val']) ? date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
+        $dataFab = isset($dados['lote_data_fabricacao']) ? "FAB.:" . date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
+        $dataVal = isset($dados['lote_item_data_val']) ? "VAL.:" . date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
         $linhaFabEValidade = "FAB.: {$dataFab}        VAL.: {$dataVal}";
 
         $pesoFormatado = str_replace('.', ',', (string) ((float) ($dados['prod_peso_embalagem'] ?? 0)));
