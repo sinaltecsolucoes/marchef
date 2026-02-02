@@ -380,8 +380,26 @@ $(document).ready(function () {
                         </thead>
                         <tbody>`;
                 response.data.forEach(reserva => {
+                    let numeroOE = reserva.oe_numero;
+                    let exibicaoOE;
+
+                    if (/^[0-9]/.test(numeroOE)) {
+                        // Caso comece com número, pega os 4 primeiros dígitos
+                        exibicaoOE = String(numeroOE).substring(0, 4).padStart(4, '0');
+                    }
+                    else{
+                        // Caso tenha prefixo (ex.: REP, LOTE, etc)
+                        // Extrai o prefixo + número inicial
+                        let match = numeroOE.match(/([A-Z]+)\.?(\d+)/i);
+                        if(match){
+                            exibicaoOE = `LOTE ${match[1].toUpperCase()} ${match[2]}`;
+                        }else{
+                            // Fallback: mostra o valor original
+                            exibicaoOE = numeroOE;
+                        }
+                    }
                     tabelaHtml += `<tr>
-                                        <td class="text-center align-middle">${formatarNumero(reserva.oe_numero).padStart(4, '0')}</td>
+                                        <td class="text-center align-middle">${exibicaoOE}</td>
                                         <td class="align-middle">${reserva.cliente_nome}</td>
                                         <td class="text-center align-middle">${reserva.oep_numero_pedido || 'N/A'}</td>
                                         <td class="text-center align-middle">${formatarNumero(reserva.oei_quantidade, false)}</td>

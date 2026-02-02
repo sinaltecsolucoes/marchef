@@ -17,8 +17,10 @@ class MovimentoRepository
     /**
      * Registra uma movimentação no Kardex.
      */
-    
+
     public function registrar(
+
+
         string $tipo,
         int $loteItemId,
         float $quantidade,
@@ -28,11 +30,17 @@ class MovimentoRepository
         ?string $obs = null,
         ?int $docRef = null
     ): bool {
+        // 1.  CONFIGURAÇÃO DE FUSO HORÁRIO
+        // Força o PHP a usar o horário de Brasília  (ou o da região local)
+        date_default_timezone_set('America/Sao_Paulo');
+        $dataHoraLocal = date('Y-m-d H:i:s');
+
+
         $sql = "INSERT INTO tbl_estoque_movimento 
-                (movimento_tipo, movimento_lote_item_id, movimento_quantidade, movimento_usuario_id, 
-                 movimento_endereco_origem_id, movimento_endereco_destino_id, movimento_observacao, movimento_documento_ref, movimento_data)
-                VALUES 
-                (:tipo, :item_id, :qtd, :user, :origem, :destino, :obs, :doc_ref, NOW())";
+                    (movimento_tipo, movimento_lote_item_id, movimento_quantidade, movimento_usuario_id, 
+                    movimento_endereco_origem_id, movimento_endereco_destino_id, movimento_observacao, movimento_documento_ref, movimento_data)
+                    VALUES 
+                    (:tipo, :item_id, :qtd, :user, :origem, :destino, :obs, :doc_ref, :data_mov)";
 
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([
@@ -43,7 +51,8 @@ class MovimentoRepository
             ':origem' => $origemId,
             ':destino' => $destinoId,
             ':obs' => $obs,
-            ':doc_ref' => $docRef
+            ':doc_ref' => $docRef,
+            ':data_mov' => $dataHoraLocal
         ]);
     }
 

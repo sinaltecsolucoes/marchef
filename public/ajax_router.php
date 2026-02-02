@@ -2346,7 +2346,7 @@ function salvarReprocessoGerandoOE(LoteNovoRepository $repo)
 {
 
     $dados = $_POST;
-    $usuarioId = $_SESSION['user_id'] ?? 1;
+    $usuarioId = $_SESSION['codUsuario'] ?? 1;
 
     try {
         // Verifica sessão básica

@@ -148,7 +148,19 @@ $(document).ready(function () {
         "ajax": {
             "url": "ajax_router.php?action=listarLotesNovos",
             "type": "POST",
-            "data": { csrf_token: csrfToken }
+            //"data": { csrf_token: csrfToken }
+            "data": function (d) {
+                d.csrf_token = csrfToken;
+                d.ano = $('#rel_ano').val();
+                d.meses = $('.check-mes-item:checked').map(function () { return $(this).val(); }).get();
+                d.situacoes = $('.check-situacao-item:checked').map(function () { return $(this).val(); }).get();
+                d.fornecedores = $('.check-fornecedor-item:checked').map(function () { return $(this).val(); }).get();
+                d.pageType = pageType;
+            }
+        },
+        "drawCallback": function (settings) {
+            // Chama a função de médias que criamos antes
+            atualizarResumoLotes(this.api());
         },
         "responsive": true,
         "columns": [
@@ -157,15 +169,13 @@ $(document).ready(function () {
                 "data": "lote_completo_calculado",
                 "className": "text-center align-middle",
             },
+
             // 1. Fornecedor (Ordenável)
             {
                 "data": "cliente_razao_social",
                 "className": "align-middle",
             },
-            /*{
-                "data": "fornecedor_razao_social",
-                "className": "align-middle",
-            },*/
+
             // 4. Gram Fazenda (Ordenável como texto)
             {
                 "data": "gramaturas_fazenda",
@@ -186,6 +196,7 @@ $(document).ready(function () {
                     }).join(' / ');
                 }
             },
+
             // 5. Gram Lab (Ordenável como texto)
             {
                 "data": "gramaturas_laboratorio",
@@ -204,6 +215,7 @@ $(document).ready(function () {
                     }).join(' / ');
                 }
             },
+
             // 3. Peso (Ordenável)    
             {
                 "data": "peso_total_nota",
@@ -214,6 +226,7 @@ $(document).ready(function () {
                     return data ? formatarBR(data) + ' kg' : '-';
                 }
             },
+
             // 2. Data (Ordenável)
             {
                 "data": "lote_data_fabricacao",
@@ -224,6 +237,7 @@ $(document).ready(function () {
                     return date.toLocaleDateString('pt-BR');
                 }
             },
+
             // 6. Status (Ordenável)
             {
                 "data": "lote_status",
@@ -237,15 +251,7 @@ $(document).ready(function () {
                     return `<span class="badge ${badgeClass}">${data}</span>`;
                 }
             },
-            /*{
-                "data": "lote_data_cadastro",
-                "className": "col-centralizavel align-middle",
-                "render": function (data) {
-                    if (!data) return '';
-                    const date = new Date(data);
-                    return date.toLocaleString('pt-BR');
-                }
-            },*/
+
             // 7. Ações (NÃO Ordenável) 
             {
                 "data": "lote_id",
@@ -333,6 +339,7 @@ $(document).ready(function () {
                 }
             }
         ],
+
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
         "order": [[4, 'desc']]
     });
@@ -1281,7 +1288,10 @@ $(document).ready(function () {
 
         if ($.fn.DataTable && $.fn.DataTable.isDataTable(idTabelaPrincipal)) {
             // reload(null, false) recarrega os dados e mantém a paginação atual
-            $(idTabelaPrincipal).DataTable().ajax.reload(null, false);
+            // $(idTabelaPrincipal).DataTable().ajax.reload(null, false);
+
+            // reload(null, true) recarrega os dados e volta para a página inicial
+            $(idTabelaPrincipal).DataTable().ajax.reload(null, true);
             // console.log('Tabela atualizada via Ajax.');
         } else {
             console.log('Tabela não encontrada ou não é DataTables.');
@@ -1861,7 +1871,6 @@ $(document).ready(function () {
             atualizarTextoBotaoMeses();
         }
     });
-
 
     // Ação para o botão "Editar" na tabela principal de lotes 
     $tabelaLotes.on('click', '.btn-editar-lote-novo', function () {
@@ -2449,7 +2458,7 @@ $(document).ready(function () {
 
         calcularConsumoEmbalagem();
     });
-    
+
     // --- NOVO LOTE (MODO PADRÃO) ---
 
     // Ao mudar o produto
@@ -2823,13 +2832,21 @@ $(document).ready(function () {
 
     // Eventos de Checkbox Fornecedores
     $('#lista-filtro-fornecedores').on('change', '#check-fornecedor-todos', function () {
-        const isChecked = $(this).is(':checked');
-        $('.check-fornecedor-item').prop('checked', isChecked);
+        const total = $('.check-fornecedor-item').length;
+        const marcados = $('.check-fornecedor-item:checked').length;
+        const deveMarcar = (marcados !== total);
+        $('.check-fornecedor-item').prop('checked', deveMarcar);
         atualizarTextoBotaoFornecedores();
+        recarregarTabelaLotes();
     });
 
     $('#lista-filtro-fornecedores').on('change', '.check-fornecedor-item', function () {
+        if ($('#check-fornecedor-todos').is(':checked')) {
+            $('.check-fornecedor-item').prop('checked', false);
+            $(this).prop('checked', true);
+        }
         atualizarTextoBotaoFornecedores();
+        recarregarTabelaLotes();
     });
 
     // Chama a função ao iniciar se estiver na página correta
@@ -2865,22 +2882,22 @@ $(document).ready(function () {
 
     // Evento: Clique no "Marcar Todos"
     $('#check-mes-todos').on('change', function () {
-        const isChecked = $(this).is(':checked');
-        $('.check-mes-item').prop('checked', isChecked);
+        const total = $('.check-mes-item').length;
+        const marcados = $('.check-mes-item:checked').length;
+        const deveMarcar = (marcados !== total);
+        $('.check-mes-item').prop('checked', deveMarcar);
         atualizarTextoBotaoMeses();
+        recarregarTabelaLotes();
     });
 
     // Evento: Clique em um mês individual
     $('.check-mes-item').on('change', function () {
-        // Se desmarcar um item, desmarca o "Todos"
-        if (!$(this).is(':checked')) {
-            $('#check-mes-todos').prop('checked', false);
-        }
-        // Se marcar todos manualmente, marca o "Todos"
-        if ($('.check-mes-item:checked').length === 12) {
-            $('#check-mes-todos').prop('checked', true);
+        if ($('#check-mes-todos').is(':checked')) {
+            $('.check-mes-item').prop('checked', false);
+            $(this).prop('checked', true);
         }
         atualizarTextoBotaoMeses();
+        recarregarTabelaLotes();
     });
 
     // Inicializa o texto ao carregar a página
@@ -2889,6 +2906,63 @@ $(document).ready(function () {
     // Impede que o dropdown feche ao clicar num checkbox (melhora a usabilidade)
     $('.dropdown-menu').on('click', function (e) {
         e.stopPropagation();
+    });
+
+    // --- LÓGICA DO MULTI-SELECT DE SITUAÇÃO (STATUS) ---
+    function atualizarTextoBotaoSituacao() {
+        const total = $('.check-situacao-item').length;
+        const marcados = $('.check-situacao-item:checked').length;
+        const $btn = $('#btn-dropdown-situacao');
+        const $checkTodos = $('#check-situacao-todos');
+
+        if (marcados === 0) {
+            $btn.text('Nenhum status selecionado');
+            $checkTodos.prop('checked', false);
+        } else if (marcados === total && total > 0) {
+            $btn.text('Todas as Situações');
+            $checkTodos.prop('checked', true);
+        } else {
+            $btn.text(marcados + ' status selecionado(s)');
+            $checkTodos.prop('checked', false);
+        }
+    }
+
+    // Evento: Marcar/Desmarcar Todos
+    $('#check-situacao-todos').on('change', function () {
+        const totalItens = $('.check-situacao-item').length;
+        const marcadosAtualmente = $('.check-situacao-item:checked').length;
+
+        // Se já estiver tudo marcado, desmarca tudo. Caso contrário, marca tudo.
+        const deveMarcar = (marcadosAtualmente !== totalItens);
+
+        $('.check-situacao-item').prop('checked', deveMarcar);
+        $(this).prop('checked', deveMarcar);
+
+        atualizarTextoBotaoSituacao();
+        recarregarTabelaLotes();
+    });
+
+    // Evento: Itens individuais com "Seleção Inteligente"
+    $(document).on('change', '.check-situacao-item', function () {
+        const total = $('.check-situacao-item').length;
+        const marcados = $('.check-situacao-item:checked').length;
+        const $checkTodos = $('#check-situacao-todos');
+
+        // LÓGICA INTELIGENTE: Se "Todos" estava marcado e você clica em 1, isola ele
+        // (O 'marcados == total - 1' indica que antes do clique estava tudo selecionado)
+        if ($checkTodos.is(':checked')) {
+            $('.check-situacao-item').prop('checked', false);
+            $(this).prop('checked', true);
+            $checkTodos.prop('checked', false);
+        }
+        else if (marcados === total) {
+            $checkTodos.prop('checked', true);
+        } else {
+            $checkTodos.prop('checked', false);
+        }
+
+        atualizarTextoBotaoSituacao();
+        recarregarTabelaLotes();
     });
 
     // --- IMPORTAÇÃO DE LOTE LEGADO ---
@@ -3667,4 +3741,74 @@ $(document).ready(function () {
         }
     }
 
+    // Atualização instantânea ao interagir com os filtros
+    $(document).on('change', '.check-mes-item, .check-situacao-item, .check-fornecedor-item, #check-mes-todos, #check-fornecedor-todos, #check-situacao-todos, #rel_ano', function () {
+
+        if (tabelaLotesNovo) {
+            tabelaLotesNovo.draw();
+        }
+    }); 
+
+    //  Calcula e atualiza os cards de resumo (Peso Total, Lotes e Médias Ponderadas)
+    /* function atualizarResumoLotes(api) {
+         // Pegamos os dados que o servidor enviou e que passaram pelo filtro atual
+         // let dadosFiltrados = api.rows({ search: 'applied' }).data();
+ 
+         // Pegamos a resposta JSON completa do servidor
+         const json = api.ajax.json();
+ 
+         // O total de lotes geral (após filtros) vem do recordsFiltered do DataTables
+         let totalLotesFiltrados = json ? json.recordsFiltered : 0;
+ 
+         let totalPeso = 0;
+         let somaPonderadaFazenda = 0;
+         let somaPonderadaLab = 0;
+         // let totalLotes = dadosFiltrados.length;
+ 
+         // Função interna para tratar gramaturas como "19 / 19.5"
+         const extrairMediaGramatura = (texto) => {
+             if (!texto || texto === '-' || texto === '0') return 0;
+             let partes = texto.toString().split(' / ');
+             let soma = 0, conta = 0;
+             partes.forEach(p => {
+                 let v = parseFloat(p.trim().replace(',', '.')) || 0;
+                 if (v > 0) { soma += v; conta++; }
+             });
+             return conta > 0 ? (soma / conta) : 0;
+         };
+ 
+         // Itera sobre os dados para calcular
+         api.rows({ search: 'applied' }).every(function () {
+             let d = this.data();
+ 
+             // Usamos os nomes exatos do seu "columns" no DataTable
+             let peso = parseFloat(d.peso_total_nota) || 0;
+             let gFazenda = extrairMediaGramatura(d.gramaturas_fazenda);
+             let gLab = extrairMediaGramatura(d.gramaturas_laboratorio);
+ 
+             totalPeso += peso;
+             somaPonderadaFazenda += (gFazenda * peso);
+             somaPonderadaLab += (gLab * peso);
+         });
+ 
+         // Média Ponderada: Soma de (Peso * Gramatura) / Peso Total
+         let mediaFinalFazenda = totalPeso > 0 ? (somaPonderadaFazenda / totalPeso) : 0;
+         let mediaFinalLab = totalPeso > 0 ? (somaPonderadaLab / totalPeso) : 0;
+ 
+         // Atualiza os elementos do HTML (certifique-se de que os IDs batem com seu HTML)
+         //  $('#card-total-itens').text(totalLotes);
+         $('#card-total-itens').text(totalLotesFiltrados);
+         $('#card-total-peso').text(formatarBR(totalPeso, 3) + ' kg');
+         $('#card-media-fazenda').text(formatarBR(mediaFinalFazenda, 2) + 'g');
+         $('#card-media-lab').text(formatarBR(mediaFinalLab, 2) + 'g');
+     } */
+
+    function atualizarResumoLotes(api) {
+        const json = api.ajax.json();
+
+        $('#card-total-itens').text(json.recordsFiltered || 0);
+        $('#card-total-peso').text(formatarBR(json.totalPesoFiltrado || 0, 3) + ' kg');
+        $('#card-media-fazenda').text(formatarBR(json.mediaFazendaPonderada || 0, 2) + 'g');
+        $('#card-media-lab').text(formatarBR(json.mediaLabPonderada || 0, 2) + 'g');
+    }
 }); 

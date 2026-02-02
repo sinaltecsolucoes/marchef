@@ -370,3 +370,11 @@ fieldset[disabled] label {
 #tabela-produtos tbody tr:hover {
     background-color: #f1f1f1;
 }
+
+/* Quando o container estiver em modo leitura, esconde todos os botões de ação dentro dele */
+.disable-actions .btn-adicionar-produto,
+.disable-actions .btn-remover-pedido,
+.disable-actions .btn-remover-item,
+.disable-actions .btn-editar-item {
+    display: none !important;
+}

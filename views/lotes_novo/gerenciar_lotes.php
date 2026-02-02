@@ -37,46 +37,49 @@ switch ($page) {
         </div>
 
         <div class="card-body">
-            <div class="row align-items-center">
+            <div class="row">
 
-                <div class="col-md-5 border-end px-4">
-                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
-                        Entrada
+                <div class="col-md-4 border-end">
+                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 0.9rem; text-transform: uppercase;">
+                        <i class="fas fa-sign-in-alt me-2"></i>Entrada
                     </h5>
 
-                    <label class="form-label small fw-bold d-block">&nbsp;</label>
+                    <div id="form-acoes-lote" class="row g-2 pt-4 align-items-end">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-sm py-2 flex-grow-1" id="btn-adicionar-lote-novo">
+                                <i class="fas fa-plus me-2"></i> ABRIR NOVO LOTE
+                            </button>
 
-                    <div class="d-flex flex-column flex-md-row gap-2">
-                        <button class="btn btn-primary py-2" id="btn-adicionar-lote-novo">
-                            <i class="fas fa-plus me-2"></i> ABRIR NOVO LOTE
-                        </button>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-dark btn-sm py-2 flex-grow-1" data-bs-toggle="modal" data-bs-target="#modal-importar-legado">
+                                    <i class="fas fa-history me-2"></i>IMPORTAR LOTE ANTIGO
+                                </button>
 
-                        <button class="btn btn-outline-dark py-2" data-bs-toggle="modal" data-bs-target="#modal-importar-legado">
-                            <i class="fas fa-history me-2"></i> IMPORTAR LOTE ANTIGO
-                        </button>
-
-                        <button class="btn btn-outline-danger py-2 ms-1" data-bs-toggle="modal" data-bs-target="#modal-historico-legado" title="Gerenciar Importações">
-                            <i class="fas fa-list"></i> GERENCIAR IMPORTAÇÕES
-                        </button>
+                                <button class="btn btn-outline-danger btn-sm py-2" data-bs-toggle="modal" data-bs-target="#modal-historico-legado" title="Gerenciar Importações">
+                                    <i class="fas fa-list"></i> GERENCIAR IMPORTAÇÕES
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="col-md-7 px-4">
-                    <h5 class="fw-bold text-secondary mb-3" style="font-size: 1rem;">
-                        Relatório Lista de Lote
+                <div class="col-md-8 ps-3">
+                    <h5 class="fw-bold text-secondary mb-2" style="font-size: 0.9rem; text-transform: uppercase;">
+                        <i class="fas fa-filter me-2"></i>Filtros e Relatório
                     </h5>
 
-                    <div id="form-relatorio-mensal" class="row g-3 align-items-end">
+                    <div id="form-relatorio-mensal" class="row g-2 align-items-end">
 
+                        <!-- Lista de Meses -->
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Período (Meses)</label>
 
                             <div class="dropdown">
-                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-meses" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-meses" data-bs-toggle="dropdown" aria-expanded="false">
                                     Selecione os meses...
                                 </button>
 
-                                <ul class="dropdown-menu p-2 shadow w-100" aria-labelledby="btn-dropdown-meses" style="max-height: 300px; overflow-y: auto;">
+                                <ul class="dropdown-menu p-2 shadow w-100" aria-labelledby="btn-dropdown-meses" style="max-height: 250px; overflow-y: auto;">
 
                                     <li class="p-1 border-bottom mb-2 bg-light rounded">
                                         <div class="form-check">
@@ -122,41 +125,126 @@ switch ($page) {
                             </div>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Fornecedor</label>
+                        <!-- Lista de Fornecedores -->
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Fornecedor</label>
                             <div class="dropdown">
-                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-fornecedores" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-fornecedores" data-bs-toggle="dropdown" aria-expanded="false">
                                     Todos os Fornecedores
                                 </button>
-                                <ul class="dropdown-menu p-2 shadow w-100" id="lista-filtro-fornecedores" aria-labelledby="btn-dropdown-fornecedores" style="max-height: 300px; overflow-y: auto;">
+                                <ul class="dropdown-menu p-2 shadow w-100" id="lista-filtro-fornecedores" aria-labelledby="btn-dropdown-fornecedores" style="max-height: 250px; overflow-y: auto;">
                                     <li class="p-1 border-bottom mb-2 bg-light rounded">
                                         <div class="form-check">
                                             <input class="form-check-input fw-bold" type="checkbox" id="check-fornecedor-todos" checked>
                                             <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-fornecedor-todos">MARCAR TODOS</label>
                                         </div>
                                     </li>
-                                    <div id="container-check-fornecedores-items">
+                                    <div id="container-check-fornecedores-items" class="small">
                                         <li class="text-center text-muted small py-2"><i class="fas fa-spinner fa-spin"></i> Carregando...</li>
                                     </div>
                                 </ul>
                             </div>
                         </div>
 
+                        <!-- Lista de Situação -->
                         <div class="col-md-2">
-                            <label class="form-label small fw-bold">Exercício (Ano)</label>
-                            <input type="number" class="form-control" id="rel_ano" value="<?php echo date('Y'); ?>">
+                            <label class="form-label small fw-bold mb-1">Situação</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-situacao" data-bs-toggle="dropdown">
+                                    Situação...
+                                </button>
+                                <ul class="dropdown-menu p-2 shadow" id="lista-filtro-situacao" style="width:100%; min-width:unset;">
+                                    <li class="p-1 border-bottom mb-2 bg-light rounded">
+                                        <div class="form-check">
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-situacao-todos" checked>
+                                            <label class="form-check-label fw-bold text-primary font-small" for="check-situacao-todos">TODAS</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check text-warning">
+                                            <input class="form-check-input check-situacao-item" type="checkbox" value="EM ANDAMENTO" id="sit-aberto" checked>
+                                            <label class="form-check-label font-small" for="sit-aberto">ABERTO</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check text-success">
+                                            <input class="form-check-input check-situacao-item" type="checkbox" value="FINALIZADO" id="sit-finalizado" checked>
+                                            <label class="form-check-label font-small" for="sit-finalizado">FINALIZADO</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check text-danger">
+                                            <input class="form-check-input check-situacao-item" type="checkbox" value="CANCELADO" id="sit-cancelado">
+                                            <label class="form-check-label font-small" for="sit-cancelado">CANCELADO</label>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <button type="button" class="btn btn-info fw-bold text-white" id="btn-gerar-relatorio-mensal">
+                        <!-- Campo para Ano -->
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Exercício (Ano)</label>
+                            <input type="number" class="form-control form-control-sm" id="rel_ano" value="<?php echo date('Y'); ?>">
+                        </div>
+
+                        <!-- Botão Gerar -->
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-info btn-sm fw-bold text-white w-100" id="btn-gerar-relatorio-mensal">
                                 <i class="fas fa-print me-2"></i> GERAR
                             </button>
                         </div>
                     </div>
 
+                    <?php if ($page === 'lotes_recebimento'): ?>
+                        <div class="row g-2 mt-2 border-top">
 
+                            <!-- Card Total Lotes -->
+                            <div class="col-md-3">
+                                <div class="d-flex align-items-center p-2 bg-light rounded border">
+                                    <i class="fas fa-boxes text-info me-2"></i>
+                                    <div>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">TOTAL LOTES</small>
+                                        <span id="card-total-itens" class="fw-bold text-dark">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Peso Filtrado -->
+                            <div class="col-md-3">
+                                <div class="d-flex align-items-center p-2 bg-light rounded border">
+                                    <i class="fas fa-weight-hanging text-primary me-2"></i>
+                                    <div>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">PESO FILTRADO</small>
+                                        <span id="card-total-peso" class="fw-bold text-dark">0,000kg</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Gramatura Fazenda (Média) -->
+                            <div class="col-md-3">
+                                <div class="d-flex align-items-center p-2 bg-light rounded border">
+                                    <i class="fas fa-solid fa-balance-scale text-primary me-2"></i>
+                                    <div>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">GRAM. FAZENDA (MÉDIA)</small>
+                                        <span id="card-media-fazenda" class="fw-bold text-dark">0,0g</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Gramaura Laboratório (Média) -->
+                            <div class="col-md-3">
+                                <div class="d-flex align-items-center p-2 bg-light rounded border">
+                                    <i class="fas fa-solid fa-balance-scale text-success me-2"></i>
+                                    <div>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">GRAM. LABORAT. (MÉDIA)</small>
+                                        <span id="card-media-lab" class="fw-bold text-dark">0,0g</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
-
             </div>
         </div>
     </div>
@@ -618,7 +706,7 @@ switch ($page) {
                             <input type="hidden" id="lote_data_validade_legado" name="data_validade">
                         </div>
 
-                        
+
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Fornecedor *</label>
                             <select class="form-select select2-clientes" name="cliente_id" style="width:100%" required>

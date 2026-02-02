@@ -162,7 +162,7 @@ $(document).ready(function () {
 
                 const botoesAcaoPedido = !estaBloqueada ?
                     `<button class="btn btn-info btn-adicionar-produto" data-oep-id="${pedido.oep_id}"><i class="fas fa-plus me-1"></i>Adicionar Produto</button>
-                 <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
+                    <button class="btn btn-danger btn-remover-pedido" data-oep-id="${pedido.oep_id}"><i class="fas fa-trash-alt me-1"></i>Remover Pedido</button>` : '';
 
                 const thAcoes = !estaBloqueada ? '<th class="text-center align-middle small" style="width: 8%;">Ações</th>' : '';
 
@@ -290,14 +290,23 @@ $(document).ready(function () {
             $('#btn-confirmar-add-item').prop('disabled', true).hide();
             $('#btn-salvar-header').prop('disabled', true).hide();
 
-            // 3. Desabilitar Botões de Exclusão/Edição na Tabela (usando delegate se for dinâmico)
-            $('#pedidos-container').addClass('disable-actions'); // CSS Class helper
-            $('.btn-remover-item, .btn-editar-item').remove(); // Remove botões existentes
+            // 2.1. Desabilitar Botão "Adicionar Pedido/Cliente" (Topo da lista) 
+            $('#btn-adicionar-pedido-cliente').prop('disabled', true).hide();
+
+            // 3. Tratamento da Tabela e Botões Dinâmicos
+            // Adiciona classe ao container para controle CSS
+            $('#pedidos-container').addClass('disable-actions');
+
+            // Remove botões de ação das linhas (Produtos e Pedidos)
+            $('.btn-remover-item, .btn-editar-item').remove();
+
+            // 3.1. Remove botões de gestão do Pedido (Adicionar Produto / Remover Pedido) 
+            $('.btn-adicionar-produto, .btn-remover-pedido').remove();
 
             // 4. Desabilitar Inputs
             $('input, select, textarea').prop('disabled', true);
 
-            // Manter apenas o botão de voltar ativo
+            // 5. Garantir que o botão de voltar continue funcionando
             $('.btn-secondary').prop('disabled', false);
         }
     }
