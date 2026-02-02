@@ -905,7 +905,7 @@ class LoteNovoRepository
         }
 
         // 2. Filtro de Meses (Múltiplos)
-       /* if (!empty($params['meses']) && is_array($params['meses'])) {
+        if (!empty($params['meses']) && is_array($params['meses'])) {
             $placeholders = [];
             foreach ($params['meses'] as $i => $mes) {
                 $key = ":mes$i";
@@ -913,7 +913,7 @@ class LoteNovoRepository
                 $queryParams[$key] = $mes;
             }
             $whereClause .= " AND MONTH(l.lote_data_fabricacao) IN (" . implode(',', $placeholders) . ")";
-        }*/ 
+        }
 
         // 3. Filtro de Situações
          if (!empty($params['situacoes']) && is_array($params['situacoes'])) {
@@ -927,9 +927,9 @@ class LoteNovoRepository
         }
 
         // 4. Filtro de Fornecedores
-        if (!empty($params['clientes']) && is_array($params['clientes'])) {
+        if (!empty($params['fornecedores']) && is_array($params['fornecedores'])) {
             $placeholders = [];
-            foreach ($params['clientes'] as $i => $forn) {
+            foreach ($params['fornecedores'] as $i => $forn) {
                 $key = ":forn$i";
                 $placeholders[] = $key;
                 $queryParams[$key] = $forn;

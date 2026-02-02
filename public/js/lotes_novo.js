@@ -2787,7 +2787,7 @@ $(document).ready(function () {
     });
 
     // --- LÓGICA DO MULTI-SELECT DE FORNECEDORES ---
-    // 1. Carrega os fornecedores e monta a lista de checkboxes
+    // 1. Carrega os fornecedores (Ajustado para IDs e Labels)
     function carregarFornecedoresParaFiltro() {
         $.get('ajax_router.php?action=getClientesComLotesOptions', function (response) {
             const $container = $('#container-check-fornecedores-items');
@@ -2796,55 +2796,78 @@ $(document).ready(function () {
             if (response.data) {
                 response.data.forEach(item => {
                     const html = `
-                        <li class='p-1'>
-                            <div class='form-check'>
-                                <input class='form-check-input check-fornecedor-item' type='checkbox' value='${item.id}' id='filtro-forn-${item.id}' checked>
-                                <label class='form-check-label w-100 cursor-pointer text-truncate' for='filtro-forn-${item.id}' title="${item.text}">
-                                    ${item.text}
-                                </label>
-                            </div>
-                        </li>`;
+                    <li class='p-1'>
+                        <div class='form-check'>
+                            <input class='form-check-input check-fornecedor-item' type='checkbox' 
+                                   value='${item.id}' id='filtro-forn-${item.id}' checked>
+                            <label class='form-check-label w-100 cursor-pointer text-truncate' for='filtro-forn-${item.id}' title="${item.text}">
+                                ${item.text}
+                            </label>
+                        </div>
+                    </li>`;
                     $container.append(html);
                 });
                 atualizarTextoBotaoFornecedores();
+                // A carga inicial não precisa de reload se a tabela já estiver carregando
             }
         });
     }
 
-    // 2. Atualiza o texto do botão
+    // 2. Atualiza o texto do botão (Fornecedores)
     function atualizarTextoBotaoFornecedores() {
-        const total = $('.check-fornecedor-item').length;
-        const marcados = $('.check-fornecedor-item:checked').length;
+        const selecionados = [];
+        $('.check-fornecedor-item:checked').each(function () {
+            selecionados.push($(this).next('label').text().trim());
+        });
+
+        const totalItens = $('.check-fornecedor-item').length;
         const $btn = $('#btn-dropdown-fornecedores');
         const $checkTodos = $('#check-fornecedor-todos');
+        const $labelTodos = $checkTodos.next('label');
 
-        if (marcados === 0) {
-            $btn.text('Nenhum selecionado');
+        if (selecionados.length === 0) {
+            $btn.text('Selecione os fornecedores...');
             $checkTodos.prop('checked', false);
-        } else if (marcados === total && total > 0) {
+            $labelTodos.text('MARCAR TODOS');
+        } else if (selecionados.length === totalItens && totalItens > 0) {
             $btn.text('Todos os Fornecedores');
             $checkTodos.prop('checked', true);
-        } else {
-            $btn.text(marcados + ' fornecedor(es)');
+            $labelTodos.text('DESMARCAR TODOS');
+        } else if (selecionados.length <= 1) {
+            $btn.text(selecionados[0] || 'Selecione...');
             $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
+        } else {
+            $btn.text(selecionados.length + ' fornecedores selecionados');
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
         }
     }
 
-    // Eventos de Checkbox Fornecedores
-    $('#lista-filtro-fornecedores').on('change', '#check-fornecedor-todos', function () {
+    // 3. Evento: Clique no "Marcar Todos" (Fornecedores)
+    $('#check-fornecedor-todos').on('click', function () {
         const total = $('.check-fornecedor-item').length;
         const marcados = $('.check-fornecedor-item:checked').length;
-        const deveMarcar = (marcados !== total);
+
+        const deveMarcar = (marcados < total);
         $('.check-fornecedor-item').prop('checked', deveMarcar);
+
         atualizarTextoBotaoFornecedores();
         recarregarTabelaLotes();
     });
 
-    $('#lista-filtro-fornecedores').on('change', '.check-fornecedor-item', function () {
-        if ($('#check-fornecedor-todos').is(':checked')) {
+    // 4. Evento: Itens individuais (Fornecedores) - Lógica Inteligente
+    $(document).on('change', '.check-fornecedor-item', function () {
+        const total = $('.check-fornecedor-item').length;
+        const marcadosAgora = $('.check-fornecedor-item:checked').length;
+        const foiDesmarcado = !$(this).is(':checked');
+
+        // Lógica inteligente: se tudo estava marcado e desmarcou um, isola ele
+        if (marcadosAgora === (total - 1) && foiDesmarcado) {
             $('.check-fornecedor-item').prop('checked', false);
             $(this).prop('checked', true);
         }
+
         atualizarTextoBotaoFornecedores();
         recarregarTabelaLotes();
     });
@@ -2855,7 +2878,6 @@ $(document).ready(function () {
     }
 
     // --- LÓGICA DO MULTI-SELECT DE MESES ---
-    // 1. Função para atualizar o texto do botão conforme a seleção
     function atualizarTextoBotaoMeses() {
         const selecionados = [];
         $('.check-mes-item:checked').each(function () {
@@ -2864,44 +2886,61 @@ $(document).ready(function () {
 
         const $btn = $('#btn-dropdown-meses');
         const $checkTodos = $('#check-mes-todos');
+        const $labelTodos = $checkTodos.next('label'); // Para mudar o texto do "Marcar Todos"
 
         if (selecionados.length === 0) {
-            $btn.text('Nenhum mês selecionado');
+            $btn.text('Selecione os meses...');
             $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
         } else if (selecionados.length === 12) {
-            $btn.text('ANO COMPLETO (12 Meses)');
+            $btn.text('ANO COMPLETO');
             $checkTodos.prop('checked', true);
+            $labelTodos.text('DESMARCAR TODOS'); // Muda para desmarcar quando está cheio
         } else if (selecionados.length <= 2) {
-            $btn.text(selecionados.join(', ')); // Ex: "Janeiro, Março"
+            $btn.text(selecionados.join(', '));
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
         } else {
             $btn.text(selecionados.length + ' meses selecionados');
-            // Se não são 12, desmarca o todos
             $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
         }
     }
 
-    // Evento: Clique no "Marcar Todos"
-    $('#check-mes-todos').on('change', function () {
-        const total = $('.check-mes-item').length;
+    // Evento: Clique no "Marcar/Desmarcar Todos"
+    $('#check-mes-todos').on('click', function () {
         const marcados = $('.check-mes-item:checked').length;
-        const deveMarcar = (marcados !== total);
+        const total = $('.check-mes-item').length;
+
+        // Se já estiver tudo marcado, desmarca tudo. Senão, marca tudo.
+        const deveMarcar = (marcados < total);
         $('.check-mes-item').prop('checked', deveMarcar);
+
         atualizarTextoBotaoMeses();
         recarregarTabelaLotes();
     });
 
     // Evento: Clique em um mês individual
-    $('.check-mes-item').on('change', function () {
-        if ($('#check-mes-todos').is(':checked')) {
+    $(document).on('change', '.check-mes-item', function () {
+        const total = $('.check-mes-item').length;
+        // Precisamos saber quantos estavam marcados ANTES da mudança
+        const marcadosAgora = $('.check-mes-item:checked').length;
+        const foiMarcado = $(this).is(':checked');
+
+        // Se estava TUDO marcado e o usuário desmarcou um:
+        // Significa que ele quer ver APENAS esse um.
+        if (marcadosAgora === (total - 1) && !foiMarcado) {
             $('.check-mes-item').prop('checked', false);
             $(this).prop('checked', true);
         }
+
         atualizarTextoBotaoMeses();
         recarregarTabelaLotes();
     });
 
     // Inicializa o texto ao carregar a página
     atualizarTextoBotaoMeses();
+    atualizarTextoBotaoSituacao();
 
     // Impede que o dropdown feche ao clicar num checkbox (melhora a usabilidade)
     $('.dropdown-menu').on('click', function (e) {
@@ -2909,56 +2948,58 @@ $(document).ready(function () {
     });
 
     // --- LÓGICA DO MULTI-SELECT DE SITUAÇÃO (STATUS) ---
+    // Função: Atualiza o texto do botão de Situação
     function atualizarTextoBotaoSituacao() {
-        const total = $('.check-situacao-item').length;
-        const marcados = $('.check-situacao-item:checked').length;
+        const selecionados = [];
+        $('.check-situacao-item:checked').each(function () {
+            selecionados.push($(this).next('label').text().trim());
+        });
+
         const $btn = $('#btn-dropdown-situacao');
         const $checkTodos = $('#check-situacao-todos');
+        const $labelTodos = $checkTodos.next('label');
 
-        if (marcados === 0) {
-            $btn.text('Nenhum status selecionado');
+        if (selecionados.length === 0) {
+            $btn.text('Selecione a situação...');
             $checkTodos.prop('checked', false);
-        } else if (marcados === total && total > 0) {
+            $labelTodos.text('MARCAR TODOS');
+        } else if (selecionados.length === $('.check-situacao-item').length) {
             $btn.text('Todas as Situações');
             $checkTodos.prop('checked', true);
-        } else {
-            $btn.text(marcados + ' status selecionado(s)');
+            $labelTodos.text('DESMARCAR TODAS');
+        } else if (selecionados.length <= 2) {
+            $btn.text(selecionados.join(', '));
             $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
+        } else {
+            $btn.text(selecionados.length + ' situações selecionadas');
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
         }
     }
 
-    // Evento: Marcar/Desmarcar Todos
-    $('#check-situacao-todos').on('change', function () {
-        const totalItens = $('.check-situacao-item').length;
-        const marcadosAtualmente = $('.check-situacao-item:checked').length;
+    // Evento: Clique no "Marcar/Desmarcar Todos" (Situação)
+    $('#check-situacao-todos').on('click', function () {
+        const total = $('.check-situacao-item').length;
+        const marcados = $('.check-situacao-item:checked').length;
 
-        // Se já estiver tudo marcado, desmarca tudo. Caso contrário, marca tudo.
-        const deveMarcar = (marcadosAtualmente !== totalItens);
-
+        const deveMarcar = (marcados < total);
         $('.check-situacao-item').prop('checked', deveMarcar);
-        $(this).prop('checked', deveMarcar);
 
         atualizarTextoBotaoSituacao();
         recarregarTabelaLotes();
     });
 
-    // Evento: Itens individuais com "Seleção Inteligente"
+    // Evento: Itens individuais (Situação) - Lógica Inteligente
     $(document).on('change', '.check-situacao-item', function () {
         const total = $('.check-situacao-item').length;
-        const marcados = $('.check-situacao-item:checked').length;
-        const $checkTodos = $('#check-situacao-todos');
+        const marcadosAgora = $('.check-situacao-item:checked').length;
+        const foiDesmarcado = !$(this).is(':checked');
 
-        // LÓGICA INTELIGENTE: Se "Todos" estava marcado e você clica em 1, isola ele
-        // (O 'marcados == total - 1' indica que antes do clique estava tudo selecionado)
-        if ($checkTodos.is(':checked')) {
+        // Se estava TUDO marcado e o usuário clicou para desmarcar um: Isola ele.
+        if (marcadosAgora === (total - 1) && foiDesmarcado) {
             $('.check-situacao-item').prop('checked', false);
             $(this).prop('checked', true);
-            $checkTodos.prop('checked', false);
-        }
-        else if (marcados === total) {
-            $checkTodos.prop('checked', true);
-        } else {
-            $checkTodos.prop('checked', false);
         }
 
         atualizarTextoBotaoSituacao();
@@ -3747,61 +3788,7 @@ $(document).ready(function () {
         if (tabelaLotesNovo) {
             tabelaLotesNovo.draw();
         }
-    }); 
-
-    //  Calcula e atualiza os cards de resumo (Peso Total, Lotes e Médias Ponderadas)
-    /* function atualizarResumoLotes(api) {
-         // Pegamos os dados que o servidor enviou e que passaram pelo filtro atual
-         // let dadosFiltrados = api.rows({ search: 'applied' }).data();
- 
-         // Pegamos a resposta JSON completa do servidor
-         const json = api.ajax.json();
- 
-         // O total de lotes geral (após filtros) vem do recordsFiltered do DataTables
-         let totalLotesFiltrados = json ? json.recordsFiltered : 0;
- 
-         let totalPeso = 0;
-         let somaPonderadaFazenda = 0;
-         let somaPonderadaLab = 0;
-         // let totalLotes = dadosFiltrados.length;
- 
-         // Função interna para tratar gramaturas como "19 / 19.5"
-         const extrairMediaGramatura = (texto) => {
-             if (!texto || texto === '-' || texto === '0') return 0;
-             let partes = texto.toString().split(' / ');
-             let soma = 0, conta = 0;
-             partes.forEach(p => {
-                 let v = parseFloat(p.trim().replace(',', '.')) || 0;
-                 if (v > 0) { soma += v; conta++; }
-             });
-             return conta > 0 ? (soma / conta) : 0;
-         };
- 
-         // Itera sobre os dados para calcular
-         api.rows({ search: 'applied' }).every(function () {
-             let d = this.data();
- 
-             // Usamos os nomes exatos do seu "columns" no DataTable
-             let peso = parseFloat(d.peso_total_nota) || 0;
-             let gFazenda = extrairMediaGramatura(d.gramaturas_fazenda);
-             let gLab = extrairMediaGramatura(d.gramaturas_laboratorio);
- 
-             totalPeso += peso;
-             somaPonderadaFazenda += (gFazenda * peso);
-             somaPonderadaLab += (gLab * peso);
-         });
- 
-         // Média Ponderada: Soma de (Peso * Gramatura) / Peso Total
-         let mediaFinalFazenda = totalPeso > 0 ? (somaPonderadaFazenda / totalPeso) : 0;
-         let mediaFinalLab = totalPeso > 0 ? (somaPonderadaLab / totalPeso) : 0;
- 
-         // Atualiza os elementos do HTML (certifique-se de que os IDs batem com seu HTML)
-         //  $('#card-total-itens').text(totalLotes);
-         $('#card-total-itens').text(totalLotesFiltrados);
-         $('#card-total-peso').text(formatarBR(totalPeso, 3) + ' kg');
-         $('#card-media-fazenda').text(formatarBR(mediaFinalFazenda, 2) + 'g');
-         $('#card-media-lab').text(formatarBR(mediaFinalLab, 2) + 'g');
-     } */
+    });
 
     function atualizarResumoLotes(api) {
         const json = api.ajax.json();

@@ -124,6 +124,7 @@ try {
         // Páginas Módulo Cadastro 
         'usuarios'                  => 'usuarios/lista_usuarios.php',                      // Usuários 
         'clientes'                  => 'entidades/lista_entidades.php',                    // Entidades (Clientes)
+        'fazendas'                  => 'entidades/lista_entidades.php',                    // Entidades (Fazendas - Origem)
         'fornecedores'              => 'entidades/lista_entidades.php',                    // Entidades (Fornecedores)
         'transportadoras'           => 'entidades/lista_entidades.php',                    // Entidades (Transportadoras)
         'relatorio_entidade'        => 'entidades/relatorio_ficha.php',                    // Relatório Entidades        
@@ -189,6 +190,8 @@ try {
     $pageType = '';
     if ($paginaAtual === 'clientes')
         $pageType = 'cliente';
+    if ($paginaAtual === 'fazendas')
+        $pageType = 'fazenda';
     if ($paginaAtual === 'fornecedores')
         $pageType = 'fornecedor';
     if ($paginaAtual === 'transportadoras')

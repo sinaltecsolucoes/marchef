@@ -25,11 +25,11 @@ if (!isset($_SESSION['codUsuario'])) die("Acesso negado.");
 
                 <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">Data Início</label>
-                    <input type="date" class="form-control" name="data_inicio" id="data_inicio" value="<?= date('Y-m-01') ?>">
+                    <input type="date" class="form-control" name="data_inicio" id="data_inicio">
                 </div>
                 <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">Data Fim</label>
-                    <input type="date" class="form-control" name="data_fim" id="data_fim" value="<?= date('Y-m-d') ?>">
+                    <input type="date" class="form-control" name="data_fim" id="data_fim">
                 </div>
 
                 <div class="col-md-2 mb-3">
@@ -41,7 +41,8 @@ if (!isset($_SESSION['codUsuario'])) die("Acesso negado.");
                         <option value="TRANSFERENCIA">Transferência</option>
                         <option value="AJUSTE_INVENTARIO">Ajuste Inventário</option>
                         <option value="PRODUCAO">Produção</option>
-                        <option valeu="ALOCACAO">Alocação</option>
+                        <option value="ALOCACAO">Alocação</option>
+                        <option value="CARGA_INICIAL">Entrada Lote Legado</option>
                     </select>
                 </div>
             </div>

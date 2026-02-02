@@ -49,7 +49,10 @@ $(document).ready(function () {
                 "data": "produto_descricao",
                 "className": "align-middle",
                 "render": function (data, type, row) {
-                    return `<strong>${data}</strong><br><small class="text-muted">Lote: ${row.lote_numero}</small>`;
+                     let produto = data ? data : 'PRODUTO NÃO IDENTIFICADO';
+                     let lote = row.lote_numero ? row.lote_numero : 'N/A';
+                    // return `<strong>${data}</strong><br><small class="text-muted">Lote: ${row.lote_numero}</small>`;
+                     return `<strong>${produto}</strong><br><small class="text-muted">Lote: ${lote}</small>`;
                 }
             },
             { "data": "origem_nome", "className": "text-center align-middle small" },
@@ -71,14 +74,15 @@ $(document).ready(function () {
     $('#form-filtro-kardex').on('submit', function (e) {
         e.preventDefault();
         table.ajax.reload(); // Recarrega a tabela aplicando os filtros
+        // console.log("Datas enviadas:", $('#data_inicio').val(), $('#data_fim').val());
     });
 
     // Evento Limpar
     $('#btn-limpar').on('click', function () {
         $('#form-filtro-kardex')[0].reset();
         // Reseta datas para o padrão (mês atual) se quiser, ou deixa em branco
-        $('#data_inicio').val(new Date().toISOString().slice(0, 8) + '01');
-        $('#data_fim').val(new Date().toISOString().slice(0, 10));
+        $('#data_inicio').val('');
+        $('#data_fim').val('');
         table.ajax.reload();
     });
 });

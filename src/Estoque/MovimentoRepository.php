@@ -35,7 +35,6 @@ class MovimentoRepository
         date_default_timezone_set('America/Sao_Paulo');
         $dataHoraLocal = date('Y-m-d H:i:s');
 
-
         $sql = "INSERT INTO tbl_estoque_movimento 
                     (movimento_tipo, movimento_lote_item_id, movimento_quantidade, movimento_usuario_id, 
                     movimento_endereco_origem_id, movimento_endereco_destino_id, movimento_observacao, movimento_documento_ref, movimento_data)
@@ -76,8 +75,6 @@ class MovimentoRepository
         $stmt->execute([':item_id' => $loteItemId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    // No arquivo src/Estoque/MovimentoRepository.php
 
     public function buscarKardexDataTable(array $params): array
     {
@@ -217,12 +214,13 @@ class MovimentoRepository
         }
 
         $stmt->execute();
+        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
             "draw" => intval($params['draw'] ?? 1),
             "recordsTotal" => intval($totalRecords),
             "recordsFiltered" => intval($totalRecords),
-            "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)
+            "data" => $resultados
         ];
     }
 }

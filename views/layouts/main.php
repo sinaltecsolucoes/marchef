@@ -49,10 +49,11 @@
                             <?php
                             // Itens do menu de Cadastros
                             $paginasSimples = [
-                                'usuarios' => 'Usuários',
-                                'clientes' => 'Clientes',
-                                'fornecedores' => 'Fornecedores',
-                                'transportadoras' => 'Transportadoras',
+                                'usuarios'            => 'Usuários',
+                                'clientes'            => 'Clientes',
+                                'fornecedores'        => 'Fornecedores',
+                                'fazendas'            => 'Fazendas (Origem)',
+                                'transportadoras'     => 'Transportadoras',
                                 'condicoes_pagamento' => 'Condições de Pagamento'
                             ];
 
@@ -387,7 +388,7 @@
 
                         <div class="mb-3">
                             <label for="perfil_usu_login" class="form-label">Login (Usuário)</label>
-                            <input type="text" class="form-control" id="perfil_usu_login" name="usu_login" required>
+                            <input type="text" class="form-control" id="perfil_usu_login" name="usu_login" autocomplete="username" required>
                         </div>
 
                         <div class="mb-3 d-none" id="div-situacao-perfil">
@@ -403,7 +404,7 @@
                         <div class="mb-3">
                             <label for="perfil_usu_senha" class="form-label">Alterar Senha</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" id="perfil_usu_senha" name="usu_senha" placeholder="Deixe vazio para manter a atual">
+                                <input type="password" class="form-control" id="perfil_usu_senha" name="usu_senha" autocomplete="new-password" placeholder="Deixe vazio para manter a atual">
                                 <button class="btn btn-outline-secondary" type="button" id="btn-show-pass-perfil" title="Mostrar/Ocultar Senha">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -474,7 +475,7 @@
         <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
     <?php endif; ?>
 
-    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor' || $pageType === 'transportadora'): ?>
+    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor' || $pageType === 'fazendas' || $pageType === 'transportadora'): ?>
         <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
     <?php endif; ?>
 

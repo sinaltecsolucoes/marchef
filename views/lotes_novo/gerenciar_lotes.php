@@ -83,9 +83,9 @@ switch ($page) {
 
                                     <li class="p-1 border-bottom mb-2 bg-light rounded">
                                         <div class="form-check">
-                                            <input class="form-check-input fw-bold" type="checkbox" id="check-mes-todos">
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-mes-todos" checked>
                                             <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-mes-todos">
-                                                MARCAR TODOS
+                                                DESMARCAR TODOS
                                             </label>
                                         </div>
                                     </li>
@@ -105,20 +105,19 @@ switch ($page) {
                                         11 => 'Novembro',
                                         12 => 'Dezembro'
                                     ];
-                                    $mesAtual = date('n');
 
                                     foreach ($meses as $num => $nome) {
-                                        // Marca o mês atual por padrão
-                                        $checked = ($num == $mesAtual) ? 'checked' : '';
+                                        // Agora todos iniciam com 'checked'
+                                        $checked = 'checked';
                                         echo "
-                                        <li class='p-1'>
-                                            <div class='form-check'>
-                                                <input class='form-check-input check-mes-item' type='checkbox' value='{$num}' id='mes-{$num}' {$checked}>
-                                                <label class='form-check-label w-100 cursor-pointer' for='mes-{$num}'>
-                                                    {$nome}
-                                                </label>
-                                            </div>
-                                        </li>";
+                                            <li class='p-1'>
+                                                <div class='form-check'>
+                                                    <input class='form-check-input check-mes-item' type='checkbox' value='{$num}' id='mes-{$num}' {$checked}>
+                                                    <label class='form-check-label w-100 cursor-pointer' for='mes-{$num}'>
+                                                        {$nome}
+                                                    </label>
+                                                </div>
+                                            </li>";
                                     }
                                     ?>
                                 </ul>
@@ -129,14 +128,14 @@ switch ($page) {
                         <div class="col-md-3">
                             <label class="form-label small fw-bold mb-1">Fornecedor</label>
                             <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-fornecedores" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Todos os Fornecedores
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-fornecedores" data-bs-toggle="dropdown">
+                                    Carregando fornecedores...
                                 </button>
                                 <ul class="dropdown-menu p-2 shadow w-100" id="lista-filtro-fornecedores" aria-labelledby="btn-dropdown-fornecedores" style="max-height: 250px; overflow-y: auto;">
                                     <li class="p-1 border-bottom mb-2 bg-light rounded">
                                         <div class="form-check">
                                             <input class="form-check-input fw-bold" type="checkbox" id="check-fornecedor-todos" checked>
-                                            <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-fornecedor-todos">MARCAR TODOS</label>
+                                            <label class="form-check-label fw-bold text-primary cursor-pointer" for="check-fornecedor-todos">DESMARCAR TODOS</label>
                                         </div>
                                     </li>
                                     <div id="container-check-fornecedores-items" class="small">
@@ -156,8 +155,8 @@ switch ($page) {
                                 <ul class="dropdown-menu p-2 shadow" id="lista-filtro-situacao" style="width:100%; min-width:unset;">
                                     <li class="p-1 border-bottom mb-2 bg-light rounded">
                                         <div class="form-check">
-                                            <input class="form-check-input fw-bold" type="checkbox" id="check-situacao-todos" checked>
-                                            <label class="form-check-label fw-bold text-primary font-small" for="check-situacao-todos">TODAS</label>
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-situacao-todos">
+                                            <label class="form-check-label fw-bold text-primary font-small" for="check-situacao-todos">MARCAR TODAS</label>
                                         </div>
                                     </li>
                                     <li class="p-1">
@@ -185,7 +184,11 @@ switch ($page) {
                         <!-- Campo para Ano -->
                         <div class="col-md-2">
                             <label class="form-label small fw-bold mb-1">Exercício (Ano)</label>
-                            <input type="number" class="form-control form-control-sm" id="rel_ano" value="<?php echo date('Y'); ?>">
+                            <input
+                                type="number"
+                                class="form-control form-control-sm"
+                                id="rel_ano"
+                                value="<?php echo date('Y'); ?>">
                         </div>
 
                         <!-- Botão Gerar -->

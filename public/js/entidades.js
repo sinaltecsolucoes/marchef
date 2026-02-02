@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    // Detecta se estamos na página de cliente ou fornecedor
+    // Detecta se estamos na página de cliente ou fornecedor ou fazenda ou transportadora
     const pageType = $('body').data('page-type');
     if (!pageType) {
         return;
@@ -21,6 +21,23 @@ $(document).ready(function () {
     const $btnSalvarEndereco = $('#btn-salvar-endereco');
     const $btnCancelarEdicaoEndereco = $('#btn-cancelar-edicao-endereco');
     let tableEntidades, tableEnderecos;
+
+    // Mapa para exibição amigável na Tabela (Baseado no valor do Banco)
+    const MAPA_LABELS_TABELA = {
+        'Cliente': 'Cliente',
+        'Fornecedor': 'Fornecedor',
+        'Transportadora': 'Transportadora',
+        'Fazenda': 'Fazenda (Origem)',
+        'Fornecedor e Fazenda': 'Fornecedor e Fazenda (Origem)'
+    };
+
+    // Mapa para nomes singulares (Baseado no pageType da URL)
+    const MAPA_NOMES_SINGULAR = {
+        'cliente': 'Cliente',
+        'fornecedor': 'Fornecedor',
+        'fazenda': 'Fazenda',
+        'transportadora': 'Transportadora'
+    };
 
     // =================================================================
     // FUNÇÕES DE LÓGICA DE NEGÓCIO DO FORMULÁRIO
@@ -266,18 +283,42 @@ $(document).ready(function () {
         $(fields).prop('readonly', isReadonly).toggleClass('bg-light', isReadonly);
     }
 
+    /* function resetModal() {
+         $formEntidade[0].reset();
+         $formEndereco[0].reset();
+         $('#ent-codigo, #end-codigo, #end-entidade-id').val('');
+         $('#mensagem-entidade, #mensagem-endereco, #cnpj-feedback, #cep-feedback-adicional').empty().removeClass();
+         $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
+         $formEntidade.find(`input[name="ent_tipo_entidade"][value="${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}"]`).prop('checked', true);
+         $('#situacao-entidade').prop('checked', true);
+         $('#modal-adicionar-entidade-label').text(`Adicionar ${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}`);
+         $('#enderecos-tab').addClass('disabled');
+         if (tableEnderecos) tableEnderecos.clear().draw();
+         setPrincipalAddressFieldsReadonly(false);
+     }*/
+
     function resetModal() {
         $formEntidade[0].reset();
         $formEndereco[0].reset();
         $('#ent-codigo, #end-codigo, #end-entidade-id').val('');
         $('#mensagem-entidade, #mensagem-endereco, #cnpj-feedback, #cep-feedback-adicional').empty().removeClass();
+
+        // Reseta tipos e rádio
         $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
         $formEntidade.find(`input[name="ent_tipo_entidade"][value="${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}"]`).prop('checked', true);
         $('#situacao-entidade').prop('checked', true);
+
+        // Título e abas
         $('#modal-adicionar-entidade-label').text(`Adicionar ${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}`);
         $('#enderecos-tab').addClass('disabled');
+
+        $('#dados-tab').tab('show'); // Garante que volta para a primeira aba
+
         if (tableEnderecos) tableEnderecos.clear().draw();
         setPrincipalAddressFieldsReadonly(false);
+
+        // Reaplicar as máscaras para garantir que os campos resetados funcionem
+        $('.cep').mask('00000-000');
     }
 
     /**
@@ -302,6 +343,31 @@ $(document).ready(function () {
         return $('<span>').text(cnpj).mask('00.000.000/0000-00').text();
     }
 
+    /**
+ * Aplica a máscara de CEP a uma string de números, usando o plugin jQuery Mask.
+ * @param {string} cep O CEP sem formatação.
+ * @returns {string} O CEP formatado.
+ */
+    function formatarCep(cep) {
+        if (!cep) return '';
+        const numeros = cep.replace(/\D/g, '');
+        if (numeros.length !== 8) return numeros;
+        return numeros.replace(/(\d{5})(\d{3})/, '$1-$2');
+    }
+
+    $('#cep-endereco, #cep-endereco-adicional').on('input', function () {
+        let valor = $(this).val().replace(/\D/g, '');
+        if (valor.length > 8) valor = valor.slice(0, 8);
+        if (valor.length > 5) {
+            valor = valor.replace(/(\d{5})(\d{1,3})/, '$1-$2');
+        }
+        $(this).val(valor);
+    });
+
+    $modalEntidade.on('hidden.bs.modal', function () {
+        resetModal();
+    });
+
     // =================================================================
     // INICIALIZAÇÃO DA TABELA DATATABLES
     // =================================================================
@@ -314,7 +380,7 @@ $(document).ready(function () {
             "data": function (d) {
                 // Envia os filtros atuais para o backend
                 d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val();
-                d.tipo_entidade = pageType; // Envia 'cliente' ou 'fornecedor ou transportadora'
+                d.tipo_entidade = pageType; // Envia 'cliente' ou 'fornecedor' ou 'fazenda' ou transportadora'
                 d.filtro_tipo_entidade = $('#filtro-tipo-entidade').val(); // Envia o valor do novo filtro
                 d.csrf_token = csrfToken;
             }
@@ -334,18 +400,7 @@ $(document).ready(function () {
                 "render": function (data, type, row) {
                     // Só altera a visualização se for para exibição (display) ou filtro
                     if (type === 'display' || type === 'filter') {
-                        switch (data) {
-                            case 'Cliente':
-                                return 'Fornecedor';
-                            case 'Fornecedor':
-                                return 'Fazenda (Origem)';
-                            case 'Transportadora':
-                                return 'Transportadora';
-                            case 'Cliente e Fornecedor':
-                                return 'Fornecedor e Fazenda (Origem)';
-                            default:
-                                return data; // Caso venha algo diferente, exibe o original
-                        }
+                        return MAPA_LABELS_TABELA[data] || data;
                     }
                     return data;
                 }
@@ -438,18 +493,7 @@ $(document).ready(function () {
         $('#mensagem-entidade').empty().removeClass(); // Limpa mensagens de erro/sucesso anteriores
 
         // 2. Define o Título Corretamente baseado no pageType
-        let singular = 'Entidade';
-        switch (pageType) {
-            case 'cliente':
-                singular = 'Cliente';
-                break;
-            case 'fornecedor':
-                singular = 'Fornecedor';
-                break;
-            case 'transportadora':
-                singular = 'Transportadora';
-                break;
-        }
+        const singular = MAPA_NOMES_SINGULAR[pageType] || 'Entidade';
         $('#modal-adicionar-entidade-label').text('Adicionar ' + singular);
 
         // 3. Configurações Visuais (Abas e Tabelas)
@@ -459,7 +503,7 @@ $(document).ready(function () {
         setPrincipalAddressFieldsReadonly(false); // Libera campos de endereço principal
 
         // 4. Seleciona os Radios Corretos
-        // Seleciona o tipo de entidade (Cliente/Fornecedor/Transportadora)
+        // Seleciona o tipo de entidade (Cliente/Fornecedor/Fazenda/Transportadora)
         $formEntidade.find(`input[name="ent_tipo_entidade"][value="${singular}"]`).prop('checked', true);
 
         // Força Pessoa Física como padrão e atualiza UI
@@ -537,6 +581,7 @@ $(document).ready(function () {
     $modalEntidade.on('shown.bs.modal', function (event) {
         if ($(event.relatedTarget).is('#btn-adicionar-entidade')) {
             updatePessoaFields(true); // Aplica a máscara de CPF por padrão
+            $('#cep-endereco-adicional').mask('00000-000');
         }
     });
 
@@ -641,7 +686,8 @@ $(document).ready(function () {
 
 
                     // --- Endereço Principal ---
-                    $('#cep-endereco').val(data.end_cep);
+                    $('#cep-endereco').val(formatarCep(data.end_cep));
+                    //$('#cep-endereco').val(data.end_cep);
                     $('#logradouro-endereco').val(data.end_logradouro);
                     $('#numero-endereco').val(data.end_numero);
                     $('#complemento-endereco').val(data.end_complemento);
@@ -669,8 +715,16 @@ $(document).ready(function () {
     $('#tabela-entidades').on('click', '.btn-inativar-entidade', function () {
         const id = $(this).data('id');
         const nome = $(this).data('nome');
-        const tituloConfirmacao = pageType === 'cliente' ? 'Inativar Cliente?' : 'Inativar Fornecedor?';
 
+        // 1. Definição do Título Dinâmico
+        const titulos = {
+            'cliente': 'Inativar Cliente?',
+            'fornecedor': 'Inativar Fornecedor?',
+            'transportadora': 'Inativar Transportadora?',
+            'fazenda': 'Inativar Fazenda?'
+        };
+
+        const tituloConfirmacao = titulos[pageType] || 'Inativar Entidade?';
 
         confirmacaoAcao(
             tituloConfirmacao, // << USA O TÍTULO DINÂMICO AQUI
@@ -710,7 +764,7 @@ $(document).ready(function () {
                 const data = response.data;
                 $('#end-codigo').val(data.end_codigo);
                 $('#tipo-endereco').val(data.end_tipo_endereco);
-                $('#cep-endereco-adicional').val(data.end_cep);
+                $('#cep-endereco-adicional').val(data.end_cep).trigger('input');
                 $('#logradouro-endereco-adicional').val(data.end_logradouro);
                 $('#numero-endereco-adicional').val(data.end_numero);
                 $('#complemento-endereco-adicional').val(data.end_complemento);

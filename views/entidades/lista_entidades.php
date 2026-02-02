@@ -1,15 +1,17 @@
 <?php
 // /views/entidades/lista_entidades.php
 
-// Lógica de Título/Variável ATUALIZADA para 3 tipos
+// Lógica de Título/Variável ATUALIZADA para 4 tipos
 $titulos = [
-    'cliente' => 'Clientes',
-    'fornecedor' => 'Fornecedores',
+    'cliente'        => 'Clientes (Comercial)',
+    'fornecedor'     => 'Fornecedores',
+    'fazenda'       => 'Fazendas (Origem)',
     'transportadora' => 'Transportadoras'
 ];
 $singulares = [
-    'cliente' => 'Cliente',
-    'fornecedor' => 'Fornecedor',
+    'cliente'        => 'Cliente',
+    'fornecedor'     => 'Fornecedor',
+    'fazenda'       =>'Fazenda',
     'transportadora' => 'Transportadora'
 ];
 
@@ -18,6 +20,7 @@ $singular = $singulares[$pageType] ?? 'Entidade'; // VARIÁVEL $singular AGORA E
 
 $subtitulo = [
     'cliente' => 'Gerencie todos os clientes.',
+    'fazenda' => 'Gerencie todas as fazendas.',
     'fornecedor' => 'Gerencie todos os fornecedores.',
     'transportadora' => 'Gerencie todas as transportadoras cadastradas.'
 ];
@@ -44,17 +47,17 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <!-- Filtro por Tipo Específico -->
                 <div class="d-flex align-items-center gap-2">
-                    <?php if ($pageType !== 'transportadora'): // SÓ mostra o filtro se a página NÃO FOR de transportadora 
+                    <?php if ($pageType !== 'transportadora' && $pageType !== 'cliente'): // SÓ mostra o filtro se a página NÃO FOR de transportadora e NÃO for de cliente
                     ?>
                         <label for="filtro-tipo-entidade" class="form-label mb-0 text-nowrap">Filtrar por Tipo:</label>
                         <select class="form-select" id="filtro-tipo-entidade">
                             <option value="Todos">Todos (<?php echo $titulo; ?> e Ambos)</option>
-                            <?php if ($pageType === 'cliente'): ?>
-                                <option value="Cliente">Apenas Clientes</option>
+                            <?php if ($pageType === 'fazendas'): ?>
+                                <option value="Fazenda">Apenas Fazendas</option>
                             <?php else: ?>
                                 <option value="Fornecedor">Apenas Fornecedores</option>
                             <?php endif; ?>
-                            <option value="Cliente e Fornecedor">Clientes e Fornecedores</option>
+                            <option value="Fazenda e Fornecedor">Fazendas e Fornecedores</option>
                         </select>
                     <?php endif; // Se for transportadora, este bloco inteiro fica vazio 
                     ?>
@@ -166,11 +169,20 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                             for="tipo-entidade-fornecedor">Fornecedor</label>
                                     </div>
 
+                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'fazenda')
+                                                                                    echo 'style="display:none;"'; ?>>
+                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
+                                            id="tipo-entidade-fazenda" value="Fazenda" <?php if ($pageType === 'fazenda')
+                                                                                                    echo 'checked'; ?>>
+                                        <label class="form-check-label"
+                                            for="tipo-entidade-fazenda">Fazenda</label>
+                                    </div>
+
                                     <div class="form-check form-check-inline" <?php if ($pageType === 'transportadora')
                                                                                     echo 'style="display:none;"'; ?>>
                                         <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-ambos" value="Cliente e Fornecedor">
-                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos (Cliente e
+                                            id="tipo-entidade-ambos" value="Fazenda e Fornecedor">
+                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos (Fazenda e
                                             Fornecedor)</label>
                                     </div>
 
@@ -183,10 +195,6 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                             for="tipo-entidade-transportadora">Transportadora</label>
                                     </div>
                                 </div>
-
-
-
-
 
                                 <div class="col-md-6 mb-3" id="div-situacao-entidade">
                                     <label class="form-label" for="situacao-entidade">Situação</label>

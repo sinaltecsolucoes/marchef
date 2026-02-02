@@ -230,6 +230,8 @@ class EntidadeRepository
 
             // 4. Se um endereço foi fornecido, insere na 'tbl_enderecos' como 'Principal'
             if (!empty($data['end_cep'])) {
+                $cepLimpo = preg_replace('/\D/', '', $data['end_cep']);
+
                 $sqlEndereco = "INSERT INTO tbl_enderecos (
                                     end_entidade_id, 
                                     end_tipo_endereco, 
@@ -256,7 +258,7 @@ class EntidadeRepository
                 $stmtEndereco = $this->pdo->prepare($sqlEndereco);
                 $stmtEndereco->execute([
                     ':ent_id' => $entidadeId,
-                    ':cep' => $data['end_cep'],
+                    ':cep' => $cepLimpo,
                     ':logradouro' => $data['end_logradouro'],
                     ':numero' => $data['end_numero'],
                     ':complemento' => $data['end_complemento'] ?? null,
@@ -336,13 +338,15 @@ class EntidadeRepository
 
             // 2. Atualiza ou Insere (UPSERT) o endereço principal
             if (!empty($data['end_cep'])) {
+                $cepLimpo = preg_replace('/\D/', '', $data['end_cep']);
+
                 // Verifica se já existe um endereço principal para essa entidade
                 $stmtCheck = $this->pdo->prepare("SELECT end_codigo FROM tbl_enderecos WHERE end_entidade_id = :id AND end_tipo_endereco = 'Principal'");
                 $stmtCheck->execute([':id' => $id]);
                 $existingEnderecoId = $stmtCheck->fetchColumn();
 
                 $params = [
-                    ':cep' => $data['end_cep'],
+                    ':cep' => $cepLimpo,
                     ':logradouro' => $data['end_logradouro'],
                     ':numero' => $data['end_numero'],
                     ':complemento' => $data['end_complemento'] ?? null,
@@ -477,6 +481,8 @@ class EntidadeRepository
         $id = filter_var($data['end_codigo'] ?? null, FILTER_VALIDATE_INT);
         $dadosAntigos = null;
 
+        $cepLimpo = preg_replace('/\D/', '', $data['end_cep']);
+
         if ($id) { // Se é uma atualização, busca os dados antigos
             $dadosAntigos = $this->findEndereco($id);
         }
@@ -521,7 +527,7 @@ class EntidadeRepository
         $stmt = $this->pdo->prepare($sql);
         $params = [
             ':tipo' => $data['end_tipo_endereco'],
-            ':cep' => $data['end_cep'],
+            ':cep' => $cepLimpo,
             ':log' => $data['end_logradouro'],
             ':num' => $data['end_numero'],
             ':comp' => $data['end_complemento'] ?? null,
@@ -586,7 +592,7 @@ class EntidadeRepository
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
+
     /**
      * Busca o endereço principal de uma entidade.
      *

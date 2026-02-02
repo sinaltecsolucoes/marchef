@@ -209,7 +209,7 @@ class LabelService
         $partesEndereco = array_filter([($dados['end_logradouro'] ?? '') . ', ' . ($dados['end_numero'] ?? ''), $dados['end_complemento'] ?? '', $dados['end_bairro'] ?? '']);
         $linhaEndereco = implode(' - ', $partesEndereco);
 
-        $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '     CEP: ' . ($dados['end_cep'] ?? '');
+        $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '     CEP: ' . $this->formatCep($dados['end_cep'] ?? '');
         $linhaCnpjIe = "CNPJ: " . $this->formatCnpj($dados['ent_cnpj'] ?? '') . "     I.E.: " . ($dados['ent_inscricao_estadual'] ?? '');
 
         // --- MAPA COMPLETO DE PLACEHOLDERS ---
@@ -285,6 +285,29 @@ class LabelService
             return $cnpj;
         }
         return sprintf('%s.%s.%s/%s-%s', substr($cnpj, 0, 2), substr($cnpj, 2, 3), substr($cnpj, 5, 3), substr($cnpj, 8, 4), substr($cnpj, 12, 2));
+    }
+
+    /**
+     * Formata uma string de números para o padrão de CEP (00000-000).
+     * * @param string $cep
+     * @return string
+     */
+    private function formatCep(string $cep): string
+    {
+        // Remove qualquer caractere que não seja número
+        $cep = preg_replace('/[^0-9]/', '', $cep);
+
+        // Verifica se o CEP possui os 8 dígitos esperados
+        if (strlen($cep) !== 8) {
+            return $cep;
+        }
+
+        // Retorna formatado: 00000-000
+        return sprintf(
+            '%s-%s',
+            substr($cep, 0, 5),
+            substr($cep, 5, 3)
+        );
     }
 
     private function buildClassificationLine(array $produto): string
