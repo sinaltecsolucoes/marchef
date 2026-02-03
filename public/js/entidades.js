@@ -283,20 +283,6 @@ $(document).ready(function () {
         $(fields).prop('readonly', isReadonly).toggleClass('bg-light', isReadonly);
     }
 
-    /* function resetModal() {
-         $formEntidade[0].reset();
-         $formEndereco[0].reset();
-         $('#ent-codigo, #end-codigo, #end-entidade-id').val('');
-         $('#mensagem-entidade, #mensagem-endereco, #cnpj-feedback, #cep-feedback-adicional').empty().removeClass();
-         $formEntidade.find(`input[name="ent_tipo_pessoa"][value="F"]`).prop('checked', true);
-         $formEntidade.find(`input[name="ent_tipo_entidade"][value="${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}"]`).prop('checked', true);
-         $('#situacao-entidade').prop('checked', true);
-         $('#modal-adicionar-entidade-label').text(`Adicionar ${pageType === 'cliente' ? 'Cliente' : 'Fornecedor'}`);
-         $('#enderecos-tab').addClass('disabled');
-         if (tableEnderecos) tableEnderecos.clear().draw();
-         setPrincipalAddressFieldsReadonly(false);
-     }*/
-
     function resetModal() {
         $formEntidade[0].reset();
         $formEndereco[0].reset();
@@ -343,11 +329,11 @@ $(document).ready(function () {
         return $('<span>').text(cnpj).mask('00.000.000/0000-00').text();
     }
 
-    /**
- * Aplica a máscara de CEP a uma string de números, usando o plugin jQuery Mask.
- * @param {string} cep O CEP sem formatação.
- * @returns {string} O CEP formatado.
- */
+    /** 
+     * Aplica a máscara de CEP a uma string de números, usando o plugin jQuery Mask.
+     * @param {string} cep O CEP sem formatação.
+     * @returns {string} O CEP formatado.
+     */
     function formatarCep(cep) {
         if (!cep) return '';
         const numeros = cep.replace(/\D/g, '');

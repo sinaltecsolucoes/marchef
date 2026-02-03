@@ -11,7 +11,7 @@ $titulos = [
 $singulares = [
     'cliente'        => 'Cliente',
     'fornecedor'     => 'Fornecedor',
-    'fazenda'       =>'Fazenda',
+    'fazenda'       => 'Fazenda',
     'transportadora' => 'Transportadora'
 ];
 
@@ -147,62 +147,75 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                                 value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
                             <div id="mensagem-entidade" class="mb-3"></div>
 
-                            <div class="row">
+                            <div class="row align-items-start">
+                                <div class="col-md-10 mb-2">
+                                    <label class="form-label fw-bold">Tipo de Cadastro</label>
+                                    <div class="d-flex flex-wrap gap-3 p-3 bg-light border rounded">
 
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tipo de Entidade</label><br>
+                                        <div class="form-check form-check-inline custom-checkbox-card">
+                                            <input class="form-check-input check-tipo-entidade" type="checkbox"
+                                                name="ent_tipo_cliente" id="ent_tipo_cliente" value="1"
+                                                <?php echo ($pageType === 'cliente') ? 'checked disabled' : ''; ?>>
 
-                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'cliente')
-                                                                                    echo 'style="display:none;"'; ?>>
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-cliente" value="Cliente" <?php if ($pageType === 'cliente')
-                                                                                            echo 'checked'; ?>>
-                                        <label class="form-check-label" for="tipo-entidade-cliente">Cliente</label>
+                                            <label class="form-check-label" for="ent_tipo_cliente">
+                                                <i class="fas fa-user-tag me-1 text-primary"></i> Cliente
+                                            </label>
+
+                                            <?php if ($pageType === 'cliente'): ?>
+                                                <input type="hidden" name="ent_tipo_cliente" value="1">
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="form-check form-check-inline custom-checkbox-card">
+                                            <input class="form-check-input check-tipo-entidade" type="checkbox"
+                                                name="ent_tipo_fornecedor" id="ent_tipo_fornecedor" value="1"
+                                                <?php echo ($pageType === 'fornecedor') ? 'checked disabled' : ''; ?>>
+                                            <label class="form-check-label" for="ent_tipo_fornecedor">
+                                                <i class="fas fa-truck-loading me-1 text-success"></i> Fornecedor
+                                            </label>
+                                            <?php if ($pageType === 'fornecedor'): ?>
+                                                <input type="hidden" name="ent_tipo_fornecedor" value="1">
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="form-check form-check-inline custom-checkbox-card">
+                                            <input class="form-check-input check-tipo-entidade" type="checkbox"
+                                                name="ent_tipo_fazenda" id="ent_tipo_fazenda" value="1"
+                                                <?php echo ($pageType === 'fazenda') ? 'checked disabled' : ''; ?>>
+                                            <label class="form-check-label" for="ent_tipo_fazenda">
+                                                <i class="fas fa-tractor me-1 text-warning"></i> Fazenda
+                                            </label>
+                                            <?php if ($pageType === 'fazenda'): ?>
+                                                <input type="hidden" name="ent_tipo_fazenda" value="1">
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="form-check form-check-inline custom-checkbox-card">
+                                            <input class="form-check-input check-tipo-entidade" type="checkbox"
+                                                name="ent_tipo_transportadora" id="ent_tipo_transportadora" value="1"
+                                                <?php echo ($pageType === 'transportadora') ? 'checked disabled' : ''; ?>>
+                                            <label class="form-check-label" for="ent_tipo_transportadora">
+                                                <i class="fas fa-shipping-fast me-1 text-info"></i> Transportadora
+                                            </label>
+                                            <?php if ($pageType === 'transportadora'): ?>
+                                                <input type="hidden" name="ent_tipo_transportadora" value="1">
+                                            <?php endif; ?>
+                                        </div>
+
                                     </div>
-
-                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'fornecedor')
-                                                                                    echo 'style="display:none;"'; ?>>
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-fornecedor" value="Fornecedor" <?php if ($pageType === 'fornecedor')
-                                                                                                    echo 'checked'; ?>>
-                                        <label class="form-check-label"
-                                            for="tipo-entidade-fornecedor">Fornecedor</label>
-                                    </div>
-
-                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'fazenda')
-                                                                                    echo 'style="display:none;"'; ?>>
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-fazenda" value="Fazenda" <?php if ($pageType === 'fazenda')
-                                                                                                    echo 'checked'; ?>>
-                                        <label class="form-check-label"
-                                            for="tipo-entidade-fazenda">Fazenda</label>
-                                    </div>
-
-                                    <div class="form-check form-check-inline" <?php if ($pageType === 'transportadora')
-                                                                                    echo 'style="display:none;"'; ?>>
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-ambos" value="Fazenda e Fornecedor">
-                                        <label class="form-check-label" for="tipo-entidade-ambos">Ambos (Fazenda e
-                                            Fornecedor)</label>
-                                    </div>
-
-                                    <div class="form-check form-check-inline" <?php if ($pageType !== 'transportadora')
-                                                                                    echo 'style="display:none;"'; ?>>
-                                        <input class="form-check-input" type="radio" name="ent_tipo_entidade"
-                                            id="tipo-entidade-transportadora" value="Transportadora" <?php if ($pageType === 'transportadora')
-                                                                                                            echo 'checked'; ?>>
-                                        <label class="form-check-label"
-                                            for="tipo-entidade-transportadora">Transportadora</label>
-                                    </div>
+                                    <small class="text-muted mt-1 d-block">Você pode selecionar múltiplas opções simultaneamente.</small>
                                 </div>
 
-                                <div class="col-md-6 mb-3" id="div-situacao-entidade">
-                                    <label class="form-label" for="situacao-entidade">Situação</label>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch"
-                                            id="situacao-entidade" name="ent_situacao" value="A" checked>
-                                        <label class="form-check-label" for="situacao-entidade"><span
-                                                id="texto-situacao-entidade">Ativo</span></label>
+                                <div class="col-md-2 mb-2">
+                                    <label class="form-label fw-bold" for="situacao-entidade">Situação</label>
+                                    <div class="d-flex justify-content-start align-items-center border rounded" style="height: 58px; background-color: #f8f9fa;">
+                                        <div class="form-check form-switch ms-4">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                id="situacao-entidade" name="ent_situacao" value="A" checked style="cursor: pointer; transform: scale(1.2);">
+                                            <label class="form-check-label ms-2" for="situacao-entidade">
+                                                <span id="texto-situacao-entidade" class="badge bg-success">Ativo</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

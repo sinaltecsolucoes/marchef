@@ -475,7 +475,7 @@
         <script src="<?php echo BASE_URL; ?>/js/produtos.js"></script>
     <?php endif; ?>
 
-    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor' || $pageType === 'fazendas' || $pageType === 'transportadora'): ?>
+    <?php if ($pageType === 'cliente' || $pageType === 'fornecedor' || $pageType === 'fazenda' || $pageType === 'transportadora'): ?>
         <script src="<?php echo BASE_URL; ?>/js/entidades.js"></script>
     <?php endif; ?>
 

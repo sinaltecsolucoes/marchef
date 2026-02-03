@@ -20,7 +20,7 @@ class EntidadeRepository
     /**
      * Lógica de listar_entidades.php
      */
-    public function findAllForDataTable(array $params): array
+    /*  public function findAllForDataTable(array $params): array
     {
         // Parâmetros do DataTables
         $draw = $params['draw'] ?? 1;
@@ -80,12 +80,15 @@ class EntidadeRepository
         } else {
             switch (strtolower($pageType)) {
                 case 'cliente':
-                    $conditions[] = "(ent.ent_tipo_entidade = 'Cliente' OR 
-                                      ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                    $conditions[] = "(ent.ent_tipo_entidade) = 'Cliente'";
+                    break;
+                case 'fazenda':
+                    $conditions[] = "(ent.ent_tipo_entidade = 'Fazenda' OR 
+                                      ent.ent_tipo_entidade = 'Fazenda e Fornecedor')";
                     break;
                 case 'fornecedor':
                     $conditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR 
-                                      ent.ent_tipo_entidade = 'Cliente e Fornecedor')";
+                                      ent.ent_tipo_entidade = 'Fazenda e Fornecedor')";
                     break;
                 case 'transportadora':
                     $conditions[] = "ent.ent_tipo_entidade = 'Transportadora'";
@@ -124,6 +127,139 @@ class EntidadeRepository
                            $sqlBase 
                            $whereClause 
                            ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
+        $stmt = $this->pdo->prepare($sqlData);
+        $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
+        foreach ($queryParams as $key => &$value) {
+            $stmt->bindParam($key, $value);
+        }
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw" => (int) $draw,
+            "recordsTotal" => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data" => $data ?: []
+        ];
+    } */
+
+    public function findAllForDataTable(array $params): array
+    {
+        // 1. Parâmetros do DataTables
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $searchValue = $params['search']['value'] ?? '';
+        $orderColumnIndex = $params['order'][0]['column'] ?? 3;
+        $orderDir = $params['order'][0]['dir'] ?? 'asc';
+        $filtroSituacao = $params['filtro_situacao'] ?? 'Todos';
+        $pageType = $params['tipo_entidade'] ?? 'cliente';
+        $filtroTipoEntidade = $params['filtro_tipo_entidade'] ?? 'Todos';
+
+        $columns = [
+            'ent_situacao',
+            'ent_tipo_entidade',
+            'ent_codigo_interno',
+            'ent_razao_social',
+            'ent_nome_fantasia',
+            'ent_cpf',
+            'end_logradouro'
+        ];
+        $orderColumn = $columns[$orderColumnIndex] ?? 'ent_razao_social';
+
+        $searchableColumns = [
+            'ent_razao_social',
+            'ent_nome_fantasia',
+            'ent_cpf',
+            'ent_cnpj',
+            'ent_codigo_interno'
+        ];
+
+        // 2. SQL Base para o JOIN de endereços
+        $sqlBase = "FROM tbl_entidades ent 
+                LEFT JOIN (
+                    SELECT 
+                        end_entidade_id, end_logradouro, end_numero, 
+                        ROW_NUMBER() OVER(
+                            PARTITION BY end_entidade_id 
+                            ORDER BY CASE end_tipo_endereco 
+                                WHEN 'Principal' THEN 1 
+                                WHEN 'Comercial' THEN 2 
+                                ELSE 3 END, 
+                                end_codigo ASC
+                        ) AS rn 
+                    FROM tbl_enderecos
+                ) endereco ON ent.ent_codigo = endereco.end_entidade_id AND endereco.rn = 1";
+
+        // 3. CONDIÇÃO FIXA DA PÁGINA (Contexto)
+        // Isso define o que é o "Total" para esta tela específica
+        $pageConditions = [];
+        switch (strtolower($pageType)) {
+            case 'cliente':
+                $pageConditions[] = "ent.ent_tipo_entidade = 'Cliente'";
+                break;
+            case 'fazenda':
+                $pageConditions[] = "(ent.ent_tipo_entidade = 'Fazenda' OR ent.ent_tipo_entidade = 'Fazenda e Fornecedor')";
+                break;
+            case 'fornecedor':
+                $pageConditions[] = "(ent.ent_tipo_entidade = 'Fornecedor' OR ent.ent_tipo_entidade = 'Fazenda e Fornecedor')";
+                break;
+            case 'transportadora':
+                $pageConditions[] = "ent.ent_tipo_entidade = 'Transportadora'";
+                break;
+            default:
+                $pageConditions[] = "1=0";
+        }
+        $wherePage = " WHERE " . implode(" AND ", $pageConditions);
+
+        // 4. CALCULA recordsTotal (Total de registros daquela categoria/página)
+        $sqlTotal = "SELECT COUNT(ent.ent_codigo) FROM tbl_entidades ent $wherePage";
+        $totalRecords = $this->pdo->query($sqlTotal)->fetchColumn();
+
+        // 5. CONDIÇÕES DINÂMICAS (Filtros e Busca)
+        $extraConditions = [];
+        $queryParams = [];
+
+        // Filtro por tipo específico dentro da página (Dropdown)
+        if ($filtroTipoEntidade !== 'Todos') {
+            $extraConditions[] = "ent.ent_tipo_entidade = :filtro_tipo_entidade";
+            $queryParams[':filtro_tipo_entidade'] = $filtroTipoEntidade;
+        }
+
+        // Situação
+        if ($filtroSituacao !== 'Todos') {
+            $extraConditions[] = "ent.ent_situacao = :filtro_situacao";
+            $queryParams[':filtro_situacao'] = $filtroSituacao;
+        }
+
+        // Busca Global
+        if (!empty($searchValue)) {
+            $searchSql = [];
+            $searchTerm = '%' . $searchValue . '%';
+            foreach ($searchableColumns as $index => $column) {
+                $placeholder = ':search' . $index;
+                $searchSql[] = "ent.$column LIKE $placeholder";
+                $queryParams[$placeholder] = $searchTerm;
+            }
+            $extraConditions[] = '(' . implode(' OR ', $searchSql) . ')';
+        }
+
+        // Une as condições da página com os filtros extras
+        $allConditions = array_merge($pageConditions, $extraConditions);
+        $whereFull = " WHERE " . implode(" AND ", $allConditions);
+
+        // 6. CALCULA recordsFiltered
+        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT ent.ent_codigo) $sqlBase $whereFull");
+        $stmtFiltered->execute($queryParams);
+        $totalFiltered = $stmtFiltered->fetchColumn();
+
+        // 7. BUSCA OS DADOS
+        $sqlData = "SELECT ent.*, endereco.end_logradouro, endereco.end_numero 
+                $sqlBase 
+                $whereFull 
+                ORDER BY $orderColumn " . strtoupper($orderDir) . " LIMIT :start, :length";
+
         $stmt = $this->pdo->prepare($sqlData);
         $stmt->bindValue(':start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
