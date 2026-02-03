@@ -11,9 +11,12 @@ $(document).ready(function () {
         "ajax": {
             "url": "ajax_router.php?action=listarCarregamentos",
             "type": "POST",
-            "data": { csrf_token: csrfToken }
+            "data": function (d) {
+                d.csrf_token = csrfToken;
+                d.tipo_saida = 'NORMAL'
+            }
         },
-        "responsive":true,
+        "responsive": true,
         "columns": [
             {
                 "data": "car_numero",
@@ -135,17 +138,42 @@ $(document).ready(function () {
     });
 
     // Inicializar Select2 para Ordem de Expedição (Base)
+    /* $('#car_ordem_expedicao_id').select2({
+         placeholder: "Selecione a Ordem de Expedição (base)",
+         dropdownParent: $modalNovoCarregamento,
+         theme: "bootstrap-5",
+         ajax: {
+             url: 'ajax_router.php?action=getOrdensParaCarregamentoSelect',
+             dataType: 'json',
+             delay: 250,
+             data: function (params) { return { term: params.term, csrf_token: csrfToken }; },
+             type: 'POST',
+             processResults: function (data) { return { results: data.results }; }
+         }
+     });*/
+
     $('#car_ordem_expedicao_id').select2({
         placeholder: "Selecione a Ordem de Expedição (base)",
         dropdownParent: $modalNovoCarregamento,
         theme: "bootstrap-5",
+        allowClear: true, // Adicional elegante: permite limpar a seleção
+        minimumInputLength: 0, // Permite abrir a lista sem digitar nada
         ajax: {
-            url: 'ajax_router.php?action=getOrdensParaCarregamentoSelect',
+            // ADICIONADO: &tipo=NORMAL para garantir o filtro correto no backend
+            url: 'ajax_router.php?action=getOrdensParaCarregamentoSelect&tipo=NORMAL',
             dataType: 'json',
             delay: 250,
-            data: function (params) { return { term: params.term, csrf_token: csrfToken }; },
             type: 'POST',
-            processResults: function (data) { return { results: data.results }; }
+            data: function (params) {
+                return {
+                    term: params.term,
+                    csrf_token: csrfToken
+                };
+            },
+            processResults: function (data) {
+                return { results: data.results };
+            },
+            cache: true // Melhora a performance evitando requisições repetidas
         }
     });
 

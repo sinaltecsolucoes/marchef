@@ -157,6 +157,9 @@ try {
         'carregamentos'             => 'carregamentos/lista_carregamentos.php',          // Cadastro de Carregamento
         'carregamento_detalhes'     => 'carregamentos/detalhes_carregamento.php',        // Detalhes Carregamento
         'carregamento_relatorio'    => 'carregamentos/carregamento_relatorio.php',       // Relatório de Carregamento
+        'saida_reprocesso'          => 'carregamentos/lista_reprocesso.php',             // Cadastro de Saída por Reprocesso
+        'detalhes_reprocesso'       => 'carregamentos/detalhes_reprocesso.php',          // Detalhes Saída por Reprocesso
+
 
         // Páginas Módulo Faturamento
         'faturamentos_listar'         => 'faturamento/lista_faturamentos.php',          // Cadastro de Faturamentos

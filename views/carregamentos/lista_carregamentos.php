@@ -1,4 +1,5 @@
-<?php // /views/carregamentos/lista_carregamentos.php ?>
+<?php // /views/carregamentos/lista_carregamentos.php 
+?>
 
 <h4 class="fw-bold mb-3">Gestão de Carregamentos</h4>
 

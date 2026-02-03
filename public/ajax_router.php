@@ -2684,8 +2684,14 @@ function salvarCarregamentoHeader(CarregamentoRepository $repo, int $userId)
 
 function getOrdensParaCarregamentoSelect(OrdemExpedicaoRepository $repo)
 {
+    // O Select2 envia o termo de busca via POST por padrão na sua configuração    
     $term = $_POST['term'] ?? ''; // Select2 envia por POST
-    echo json_encode(['results' => $repo->findOrdensParaCarregamentoSelect($term)]);
+
+    // Pegamos o tipo da URL (ex: ?action=...&tipo=REPROCESSO)
+    $tipo = $_GET['tipo'] ?? 'NORMAL';
+
+    $results = $repo->findOrdensParaCarregamentoSelect($term, $tipo);
+    echo json_encode(['results' => $results]);
 }
 
 function getFilaDetalhes(CarregamentoRepository $repo)

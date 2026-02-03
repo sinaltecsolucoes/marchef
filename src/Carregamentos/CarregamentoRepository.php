@@ -24,7 +24,7 @@ class CarregamentoRepository
     /**
      * Busca carregamentos para a DataTable
      */
-    public function findAllForDataTable(array $params): array
+    /* public function findAllForDataTable(array $params): array
     {
         // Colunas para busca
         $searchableColumns = ['c.car_numero', 'oe.oe_numero', 'c.car_motorista_nome', 'c.car_placas', 'c.car_status'];
@@ -38,6 +38,16 @@ class CarregamentoRepository
         $where = " WHERE 1=1 ";
         $queryParams = [];
 
+        // --- Filtro por Tipo de Saída (Reprocesso ou Normal) ---
+        if (!empty($params['tipo_saida'])) {
+            if ($params['tipo_saida'] === 'REPROCESSO') {
+                $where .= " AND c.car_tipo = 'REPROCESSO' ";
+            } else {
+                // Se for 'NORMAL', trazemos tudo que NÃO for reprocesso
+                $where .= " AND c.car_tipo != 'REPROCESSO' ";
+            }
+        }
+
         // Filtro de Busca (DataTables)
         if (!empty($params['search']['value'])) {
             $searchValue = '%' . $params['search']['value'] . '%';
@@ -50,7 +60,13 @@ class CarregamentoRepository
         }
 
         // --- Contagem de Registros ---
-        $totalRecords = $this->pdo->query("SELECT COUNT(c.car_id) $baseQuery")->fetchColumn();
+        // Total Geral (sem filtros de busca, mas respeitando o tipo)
+        $totalRecordsQuery = "SELECT COUNT(c.car_id) $baseQuery " .
+            (strpos($where, 'car_tipo') !== false ? " WHERE " .
+                (strpos($where, 'car_tipo =') !== false ? "c.car_tipo = 'REPROCESSO'" : "c.car_tipo != 'REPROCESSO'") : "");
+        $totalRecords = $this->pdo->query($totalRecordsQuery)->fetchColumn();
+
+        // Total com os filtros aplicados
         $totalFiltered = $this->pdo->prepare("SELECT COUNT(c.car_id) $baseQuery $where");
         $totalFiltered->execute($queryParams);
         $totalFiltered = $totalFiltered->fetchColumn();
@@ -104,6 +120,104 @@ class CarregamentoRepository
             "recordsFiltered" => (int) $totalFiltered,
             "data" => $data
         ];
+    } */
+
+    public function findAllForDataTable(array $params): array
+    {
+        // Colunas para busca
+        $searchableColumns = ['c.car_numero', 'oe.oe_numero', 'c.car_motorista_nome', 'c.car_placas', 'c.car_status'];
+
+        // --- Construção da Query Base ---
+        $baseQuery = "FROM tbl_carregamentos c
+                  LEFT JOIN tbl_ordens_expedicao_header oe ON c.car_ordem_expedicao_id = oe.oe_id
+                  LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo";
+
+        // --- Filtros Iniciais ---
+        $where = " WHERE 1=1 ";
+        $queryParams = [];
+
+        // --- Filtro por Tipo de Saída (Reprocesso ou Normal) ---
+        // Ajustado para bater com o que enviamos no JS
+        if (!empty($params['tipo_saida'])) {
+            if ($params['tipo_saida'] === 'REPROCESSO') {
+                $where .= " AND c.car_tipo = 'REPROCESSO' ";
+            } else {
+                // Se for 'NORMAL' ou qualquer outro, exclui reprocesso
+                $where .= " AND c.car_tipo != 'REPROCESSO' ";
+            }
+        }
+
+        // Filtro de Busca (DataTables)
+        if (!empty($params['search']['value'])) {
+            $searchValue = '%' . $params['search']['value'] . '%';
+            $whereParts = [];
+            foreach ($searchableColumns as $col) {
+                $whereParts[] = "$col LIKE :search_value";
+            }
+            $where .= " AND (" . implode(' OR ', $whereParts) . ")";
+            $queryParams[':search_value'] = $searchValue;
+        }
+
+        // --- Contagem de Registros ---
+        // Total Geral do contexto (Respeitando apenas o TIPO, sem a busca do usuário)
+        $filtroTipoApenas = " WHERE 1=1 ";
+        if (!empty($params['tipo_saida'])) {
+            $filtroTipoApenas .= ($params['tipo_saida'] === 'REPROCESSO') ? " AND car_tipo = 'REPROCESSO' " : " AND car_tipo != 'REPROCESSO' ";
+        }
+        $totalRecords = $this->pdo->query("SELECT COUNT(car_id) FROM tbl_carregamentos $filtroTipoApenas")->fetchColumn();
+
+        // Total com os filtros aplicados (Busca + Tipo)
+        $stmtCount = $this->pdo->prepare("SELECT COUNT(c.car_id) $baseQuery $where");
+        $stmtCount->execute($queryParams);
+        $totalFiltered = $stmtCount->fetchColumn();
+
+        // --- Ordenação (Seu Mapeamento está excelente) ---
+        $order = " ORDER BY c.car_data DESC, c.car_id DESC ";
+        if (isset($params['order'][0]) && isset($params['columns'][$params['order'][0]['column']]['data'])) {
+            $colIndex = $params['order'][0]['column'];
+            $colName = $params['columns'][$colIndex]['data'];
+            $dir = strtoupper($params['order'][0]['dir']) === 'ASC' ? 'ASC' : 'DESC';
+
+            $columnMap = [
+                'car_numero'         => 'c.car_numero',
+                'car_data'           => 'c.car_data',
+                'oe_numero'          => 'oe.oe_numero',
+                'car_motorista_nome' => 'c.car_motorista_nome',
+                'car_placas'         => 'c.car_placas',
+                'car_status'         => 'c.car_status'
+            ];
+
+            if (isset($columnMap[$colName])) {
+                $order = " ORDER BY " . $columnMap[$colName] . " $dir ";
+            }
+        }
+
+        // --- Paginação (Segurança para o LIMIT) ---
+        $start  = (int)($params['start'] ?? 0);
+        $length = (int)($params['length'] ?? 10);
+        $limit  = " LIMIT $start, $length"; // Inserimos direto como int para evitar erro de string no PDO
+
+        // --- Query Final ---
+        $sqlData = "SELECT 
+                    c.car_id,
+                    c.car_numero,
+                    c.car_data,
+                    c.car_status,
+                    c.car_motorista_nome,
+                    c.car_placas,
+                    oe.oe_numero
+                $baseQuery $where $order $limit";
+
+        $stmt = $this->pdo->prepare($sqlData);
+        $stmt->execute($queryParams);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            "draw"            => intval($params['draw'] ?? 1),
+            "recordsTotal"    => (int) $totalRecords,
+            "recordsFiltered" => (int) $totalFiltered,
+            "data"            => $data
+        ];
     }
 
     /**
@@ -113,7 +227,8 @@ class CarregamentoRepository
     {
         // Obtém o ID da OE de forma segura. Se não existir, usa null.
         $ordemExpedicaoId = $data['car_ordem_expedicao_id'] ?? null;
-        $tipo = $data['car_tipo'] ?? 'AVULSA';
+        // $tipo = $data['car_tipo'] ?? 'AVULSA';
+        $tipo = $data['car_tipo'] ?? 'ORDEM_EXPEDICAO';
 
         // Validação: Verifica se a OE já não está em outro carregamento
         if ($ordemExpedicaoId !== null) {

@@ -176,7 +176,7 @@ $(document).ready(function () {
                 "className": "align-middle",
             },
 
-            // 4. Gram Fazenda (Ordenável como texto)
+            // 2. Gram Fazenda (Ordenável como texto)
             {
                 "data": "gramaturas_fazenda",
                 "className": "text-center align-middle",
@@ -197,7 +197,7 @@ $(document).ready(function () {
                 }
             },
 
-            // 5. Gram Lab (Ordenável como texto)
+            // 3. Gram Lab (Ordenável como texto)
             {
                 "data": "gramaturas_laboratorio",
                 "className": "text-center align-middle",
@@ -216,7 +216,7 @@ $(document).ready(function () {
                 }
             },
 
-            // 3. Peso (Ordenável)    
+            // 4. Peso (Ordenável)    
             {
                 "data": "peso_total_nota",
                 "className": "text-center align-middle",
@@ -227,7 +227,7 @@ $(document).ready(function () {
                 }
             },
 
-            // 2. Data (Ordenável)
+            // 5. Data (Ordenável)
             {
                 "data": "lote_data_fabricacao",
                 "className": "col-centralizavel align-middle",
@@ -341,7 +341,7 @@ $(document).ready(function () {
         ],
 
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" },
-        "order": [[4, 'desc']]
+        "order": [[0, 'desc']]
     });
 
     // --- Funções Auxiliares ---

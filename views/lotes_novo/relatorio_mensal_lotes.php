@@ -156,14 +156,17 @@ ob_start();
                 <th class="w-obs">Observações</th>
             </tr>
         </thead>
+        
         <tbody>
             <?php
             $totalPeso = 0;
             $totalCaixas = 0;
 
-            // 1. Variáveis para Média (Arrays para guardar todos os valores encontrados)
-            $listaGramFaz = [];
-            $listaGramBenef = [];
+            // 1. Variáveis para Média Ponderada (Acumuladores)
+            $somaPonderadaFaz = 0;
+            $somaPonderadaBenef = 0;
+            $divisorFaz = 0;
+            $divisorBenef = 0;
 
             if (empty($dados)): ?>
                 <tr>
@@ -178,18 +181,42 @@ ob_start();
                     $totalPeso += $peso;
                     $totalCaixas += $caixas;
 
-                    // Lógica da Média: Extrai os números das strings "12 / 14", por exemplo
+                    // Lógica da Média Ponderada: (Gramatura * Peso do Lote)
+                    // Usaremos o $peso como o "peso" da média ponderada.
+
                     if (!empty($d['gram_faz'])) {
                         $partes = explode(' / ', $d['gram_faz']);
+                        // Se houver mais de uma gramatura no mesmo lote, tiramos a média simples delas 
+                        // para representar o lote, e depois ponderamos pelo peso total do lote.
+                        $somaLocal = 0;
+                        $qtdLocal = 0;
                         foreach ($partes as $p) {
-                            if (is_numeric($p)) $listaGramFaz[] = (float)$p;
+                            if (is_numeric($p)) {
+                                $somaLocal += (float)$p;
+                                $qtdLocal++;
+                            }
+                        }
+                        if ($qtdLocal > 0) {
+                            $mediaLocal = $somaLocal / $qtdLocal;
+                            $somaPonderadaFaz += ($mediaLocal * $peso);
+                            $divisorFaz += $peso;
                         }
                     }
 
                     if (!empty($d['gram_benef'])) {
                         $partes = explode(' / ', $d['gram_benef']);
+                        $somaLocal = 0;
+                        $qtdLocal = 0;
                         foreach ($partes as $p) {
-                            if (is_numeric($p)) $listaGramBenef[] = (float)$p;
+                            if (is_numeric($p)) {
+                                $somaLocal += (float)$p;
+                                $qtdLocal++;
+                            }
+                        }
+                        if ($qtdLocal > 0) {
+                            $mediaLocal = $somaLocal / $qtdLocal;
+                            $somaPonderadaBenef += ($mediaLocal * $peso);
+                            $divisorBenef += $peso;
                         }
                     }
                 ?>
@@ -209,16 +236,9 @@ ob_start();
             <?php endforeach;
             endif;
 
-            //  Cálculo das Médias Finais
-            $mediaFaz = 0;
-            if (count($listaGramFaz) > 0) {
-                $mediaFaz = array_sum($listaGramFaz) / count($listaGramFaz);
-            }
-
-            $mediaBenef = 0;
-            if (count($listaGramBenef) > 0) {
-                $mediaBenef = array_sum($listaGramBenef) / count($listaGramBenef);
-            }
+            // Cálculo das Médias Ponderadas Finais
+            $mediaFaz = ($divisorFaz > 0) ? ($somaPonderadaFaz / $divisorFaz) : 0;
+            $mediaBenef = ($divisorBenef > 0) ? ($somaPonderadaBenef / $divisorBenef) : 0;
             ?>
         </tbody>
 

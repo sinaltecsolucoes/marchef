@@ -183,7 +183,7 @@
                     <?php endif; ?>
 
                     <?php
-                    $paginasExpedicao = ['ordens_expedicao', 'carregamentos'];
+                    $paginasExpedicao = ['ordens_expedicao', 'carregamentos', 'saida_reprocesso'];
                     if (count(array_intersect($paginasExpedicao, $paginasPermitidasUsuario)) > 0):
                     ?>
                         <li class="nav-item dropdown">
@@ -196,6 +196,9 @@
                                 <?php endif; ?>
                                 <?php if (in_array('carregamentos', $paginasPermitidasUsuario)): ?>
                                     <li><a class="dropdown-item" href="index.php?page=carregamentos">Carregamentos</a></li>
+                                <?php endif; ?>
+                                <?php if (in_array('saida_reprocesso', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=saida_reprocesso">Saídas Reprocesso</a></li>
                                 <?php endif; ?>
                             </ul>
                         </li>
@@ -502,6 +505,10 @@
     <?php endif; ?>
     <?php if ($paginaAtual === 'estoque'): ?>
         <script src="<?php echo BASE_URL; ?>/js/estoque.js"></script>
+    <?php endif; ?>
+
+    <?php if ($paginaAtual === 'saida_reprocesso'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/saida_reprocesso.js"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'estoque_camaras'): ?>

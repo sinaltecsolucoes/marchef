@@ -3265,28 +3265,12 @@ class LoteNovoRepository
                 $oeId = $this->pdo->lastInsertId();
             }
 
-            // 3. CRIA O PEDIDO
-            /* $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
-                (oep_ordem_id, oep_cliente_id, oep_numero_pedido) 
-                VALUES 
-                (:oe_id, 1, :desc_pedido)";
-
-            // Define o padrão do Pedido
-            $descPedido = "PEDIDO: REPROCESSO " . $lotePaiNum;
-
-            $stmtP = $this->pdo->prepare($sqlPedido);
-            $stmtP->execute([
-                ':oe_id'       => $oeId,
-                ':desc_pedido' => $descPedido
-            ]);
-            $pedidoId = $this->pdo->lastInsertId();*/
-
             // 3. VERIFICA SE JÁ EXISTE PEDIDO NA OE (AGRUPAMENTO POR PEDIDO)
             $descPedido = "REPROCESSO " . $lotePaiNum;
             $sqlBuscaPedido = "SELECT oep_id FROM tbl_ordens_expedicao_pedidos 
                    WHERE oep_ordem_id = :oe_id 
                    AND oep_numero_pedido = :desc_pedido 
-                   AND oep_cliente_id = 1 
+                   AND oep_cliente_id = 9 
                    LIMIT 1";
             $stmtBuscaPedido = $this->pdo->prepare($sqlBuscaPedido);
             $stmtBuscaPedido->execute([
@@ -3355,8 +3339,6 @@ class LoteNovoRepository
             }
 
             // Auditoria
-            //  $this->auditLogger->log('CRIAR_OE_REPROCESSO', $oeId, 'tbl_ordens_expedicao_header', null, $dadosRecebimento, "Adicionado Lote $loteOrigemId na OE $numeroOEEsperado");
-
             $msgAudit = $pedidoExistente ? "Adicionado ao Pedido Existente na OE $numeroOEEsperado." : "Novo Pedido criado na OE $numeroOEEsperado.";
             $this->auditLogger->log('CRIAR_OE_REPROCESSO', $oeId, 'tbl_ordens_expedicao_header', null, $dadosRecebimento, "Adicionado Lote $loteOrigemId - $msgAudit");
 

@@ -602,7 +602,7 @@ class OrdemExpedicaoRepository
      * Retorna uma lista de Ordens de Expedição que AINDA NÃO têm um carregamento.
      * Formatado para o Select2.
      */
-    public function findOrdensParaCarregamentoSelect(string $term = ''): array
+   /* public function findOrdensParaCarregamentoSelect(string $term = ''): array
     {
         $params = [];
         $sqlWhereTerm = "";
@@ -623,6 +623,47 @@ class OrdemExpedicaoRepository
                     {$sqlWhereTerm}
                 ORDER BY oe.oe_data DESC, oe.oe_id DESC
                 LIMIT 20"; // Limita para o Select2
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }*/
+
+    /**
+     * Retorna uma lista de Ordens de Expedição disponíveis para o Select2.
+     * Filtra por tipo de operação (VENDA/TRANSFERENCIA vs REPROCESSO).
+     */
+    public function findOrdensParaCarregamentoSelect(string $term = '', string $tipoAlvo = 'NORMAL'): array
+    {
+        $params = [];
+        $sqlWhereTerm = "";
+
+        // Filtro de busca textual
+        if (!empty($term)) {
+            $sqlWhereTerm = " AND (oe.oe_numero LIKE :term) ";
+            $params[':term'] = '%' . $term . '%';
+        }
+
+        // --- FILTRO POR TIPO DE OPERAÇÃO ---
+        if ($tipoAlvo === 'REPROCESSO') {
+            // Na tela de reprocesso, só queremos OEs marcadas como REPROCESSO
+            $sqlTipo = " AND oe.oe_tipo_operacao = 'REPROCESSO' ";
+        } else {
+            // Na tela normal, trazemos VENDA e TRANSFERENCIA (ou simplesmente o que não for REPROCESSO)
+            $sqlTipo = " AND oe.oe_tipo_operacao != 'REPROCESSO' ";
+        }
+
+        $sql = "SELECT 
+                oe.oe_id AS id, 
+                oe.oe_numero AS text
+            FROM tbl_ordens_expedicao_header oe
+            LEFT JOIN tbl_carregamentos c ON oe.oe_id = c.car_ordem_expedicao_id AND c.car_status != 'CANCELADO'
+            WHERE 
+                c.car_id IS NULL 
+                {$sqlTipo}
+                {$sqlWhereTerm}
+            ORDER BY oe.oe_data DESC, oe.oe_id DESC
+            LIMIT 20";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);

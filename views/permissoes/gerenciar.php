@@ -45,6 +45,8 @@ $paginas_e_acoes_disponiveis = [
         'ordem_expedicao_detalhes' => 'Detalhes de Ordem de Expedição',
         'carregamentos'            => 'Gerenciar Carregamentos',
         'carregamento_detalhes'    => 'Detalhes Carregamento',
+        'saida_reprocesso'         => 'Gerenciar Saídas por Reprocesso',
+        'detalhes_reprocesso'      => 'Detalhes Saídas por Reprocesso',
     ],
 
     'Páginas Módulo Faturamento' => [

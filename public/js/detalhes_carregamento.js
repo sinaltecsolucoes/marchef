@@ -1,4 +1,3 @@
-
 // /public/js/detalhes_carregamento.js
 $(document).ready(function () {
     const csrfToken = $('input[name="csrf_token"]').val();
@@ -63,30 +62,45 @@ $(document).ready(function () {
             success: function (response) {
                 if (response.success) {
                     const data = response.data;
-                    oeId = data.header.car_ordem_expedicao_id;
+                    const h = data.header;
+                    const isReprocesso = (h.car_tipo === 'REPROCESSO'); // Identifica o tipo
+
+                    oeId = h.car_ordem_expedicao_id;
                     $('#oe_id_hidden').val(oeId);
                     gabaritoPlanejamento = data.planejamento || [];
 
-                    // 1. Renderiza os componentes da tela
-                    renderCabecalho(data.header);
-                    renderPlanejamento(gabaritoPlanejamento);
-                    renderExecucao(data.execucao, data.header.car_status); // Passa o status
+                    // --- AJUSTES DE INTERFACE REPROCESSO ---
+                    if (isReprocesso) {
+                        $('#main-title').text('Saída para Reprocesso');
+                        $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Incluir Retirada');
+                    } else {
+                        $('#main-title').text('Carregamento');
+                        $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Adicionar Nova Fila');
+                    }
 
-                    // 2. Lógica para os botões GLOBAIS (que estão FORA da área de Execução)
-                    if (data.header.car_status === 'FINALIZADO' || data.header.car_status === 'CANCELADO') {
-                        $('#btn-adicionar-fila').hide();
-                        $('#btn-editar-header').hide();
-                        $('#btn-finalizar-detalhe').hide();
+                    // 1. Renderiza os componentes (passando a flag isReprocesso)
+                    renderCabecalho(h, isReprocesso);
+                    renderPlanejamento(gabaritoPlanejamento);
+                    renderExecucao(data.execucao, h.car_status, isReprocesso);
+
+                    // 2. Lógica para os botões GLOBAIS
+                    if (h.car_status === 'FINALIZADO' || h.car_status === 'CANCELADO') {
+                        $('#btn-adicionar-fila, #btn-editar-header, #btn-finalizar-detalhe').hide();
 
                         if ($('#btn-gerar-relatorio-link').length === 0) {
                             const btnRelatorio = `<a href="index.php?page=carregamento_relatorio&id=${carregamentoId}" id="btn-gerar-relatorio-link" class="btn btn-info btn-sm ms-2">
-                            <i class="fas fa-print"></i> Imprimir Relatório</a>`;
+                        <i class="fas fa-print"></i> Imprimir Relatório</a>`;
                             $('#btn-editar-header').parent().prepend(btnRelatorio);
                         }
                     } else {
-                        // Garante que os botões globais estejam visíveis para carregamentos em andamento
+                        // Se for reprocesso, o botão editar header fica escondido sempre
+                        if (isReprocesso) {
+                            $('#btn-editar-header').hide();
+                        } else {
+                            $('#btn-editar-header').show();
+                        }
+
                         $('#btn-adicionar-fila').show();
-                        $('#btn-editar-header').show();
                         $('#btn-finalizar-detalhe').show();
                         $('#btn-gerar-relatorio-link').remove();
                     }
@@ -95,7 +109,7 @@ $(document).ready(function () {
                 }
             },
             error: function () {
-                Swal.fire('Erro de Conexão', 'Não foi possível buscar os dados do carregamento.', 'error');
+                Swal.fire('Erro de Conexão', 'Não foi possível buscar os dados.', 'error');
             }
         });
     }
@@ -103,56 +117,76 @@ $(document).ready(function () {
     // --- RENDERIZAÇÃO DO CABEÇALHO ---
     function renderCabecalho(header) {
         dadosOriginaisHeader = header;
+        const isReprocesso = (header.car_tipo === 'REPROCESSO'); // Verifica o tipo
+
         $('#carregamento_id').val(header.car_id);
-        $('#main-title').text(`Carregamento Nº: ${header.car_numero}`);
+
+        // Altera o título baseado no tipo
+        const tituloPrefixo = isReprocesso ? "Saída para Reprocesso" : "Carregamento";
+        $('#main-title').text(`${tituloPrefixo} N°: ${header.car_numero}`);
+
         $('#car_numero').val(header.car_numero);
         $('#car_data').val(header.car_data);
         $('#oe_numero_base').val(header.oe_numero || 'N/A');
         $('#oe_id_hidden').val(header.car_ordem_expedicao_id);
         setSelect2Value('#car_entidade_id_organizador', header.car_entidade_id_organizador, header.cliente_responsavel_nome);
-        setSelect2Value('#car_transportadora_id', header.car_transportadora_id, header.transportadora_nome);
-        $('#car_motorista_nome').val(header.car_motorista_nome || '');
-        $('#car_motorista_cpf').mask('000.000.000-00');
-        $('#car_motorista_cpf').val(header.car_motorista_cpf || '').trigger('input');
-        $('#car_placas').val(header.car_placas || '');
-        $('#car_lacres').val(header.car_lacres || '');
-        $('#car_placas').mask('SSS-0A00 / SSS-0A00', {
-            translation: { 'S': { pattern: /[A-Za-z]/ }, 'A': { pattern: /[A-Za-z0-9]/ } },
-            onKeyPress: function (val, e, field, options) {
-                field.val(val.toUpperCase());
-                if (val.length === 8) {
-                    if (val.charAt(7) !== ' ') {
-                        let charExtra = val.charAt(7);
-                        let newVal = val.substring(0, 7) + ' / ' + charExtra;
-                        field.val(newVal);
-                        field.mask('SSS-0A00 / SSS-0A00', options);
-                    }
-                }
-            },
-            clearIfNotMatch: true
-        });
-        if (header.car_status === 'EM ANDAMENTO') {
-            $('#btn-finalizar-detalhe').show();
-            $('#btn-editar-header').show();
+
+        // Logística: Esconde se for Reprocesso
+        if (isReprocesso) {
+            // Esconde os containers dos campos logísticos
+            $('#car_transportadora_id, #car_motorista_nome, #car_motorista_cpf, #car_placas, #car_lacres')
+                .closest('.col-md-2, .col-md-3, .col-md-4, .col-md-6').hide();
         } else {
-            $('#btn-finalizar-detalhe').hide();
-            $('#btn-editar-header').hide();
+            // Mostra e preenche normalmente
+            $('#car_transportadora_id, #car_motorista_nome, #car_motorista_cpf, #car_placas, #car_lacres')
+                .closest('.col-md-2, .col-md-3, .col-md-4, .col-md-6').show();
+
+            setSelect2Value('#car_transportadora_id', header.car_transportadora_id, header.transportadora_nome);
+            $('#car_motorista_nome').val(header.car_motorista_nome || '');
+            $('#car_motorista_cpf').mask('000.000.000-00');
+            $('#car_motorista_cpf').val(header.car_motorista_cpf || '').trigger('input');
+            $('#car_placas').val(header.car_placas || '');
+            $('#car_lacres').val(header.car_lacres || '');
+            $('#car_placas').mask('SSS-0A00 / SSS-0A00', {
+                translation: { 'S': { pattern: /[A-Za-z]/ }, 'A': { pattern: /[A-Za-z0-9]/ } },
+                onKeyPress: function (val, e, field, options) {
+                    field.val(val.toUpperCase());
+                    if (val.length === 8) {
+                        if (val.charAt(7) !== ' ') {
+                            let charExtra = val.charAt(7);
+                            let newVal = val.substring(0, 7) + ' / ' + charExtra;
+                            field.val(newVal);
+                            field.mask('SSS-0A00 / SSS-0A00', options);
+                        }
+                    }
+                },
+                clearIfNotMatch: true
+            });
+            if (header.car_status === 'EM ANDAMENTO') {
+                $('#btn-finalizar-detalhe').show();
+                // No reprocesso, geralmente não editamos o cabeçalho pois ele é simplificado
+                isReprocesso ? $('#btn-editar-header').hide() : $('#btn-editar-header').show();
+            } else {
+                $('#btn-finalizar-detalhe').hide();
+                $('#btn-editar-header').hide();
+            }
         }
     }
 
     // --- RENDERIZAÇÃO DO PLANEJAMENTO (Gabarito OE) ---
     function renderPlanejamento(planejamento) {
+        // 1. PRIMEIRO destrói o DataTable (se ele existir)
+        if ($.fn.DataTable.isDataTable($tabela)) {
+            $tabela.DataTable().destroy();
+        }
+
         // 1. Limpa o corpo da tabela para evitar duplicatas
         $tabelaPlanejamentoBody.empty();
 
         // 2. Verifica se há itens para renderizar
         if (!planejamento || planejamento.length === 0) {
             $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
-
-            if ($.fn.DataTable.isDataTable($tabela)) {
-                $tabela.DataTable().destroy();
-            }
-
+           
             // Inicializa a tabela vazia com responsividade
             $tabela.DataTable({
                 responsive: true,
@@ -217,176 +251,29 @@ $(document).ready(function () {
         });
     }
 
-
-
     // --- RENDERIZAÇÃO DA EXECUÇÃO (Filas e Itens) ---
-    /*   function renderExecucao(filas, statusCarregamento) {
-           let html = '<div>';
-           filas.forEach((fila, index) => {
-               const clientesNaFila = {};
-               if (fila.itens && fila.itens.length > 0) {
-                   fila.itens.forEach(item => {
-                       const clienteKey = item.car_item_cliente_id;
-                       if (!clientesNaFila[clienteKey]) {
-                           clientesNaFila[clienteKey] = { id: item.car_item_cliente_id, nome: item.cliente_nome, itens: [] };
-                       }
-                       clientesNaFila[clienteKey].itens.push(item);
-                   });
-               }
-   
-               let clientesHtml = '';
-               for (const clienteId in clientesNaFila) {
-                   const cliente = clientesNaFila[clienteId];
-                   let itensHtml = '';
-   
-                   cliente.itens.forEach(item => {
-                       const divergenciaBadge = item.motivo_divergencia ? `<span class="badge bg-danger" title="Divergência: ${item.motivo_divergencia}">D</span>` : '';
-                       let itemAcoesHtml = '';
-                       if (statusCarregamento === 'EM ANDAMENTO') {
-                           itemAcoesHtml = `
-                           <div class="btn-group btn-group-sm">
-                               <button class="btn btn-warning btn-editar-item me-1" data-item-id="${item.car_item_id}" title="Editar"><i class="fas fa-edit"></i></button>
-                               <button class="btn btn-danger btn-remover-item" data-item-id="${item.car_item_id}" title="Excluir"><i class="fas fa-trash"></i></button>
-                           </div>`;
-                       }
-   
-                       itensHtml += `
-                       <tr>
-                           <td style="width:10%" class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
-                           <td style="width:45%" class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
-                           <td style="width:10%" class="text-center align-middle">${item.lote_completo || ''}</td>
-                           <td style="width:10%" class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
-                           <td style="width:10%" class="text-center align-middle">${item.endereco_completo || ''}</td>
-                           <td style="width:10%" class="text-center align-middle"">${item.qtd_carregada}</td>
-                           <td style="width:5%" class="text-center align-middle"">${itemAcoesHtml}</td>
-                       </tr>`;
-                   });
-   
-                   let clienteBotoesHtml = '';
-                   if (statusCarregamento === 'EM ANDAMENTO') {
-                       clienteBotoesHtml = `
-                       <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}"><i class="fas fa-plus me-1"></i> Adicionar Item</button>
-                       <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}"><i class="fas fa-trash me-1"></i> Excluir Cliente</button>`;
-                   }
-   
-                   clientesHtml += `
-                   <div class="card mb-2 shadow-sm">
-                       <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                           <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}"><i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}</span>
-                           <div>${clienteBotoesHtml}</div>
-                       </div>
-                       <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
-                           <table class="table table-sm table-bordered table-striped mb-0 w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
-                               <thead>
-                                   <tr>
-                                       <th style="width:10%" class="text-center align-middle">Cód. Interno</th>
-                                       <th style="width:45%" class="text-center align-middle">Produto</th>
-                                       <th style="width:10%" class="text-center align-middle">Lote</th>
-                                       <th style="width:10%" class="text-center align-middle">Cliente do Lote</th>
-                                       <th style="width:10%" class="text-center align-middle">Endereço</th>
-                                       <th style="width:10%" class="text-center align-middle"">Qtd. Carregada</th>
-                                       <th style="width:5%" class="text-center align-middle"">Ações</th>
-                                   </tr>
-                               </thead>
-                               <tbody>${itensHtml}</tbody>
-                           </table>
-                       </div>
-                   </div>`;
-               }
-   
-               let filaBotoesHtml = '';
-               if (statusCarregamento === 'EM ANDAMENTO') {
-                   let removerFilaBtnHtml = '';
-                   if (index === filas.length - 1) {
-                       removerFilaBtnHtml = `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
-                   } else {
-                       removerFilaBtnHtml = `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores"><i class="fas fa-trash me-1"></i> Excluir Fila</button>`;
-                   }
-                   filaBotoesHtml = `
-                               <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-plus me-1"></i> Adicionar Cliente</button>
-                               <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}"><i class="fas fa-camera me-1"></i> Adicionar Foto</button>
-                               <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>
-                   ${removerFilaBtnHtml}`;
-               } else {
-                   filaBotoesHtml = `<button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}"><i class="fas fa-images me-1"></i> Ver Fotos</button>`;
-               }
-   
-               html += `
-               <div class="card mb-3 shadow-sm border-primary">
-                   <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                       <span class="toggle-btn" data-target=".fila-${fila.fila_id}"><i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}</span>
-                       <div class="d-flex align-items-center">${filaBotoesHtml}</div>
-                   </div>
-                   <div class="card-body fila-${fila.fila_id}" style="display: none;">
-                       ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
-                   </div>
-               </div>`;
-           });
-           html += '</div>';
-   
-           $filasContainer.html(html);
-   
-           $('.toggle-btn').on('click', function () {
-               const targetClass = $(this).data('target');
-               const $content = $(targetClass);
-               const $icon = $(this).find('i');
-               if ($content.is(':visible')) {
-                   $content.hide();
-                   $icon.removeClass('fa-minus-square').addClass('fa-plus-square');
-               } else {
-                   $content.show();
-                   $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
-               }
-           });
-   
-           // Inicializa DataTables responsivo para cada tabela de cliente
-           $('.tabela-execucao').each(function () {
-               const $tabela = $(this);
-               if ($.fn.DataTable.isDataTable($tabela)) {
-                   $tabela.DataTable().destroy();
-               }
-               $tabela.DataTable({
-                   responsive: true,
-                   paging: false,
-                   searching: false,
-                   info: false,
-                   ordering: false,
-                   language: {
-                       emptyTable: "Nenhum item nesta fila.",
-                       loadingRecords: "Carregando..."
-                   }
-               });
-           });
-   
-           // Lógica centralizada para habilitar/desabilitar os botões de Ação Principal
-           let podeCriarNovaFila = (filas.length === 0);
-           let podeFinalizar = false;
-   
-           if (filas.length > 0) {
-               const ultimaFila = filas[filas.length - 1];
-               const temItens = ultimaFila.itens && ultimaFila.itens.length > 0;
-               const temFotos = ultimaFila.total_fotos > 0;
-               const ultimaFilaCompleta = temItens && temFotos;
-               podeCriarNovaFila = ultimaFilaCompleta;
-               podeFinalizar = ultimaFilaCompleta;
-           }
-   
-           $('#btn-adicionar-fila').prop('disabled', !podeCriarNovaFila)
-               .attr('title', podeCriarNovaFila ?
-                   'Adicionar uma nova fila de carregamento' :
-                   'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
-   
-           $('#btn-finalizar-detalhe').prop('disabled', !podeFinalizar)
-               .attr('title', podeFinalizar ?
-                   'Finalizar o carregamento e baixar o estoque' :
-                   'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
-       } */
-
-
     function renderExecucao(filas, statusCarregamento) {
+        // 0. Identificar se é reprocesso através do objeto global ou do cabeçalho
+        const isReprocesso = (dadosOriginaisHeader.car_tipo === 'REPROCESSO');
+
         let html = '<div>';
         filas.forEach((fila, index) => {
             const clientesNaFila = {};
+
+            // --- LÓGICA PARA REPROCESSO ---
+            // Se for reprocesso, garantimos que o card do cliente (Origem/Organizador) 
+            // exista no objeto, mesmo que a lista de itens ainda esteja vazia.
+            if (isReprocesso) {
+                const orgId = dadosOriginaisHeader.car_entidade_id_organizador;
+                clientesNaFila[orgId] = {
+                    id: orgId,
+                    nome: dadosOriginaisHeader.organizador_nome || 'CLIENTE INTERNO',
+                    itens: [] // Começa vazio, mas o card será desenhado
+                };
+            }
+
+            // --- LÓGICA PARA CARREGAMENTO NORMAL ---
+            // Preenche o objeto a partir dos itens existentes no banco
             if (fila.itens && fila.itens.length > 0) {
                 fila.itens.forEach(item => {
                     const clienteKey = item.car_item_cliente_id;
@@ -423,75 +310,87 @@ $(document).ready(function () {
                     }
 
                     itensHtml += `
-                <tr>
-                    <td class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
-                    <td class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
-                    <td class="text-center align-middle">${item.lote_completo || ''}</td>
-                    <td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
-                    <td class="text-center align-middle">${item.endereco_completo || ''}</td>
-                    <td class="text-center align-middle">${item.qtd_carregada}</td>
-                    <td class="text-center align-middle">${itemAcoesHtml}</td>
-                </tr>`;
+                        <tr>
+                            <td class="text-center align-middle">${item.prod_codigo_interno || ''}</td>
+                            <td class="align-middle">${item.prod_descricao} ${divergenciaBadge}</td>
+                            <td class="text-center align-middle">${item.lote_completo || ''}</td>
+                            <td class="text-center align-middle">${item.cliente_lote_nome || 'N/A'}</td>
+                            <td class="text-center align-middle">${item.endereco_completo || ''}</td>
+                            <td class="text-center align-middle">${item.qtd_carregada}</td>
+                            <td class="text-center align-middle">${itemAcoesHtml}</td>
+                        </tr>`;
                 });
 
                 let clienteBotoesHtml = '';
                 if (statusCarregamento === 'EM ANDAMENTO') {
                     clienteBotoesHtml = `
-                <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}">
-                    <i class="fas fa-plus me-1"></i> Adicionar Item
-                </button>
-                <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}">
-                    <i class="fas fa-trash me-1"></i> Excluir Cliente
-                </button>`;
+                            <button class="btn btn-primary btn-sm btn-add-item-to-cliente" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}" data-cliente-nome="${cliente.nome}">
+                                <i class="fas fa-plus me-1"></i> Adicionar Item
+                            </button>
+                        ${!isReprocesso ? `
+                            <button class="btn btn-danger btn-sm btn-remove-cliente-from-fila ms-2" data-fila-id="${fila.fila_id}" data-cliente-id="${cliente.id}">
+                                <i class="fas fa-trash me-1"></i> Excluir Cliente
+                            </button>` : ''}`; // No reprocesso não exclui o cliente único
                 }
 
                 clientesHtml += `
-            <div class="card mb-2 shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}">
-                        <i class="fas fa-plus-square"></i> Cliente: ${cliente.nome}
-                    </span>
-                    <div>${clienteBotoesHtml}</div>
-                </div>
-                <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
-                    <table class="table table-sm table-bordered table-striped w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
-                        <thead>
-                            <tr>
-                                <th class="text-center align-middle">Cód. Interno</th>
-                                <th class="text-center align-middle">Produto</th>
-                                <th class="text-center align-middle">Lote</th>
-                                <th class="text-center align-middle">Cliente do Lote</th>
-                                <th class="text-center align-middle">Endereço</th>
-                                <th class="text-center align-middle">Qtd. Carregada</th>
-                                <th class="text-center align-middle">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>${itensHtml}</tbody>
-                    </table>
-                </div>
-            </div>`;
+                            <div class="card mb-2 shadow-sm">
+                               <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                    <span class="toggle-btn fw-bold" data-target=".cliente-${fila.fila_id}-${cliente.id}">
+                                        <i class="fas fa-plus-square"></i> ${isReprocesso ? 'Origem' : 'Cliente'}: ${cliente.nome}
+                                    </span>
+                                    <div>${clienteBotoesHtml}</div>
+                                </div>
+                                
+                                <div class="card-body cliente-${fila.fila_id}-${cliente.id}" style="display: none;">
+                                    <table class="table table-sm table-bordered table-striped w-100 tabela-execucao" id="tabela-execucao-${fila.fila_id}-${cliente.id}">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center align-middle">Cód. Interno</th>
+                                                <th class="text-center align-middle">Produto</th>
+                                                <th class="text-center align-middle">Lote</th>
+                                                <th class="text-center align-middle">Cliente do Lote</th>
+                                                <th class="text-center align-middle">Endereço</th>
+                                                <th class="text-center align-middle">Qtd. Carregada</th>
+                                                <th class="text-center align-middle">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${itensHtml}</tbody>
+                                    </table>
+                                </div>
+                            </div>`;
             }
 
             let filaBotoesHtml = '';
             if (statusCarregamento === 'EM ANDAMENTO') {
                 const ultimaFila = index === filas.length - 1;
                 filaBotoesHtml = `
-                <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}">
-                    <i class="fas fa-plus me-1"></i> Adicionar Cliente
-                </button>
-                <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}">
-                    <i class="fas fa-camera me-1"></i> Adicionar Foto
-                </button>
-                <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}">
-                    <i class="fas fa-images me-1"></i> Ver Fotos
-                </button>
-                ${ultimaFila
-                        ? `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}">
-                        <i class="fas fa-trash me-1"></i> Excluir Fila
-                    </button>`
-                        : `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores">
-                        <i class="fas fa-trash me-1"></i> Excluir Fila
-                    </button>`}`;
+                    ${!isReprocesso ? `
+                        <button class="btn btn-info btn-sm btn-adicionar-item-fila me-2" data-fila-id="${fila.fila_id}">
+                            <i class="fas fa-plus me-1"></i> Adicionar Cliente
+                        </button>` : ''
+                    }
+
+                    ${!isReprocesso ? `
+                        <button class="btn btn-outline-primary btn-sm btn-adicionar-foto me-2" data-fila-id="${fila.fila_id}">
+                            <i class="fas fa-camera me-1"></i> Adicionar Foto
+                        </button>` : ''
+                    }
+
+                    <button class="btn btn-outline-secondary btn-sm btn-ver-fotos me-2" ${isReprocesso ? 'style="display:none"' : ''} data-fila-id="${fila.fila_id}">
+                        <i class="fas fa-images me-1"></i> Ver Fotos
+                    </button>
+                        
+                    ${ultimaFila ?
+                        `<button class="btn btn-danger btn-sm btn-remover-fila" data-fila-id="${fila.fila_id}">
+                            <i class="fas fa-trash me-1"></i> Excluir ${isReprocesso ? 'Retirada' : 'Fila'}
+                        </button>`:
+
+                        `<button class="btn btn-danger btn-sm" disabled title="Remova as filas posteriores">
+                            <i class="fas fa-trash me-1"></i> Excluir Fila
+                        </button>`
+                    }`;
+
             } else {
                 filaBotoesHtml = `
                 <button class="btn btn-outline-secondary btn-sm btn-ver-fotos" data-fila-id="${fila.fila_id}" data-fila-numero="${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}">
@@ -499,37 +398,24 @@ $(document).ready(function () {
                 </button>`;
             }
 
+            const labelFila = isReprocesso ? 'Retirada' : 'Fila';
             html += `
-        <div class="card mb-3 shadow-sm border-primary">
-            <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                <span class="toggle-btn" data-target=".fila-${fila.fila_id}">
-                    <i class="fas fa-plus-square"></i> Fila ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}
-                </span>
-                <div class="d-flex align-items-center">${filaBotoesHtml}</div>
-            </div>
-            <div class="card-body fila-${fila.fila_id}" style="display: none;">
-                ${clientesHtml || '<div class="text-center text-muted">Nenhum cliente/item nesta fila.</div>'}
-            </div>
-        </div>`;
+                <div class="card mb-3 shadow-sm border-primary">
+                    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <span class="toggle-btn" data-target=".fila-${fila.fila_id}">
+                            <i class="fas fa-plus-square"></i> ${labelFila} ${String(fila.fila_numero_sequencial || '1').padStart(2, '0')}
+                        </span>
+                        <div class="d-flex align-items-center">${filaBotoesHtml}</div>
+                    </div>
+
+                    <div class="card-body fila-${fila.fila_id}" style="display: none;">
+                        ${clientesHtml || `<div class="text-center text-muted">Nenhuma ${isReprocesso ? 'retirada' : 'fila'} iniciada.</div>`}
+                    </div>
+                </div>`;
         });
         html += '</div>';
 
         $filasContainer.html(html);
-
-        // Toggle de colapso
-        /*  $('.toggle-btn').on('click', function () {
-              const targetClass = $(this).data('target');
-              const $content = $(targetClass);
-              const $icon = $(this).find('i');
-              if ($content.is(':visible')) {
-                  $content.hide();
-                  $icon.removeClass('fa-minus-square').addClass('fa-plus-square');
-              } else {
-                  $content.show();
-                  $icon.removeClass('fa-plus-square').addClass('fa-minus-square');
-              }
-          }); */
-
 
         $('.toggle-btn').on('click', function () {
             const targetClass = $(this).data('target');
@@ -586,22 +472,32 @@ $(document).ready(function () {
             podeFinalizar = ultimaFilaCompleta;
         }
 
-        $('#btn-adicionar-fila')
-            .prop('disabled', !podeCriarNovaFila)
-            .attr('title', podeCriarNovaFila
-                ? 'Adicionar uma nova fila de carregamento'
-                : 'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
+        if (isReprocesso) {
+            $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Incluir Nova Retirada');
 
-        $('#btn-finalizar-detalhe')
-            .prop('disabled', !podeFinalizar)
-            .attr('title', podeFinalizar
-                ? 'Finalizar o carregamento e baixar o estoque'
-                : 'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
+            // No reprocesso, a validação de foto é ignorada (pode criar nova fila só com itens)
+            const ultimaFila = filas[filas.length - 1];
+            const podeCriar = (filas.length === 0 || (ultimaFila.itens && ultimaFila.itens.length > 0));
+            $('#btn-adicionar-fila').prop('disabled', !podeCriar).attr('title', '');
+            $('#btn-finalizar-detalhe').prop('disabled', !podeCriar);
+        }
+        else {
+            // Retorna o texto original caso mude de estado (bom para consistência)
+            $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Adicionar Fila');
+
+            $('#btn-adicionar-fila')
+                .prop('disabled', !podeCriarNovaFila)
+                .attr('title', podeCriarNovaFila
+                    ? 'Adicionar uma nova fila de carregamento'
+                    : 'Adicione itens e pelo menos uma foto à última fila para poder criar uma nova.');
+
+            $('#btn-finalizar-detalhe')
+                .prop('disabled', !podeFinalizar)
+                .attr('title', podeFinalizar
+                    ? 'Finalizar o carregamento e baixar o estoque'
+                    : 'O carregamento não pode ser finalizado pois a última fila está incompleta (faltam itens ou foto).');
+        }
     }
-
-
-
-
 
     // --- LÓGICA DO NOVO MODAL UNIFICADO ---
     function inicializarLogicaModalUnificado() {
@@ -735,7 +631,6 @@ $(document).ready(function () {
         });
 
         // 4. Função que verifica o Gabarito (OE)
-        // 4. Função que verifica o Gabarito (OE)
         function checkAgainstGabarito() {
             const clienteId = $itemCliente.val();
             const produtoId = $itemProduto.val();
@@ -839,7 +734,7 @@ $(document).ready(function () {
 
             // Aciona o evento de 'input' e também adiciona um evento para quando o motivo muda
             $itemQtd.trigger('input');
-            $itemMotivoInput.on('input', function () {
+            $itemMotivoInput.off('input').on('input', function () {
                 $itemQtd.trigger('input'); // Reavalia a lógica ao digitar o motivo
             });
 
@@ -847,7 +742,7 @@ $(document).ready(function () {
             // Se o motivo de divergência está visível, o item é uma divergência.
             // Se o item é uma divergência TOTAL, o oei_id_origem deve ser NULL.
             // Se o item é uma divergência de QUANTIDADE, o oei_id_origem deve ser o ID do item da OE.
-            $formAddItem.on('submit', function (e) {
+            $formAddItem.off('submit').on('submit', function (e) {
                 e.preventDefault();
                 const $campoQtd = $('#item_quantidade');
                 const qtd = parseFloat($campoQtd.val());
@@ -874,12 +769,17 @@ $(document).ready(function () {
                 // Re-habilita o cliente ANTES de serializar, caso ele esteja desabilitado
                 $itemCliente.prop('disabled', false);
 
+                console.log("Tentando enviar dados:", $(this).serialize()); // Log 1
                 $.ajax({
                     url: 'ajax_router.php?action=addItemCarregamento',
                     type: 'POST',
                     data: $(this).serialize() + '&carregamento_id=' + carregamentoId,
                     dataType: 'json',
+                    beforeSend: function () {
+                        console.log("Requisição enviada ao servidor..."); // Log 2
+                    },
                     success: function (response) {
+                        console.log("Resposta do servidor:", response); // Log 3
                         if (response.success) {
                             $modalAddItem.modal('hide');
                             notificacaoSucesso('Sucesso!', 'Item adicionado ao carregamento.');
@@ -888,7 +788,9 @@ $(document).ready(function () {
                             Swal.fire('Erro ao adicionar', response.message, 'error');
                         }
                     },
-                    error: function () {
+                    error: function (xhr, status, error) {
+                        console.error("ERRO NO AJAX:", status, error); // Log 4
+                        console.log("Resposta bruta do erro:", xhr.responseText);
                         Swal.fire('Erro de Conexão', 'Não foi possível salvar o item.', 'error');
                     }
                 });
