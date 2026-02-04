@@ -232,4 +232,139 @@ class EstoqueRepository
         $stmt->execute([':endereco_id' => $enderecoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function processarInventarioCSV($caminhoArquivo, $usuarioId)
+    {
+        $sucessos = 0;
+        $falhas = [];
+        $mapaLotes = []; // Estrutura: [lote_completo][produto_codigo][endereco] = quantidade
+
+        if (($handle = fopen($caminhoArquivo, "r")) !== FALSE) {
+            fgetcsv($handle, 1000, ";"); // Pula cabeçalho
+
+            // --- PASSO 1: AGRUPAMENTO EM MEMÓRIA ---
+            while (($linha = fgetcsv($handle, 1000, ";")) !== FALSE) {
+                if (empty($linha[0])) continue;
+
+                $loteTxt    = trim($linha[0]);
+                $dataFab    = trim($linha[1]);
+                $fantasia   = trim($linha[2]);
+                $codInterno = trim($linha[3]);
+                $qtdSec     = (float)$linha[5];
+                $endereco   = trim($linha[6]);
+
+                // Organiza os dados em níveis
+                $mapaLotes[$loteTxt]['info'] = ['data' => $dataFab, 'fantasia' => $fantasia];
+                $mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] =
+                    ($mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] ?? 0) + $qtdSec;
+            }
+            fclose($handle);
+
+            // --- PASSO 2: GRAVAÇÃO HIERÁRQUICA NO BANCO ---
+            foreach ($mapaLotes as $loteCompleto => $dadosLote) {
+                try {
+                    $this->pdo->beginTransaction();
+
+                    // 1. LOTE (CABEÇALHO) - Cria uma única vez
+                    $idEntidade = $this->buscarIdPorNomeFantasia($dadosLote['info']['fantasia']);
+                    if (!$idEntidade) throw new Exception("Fornecedor '{$dadosLote['info']['fantasia']}' não encontrado.");
+
+                    $numLote = (int)preg_replace('/[^0-9]/', '', explode('/', $loteCompleto)[0]);
+                    $dataSql = $this->formatarDataSQL($dadosLote['info']['data']);
+
+                    $loteId = $this->buscarLoteIdExistente($loteCompleto); // Verifica se já existe no banco
+                    if (!$loteId) {
+                        $sqlH = "INSERT INTO tbl_lotes_novo_header (lote_numero, num_lote, lote_completo_calculado, lote_data_fabricacao, lote_cliente_id, lote_status, lote_usuario_id, lote_data_finalizacao) 
+                             VALUES (?, ?, ?, ?, ?, 'FINALIZADO', ?, NOW())";
+                        $this->pdo->prepare($sqlH)->execute([$numLote, $numLote, $loteCompleto, $dataSql, $idEntidade, $usuarioId]);
+                        $loteId = $this->pdo->lastInsertId();
+                    }
+
+                    // 2. PRODUTOS DENTRO DO LOTE
+                    foreach ($dadosLote['produtos'] as $codInterno => $dadosProduto) {
+                        $infoProd = $this->buscarInfoProduto($codInterno);
+                        if (!$infoProd) throw new Exception("Produto '{$codInterno}' não encontrado.");
+
+                        // Soma a quantidade total do produto em todos os endereços para a Produção
+                        $qtdTotalDoProduto = array_sum($dadosProduto['enderecos']);
+                        $pesoTotal = $qtdTotalDoProduto * (float)$infoProd['prod_peso_embalagem'];
+
+                        // Cria os itens de Produção e Embalagem uma única vez por produto/lote
+                        $sqlP = "INSERT INTO tbl_lotes_novo_producao (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo) VALUES (?, ?, ?, ?)";
+                        $this->pdo->prepare($sqlP)->execute([$loteId, $infoProd['prod_primario_id'], $pesoTotal, $pesoTotal]);
+                        $prodId = $this->pdo->lastInsertId();
+
+                        $sqlE = "INSERT INTO tbl_lotes_novo_embalagem (item_emb_lote_id, item_emb_prod_sec_id, item_emb_prod_prim_id, item_emb_qtd_sec, item_emb_qtd_finalizada, item_emb_data_cadastro) VALUES (?, ?, ?, ?, ?, NOW())";
+                        $this->pdo->prepare($sqlE)->execute([$loteId, $infoProd['prod_codigo'], $prodId, $qtdTotalDoProduto, $qtdTotalDoProduto]);
+                        $embId = $this->pdo->lastInsertId();
+
+                        // 3. ENDEREÇOS (ALOCAÇÕES)
+                        foreach ($dadosProduto['enderecos'] as $nomeEndereco => $qtdNoEndereco) {
+                            $idEnd = $this->buscarIdEndereco($nomeEndereco);
+                            if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não existe.");
+
+                            $sqlEst = "INSERT INTO tbl_estoque_endereco_itens (ent_endereco_id, ent_item_lote_id, ent_usuario_id, ent_quantidade, ent_data_alocacao) VALUES (?, ?, ?, ?, NOW())";
+                            $this->pdo->prepare($sqlEst)->execute([$idEnd, $embId, $usuarioId, $qtdNoEndereco]);
+                        }
+                    }
+
+                    $this->pdo->commit();
+                    $sucessos++;
+                } catch (Exception $e) {
+                    if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+                    $falhas[] = ['lote' => $loteCompleto, 'erro' => $e->getMessage()];
+                }
+            }
+        }
+        return ['sucessos' => $sucessos, 'falhas' => $falhas];
+    }
+
+    // Função auxiliar para evitar duplicar o lote se ele já estiver no banco
+    private function buscarLoteIdExistente($loteCompleto)
+    {
+        $stmt = $this->pdo->prepare("SELECT lote_id FROM tbl_lotes_novo_header WHERE lote_completo_calculado = ? LIMIT 1");
+        $stmt->execute([$loteCompleto]);
+        return $stmt->fetchColumn();
+    }
+
+    // Busca o ID do Cliente pelo Nome Fantasia
+    private function buscarIdPorNomeFantasia($nome)
+    {
+        $sql = "SELECT ent_codigo FROM tbl_entidades WHERE TRIM(UPPER(ent_nome_fantasia)) = TRIM(UPPER(?)) LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$nome]);
+        return $stmt->fetchColumn();
+    }
+
+    // Busca IDs do Produto (Secundário e seu Primário vinculado) pelo Código Interno
+    private function buscarInfoProduto($codInterno)
+    {
+        $sql = "SELECT prod_codigo, prod_primario_id, prod_peso_embalagem 
+            FROM tbl_produtos 
+            WHERE TRIM(prod_codigo_interno) = TRIM(?) 
+            AND prod_tipo_embalagem = 'SECUNDARIA' 
+            LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$codInterno]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Busca ID do Endereço pela descrição exata
+    private function buscarIdEndereco($descricao)
+    {
+        $sql = "SELECT end_codigo FROM tbl_estoque_enderecos WHERE TRIM(end_descricao) = TRIM(?) LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$descricao]);
+        return $stmt->fetchColumn();
+    }
+
+    // Helper para converter data BR (04/02/2026) para SQL (2026-02-04)
+    private function formatarDataSQL($data)
+    {
+        if (strpos($data, '/') !== false) {
+            $partes = explode('/', $data);
+            return "{$partes[2]}-{$partes[1]}-{$partes[0]}";
+        }
+        return $data;
+    }
 }

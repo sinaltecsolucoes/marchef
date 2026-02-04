@@ -351,7 +351,7 @@ class CarregamentoRepository
      */
     private function updateStatus(int $id, string $status): bool
     {
-        $sql = "UPDATE tbl_carregamentos SET car_status = :status, car_data_saida = NOW() WHERE car_id = :id";
+        $sql = "UPDATE tbl_carregamentos SET car_status = :status, car_data = NOW() WHERE car_id = :id";
         $stmt = $this->pdo->prepare($sql);
 
         return $stmt->execute([':status' => $status, ':id' => $id]);
@@ -460,14 +460,21 @@ class CarregamentoRepository
             if ($dadosAntigos['car_status'] === 'FINALIZADO') {
                 $itensParaEstornar = $this->getItensEstornaveis($carregamentoId);
                 foreach ($itensParaEstornar as $item) {
-                    $this->estornarEstoqueItem($item, "Reabertura do Carregamento Nº {$dadosAntigos['car_numero']}");
+                    // $this->estornarEstoqueItem($item, "Reabertura do Carregamento Nº {$dadosAntigos['car_numero']}");
+                    $this->estornarEstoqueItem($item, "Reabertura de " . ($dadosAntigos['car_tipo'] === 'REPROCESSO' ? 'Reprocesso' : 'Carregamento') . " Nº {$dadosAntigos['car_numero']}");
                 }
             }
 
-            // Se o carregamento tinha uma OE base, desvincula ela
-            if (!empty($dadosAntigos['car_ordem_expedicao_id'])) {
+            // Só desvincula OE se não for Reprocesso 
+            // ou se o seu Reprocesso realmente usar a lógica de unlink da OE base
+            if ($dadosAntigos['car_tipo'] !== 'REPROCESSO' && !empty($dadosAntigos['car_ordem_expedicao_id'])) {
                 $ordemExpedicaoRepo->unlinkCarregamento($dadosAntigos['car_ordem_expedicao_id']);
             }
+
+            // Se o carregamento tinha uma OE base, desvincula ela
+            //   if (!empty($dadosAntigos['car_ordem_expedicao_id'])) {
+            //       $ordemExpedicaoRepo->unlinkCarregamento($dadosAntigos['car_ordem_expedicao_id']);
+            //   }
 
             // Atualiza o status do carregamento para 'EM ANDAMENTO'
             $this->updateStatus($carregamentoId, 'EM ANDAMENTO');

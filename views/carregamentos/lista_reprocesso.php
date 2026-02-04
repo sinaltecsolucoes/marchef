@@ -50,7 +50,7 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token"
-                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>"> 
+                        value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="hidden" name="car_tipo" value="REPROCESSO">
                     <div class="mb-3">
                         <label class="form-label">Número do Registro</label>
@@ -77,6 +77,31 @@
                     <button type="submit" class="btn btn-primary">Criar Saída</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-reabrir-motivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reabrir Carregamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está prestes a reabrir o carregamento <strong id="reabrir-carregamento-numero"></strong>.</p>
+                <p>O estoque baixado (se houver) será estornado.</p>
+                <input type="hidden" id="reabrir-carregamento-id">
+                <div class="mb-3">
+                    <label for="reabrir-motivo" class="form-label">Motivo da Reabertura (Obrigatório)</label>
+                    <textarea class="form-control" id="reabrir-motivo" rows="3" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="btn-confirmar-reabertura">Confirmar
+                    Reabertura</button>
+            </div>
         </div>
     </div>
 </div>

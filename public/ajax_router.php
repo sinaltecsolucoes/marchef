@@ -48,6 +48,7 @@ use App\CondicaoPagamento\CondicaoPagamentoRepository;
 use App\FichasTecnicas\FichaTecnicaRepository;
 use App\Core\RelatorioService;
 use App\Estoque\MovimentoRepository;
+use App\Estoque\EstoqueRepository;
 
 // --- Configurações Iniciais ---
 header('Content-Type: application/json');
@@ -93,6 +94,7 @@ try {
     $camaraRepo = new CamaraRepository($pdo); // Cria a instância do repositório para Câmaras
     $enderecoRepo = new EnderecoRepository($pdo); // Cria a instância do repositório para Endereçamento das Câmaras
     $movimentoRepo = new MovimentoRepository($pdo); // Cria a instância do repositório para Movimentos de Produtos
+    $estoqueRepo = new EstoqueRepository($pdo); // Cria a instância do repositório para Estoque de Produtos
     $ordemExpedicaoRepo = new OrdemExpedicaoRepository($pdo); //Cria a instância do repositorio para Ordens de Expedição
     $faturamentoRepo = new FaturamentoRepository($pdo); //Cria a instância do repositorio para Faturamento
     $condPagRepo = new CondicaoPagamentoRepository($pdo); //Cria a instância do repositorio para Condições de Pagamento
@@ -610,6 +612,9 @@ switch ($action) {
         break;
     case 'relatorioKardex':
         relatorioKardex($movimentoRepo);
+        break;
+    case 'importarInventario':
+        importarInventario($estoqueRepo, $_SESSION['usuario_id']);
         break;
 
     // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---
@@ -3412,6 +3417,29 @@ function relatorioKardex(MovimentoRepository $repo)
     // Pega todos os parâmetros $_POST (filtros, paginação, draw)
     $dados = $repo->buscarKardexDataTable($_POST);
     echo json_encode($dados);
+}
+
+function importarInventario(EstoqueRepository $repo, $usuarioId)
+{
+    header('Content-Type: application/json');
+
+    try {
+        if (!isset($_FILES['arquivo_csv']) || $_FILES['arquivo_csv']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Erro no upload do arquivo.");
+        }
+
+        $arquivoTmp = $_FILES['arquivo_csv']['tmp_name'];
+
+        // Chamamos o método do repositório que criamos anteriormente
+        $resultado = $repo->processarInventarioCSV($arquivoTmp, $usuarioId);
+
+        echo json_encode($resultado);
+    } catch (Exception $e) {
+        echo json_encode([
+            'sucessos' => 0,
+            'falhas' => [['lote' => 'Geral', 'erro' => $e->getMessage()]]
+        ]);
+    }
 }
 
 // --- FUNÇÕES DE CONTROLE PARA ORDENS DE EXPEDIÇÃO ---

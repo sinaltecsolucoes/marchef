@@ -178,6 +178,9 @@
                                     <li><a class="dropdown-item" href="index.php?page=visao_estoque_enderecos">Visão por
                                             Endereços</a></li>
                                 <?php endif; ?>
+                                <?php if (in_array('inventario', $paginasPermitidasUsuario)): ?>
+                                    <li><a class="dropdown-item" href="index.php?page=inventario">Processar Inventario</a></li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                     <?php endif; ?>
@@ -525,6 +528,10 @@
 
     <?php if ($paginaAtual === 'visao_estoque_enderecos'): ?>
         <script src="<?php echo BASE_URL; ?>/js/visao_estoque_enderecos.js"></script>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['page']) && $_GET['page'] == 'inventario'): ?>
+        <script src="<?php echo BASE_URL; ?>/js/inventario.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <?php if ($paginaAtual === 'condicoes_pagamento'): ?>

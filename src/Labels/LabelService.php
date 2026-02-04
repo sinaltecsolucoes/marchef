@@ -140,6 +140,23 @@ class LabelService
 
     private function substituirPlaceholders(string $zpl, array $dados): string
     {
+        // 1. Mapa de conversão de caracteres acentuados para Hex ZPL
+        $mapaAcentos = [
+            '\C7' => 'Ã',
+            '\A7' => '°',
+            '\B5' => 'Á',
+            '\A0' => 'á',
+            '\90' => 'É',
+            '\E9' => 'Ú',
+            '\E3' => 'Ó',
+
+        ];
+
+        // 2. TRADUÇÃO DO TEMPLATE: 
+        // Antes de substituir os placeholders, limpamos o ZPL que veio do banco
+        // para que o usuário veja "Espécie" em vez de "Esp\E9cie"
+        $zpl = str_replace(array_keys($mapaAcentos), array_values($mapaAcentos), $zpl);
+
         if (strpos($zpl, '^CI28') === false) {
             $zpl = str_replace('^XA', '^XA^CI28', $zpl);
         }
@@ -256,6 +273,11 @@ class LabelService
 
         // 1. Aplica substituições normais primeiro
         $zpl = str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
+
+        // 4. LIMPEZA AUTOMÁTICA: 
+        // Se o Zebra Designer inseriu o ">;" antes do dado que acabamos de trocar,
+        // nós o removemos agora para garantir que o dígito não suma.
+        $zpl = str_replace('^FD>;' . $dadosBarras1D, '^FD' . $dadosBarras1D, $zpl);
 
         // 2. CORREÇÃO DE POSICIONAMENTO DO QR CODE (Troca FT por FO)
         // Procura a linha que define o QR Code (que contém o placeholder '10qrcode') e usa comando ^FT

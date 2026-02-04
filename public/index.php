@@ -149,6 +149,7 @@ try {
         // Páginas Módulo Estoque
         'estoque'                 => 'estoque/lista_estoque.php',           // Lista Geral de Estoque
         'visao_estoque_enderecos' => 'estoque/visao_estoque_enderecos.php', // Visão Geral Estoque por Endereço
+        'inventario'              => 'estoque/inventario.php',              // Processa Inventario via CSV
 
         // Páginas Módulo Carregamento / Expedição
         'ordens_expedicao'          => 'ordens_expedicao/lista_ordens_expedicao.php',    // Cadastro de Ordens de Expedição

@@ -41,34 +41,74 @@ $(document).ready(function () {
                 "orderable": false,
                 "className": "col-centralizavel align-middle",
                 "render": (data, type, row) => {
-                    let btnDetalhes = `<a href="index.php?page=carregamento_detalhes&id=${data}" 
-                                        class="btn btn-warning btn-sm me-1 d-inline-flex align-items-center" 
-                                        title="Detalhes/Editar"><i class="fas fa-pencil-alt me-1"></i>Editar</a>`;
+                    const status = row.car_status;
+                    const id = row.car_id;
+                    const isReprocesso = (row.car_tipo === 'REPROCESSO');
 
-                    let btnExcluir = '';
-                    let btnCancelar = '';
-                    let btnReabrir = '';
+                    let btnHtml = '';   // Botões principais (ícones)
+                    let menuItens = ''; // Itens dentro do dropdown "Mais"
 
+                    // 1. LINK DE DETALHES (Sempre visível)
+                    btnHtml += `<a href="index.php?page=detalhes_carregamento&id=${id}" class="btn btn-info btn-sm me-1" title="Ver Detalhes">
+                        <i class="fas fa-search"></i> Visualizar
+                    </a>`;
 
-                    if (row.car_status === 'EM ANDAMENTO' || row.car_status === 'AGUARDANDO CONFERENCIA') {
-                        btnCancelar = `<button class="btn btn-secondary btn-sm btn-cancelar me-1 d-inline-flex align-items-center" 
-                                        data-id="${data}" title="Cancelar"><i class="fas fa-times me-1"></i>Cancelar</button>`;
+                    // 2. STATUS: EM ANDAMENTO
+                    if (status === 'EM ANDAMENTO') {
+                        // No Reprocesso, talvez você não queira o botão "Editar" de cabeçalho na lista,
+                        // mas pode manter para o carregamento normal
+                        if (!isReprocesso) {
+                            btnHtml += `<button class="btn btn-warning btn-sm btn-editar-header me-1" data-id="${id}" title="Editar Cabeçalho">
+                                <i class="fas fa-pencil-alt"></i> Editar
+                            </button>`;
+                        }
+
+                        // Ações de cancelamento ficam no menu "Mais"
+                        menuItens += `<li><a class="dropdown-item text-danger btn-cancelar" href="#" data-id="${id}">
+                            <i class="fas fa-times-circle me-2"></i>Cancelar</a></li>`;
                     }
 
-                    if (row.car_status === 'FINALIZADO' || row.car_status === 'CANCELADO') {
-                        btnReabrir = `<button class="btn btn-info btn-sm btn-reabrir me-1 d-inline-flex align-items-center" 
-                                        data-id="${data}" 
-                                        title="Reabrir"><i class="fas fa-redo me-1"></i>Reabrir</button>`;
+                    // 3. STATUS: FINALIZADO
+                    else if (status === 'FINALIZADO') {
+                        // Botão de Impressão (Sempre útil em finalizados)
+                        btnHtml += `<a href="index.php?page=carregamento_relatorio&id=${id}" target="_blank" class="btn btn-secondary btn-sm me-1" title="Imprimir">
+                            <i class="fas fa-print"></i>
+                        </a>`;
+
+                        // Reabrir fica no menu "Mais"
+                        menuItens += `<li><a class="dropdown-item btn-reabrir" href="#" data-id="${id}">
+                            <i class="fas fa-undo me-2"></i>Reabrir</a></li>`;
                     }
 
-                    // Só pode excluir se NÃO estiver finalizado
-                    if (row.car_status !== 'FINALIZADO') {
-                        btnExcluir = `<button class="btn btn-danger btn-sm btn-excluir me-1 d-inline-flex align-items-center" 
-                                        data-id="${data}" 
-                                        title="Excluir Permanentemente"><i class="fas fa-trash-alt me-1"></i>Excluir</button>`;
+                    // 4. STATUS: CANCELADO
+                    else if (status === 'CANCELADO') {
+                        // Em cancelados, geralmente só permitimos reabrir ou excluir
+                        menuItens += `<li><a class="dropdown-item btn-reabrir" href="#" data-id="${id}">
+                            <i class="fas fa-undo me-2"></i>Reativar / Reabrir</a></li>`;
                     }
 
-                    return `<div class="btn-group">${btnDetalhes}${btnReabrir}${btnExcluir}${btnCancelar}</div>`;
+                    // 5. AÇÃO GLOBAL: EXCLUIR (Sempre no menu "Mais" e com destaque)
+                    if (menuItens !== '') { menuItens += `<li><hr class="dropdown-divider"></li>`; }
+                    menuItens += `<li><a class="dropdown-item text-danger btn-excluir" href="#" data-id="${id}">
+                        <i class="fas fa-trash me-2"></i>Excluir Permanente</a></li>`;
+
+                    // Montagem do Dropdown
+                    let acoesHtml = `<div class="d-flex justify-content-center">${btnHtml}`;
+
+                    if (menuItens) {
+                        acoesHtml += `
+                            <div class="dropdown">
+                                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Mais
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    ${menuItens}
+                                </ul>
+                            </div>`;
+                                }
+
+                    acoesHtml += `</div>`;
+                    return acoesHtml;
                 }
             }
         ],
@@ -177,5 +217,94 @@ $(document).ready(function () {
                 Swal.fire('Erro', 'Erro interno no servidor.', 'error');
             }
         });
+    });
+
+    // Função auxiliar para ações simples (Cancelar e Excluir)
+    function handleAcaoReprocesso(id, action, title, text, successMessage) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim, confirmar!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('ajax_router.php?action=' + action, {
+                    carregamento_id: id,
+                    csrf_token: csrfToken
+                }, function (response) {
+                    if (response.success) {
+                        Swal.fire('Sucesso!', successMessage, 'success');
+                        dataTable.ajax.reload();
+                    } else {
+                        Swal.fire('Erro', response.message, 'error');
+                    }
+                }, 'json');
+            }
+        });
+    }
+
+    // Evento: Cancelar Saída de Reprocesso
+    $tabela.on('click', '.btn-cancelar', function () {
+        const id = $(this).data('id');
+        handleAcaoReprocesso(id, 'cancelarCarregamento',
+            'Cancelar Saída de Reprocesso?',
+            'Esta ação irá cancelar a saída. Nenhum estoque será movimentado.',
+            'Saída de reprocesso cancelada.'
+        );
+    });
+
+    // Evento: Excluir Saída de Reprocesso
+    $tabela.on('click', '.btn-excluir', function (e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+
+        handleAcaoReprocesso(id, 'excluirCarregamento',
+            'Excluir Saída de Reprocesso?',
+            'Esta ação é IRREVERSÍVEL e apagará todos os dados vinculados. O estoque será estornado (se já tiver sido finalizada). Deseja continuar?',
+            'Saída de reprocesso excluída permanentemente.'
+        );
+    });
+
+    // Evento: Abrir Modal de Reabertura
+    $tabela.on('click', '.btn-reabrir', function (e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        // Tenta pegar o número da saída (coluna 0) para mostrar no modal
+        const numero = $(this).closest('tr').find('td').eq(0).text();
+
+        $('#reabrir-carregamento-id').val(id); // O ID do campo no modal pode continuar o mesmo
+        $('#reabrir-carregamento-numero').text(numero);
+        $('#reabrir-motivo').val('');
+
+        $('#modal-reabrir-motivo').modal('show');
+    });
+
+    // Evento: Confirmar Reabertura (Botão dentro do Modal)
+    $('#btn-confirmar-reabertura').on('click', function () {
+        const id = $('#reabrir-carregamento-id').val();
+        const motivo = $('#reabrir-motivo').val().trim();
+
+        if (motivo === '') {
+            Swal.fire('Erro', 'O motivo é obrigatório para reabrir.', 'error');
+            return;
+        }
+
+        $.post('ajax_router.php?action=reabrirCarregamento', {
+            carregamento_id: id,
+            motivo: motivo,
+            csrf_token: csrfToken
+        }, function (response) {
+            $('#modal-reabrir-motivo').modal('hide');
+            if (response.success) {
+                Swal.fire('Reaberto!', 'Saída reaberta e estoque estornado.', 'success');
+                dataTable.ajax.reload();
+            } else {
+                Swal.fire('Erro', response.message, 'error');
+            }
+        }, 'json');
     });
 });
