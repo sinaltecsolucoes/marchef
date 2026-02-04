@@ -70,12 +70,22 @@ $(document).ready(function () {
                     gabaritoPlanejamento = data.planejamento || [];
 
                     // --- AJUSTES DE INTERFACE REPROCESSO ---
+                    const $btnVoltar = $('#btn-voltar-lista'); // Captura o botão de voltar
+
                     if (isReprocesso) {
                         $('#main-title').text('Saída para Reprocesso');
                         $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Incluir Retirada');
+
+                        // Altera o link e o texto do botão voltar
+                        $btnVoltar.attr('href', 'index.php?page=saida_reprocesso');
+                        $btnVoltar.html('<i class="fas fa-arrow-left"></i> Voltar para Reprocessos');
                     } else {
                         $('#main-title').text('Carregamento');
                         $('#btn-adicionar-fila').html('<i class="fas fa-plus me-1"></i> Adicionar Nova Fila');
+
+                        // Retorna ao padrão de carregamentos
+                        $btnVoltar.attr('href', 'index.php?page=carregamentos');
+                        $btnVoltar.html('<i class="fas fa-arrow-left"></i> Voltar para a Lista');
                     }
 
                     // 1. Renderiza os componentes (passando a flag isReprocesso)
@@ -186,7 +196,7 @@ $(document).ready(function () {
         // 2. Verifica se há itens para renderizar
         if (!planejamento || planejamento.length === 0) {
             $tabelaPlanejamentoBody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item encontrado na Ordem de Expedição base.</td></tr>');
-           
+
             // Inicializa a tabela vazia com responsividade
             $tabela.DataTable({
                 responsive: true,

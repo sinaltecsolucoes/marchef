@@ -1,4 +1,5 @@
-<?php // /views/carregamentos/detalhes_carregamento.php ?>
+<?php // /views/carregamentos/detalhes_carregamento.php 
+?>
 
 <h4 class="fw-bold mb-3" id="main-title">Carregamento</h4>
 
@@ -15,7 +16,8 @@
                     class="fas fa-save me-1"></i>Salvar</button>
             <button class="btn btn-secondary btn-sm" id="btn-cancelar-header" style="display: none;"><i
                     class="fas fa-times me-1"></i> Cancelar</button>
-            <a href="index.php?page=carregamentos" class="btn btn-secondary btn-sm">
+
+            <a href="index.php?page=carregamentos" id="btn-voltar-lista" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Voltar para a Lista
             </a>
         </div>
@@ -80,22 +82,22 @@
     <div class="card-body">
         <p class="text-muted">Resumo dos itens planejados na Ordem de Expedição. Use esta tabela como referência para o
             carregamento.</p>
-            <table class="table table-bordered table-sm w-100" id="tabela-planejamento">
-                <thead class="table-light">
-                    <tr>
-                        <th class="text-center align-middle">Cliente</th>
-                        <th class="text-center align-middle">Produto</th>
-                        <th class="text-center align-middle">Lote</th>
-                        <th class="text-center align-middle">Endereço</th>
-                        <th class="text-center align-middle">Qtd. Planejada (Caixas)</th>
-                        <th class="text-center align-middle">Qtd. Carregada (Caixas)</th>
-                        <th class="text-center align-middle fw-bold">Saldo (Caixas)</th>
-                    </tr>
-                </thead>
-                <tbody id="tabela-planejamento-body">
-                </tbody>
-            </table>
-        
+        <table class="table table-bordered table-sm w-100" id="tabela-planejamento">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-center align-middle">Cliente</th>
+                    <th class="text-center align-middle">Produto</th>
+                    <th class="text-center align-middle">Lote</th>
+                    <th class="text-center align-middle">Endereço</th>
+                    <th class="text-center align-middle">Qtd. Planejada (Caixas)</th>
+                    <th class="text-center align-middle">Qtd. Carregada (Caixas)</th>
+                    <th class="text-center align-middle fw-bold">Saldo (Caixas)</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-planejamento-body">
+            </tbody>
+        </table>
+
     </div>
 </div>
 

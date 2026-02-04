@@ -24,104 +24,6 @@ class CarregamentoRepository
     /**
      * Busca carregamentos para a DataTable
      */
-    /* public function findAllForDataTable(array $params): array
-    {
-        // Colunas para busca
-        $searchableColumns = ['c.car_numero', 'oe.oe_numero', 'c.car_motorista_nome', 'c.car_placas', 'c.car_status'];
-
-        // --- Construção da Query Base ---
-        $baseQuery = "FROM tbl_carregamentos c
-                      LEFT JOIN tbl_ordens_expedicao_header oe ON c.car_ordem_expedicao_id = oe.oe_id
-                      LEFT JOIN tbl_entidades e ON c.car_entidade_id_organizador = e.ent_codigo";
-
-        // --- Filtros (Search e Status) ---
-        $where = " WHERE 1=1 ";
-        $queryParams = [];
-
-        // --- Filtro por Tipo de Saída (Reprocesso ou Normal) ---
-        if (!empty($params['tipo_saida'])) {
-            if ($params['tipo_saida'] === 'REPROCESSO') {
-                $where .= " AND c.car_tipo = 'REPROCESSO' ";
-            } else {
-                // Se for 'NORMAL', trazemos tudo que NÃO for reprocesso
-                $where .= " AND c.car_tipo != 'REPROCESSO' ";
-            }
-        }
-
-        // Filtro de Busca (DataTables)
-        if (!empty($params['search']['value'])) {
-            $searchValue = '%' . $params['search']['value'] . '%';
-            $whereParts = [];
-            foreach ($searchableColumns as $col) {
-                $whereParts[] = "$col LIKE :search_value";
-            }
-            $where .= " AND (" . implode(' OR ', $whereParts) . ")";
-            $queryParams[':search_value'] = $searchValue;
-        }
-
-        // --- Contagem de Registros ---
-        // Total Geral (sem filtros de busca, mas respeitando o tipo)
-        $totalRecordsQuery = "SELECT COUNT(c.car_id) $baseQuery " .
-            (strpos($where, 'car_tipo') !== false ? " WHERE " .
-                (strpos($where, 'car_tipo =') !== false ? "c.car_tipo = 'REPROCESSO'" : "c.car_tipo != 'REPROCESSO'") : "");
-        $totalRecords = $this->pdo->query($totalRecordsQuery)->fetchColumn();
-
-        // Total com os filtros aplicados
-        $totalFiltered = $this->pdo->prepare("SELECT COUNT(c.car_id) $baseQuery $where");
-        $totalFiltered->execute($queryParams);
-        $totalFiltered = $totalFiltered->fetchColumn();
-
-
-        // --- Ordenação ---
-        $order = " ORDER BY c.car_data DESC, c.car_id DESC ";
-        if (isset($params['order'][0]) && $params['columns'][$params['order'][0]['column']]['data']) {
-            $colIndex = $params['order'][0]['column'];
-            $colName = $params['columns'][$colIndex]['data'];
-            $dir = $params['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
-
-            // Mapeamento seguro de colunas
-            $columnMap = [
-                'car_numero' => 'c.car_numero',
-                'car_data' => 'c.car_data',
-                'oe_numero' => 'oe.oe_numero',
-                'car_motorista_nome' => 'c.car_motorista_nome',
-                'car_placas' => 'c.car_placas',
-                'car_status' => 'c.car_status'
-            ];
-
-            if (isset($columnMap[$colName])) {
-                $order = " ORDER BY " . $columnMap[$colName] . " $dir ";
-            }
-        }
-
-        // --- Paginação ---
-        $limit = " LIMIT :start, :length";
-        $queryParams[':start'] = (int) ($params['start'] ?? 0);
-        $queryParams[':length'] = (int) ($params['length'] ?? 10);
-
-        // --- Query Final ---
-        $sqlData = "SELECT 
-                        c.car_id,
-                        c.car_numero,
-                        c.car_data,
-                        c.car_status,
-                        c.car_motorista_nome,
-                        c.car_placas,
-                        oe.oe_numero
-                    $baseQuery $where $order $limit";
-
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->execute($queryParams);
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return [
-            "draw" => intval($params['draw'] ?? 1),
-            "recordsTotal" => (int) $totalRecords,
-            "recordsFiltered" => (int) $totalFiltered,
-            "data" => $data
-        ];
-    } */
-
     public function findAllForDataTable(array $params): array
     {
         // Colunas para busca
@@ -447,13 +349,6 @@ class CarregamentoRepository
      * Atualiza o status de um carregamento.
      * Função helper interna.
      */
-    /*  private function updateStatus(int $id, string $novoStatus): bool
-    {
-        $sql = "UPDATE tbl_carregamentos SET car_status = :status WHERE car_id = :id";
-        $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([':status' => $novoStatus, ':id' => $id]);
-    }*/
-
     private function updateStatus(int $id, string $status): bool
     {
         $sql = "UPDATE tbl_carregamentos SET car_status = :status, car_data_saida = NOW() WHERE car_id = :id";
@@ -461,85 +356,6 @@ class CarregamentoRepository
 
         return $stmt->execute([':status' => $status, ':id' => $id]);
     }
-
-    /**
-     * Finaliza um carregamento, baixa o estoque e VINCULA a OE.
-     */
-    /* public function finalizar(int $carregamentoId, OrdemExpedicaoRepository $ordemExpedicaoRepo): bool
-    {
-        $this->pdo->beginTransaction();
-        try {
-            // 1. Valida o Carregamento e busca o ID da OE
-            $stmtStatus = $this->pdo->prepare("SELECT car_status, car_numero, car_ordem_expedicao_id FROM tbl_carregamentos WHERE car_id = :id FOR UPDATE");
-            $stmtStatus->execute([':id' => $carregamentoId]);
-            $carregamento = $stmtStatus->fetch(PDO::FETCH_ASSOC);
-
-            if (!$carregamento || $carregamento['car_status'] !== 'EM ANDAMENTO') {
-                throw new Exception("Apenas carregamentos 'EM ANDAMENTO' podem ser finalizados.");
-            }
-
-            // 2. Busca todos os itens do carregamento para dar baixa no estoque
-            $stmtItens = $this->pdo->prepare(
-                "SELECT ci.car_item_lote_novo_item_id, ci.car_item_quantidade, lne.item_emb_prod_sec_id 
-                 FROM tbl_carregamento_itens ci
-                 JOIN tbl_lotes_novo_embalagem lne ON lne.item_emb_id = ci.car_item_lote_novo_item_id
-                 WHERE ci.car_item_carregamento_id = :id"
-            );
-            $stmtItens->execute([':id' => $carregamentoId]);
-            $itensParaBaixar = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-
-            if (empty($itensParaBaixar)) {
-                throw new Exception("Não é possível finalizar um carregamento sem itens.");
-            }
-
-            // Prepara as queries que serão usadas dentro do loop
-            $stmtUpdateLoteItem = $this->pdo->prepare(
-                "UPDATE tbl_lotes_novo_embalagem SET item_emb_qtd_finalizada = item_emb_qtd_finalizada + :qtd 
-                 WHERE item_emb_id = :id"
-            );
-            $stmtMovimentoEstoque = $this->pdo->prepare(
-                "INSERT INTO tbl_estoque (estoque_produto_id, estoque_lote_item_id, estoque_quantidade, estoque_tipo_movimento, estoque_observacao) 
-                 VALUES (:prod_id, :lote_item_id, :qtd, 'SAÍDA POR CARREGAMENTO', :obs)"
-            );
-
-            // 3. Loop para dar baixa em cada item individualmente
-            foreach ($itensParaBaixar as $item) {
-                // Incrementa a quantidade finalizada no item de embalagem original
-                $stmtUpdateLoteItem->execute([
-                    ':qtd' => $item['car_item_quantidade'],
-                    ':id' => $item['car_item_lote_novo_item_id']
-                ]);
-
-                // Cria o registro de movimento de SAÍDA na tabela de estoque
-                $stmtMovimentoEstoque->execute([
-                    ':prod_id' => $item['item_emb_prod_sec_id'],
-                    ':lote_item_id' => $item['car_item_lote_novo_item_id'],
-                    ':qtd' => $item['car_item_quantidade'],
-                    ':obs' => "Saída referente ao Carregamento Nº " . $carregamento['car_numero']
-                ]);
-            }
-
-            // 4. Atualiza o status do próprio carregamento para 'FINALIZADO'
-            $this->updateStatus($carregamentoId, 'FINALIZADO');
-
-            // 5. ATUALIZA E BLOQUEIA A ORDEM DE EXPEDIÇÃO BASE
-            if (!empty($carregamento['car_ordem_expedicao_id'])) {
-                // Chama a função que criamos no Passo 3
-                $ordemExpedicaoRepo->linkCarregamento($carregamento['car_ordem_expedicao_id'], $carregamentoId);
-            }
-
-            // 6. Registra na auditoria
-            $this->auditLogger->log('FINALIZE', $carregamentoId, 'tbl_carregamentos', ['status_anterior' => 'EM ANDAMENTO'], ['status_novo' => 'FINALIZADO'], "");
-
-            // 7. Se tudo deu certo, confirma a transação
-            $this->pdo->commit();
-            return true;
-        } catch (Exception $e) {
-            // Se qualquer passo falhar, desfaz tudo
-            $this->pdo->rollBack();
-            throw $e; // Re-lança a exceção para o controller mostrar o erro
-        }
-    }*/
 
     /**
      * Finaliza um carregamento:

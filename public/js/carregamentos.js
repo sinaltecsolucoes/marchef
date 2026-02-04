@@ -331,7 +331,7 @@ $(document).ready(function () {
         const id = $(this).data('id');
 
         // Usamos a mesma função 'handleAcaoCarregamento'
-        handleAcaoCarregamento(id, 'excluirCarregamento', // <-- Nova Action
+        handleAcaoCarregamento(id, 'excluirCarregamento', 
             'Excluir Carregamento?',
             'Esta ação é IRREVERSÍVEL e apagará o carregamento, filas e itens. O estoque será estornado (se aplicável). Deseja continuar?',
             'Carregamento excluído permanentemente.'
