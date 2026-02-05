@@ -41,7 +41,7 @@ ob_start();
     <title>Relatório de Lotes</title>
     <style>
         @page {
-            margin: 15px 15px 40px 15px;
+            margin: 15px 35px 40px 15px;
             size: A4 landscape;
         }
 
@@ -53,9 +53,11 @@ ob_start();
 
         table {
             width: 100%;
-            border-collapse: collapse;
             margin-top: 10px;
+            border-collapse: collapse;
         }
+
+
 
         th,
         td {
@@ -63,6 +65,9 @@ ob_start();
             padding: 5px;
             vertical-align: middle;
             line-height: 1.2;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -91,7 +96,8 @@ ob_start();
         }
 
         .w-forn {
-            width: 150;
+            width: 190px;
+
         }
 
         .w-peso {
@@ -115,6 +121,16 @@ ob_start();
             width: 180px;
             font-size: 7pt;
         }
+
+        .ultima_coluna {
+            width: 1px;
+            /* mínima largura */
+            padding: 0;
+            border-left: 1px solid #999;
+            /* força a borda */
+            border-right: none;
+            /* não precisa desenhar do outro lado */
+        }
     </style>
 </head>
 
@@ -130,9 +146,16 @@ ob_start();
             <td style="border: none; width: 60%; text-align: center;">
                 <h2 style="margin: 0; font-size: 16pt;">ABERTURA DE LOTES</h2>
                 <h3 style="margin: 5px 0 0 0; font-size: 10pt; font-weight: normal; color: #555;">PERÍODO: <strong><?= $periodoTexto ?></strong></h3>
+
                 <?php if (!empty($nomesClientesStr)): ?>
                     <h3 style="margin: 2px 0 0 0; font-size: 9pt; font-weight: normal; color: #333;">
                         FORNECEDOR(ES): <strong><?= mb_strtoupper($nomesClientesStr) ?></strong>
+                    </h3>
+                <?php endif; ?>
+
+                <?php if (!empty($nomesProdutosStr)): ?>
+                    <h3 style="margin: 2px 0 0 0; font-size: 9pt; font-weight: normal; color: #333;">
+                        PRODUTO(S): <strong><?= mb_strtoupper($nomesProdutosStr) ?></strong>
                     </h3>
                 <?php endif; ?>
             </td>
@@ -154,9 +177,10 @@ ob_start();
                 <th class="w-gram">Gram. Benef</th>
                 <th class="w-reproc">Lote Reprocesso</th>
                 <th class="w-obs">Observações</th>
+                <th class="ultima_coluna"></th>
             </tr>
         </thead>
-        
+
         <tbody>
             <?php
             $totalPeso = 0;
@@ -231,8 +255,10 @@ ob_start();
                         <td class="text-center"><?= $formatarGramatura($d['gram_benef']) ?></td>
 
                         <td class="text-center"><?= $d['lote_reprocesso_origem'] ?: '-' ?></td>
-                        <td class="w-obs"><?= nl2br(htmlspecialchars($d['lote_observacao'] ?? '')) ?></td>
+                        <td><?= nl2br(htmlspecialchars($d['lote_observacao'] ?? '')) ?></td>
+                        <td class="ultima_coluna"></td>
                     </tr>
+
             <?php endforeach;
             endif;
 
@@ -268,18 +294,32 @@ ob_start();
 
     <script type="text/php">
         if (isset($pdf)) {
+            $font = $fontMetrics->getFont("helvetica", "normal");
+            $size = 7;
+            $color = [0.4, 0.4, 0.4];  // cinza
+
             $y = $pdf->get_height() - 30; 
             $w = $pdf->get_width();
-            $font = $fontMetrics->get_font("helvetica", "normal");
-            $size = 7;
-            $color = array(0.4, 0.4, 0.4);
 
-            $pdf->line(30, $y - 5, $w - 30, $y - 5, array(0.5, 0.5, 0.5), 0.5);
-            $pdf->page_text(30, $y, "Gerado eletronicamente pelo sistema", $font, $size, $color);
-            
-            $textoDireita = "Página {PAGE_NUM} de {PAGE_COUNT}";
-            $textWidth = $fontMetrics->get_text_width($textoDireita, $font, $size);
-            $pdf->page_text($w - 80, $y, $textoDireita, $font, $size, $color);
+            // Margens laterais iguais às do page
+            $left_margin_pt  = 12;
+            $right_margin_pt = 12;
+
+            // Texto esquerdo
+            $pdf->page_text($left_margin_pt, $y, "Gerado eletronicamente pelo sistema", $font, $size, $color);
+
+            // Texto direito (página X de Y) 
+            $pdf->page_text($w - $right_margin_pt - 55, $y, "Página {PAGE_NUM} de {PAGE_COUNT}", $font, $size, $color);
+
+            // Linha horizontal full entre as margens (sem sobras)
+            $pdf->page_line(
+                $left_margin_pt,          // x1
+                $y - 8,                   // y1 (8pt acima do texto)
+                $w - $right_margin_pt,    // x2
+                $y - 8,                   // y2
+                [0.5, 0.5, 0.5],          // cor cinza
+                0.5                       // espessura
+            );
         }
     </script>
 

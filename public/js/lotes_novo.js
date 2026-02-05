@@ -155,6 +155,7 @@ $(document).ready(function () {
                 d.meses = $('.check-mes-item:checked').map(function () { return $(this).val(); }).get();
                 d.situacoes = $('.check-situacao-item:checked').map(function () { return $(this).val(); }).get();
                 d.fornecedores = $('.check-fornecedor-item:checked').map(function () { return $(this).val(); }).get();
+                d.tipoProduto = $('.check-tipo-item:checked').map(function () { return $(this).val(); }).get();
                 d.pageType = pageType;
             }
         },
@@ -162,6 +163,11 @@ $(document).ready(function () {
             // Chama a função de médias que criamos antes
             atualizarResumoLotes(this.api());
         },
+        "initComplete": function (settings) {  
+            // Chama a função de médias que criamos antes
+            atualizarResumoLotes(this.api());
+        },
+
         "responsive": true,
         "columns": [
             // 0. Lote (Ordenável)
@@ -1845,6 +1851,19 @@ $(document).ready(function () {
             }
             // Nota: Se 'Todos' estiver checkado, o array fica vazio, e o PHP entende como "trazer tudo".
 
+            // --- 3. Coleta Produtos ---
+            const produtosSelecionados = [];
+            // Se o "Marcar Todos" dos produtos NÃO estiver marcado, coletamos os específicos
+            if (!$('#check-tipo-todos').is(':checked')) {
+                $('.check-tipo-item:checked').each(function () {
+                    produtosSelecionados.push($(this).val());
+                });
+                if (produtosSelecionados.length === 0) {
+                    notificacaoErro('Erro', 'Selecione pelo menos um tipo de produto.');
+                    return;
+                }
+            }
+
             if (mesesSelecionados.length === 0 || !ano) {
                 notificacaoErro('Erro', 'Selecione pelo menos um mês e informe o ano.');
                 return;
@@ -1852,12 +1871,17 @@ $(document).ready(function () {
 
             const mesesStr = mesesSelecionados.join(',');
             const fornStr = fornecedoresSelecionados.join(',');
+            const prodStr = produtosSelecionados.join(',');
 
             // Monta a url
             let url = `ajax_router.php?action=gerarRelatorioMensalLotes&meses=${mesesStr}&ano=${ano}`;
 
             if (fornStr) {
                 url += `&fornecedores=${fornStr}`;
+            }
+
+            if (prodStr) {
+                url += `&tipoProduto=${prodStr}`;
             }
             window.open(url, '_blank');
         });
@@ -2941,6 +2965,7 @@ $(document).ready(function () {
     // Inicializa o texto ao carregar a página
     atualizarTextoBotaoMeses();
     atualizarTextoBotaoSituacao();
+    atualizarTextoBotaoTipoProduto();
 
     // Impede que o dropdown feche ao clicar num checkbox (melhora a usabilidade)
     $('.dropdown-menu').on('click', function (e) {
@@ -3003,6 +3028,66 @@ $(document).ready(function () {
         }
 
         atualizarTextoBotaoSituacao();
+        recarregarTabelaLotes();
+    });
+
+
+    // --- LÓGICA DO MULTI-SELECT DE TIPO DE PRODUTO ---
+    // Função: Atualiza o texto do botão de Tipo de Produto
+    function atualizarTextoBotaoTipoProduto() {
+        const selecionados = [];
+        $('.check-tipo-item:checked').each(function () {
+            selecionados.push($(this).next('label').text().trim());
+        });
+
+        const $btn = $('#btn-dropdown-tipo');
+        const $checkTodos = $('#check-tipo-todos');
+        const $labelTodos = $checkTodos.next('label');
+
+        if (selecionados.length === 0) {
+            $btn.text('Selecione o produto...');
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
+        } else if (selecionados.length === $('.check-tipo-item').length) {
+            $btn.text('Todas os Produtos');
+            $checkTodos.prop('checked', true);
+            $labelTodos.text('DESMARCAR TODOS');
+        } else if (selecionados.length <= 2) {
+            $btn.text(selecionados.join(', '));
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
+        } else {
+            $btn.text(selecionados.length + ' produtos selecionados');
+            $checkTodos.prop('checked', false);
+            $labelTodos.text('MARCAR TODOS');
+        }
+    }
+
+    // Evento: Clique no "Marcar/Desmarcar Todos" (Tipo Produto)
+    $('#check-tipo-todos').on('click', function () {
+        const total = $('.check-tipo-item').length;
+        const marcados = $('.check-tipo-item:checked').length;
+
+        const deveMarcar = (marcados < total);
+        $('.check-tipo-item').prop('checked', deveMarcar);
+
+        atualizarTextoBotaoTipoProduto();
+        recarregarTabelaLotes();
+    });
+
+    // Evento: Itens individuais (Produto) - Lógica Inteligente
+    $(document).on('change', '.check-tipo-item', function () {
+        const total = $('.check-tipo-item').length;
+        const marcadosAgora = $('.check-tipo-item:checked').length;
+        const foiDesmarcado = !$(this).is(':checked');
+
+        // Se estava TUDO marcado e o usuário clicou para desmarcar um: Isola ele.
+        if (marcadosAgora === (total - 1) && foiDesmarcado) {
+            $('.check-tipo-item').prop('checked', false);
+            $(this).prop('checked', true);
+        }
+
+        atualizarTextoBotaoTipoProduto();
         recarregarTabelaLotes();
     });
 
@@ -3517,7 +3602,7 @@ $(document).ready(function () {
     // LOGICA PARA BAIXA DE LOTES PARA REPROCESSO
 
     // VARIÁVEL GLOBAL PARA GUARDAR A DISTRIBUIÇÃO
-    var distribuicaoBaixa = [];
+    var distribuicaoBaixa = []; 
 
     function abrirModalPicking(saldos, totalAlvo) {
         let html = '';
@@ -3783,7 +3868,7 @@ $(document).ready(function () {
     }
 
     // Atualização instantânea ao interagir com os filtros
-    $(document).on('change', '.check-mes-item, .check-situacao-item, .check-fornecedor-item, #check-mes-todos, #check-fornecedor-todos, #check-situacao-todos, #rel_ano', function () {
+    $(document).on('change', '.check-mes-item, .check-situacao-item, .check-fornecedor-item, #check-mes-todos, #check-fornecedor-todos, #check-situacao-todos, #check-tipo-todos, #rel_ano', function () {
 
         if (tabelaLotesNovo) {
             tabelaLotesNovo.draw();

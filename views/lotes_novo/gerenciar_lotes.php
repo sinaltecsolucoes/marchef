@@ -39,7 +39,7 @@ switch ($page) {
         <div class="card-body">
             <div class="row">
 
-                <div class="col-md-4 border-end">
+                <div class="col-md-3 border-end">
                     <h5 class="fw-bold text-secondary mb-3" style="font-size: 0.9rem; text-transform: uppercase;">
                         <i class="fas fa-sign-in-alt me-2"></i>Entrada
                     </h5>
@@ -63,15 +63,69 @@ switch ($page) {
                     </div>
                 </div>
 
-                <div class="col-md-8 ps-3">
+                <div class="col-md-9 ps-3">
                     <h5 class="fw-bold text-secondary mb-2" style="font-size: 0.9rem; text-transform: uppercase;">
                         <i class="fas fa-filter me-2"></i>Filtros e Relatório
                     </h5>
 
                     <div id="form-relatorio-mensal" class="row g-2 align-items-end">
 
+                        <!-- Lista de Tipo Produto -->
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Produto</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate" type="button" id="btn-dropdown-tipo" data-bs-toggle="dropdown">
+                                    Produto...
+                                </button>
+                                <ul class="dropdown-menu p-2 shadow" id="lista-tipo-produto" style="width:100%; min-width:unset;">
+                                    <li class="p-1 border-bottom mb-2 bg-light rounded">
+                                        <div class="form-check">
+                                            <input class="form-check-input fw-bold" type="checkbox" id="check-tipo-todos" checked>
+                                            <label class="form-check-label fw-bold text-primary font-small" for="check-tipo-todos">MARCAR TODOS</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="SEM_PRODUTO" id="tipo-vazio" checked>
+                                            <label class="form-check-label font-small" for="tipo-vazio">SEM PRODUTO</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="CAMARAO" id="tipo-camarao" checked>
+                                            <label class="form-check-label font-small" for="tipo-camarao">CAMARÃO</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="PEIXE" id="tipo-peixe" checked>
+                                            <label class="form-check-label font-small" for="tipo-peixe">PEIXE</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="LAGOSTA" id="tipo-lagosta" checked>
+                                            <label class="form-check-label font-small" for="tipo-lagosta">LAGOSTA</label>
+                                        </div>
+                                    </li>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="POLVO" id="tipo-polvo" checked>
+                                            <label class="form-check-label font-small" for="tipo-polvo">POLVO</label>
+                                        </div>
+                                    <li class="p-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input check-tipo-item" type="checkbox" value="OUTRO" id="tipo-outros" checked>
+                                            <label class="form-check-label font-small" for="tipo-outros">OUTROS</label>
+                                        </div>
+                                    </li>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
                         <!-- Lista de Meses -->
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Período (Meses)</label>
 
                             <div class="dropdown">
@@ -182,7 +236,7 @@ switch ($page) {
                         </div>
 
                         <!-- Campo para Ano -->
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <label class="form-label small fw-bold mb-1">Exercício (Ano)</label>
                             <input
                                 type="number"

@@ -163,7 +163,7 @@
                             <select class="form-select" id="prod_tipo_embalagem" name="prod_tipo_embalagem" required>
                                 <option value="PRIMARIA">Primária</option>
                                 <option value="SECUNDARIA">Secundária</option>
-                                <option value="MATERIA-PRIMA">Matéria-Prima</option>
+                                <option value="MATERIA_PRIMA">Matéria-Prima</option>
                             </select>
                         </div>
 

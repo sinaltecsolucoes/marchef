@@ -916,7 +916,7 @@ class LoteNovoRepository
         }
 
         // 3. Filtro de Situações
-         if (!empty($params['situacoes']) && is_array($params['situacoes'])) {
+        if (!empty($params['situacoes']) && is_array($params['situacoes'])) {
             $placeholders = [];
             foreach ($params['situacoes'] as $i => $sit) {
                 $key = ":sit$i";
@@ -937,8 +937,59 @@ class LoteNovoRepository
             $whereClause .= " AND l.lote_cliente_id IN (" . implode(',', $placeholders) . ")";
         }
 
+        // 4. Filtro de Tipos de Produto
+        if (!empty($params['tipoProduto']) && is_array($params['tipoProduto'])) {
+            $placeholders = [];
+            $incluirSemProduto = false;
+
+            foreach ($params['tipoProduto'] as $i => $produto) {
+                if ($produto === 'SEM_PRODUTO') {
+                    $incluirSemProduto = true;
+                    continue; // Não vai para o INClause
+                }
+                $key = ":prod_filter_$i";
+                $placeholders[] = $key;
+                $queryParams[$key] = $produto;
+            }
+
+            $condicoes = [];
+
+            // Condição 1: Tem os produtos selecionados
+            if (!empty($placeholders)) {
+                $inClause = implode(',', $placeholders);
+                $condicoes[] = "EXISTS (
+                    SELECT 1 FROM tbl_lote_novo_recebdetalhes rd_f
+                    INNER JOIN tbl_produtos p_f ON rd_f.item_receb_produto_id = p_f.prod_codigo
+                    WHERE rd_f.item_receb_lote_id = l.lote_id 
+                    AND p_f.prod_tipo IN ($inClause)
+                )";
+            }
+
+            // Condição 2: Não tem nenhum detalhe associado
+            if ($incluirSemProduto) {
+                $condicoes[] = "NOT EXISTS (
+                SELECT 1 FROM tbl_lote_novo_recebdetalhes rd_vazio 
+                WHERE rd_vazio.item_receb_lote_id = l.lote_id
+            )";
+            }
+
+            if (!empty($condicoes)) {
+                $whereClause .= " AND (" . implode(' OR ', $condicoes) . ")";
+            }
+        }
+
         // 5. Contagem dos Filtrados (Considerando DISTINCT por causa do JOIN 1:N)
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause");
+        // Usamos uma subquery para contar quantos 'lote_id' únicos existem com os filtros aplicados
+        // $sqlCountFiltered = "SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause";
+
+        $sqlCountFiltered = "SELECT COUNT(*) FROM (
+            SELECT l.lote_id 
+            $baseQuery 
+            $whereClause 
+            GROUP BY l.lote_id
+        ) AS total_filtrado";
+
+        $stmtFiltered = $this->pdo->prepare($sqlCountFiltered);
         $stmtFiltered->execute($queryParams);
         $totalFiltered = $stmtFiltered->fetchColumn();
 
@@ -954,7 +1005,7 @@ class LoteNovoRepository
               $whereClause";
 
         $stmtTotais = $this->pdo->prepare($sqlTotais);
-       /* foreach ($queryParams as $key => $value) {
+        /* foreach ($queryParams as $key => $value) {
             $stmtTotais->bindValue($key, $value);
         }*/
         $stmtTotais->execute($queryParams);
@@ -1019,182 +1070,6 @@ class LoteNovoRepository
             "data" => $data
         ];
     }
-
-
-    /**
-     * Busca um lote novo completo (cabeçalho, produção e embalagem) pelo seu ID.
-     * @param int $id O ID do lote (da tbl_lotes_novo_header).
-     * @return array|null
-     */
-
-    /* public function findAllForDataTable(array $params): array
-    {
-        // Log inicial para depuração (ver error_log ou arquivo de log)
-        error_log("findAllForDataTable - Params Recebidos: " . json_encode($params));
-
-        // 1. Parâmetros básicos do DataTables
-        $draw = (int) ($params['draw'] ?? 1);
-        $start = (int) ($params['start'] ?? 0);
-        $length = (int) ($params['length'] ?? 10);
-        $searchValue = trim($params['search']['value'] ?? '');
-
-        // 2. Filtros Customizados (agora tratados!)
-        $ano = !empty($params['ano']) ? (int) $params['ano'] : (int) date('Y');
-        $meses = !empty($params['meses']) ? array_map('intval', (array) $params['meses']) : [];
-        $situacoes = !empty($params['situacoes']) ? array_map('strtoupper', (array) $params['situacoes']) : ['ABERTO', 'FINALIZADO'];
-        $fornecedores = !empty($params['fornecedores']) ? array_map('intval', (array) $params['fornecedores']) : [];
-
-        // 3. Definição da Query Base e Joins (igual)
-        $baseQuery = "FROM tbl_lotes_novo_header l         
-                  LEFT JOIN tbl_entidades c ON l.lote_cliente_id = c.ent_codigo
-                  LEFT JOIN tbl_entidades f ON l.lote_fornecedor_id = f.ent_codigo
-                  LEFT JOIN tbl_lote_novo_recebdetalhes r ON l.lote_id = r.item_receb_lote_id";
-
-        // 4. Contagem Total (Sem filtros) - igual, mas log
-        $totalRecords = $this->pdo->query("SELECT COUNT(l.lote_id) FROM tbl_lotes_novo_header l")->fetchColumn();
-        error_log("Total Records (sem filtro): " . $totalRecords);
-
-        // 5. Construção do WHERE (agora com todos os filtros!)
-        $where = [];
-        $queryParams = [];
-
-        // Filtro Ano
-        if ($ano > 0) {
-            $where[] = "YEAR(l.lote_data_fabricacao) = :ano";
-            $queryParams[':ano'] = $ano;
-        }
-        // Filtro Meses (array)
-        if (!empty($meses)) {
-            $mesPlaceholders = [];
-            foreach ($meses as $i => $mes) {
-                $key = ":mes_{$i}";
-                $mesPlaceholders[] = $key;
-                $queryParams[$key] = (int)$mes;
-            }
-            $where[] = "MONTH(l.lote_data_fabricacao) IN (" . implode(', ', $mesPlaceholders) . ")";
-        }
-
-        // Filtro Situações (array)
-        if (!empty($situacoes)) {
-            $sitPlaceholders = [];
-            foreach ($situacoes as $i => $sit) {
-                $key = ":sit_{$i}";
-                $sitPlaceholders[] = $key;
-                $queryParams[$key] = $sit;
-            }
-            $where[] = "l.lote_status IN (" . implode(', ', $sitPlaceholders) . ")";
-        }
-
-        // Filtro Fornecedores (array)
-        if (!empty($fornecedores)) {
-            $fornPlaceholders = [];
-            foreach ($fornecedores as $i => $forn) {
-                $key = ":forn_{$i}";
-                $fornPlaceholders[] = $key;
-                $queryParams[$key] = (int)$forn;
-            }
-            $where[] = "l.lote_fornecedor_id IN (" . implode(', ', $fornPlaceholders) . ")";
-        }
-
-        // Filtro de Busca Global (refinado: use um :searchText e :searchNum)
-        if (!empty($searchValue)) {
-            $searchTerm = '%' . $searchValue . '%';
-            $cleanVal = preg_replace('/[a-zA-Z\s]/', '', $searchValue);
-            if (strpos($cleanVal, ',') !== false) {
-                $cleanVal = str_replace('.', '', $cleanVal);
-                $cleanVal = str_replace(',', '.', $cleanVal);
-            }
-            $searchNumeric = '%' . $cleanVal . '%';
-
-            $where[] = "(l.lote_completo_calculado LIKE :searchText OR
-                     l.lote_numero LIKE :searchText OR
-                     c.ent_razao_social LIKE :searchText OR
-                     c.ent_nome_fantasia LIKE :searchText OR
-                     EXISTS (SELECT 1 FROM tbl_lote_novo_recebdetalhes sub_d WHERE sub_d.item_receb_lote_id = l.lote_id 
-                             AND (sub_d.item_receb_gram_faz LIKE :searchNum OR sub_d.item_receb_gram_lab LIKE :searchNum OR 
-                                  sub_d.item_receb_peso_nota_fiscal LIKE :searchNum)) OR
-                     (SELECT SUM(sub_s.item_receb_peso_nota_fiscal) FROM tbl_lote_novo_recebdetalhes sub_s 
-                      WHERE sub_s.item_receb_lote_id = l.lote_id) LIKE :searchNum OR
-                     DATE_FORMAT(l.lote_data_fabricacao, '%d/%m/%Y') LIKE :searchText)";
-
-            $queryParams[':searchText'] = $searchTerm;
-            $queryParams[':searchNum'] = $searchNumeric;
-        }
-
-        $whereClause = empty($where) ? '' : ' WHERE ' . implode(' AND ', $where);
-
-        // 6. Contagem dos Filtrados (agora com filtros customizados)
-        //$sqlFiltered = "SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause";
-        // $stmtFiltered = $this->pdo->prepare($sqlFiltered);
-        //$stmtFiltered->execute($queryParams); // Agora usa os params de filtros
-        $stmtFiltered = $this->pdo->prepare("SELECT COUNT(DISTINCT l.lote_id) $baseQuery $whereClause");
-        $stmtFiltered->execute($queryParams);  // Agora OK!
-        $totalFiltered = $stmtFiltered->fetchColumn();
-        error_log("Filtered Records: " . $totalFiltered . " | Where: " . $whereClause);
-
-        // 7. Ordenação (igual, mas log)
-        $columnsMap = [
-            0 => 'l.lote_completo_calculado',
-            1 => 'cliente_razao_social',
-            2 => 'gramaturas_fazenda',
-            3 => 'gramaturas_laboratorio',
-            4 => 'peso_total_nota',
-            5 => 'l.lote_data_fabricacao',
-            6 => 'l.lote_status'
-        ];
-        $colIndex = $params['order'][0]['column'] ?? 5; // Padrão: Data (índice 5 no seu JS)
-        $dir = strtoupper($params['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-        $orderBy = $columnsMap[$colIndex] ?? 'l.lote_data_fabricacao';
-        error_log("Ordenação: $orderBy $dir");
-
-        // 8. Query Final (igual, mas com whereClause completo)
-        $sqlData = "SELECT l.*, 
-                COALESCE(NULLIF(c.ent_nome_fantasia,''), c.ent_razao_social) AS cliente_razao_social, 
-                GROUP_CONCAT(DISTINCT r.item_receb_gram_faz SEPARATOR ' / ') as gramaturas_fazenda,
-                GROUP_CONCAT(DISTINCT r.item_receb_gram_lab SEPARATOR ' / ') as gramaturas_laboratorio,
-                SUM(r.item_receb_peso_nota_fiscal) as peso_total_nota
-                $baseQuery $whereClause 
-                GROUP BY l.lote_id
-                ORDER BY $orderBy $dir 
-                LIMIT :start, :length";
-
-        error_log("Query Final: " . $sqlData); // Log da query para depuração
-
-        $stmt = $this->pdo->prepare($sqlData);
-        $stmt->bindValue(':start', $start, PDO::PARAM_INT);
-        $stmt->bindValue(':length', $length, PDO::PARAM_INT);
-        $stmt->execute($queryParams);
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // 9. Cálculo dos Campos Extras (novo: para cards no JS)
-        $sqlExtras = "SELECT 
-                    SUM(peso_total_nota) AS totalPesoFiltrado,
-                    SUM(peso_total_nota * gram_faz_media) / NULLIF(SUM(peso_total_nota), 0) AS mediaFazendaPonderada,
-                    SUM(peso_total_nota * gram_lab_media) / NULLIF(SUM(peso_total_nota), 0) AS mediaLabPonderada
-                  FROM (
-                      SELECT l.lote_id,
-                             SUM(r.item_receb_peso_nota_fiscal) AS peso_total_nota,
-                             AVG(r.item_receb_gram_faz) AS gram_faz_media,
-                             AVG(r.item_receb_gram_lab) AS gram_lab_media
-                      $baseQuery $whereClause
-                      GROUP BY l.lote_id
-                  ) AS aggregated";
-        $stmtExtras = $this->pdo->prepare($sqlExtras);
-        $stmtExtras->execute($queryParams);
-        $extras = $stmtExtras->fetch(PDO::FETCH_ASSOC);
-        error_log("Extras Calculados: " . json_encode($extras));
-
-        // 10. Retorno Final (agora com extras)
-        return [
-            'draw' => $draw,
-            'recordsTotal' => (int) $totalRecords,
-            'recordsFiltered' => (int) $totalFiltered,
-            'data' => $data,
-            'totalPesoFiltrado' => (float) ($extras['totalPesoFiltrado'] ?? 0),
-            'mediaFazendaPonderada' => (float) ($extras['mediaFazendaPonderada'] ?? 0),
-            'mediaLabPonderada' => (float) ($extras['mediaLabPonderada'] ?? 0)
-        ];
-    } */
 
     public function findLoteNovoCompleto(int $id): ?array
     {
@@ -2497,7 +2372,7 @@ class LoteNovoRepository
         }
     }
 
-    public function getRelatorioMensalData(array $meses, int $ano, array $fornecedores = []): array
+    public function getRelatorioMensalData(array $meses, int $ano, array $fornecedores = [], array $produtos = []): array
     {
         if (empty($meses)) return [];
 
@@ -2538,6 +2413,43 @@ class LoteNovoRepository
 
             // Adiciona os IDs dos fornecedores ao array de parâmetros
             $params = array_merge($params, $fornecedores);
+        }
+
+        // --- FILTRO DE PRODUTOS ---
+        if (!empty($produtos)) {
+            $incluirSemProduto = false;
+            $tiposFiltro = [];
+
+            foreach ($produtos as $p) {
+                if ($p === 'SEM_PRODUTO') {
+                    $incluirSemProduto = true;
+                } else {
+                    $tiposFiltro[] = $p;
+                }
+            }
+
+            $condicoes = [];
+            if (!empty($tiposFiltro)) {
+                $placeholdersProd = implode(',', array_fill(0, count($tiposFiltro), '?'));
+                $condicoes[] = "EXISTS (
+                    SELECT 1 FROM tbl_lote_novo_recebdetalhes rd_f
+                    INNER JOIN tbl_produtos p_f ON rd_f.item_receb_produto_id = p_f.prod_codigo
+                    WHERE rd_f.item_receb_lote_id = h.lote_id 
+                    AND p_f.prod_tipo IN ($placeholdersProd)
+                )";
+                $params = array_merge($params, $tiposFiltro);
+            }
+
+            if ($incluirSemProduto) {
+                    $condicoes[] = "NOT EXISTS (
+                    SELECT 1 FROM tbl_lote_novo_recebdetalhes rd_vazio 
+                    WHERE rd_vazio.item_receb_lote_id = h.lote_id
+                )";
+            }
+
+            if (!empty($condicoes)) {
+                $sql .= " AND (" . implode(' OR ', $condicoes) . ")";
+            }
         }
 
         $sql .= " GROUP BY h.lote_id

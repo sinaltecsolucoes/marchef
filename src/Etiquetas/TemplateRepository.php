@@ -114,39 +114,6 @@ class TemplateRepository
     /**
      * Atualiza um template de etiqueta existente.
      */
-    /*public function update(int $id, array $data): bool
-    {
-        $dadosAntigos = $this->find($id);
-        if (!$dadosAntigos)
-            return false;
-
-        $zplContent = $data['template_conteudo_zpl']; // Padrão: usa o conteúdo da textarea
-
-        if (isset($_FILES['zpl_file_upload']) && $_FILES['zpl_file_upload']['error'] === UPLOAD_ERR_OK) {
-            $zplContent = file_get_contents($_FILES['zpl_file_upload']['tmp_name']);
-            $zplContent = $this->processarPlaceholdersAutomaticos($zplContent);
-            $zplContent = str_replace("\0", '', $zplContent); // <-- LINHA ADICIONADA
-        }
-
-        $sql = "UPDATE tbl_etiqueta_templates SET template_nome = :nome, template_descricao = :descricao, template_conteudo_zpl = :zpl WHERE template_id = :id";
-        $stmt = $this->pdo->prepare($sql);
-        $success = $stmt->execute([
-            ':id' => $id,
-            ':nome' => $data['template_nome'],
-            ':descricao' => $data['template_descricao'] ?? null,
-            ':zpl' => $zplContent // Usa o conteúdo do novo arquivo ou da textarea
-        ]);
-
-        if ($success) {
-            $this->auditLogger->log('UPDATE', $id, 'tbl_etiqueta_templates', $dadosAntigos, $data);
-        }
-
-        return $success;
-    }*/
-
-    /**
-     * Atualiza um template de etiqueta existente.
-     */
     public function update(int $id, array $data): bool
     {
         $dadosAntigos = $this->find($id);

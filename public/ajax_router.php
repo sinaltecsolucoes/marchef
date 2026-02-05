@@ -1976,10 +1976,12 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
 {
     // 1. Recebe os parâmetros
     $mesesStr = $_GET['meses'] ?? '';
-    // ATENÇÃO: Verifique se no seu JS você está enviando como 'clientes' ou 'fornecedores'. 
-    // Vou deixar lendo os dois para garantir que funcione independente do nome no JS.
     $idsStr = $_GET['clientes'] ?? ($_GET['fornecedores'] ?? '');
     $ano = filter_input(INPUT_GET, 'ano', FILTER_VALIDATE_INT);
+
+    // --- Captura os tipos de produtos ---
+    $produtosStr = $_GET['tipoProduto'] ?? '';
+    $produtosArray = !empty($produtosStr) ? explode(',', $produtosStr) : [];
 
     if (empty($mesesStr) || !$ano) {
         die("Parâmetros inválidos.");
@@ -1998,9 +2000,18 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
         $nomesClientesStr = $repo->getNomesClientesPorIds($idsArray);
     }
 
+    // --- Prepara o texto de produtos para o cabeçalho ---
+    $nomesProdutosStr = '';
+    if (!empty($produtosArray)) {
+        // Substitui o underline por espaço para ficar bonito no PDF
+        $nomesProdutosStr = implode(', ', array_map(function ($p) {
+            return str_replace('_', ' ', $p);
+        }, $produtosArray));
+    }
+
     try {
         // Passa os IDs para o filtro de dados
-        $dados = $repo->getRelatorioMensalData($mesesArray, $ano, $idsArray);
+        $dados = $repo->getRelatorioMensalData($mesesArray, $ano, $idsArray, $produtosArray);
     } catch (Exception $e) {
         die($e->getMessage());
     }
@@ -2023,6 +2034,7 @@ function gerarRelatorioMensalLotes(LoteNovoRepository $repo)
     // Chama a visualização (PDF)
     require __DIR__ . '/../views/lotes_novo/relatorio_mensal_lotes.php';
 }
+
 function listarLotesLegadosRecentes(LoteNovoRepository $repo)
 {
     // Instancia o repositório (Assumindo que $loteNovoRepo já está instanciado no início do arquivo)
