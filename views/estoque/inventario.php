@@ -5,7 +5,7 @@
 
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Importação de Lotes via CSV</h6>       
+        <h6 class="m-0 font-weight-bold text-primary">Importação de Lotes via CSV</h6>
     </div>
 
     <div class="card-body">
@@ -25,6 +25,7 @@
                     </button>
                 </div>
             </div>
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> 
         </form>
     </div>
 </div>

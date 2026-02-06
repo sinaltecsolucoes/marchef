@@ -397,10 +397,10 @@ ob_start();
                     <td class="text-center"><?= $r['item_receb_nota_fiscal'] ?></td>
                     <td class="text-center"><?= $r['origem_formatada'] ?? '-' ?></td>
                     <td><?= $r['prod_descricao'] ?></td>
-                    <td class="text-center"><?= number_format($r['item_receb_peso_nota_fiscal'], 3, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($r['item_receb_peso_nota_fiscal'], 3, ',', '.') ?> kg</td>
                     <td class="text-center"><?= $totalCaixas ?></td>
-                    <td class="text-center"><?= number_format($pesoMedioFaz, 2, ',', '.') ?></td>
-                    <td class="text-center"><?= number_format($r['item_receb_gram_faz'], 2, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($pesoMedioFaz, 2, ',', '.') ?> kg/cx</td>
+                    <td class="text-center"><?= number_format($r['item_receb_gram_faz'], 2, ',', '.') ?>g</td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
@@ -437,7 +437,7 @@ ob_start();
                     <td class="text-center"><?= $p['prod_marca'] ?></td>
                     <td class="text-center"><?= $p['prod_unidade'] ?></td>
                     <td class="text-center"><?= number_format($p['item_prod_quantidade'], 3, ',', '.') ?></td>
-                    <td class="text-center"><?= number_format($pesoTotalItem, 3, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($pesoTotalItem, 3, ',', '.') ?> kg</td>
                     <td class="text-center"><?= number_format($pesoBeneficiadoItem, 2, ',', '.') ?> kg</td>
                 </tr>
             <?php endforeach; ?>

@@ -334,7 +334,7 @@ switch ($page) {
 </div>
 
 <div class="modal fade" id="modal-lote-novo" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xxl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal-lote-novo-label">Gerenciar Lote</h5>
@@ -565,13 +565,17 @@ switch ($page) {
                             <input type="hidden" id="item_prod_id_novo" name="item_prod_id">
 
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-6">
+                                <div class="col-md-5">
                                     <label class="form-label">Produto (Apenas Embalagens Primárias) *</label>
                                     <select class="form-select" id="item_prod_produto_id_novo" name="item_prod_produto_id" style="width: 100%;" required></select>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Quantidade Produzida (und) *</label>
-                                    <input type="number" class="form-control" id="item_prod_quantidade_novo" name="item_prod_quantidade" step="0.001" min="0" required>
+                                <div class="col-md-2">
+                                    <label class="form-label font-small">Quant. Produzida (kg) *</label>
+                                    <input type="number" class="form-control" id="item_prod_quilos" name="item_prod_quilos" step="0.001" min="0" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label font-small">Quant. Produzida (und) *</label>
+                                    <input type="number" class="form-control" id="item_prod_quantidade_novo" name="item_prod_quantidade" step="0.001" min="0" required readonly>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Data de Validade</label>
@@ -597,7 +601,8 @@ switch ($page) {
                                     <tr>
                                         <th>Produto</th>
                                         <th class="text-center">Unid.</th>
-                                        <th class="text-center">Qtd. Produzida</th>
+                                        <th class="text-center">Quilos</th>
+                                        <th class="text-center">Und. Produzida</th>
                                         <th class="text-center">Saldo (p/ Embalar)</th>
                                         <th class="text-center">Validade</th>
                                         <th class="text-center" style="width: 150px;">Ações</th>
@@ -832,22 +837,22 @@ switch ($page) {
 
 
 <div class="modal fade" id="modal-historico-legado" aria-hidden="true" data-bs-focus="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title">Histórico de Importações (Legado)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="table-responsive">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                     <table class="table table-sm table-striped" id="tabela-historico-legado" style="width:100%">
                         <thead>
                             <tr>
-                                <th>Lote</th>
-                                <th>Produto</th>
-                                <th>Qtd</th>
-                                <th>Data Imp.</th>
-                                <th>Ação</th>
+                                <th class="text-center align-middle font-small" width="30px">Lote</th>
+                                <th class="text-center align-middle font-small" width="200px">Produto</th>
+                                <th class="text-center align-middle font-small" width="30px">Qtd</th>
+                                <th class="text-center align-middle font-small" width="30px">Data Imp.</th>
+                                <th class="text-center align-middle font-small" width="10px">Ação</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

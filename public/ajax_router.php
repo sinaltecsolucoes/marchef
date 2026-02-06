@@ -614,7 +614,7 @@ switch ($action) {
         relatorioKardex($movimentoRepo);
         break;
     case 'importarInventario':
-        importarInventario($estoqueRepo, $_SESSION['usuario_id']);
+        importarInventario($estoqueRepo, $_SESSION['codUsuario']);
         break;
 
     // --- ROTAS DE ORDENS DE EXPEDIÇÃO ---

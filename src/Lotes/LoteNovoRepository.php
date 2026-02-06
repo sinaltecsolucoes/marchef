@@ -127,6 +127,7 @@ class LoteNovoRepository
         }
 
         $quantidade = (float) $data['item_prod_quantidade'];
+        $quilos = isset($data['item_prod_quilos']) ? (float) $data['item_prod_quilos'] : 0;
 
         // A lógica de negócio principal: o saldo inicial é igual à quantidade produzida.
         $params = [
@@ -134,15 +135,17 @@ class LoteNovoRepository
             ':produto_id' => $data['item_prod_produto_id'],
             ':quantidade' => $quantidade,
             ':saldo' => $quantidade, // O saldo inicial é a própria quantidade
+            ':quilos' => $quilos,
             ':data_validade' => $data['item_prod_data_validade'] ?: null,
         ];
 
         $sql = "INSERT INTO tbl_lotes_novo_producao (
                     item_prod_lote_id, item_prod_produto_id, 
-                    item_prod_quantidade, item_prod_saldo, item_prod_data_validade
+                    item_prod_quantidade, item_prod_saldo,item_prod_quilos,
+                    item_prod_data_validade
                 ) VALUES (
                     :lote_id, :produto_id, 
-                    :quantidade, :saldo, :data_validade
+                    :quantidade, :saldo, :quilos, :data_validade
                 )";
 
         $stmt = $this->pdo->prepare($sql);
@@ -409,7 +412,7 @@ class LoteNovoRepository
      * @return bool
      * @throws Exception
      */
-    public function atualizarItemProducao(int $itemProdId, array $data): bool
+   /* public function atualizarItemProducao(int $itemProdId, array $data): bool
     {
         // 1. Busca os dados atuais do item
         $stmtItem = $this->pdo->prepare("SELECT item_prod_quantidade, item_prod_saldo FROM tbl_lotes_novo_producao WHERE item_prod_id = :id");
@@ -458,7 +461,69 @@ class LoteNovoRepository
         }
 
         return $success;
+    } */
+
+    /**
+     * Atualiza um item de produção existente.
+     * @param int $itemProdId O ID do item a ser atualizado.
+     * @param array $data Os novos dados do formulário.
+     * @return bool
+     * @throws Exception
+     */
+    public function atualizarItemProducao(int $itemProdId, array $data): bool
+    {
+        // 1. Busca os dados atuais do item
+        $stmtItem = $this->pdo->prepare("SELECT item_prod_quantidade, item_prod_saldo FROM tbl_lotes_novo_producao WHERE item_prod_id = :id");
+        $stmtItem->execute([':id' => $itemProdId]);
+        $itemAtual = $stmtItem->fetch(PDO::FETCH_ASSOC);
+
+        if (!$itemAtual) {
+            throw new Exception("Item de produção não encontrado.");
+        }
+
+        $novaQuantidade = (float) $data['item_prod_quantidade'];
+        $novosQuilos = isset($data['item_prod_quilos']) ? (float) $data['item_prod_quilos'] : 0;
+        $quantidadeAntiga = (float) $itemAtual['item_prod_quantidade'];
+        $saldoAntigo = (float) $itemAtual['item_prod_saldo'];
+
+        // 2. Validação: A nova quantidade não pode ser menor que o que já foi consumido
+        $quantidadeConsumida = $quantidadeAntiga - $saldoAntigo;
+        if ($novaQuantidade < $quantidadeConsumida) {
+            throw new Exception("A quantidade não pode ser menor que o valor já consumido ({$quantidadeConsumida}).");
+        }
+
+        // 3. Calcula o novo saldo
+        $diferenca = $novaQuantidade - $quantidadeAntiga;
+        $novoSaldo = $saldoAntigo + $diferenca;
+
+        // 4. Prepara e executa a atualização
+        $sql = "UPDATE tbl_lotes_novo_producao SET
+            item_prod_produto_id = :produto_id,
+            item_prod_quantidade = :quantidade,
+            item_prod_saldo = :saldo,
+            item_prod_quilos = :quilos,
+            item_prod_data_validade = :validade
+        WHERE item_prod_id = :id";
+
+        $params = [
+            ':produto_id' => $data['item_prod_produto_id'],
+            ':quantidade' => $novaQuantidade,
+            ':saldo' => $novoSaldo,
+            ':quilos' => $novosQuilos,
+            ':validade' => $data['item_prod_data_validade'] ?: null,
+            ':id' => $itemProdId
+        ];
+
+        $stmtUpdate = $this->pdo->prepare($sql);
+        $success = $stmtUpdate->execute($params);
+
+        if ($success) {
+            $this->auditLogger->log('UPDATE', $itemProdId, 'tbl_lotes_novo_producao', $itemAtual, $data, "");
+        }
+
+        return $success;
     }
+
 
     /**
      * Atualiza um item de embalagem e reajusta o saldo do item de produção.
@@ -2145,7 +2210,7 @@ class LoteNovoRepository
     {
         $sql = "SELECT lote_id AS id, lote_completo_calculado AS text 
                 FROM tbl_lotes_novo_header 
-                WHERE lote_status = 'FINALIZADO'";
+                WHERE lote_status IN ('FINALIZADO','LOTE_LEGADO')";
         //ORDER BY lote_data_finalizacao DESC LIMIT 50";
         $params = [];
         if (!empty($term)) {
@@ -2240,7 +2305,7 @@ class LoteNovoRepository
     FROM tbl_lote_novo_recebdetalhes rd
     INNER JOIN tbl_lotes_novo_header h ON h.lote_id = rd.item_receb_lote_id
     WHERE h.lote_id = :lote_id
-      AND h.lote_status = 'FINALIZADO'
+      AND h.lote_status IN ('FINALIZADO','LOTE_LEGADO')
     ORDER BY rd.item_receb_id DESC
     LIMIT 1
     ";
@@ -2441,7 +2506,7 @@ class LoteNovoRepository
             }
 
             if ($incluirSemProduto) {
-                    $condicoes[] = "NOT EXISTS (
+                $condicoes[] = "NOT EXISTS (
                     SELECT 1 FROM tbl_lote_novo_recebdetalhes rd_vazio 
                     WHERE rd_vazio.item_receb_lote_id = h.lote_id
                 )";
@@ -2519,7 +2584,7 @@ class LoteNovoRepository
              lote_usuario_id, lote_data_finalizacao)
             VALUES 
             (:numero, :completo, :data_fab, 
-             :cliente, 'FINALIZADO', :obs, 
+             :cliente, 'LOTE_LEGADO', :obs, 
              :user, NOW())";
 
             // --- LÓGICA DE EXTRAÇÃO DE NÚMERO ---
@@ -2724,8 +2789,8 @@ class LoteNovoRepository
                 throw new Exception("Lote não encontrado.");
             }
 
-            if ($lote['lote_status'] !== 'FINALIZADO') {
-                throw new Exception("Apenas lotes com status FINALIZADO podem ser estornados.");
+            if ($lote['lote_status'] !== 'LOTE_LEGADO') {
+                throw new Exception("Nesta tela, apenas lotes com status LOTE_LEGADO podem ser estornados.");
             }
 
             // 2. Verifica se o saldo alocado ainda está intacto
@@ -2806,7 +2871,7 @@ class LoteNovoRepository
                 FROM tbl_lotes_novo_header h
                 JOIN tbl_lotes_novo_embalagem i ON h.lote_id = i.item_emb_lote_id
                 JOIN tbl_produtos p ON i.item_emb_prod_sec_id = p.prod_codigo
-                WHERE h.lote_status = 'FINALIZADO'
+                WHERE h.lote_status = 'LOTE_LEGADO'
                 AND (h.lote_observacao LIKE '%LEGADO%' OR h.lote_observacao LIKE '%CARGA INICIAL%')
                 ORDER BY h.lote_id DESC 
                 LIMIT 20";

@@ -153,7 +153,21 @@ $(document).ready(function () {
                 d.csrf_token = csrfToken;
                 d.ano = $('#rel_ano').val();
                 d.meses = $('.check-mes-item:checked').map(function () { return $(this).val(); }).get();
-                d.situacoes = $('.check-situacao-item:checked').map(function () { return $(this).val(); }).get();
+                //d.situacoes = $('.check-situacao-item:checked').map(function () { return $(this).val(); }).get();
+                // --- LÓGICA PARA EXCLUIR LOTE_LEGADO NA CARGA INICIAL ---
+
+                // Primeiro, pegamos as situações que o usuário marcou nos checkboxes
+                let situacoesMarcadas = $('.check-situacao-item:checked').map(function () { return $(this).val(); }).get();
+
+                if (situacoesMarcadas.length === 0) {
+                    // Se NADA estiver marcado (carga inicial), enviamos todos os status permitidos explicitamente.
+                    // Isso força o SQL a fazer: WHERE lote_status IN ('EM ANDAMENTO', 'FINALIZADO', etc)
+                    // O 'LOTE_LEGADO' fica de fora dessa lista e nunca será carregado.
+                    d.situacoes = ['EM ANDAMENTO', 'PARCIALMENTE FINALIZADO', 'FINALIZADO', 'CANCELADO'];
+                } else {
+                    // Se o usuário marcou filtros manualmente, apenas garantimos que o LEGADO seja removido
+                    d.situacoes = situacoesMarcadas.filter(s => s !== 'LOTE_LEGADO');
+                }
                 d.fornecedores = $('.check-fornecedor-item:checked').map(function () { return $(this).val(); }).get();
                 d.tipoProduto = $('.check-tipo-item:checked').map(function () { return $(this).val(); }).get();
                 d.pageType = pageType;
@@ -163,7 +177,7 @@ $(document).ready(function () {
             // Chama a função de médias que criamos antes
             atualizarResumoLotes(this.api());
         },
-        "initComplete": function (settings) {  
+        "initComplete": function (settings) {
             // Chama a função de médias que criamos antes
             atualizarResumoLotes(this.api());
         },
@@ -478,6 +492,7 @@ $(document).ready(function () {
 
     // Função auxiliar para buscar dados do lote, chamada pelo evento de editar
     function buscarDadosLoteParaEdicao(loteId) {
+
         desbloquearFormularioRecebimento();
         loteBloqueado = false;
         $('#lote_status').val('');
@@ -703,11 +718,53 @@ $(document).ready(function () {
      * Busca os itens de produção de um lote e redesenha a tabela na Aba 2.
      * @param {number} loteId O ID do lote a ser consultado.
      */
+    /* function recarregarItensProducao(loteId) {
+         if (!loteId) return;
+ 
+         const $tbody = $('#tabela-itens-producao-novo');
+         $tbody.html('<tr><td colspan="6" class="text-center">A carregar itens...</td></tr>');
+ 
+         return $.ajax({
+             url: 'ajax_router.php?action=buscarLoteNovo',
+             type: 'POST',
+             data: { lote_id: loteId, csrf_token: csrfToken },
+             dataType: 'json'
+         }).done(function (response) {
+             $tbody.empty();
+             if (response.success && response.data.producao.length > 0) {
+                 response.data.producao.forEach(item => {
+                     const rowHtml = `
+                         <tr>
+                             <td class="align-middle font-small">${item.prod_descricao}</td>
+                             <td class="text-center align-middle font-small">${item.prod_unidade}</td>
+                             <td class="text-center align-middle font-small">${parseFloat(item.item_prod_quantidade).toFixed(0)}</td>
+                             <td class="text-center align-middle font-small">${parseFloat(item.item_prod_saldo).toFixed(0)}</td>
+                             <td class="text-center align-middle font-small">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                             <td class="text-center align-middle coluna-acoes-lote">
+                                 <button class="btn btn-warning btn-sm btn-editar-item-producao" 
+                                             data-id="${item.item_prod_id}"
+                                             data-produto-id="${item.item_prod_produto_id}"
+                                             data-quantidade="${item.item_prod_quantidade}"
+                                             data-validade="${item.item_prod_data_validade}"
+                                             title="Editar Item"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
+                                 <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
+                                 <button class="btn btn-info btn-sm btn-imprimir-etiqueta-producao" data-id="${item.item_prod_id}" title="Imprimir Etiqueta"><i class="fas fa-print me-1"></i>Etiqueta</button>
+                             </td>
+                         </tr>
+                     `;
+                     $tbody.append(rowHtml);
+                 });
+             } else {
+                 $tbody.html('<tr><td colspan="6" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
+             }
+         });
+     } */
+
     function recarregarItensProducao(loteId) {
         if (!loteId) return;
 
         const $tbody = $('#tabela-itens-producao-novo');
-        $tbody.html('<tr><td colspan="6" class="text-center">A carregar itens...</td></tr>');
+        $tbody.html('<tr><td colspan="7" class="text-center">A carregar itens...</td></tr>');
 
         return $.ajax({
             url: 'ajax_router.php?action=buscarLoteNovo',
@@ -718,32 +775,36 @@ $(document).ready(function () {
             $tbody.empty();
             if (response.success && response.data.producao.length > 0) {
                 response.data.producao.forEach(item => {
+                    const quilosValue = parseFloat(item.item_prod_quilos) || 0;
                     const rowHtml = `
-                        <tr>
-                            <td class="align-middle font-small">${item.prod_descricao}</td>
-                            <td class="text-center align-middle font-small">${item.prod_unidade}</td>
-                            <td class="text-center align-middle font-small">${parseFloat(item.item_prod_quantidade).toFixed(0)}</td>
-                            <td class="text-center align-middle font-small">${parseFloat(item.item_prod_saldo).toFixed(0)}</td>
-                            <td class="text-center align-middle font-small">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                            <td class="text-center align-middle coluna-acoes-lote">
-                                <button class="btn btn-warning btn-sm btn-editar-item-producao" 
-                                            data-id="${item.item_prod_id}"
-                                            data-produto-id="${item.item_prod_produto_id}"
-                                            data-quantidade="${item.item_prod_quantidade}"
-                                            data-validade="${item.item_prod_data_validade}"
-                                            title="Editar Item"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
-                                <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
-                                <button class="btn btn-info btn-sm btn-imprimir-etiqueta-producao" data-id="${item.item_prod_id}" title="Imprimir Etiqueta"><i class="fas fa-print me-1"></i>Etiqueta</button>
-                            </td>
-                        </tr>
-                    `;
+                    <tr>
+                        <td class="align-middle font-small">${item.prod_descricao}</td>
+                        <td class="text-center align-middle font-small">${item.prod_unidade}</td>
+                        <td class="text-center align-middle font-small">${formatarBR(quilosValue, 3)}</td>
+                        <td class="text-center align-middle font-small">${parseFloat(item.item_prod_quantidade).toFixed(0)}</td>
+                        <td class="text-center align-middle font-small">${parseFloat(item.item_prod_saldo).toFixed(0)}</td>
+                        <td class="text-center align-middle font-small">${new Date(item.item_prod_data_validade + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                        <td class="text-center align-middle coluna-acoes-lote">
+                            <button class="btn btn-warning btn-sm btn-editar-item-producao" 
+                                        data-id="${item.item_prod_id}"
+                                        data-produto-id="${item.item_prod_produto_id}"
+                                        data-quilos="${quilosValue}"
+                                        data-quantidade="${item.item_prod_quantidade}"
+                                        data-validade="${item.item_prod_data_validade}"
+                                        title="Editar Item"><i class="fas fa-pencil-alt me-1"></i>Editar</button>
+                            <button class="btn btn-danger btn-sm btn-excluir-item-producao" data-id="${item.item_prod_id}"title="Excluir Item"><i class="fas fa-trash-alt me-1"></i>Excluir</button>
+                            <button class="btn btn-info btn-sm btn-imprimir-etiqueta-producao" data-id="${item.item_prod_id}" title="Imprimir Etiqueta"><i class="fas fa-print me-1"></i>Etiqueta</button>
+                        </td>
+                    </tr>
+                `;
                     $tbody.append(rowHtml);
                 });
             } else {
-                $tbody.html('<tr><td colspan="6" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
+                $tbody.html('<tr><td colspan="7" class="text-center text-muted">Nenhum item de produção adicionado a este lote.</td></tr>');
             }
         });
     }
+
 
     /**
      * Busca os itens de embalagem de um lote e redesenha a tabela na Aba 3.
@@ -943,6 +1004,8 @@ $(document).ready(function () {
 
         // 2. Limpa campos específicos e reseta controles
         $('#item_prod_id_novo').val(''); // Limpa o ID oculto do item
+        $('#item_prod_quantidade_novo').val(''); // Limpa campo quantidade
+        $('#item_prod_quilos').val(''); // limpa campo quilos
         $('#item_prod_produto_id_novo').val(null).trigger('change'); // Limpa o Select2
         $('#btn-adicionar-item-producao').html('<i class="fas fa-plus me-1"></i>Adicionar Item'); // Restaura o texto do botão
 
@@ -2105,6 +2168,31 @@ $(document).ready(function () {
             });
     });
 
+    /* $tabelaItensProducao.on('click', '.btn-editar-item-producao', function () {
+         const $btn = $(this);
+ 
+         // Primeiro, reseta o formulário para garantir um estado limpo.
+         resetarFormularioProducao();
+ 
+         // 1. Pega os dados dos atributos data-* do botão
+         const itemId = $btn.data('id');
+         const produtoId = $btn.data('produto-id');
+         const quantidade = $btn.data('quantidade');
+         const validade = $btn.data('validade');
+ 
+         // 2. Preenche o formulário com esses dados
+         $('#item_prod_id_novo').val(itemId); // O campo hidden mais importante!
+         $('#item_prod_produto_id_novo').val(produtoId).trigger('change'); // .trigger('change') atualiza o Select2 e a data de validade
+         $('#item_prod_quantidade_novo').val(parseFloat(quantidade).toFixed(3));
+         $('#item_prod_data_validade_novo').val(validade);
+ 
+         // 3. Muda o texto do botão de Ação e foca no formulário
+         $('#btn-adicionar-item-producao').html('<i class="fas fa-save me-1"></i>Atualizar Item');
+ 
+         // Leva o utilizador para o topo do modal para ver o formulário preenchido
+         $modalLoteNovo.animate({ scrollTop: 0 }, "slow");
+     }); */
+
     $tabelaItensProducao.on('click', '.btn-editar-item-producao', function () {
         const $btn = $(this);
 
@@ -2114,12 +2202,23 @@ $(document).ready(function () {
         // 1. Pega os dados dos atributos data-* do botão
         const itemId = $btn.data('id');
         const produtoId = $btn.data('produto-id');
+        const quilos = $btn.data('quilos');
         const quantidade = $btn.data('quantidade');
         const validade = $btn.data('validade');
 
         // 2. Preenche o formulário com esses dados
         $('#item_prod_id_novo').val(itemId); // O campo hidden mais importante!
         $('#item_prod_produto_id_novo').val(produtoId).trigger('change'); // .trigger('change') atualiza o Select2 e a data de validade
+        // $('#item_prod_quilos').val(parseFloat(quilos).toFixed(3)); // Novo campo de quilos
+
+
+        // Aguarda o trigger carregar e então preenche os quilos
+        setTimeout(function () {
+            const quilos = $btn.data('quilos');
+            $('#item_prod_quilos').val(parseFloat(quilos || 0).toFixed(3));
+        });
+
+
         $('#item_prod_quantidade_novo').val(parseFloat(quantidade).toFixed(3));
         $('#item_prod_data_validade_novo').val(validade);
 
@@ -2129,6 +2228,7 @@ $(document).ready(function () {
         // Leva o utilizador para o topo do modal para ver o formulário preenchido
         $modalLoteNovo.animate({ scrollTop: 0 }, "slow");
     });
+
 
     // Evento para imprimir etiqueta de PRODUÇÃO 
     $tabelaItensProducao.on('click', '.btn-imprimir-etiqueta-producao', function () {
@@ -2486,12 +2586,33 @@ $(document).ready(function () {
     // --- NOVO LOTE (MODO PADRÃO) ---
 
     // Ao mudar o produto
+    /*   $('#item_prod_produto_id_novo').on('change', function () {
+           preencherValidadeAutomatica(
+               $(this),
+               $('#lote_data_fabricacao_novo'),
+               $('#item_prod_data_validade_novo')
+           );
+       });*/
+
+    // Ao mudar o produto
     $('#item_prod_produto_id_novo').on('change', function () {
+        // Pega o peso da embalagem do data-attribute
+        const $selectedOption = $(this).find(':selected');
+        const pesoEmb = parseFloat($selectedOption.data('peso-embalagem')) || 0;
+
+        console.log('Produto alterado, peso embalagem:', pesoEmb); // LOG para debug
+
+        // Guarda o peso para o cálculo
+        $(this).data('peso-unidade', pesoEmb);
+
         preencherValidadeAutomatica(
             $(this),
             $('#lote_data_fabricacao_novo'),
             $('#item_prod_data_validade_novo')
         );
+
+        // Recalcula as unidades se já tiver quilos preenchido
+        recalcularUnidadesProducao();
     });
 
     // Ao mudar a Data de Fabricação no Header, também deveria recalcular?
@@ -3190,7 +3311,7 @@ $(document).ready(function () {
         // Pega os dados vindos do PHP
         var data = e.params.data;
 
-        // IDs dos campos (Confirme se são estes no seu HTML)
+        // IDs dos campos 
         const $inputDataFab = $('#lote_data_fabricacao_legado');
         const $inputValidade = $('#lote_data_validade_legado');
         const dataFabricacaoStr = $inputDataFab.val(); // Valor cru: YYYY-MM-DD
@@ -3364,13 +3485,15 @@ $(document).ready(function () {
                     html = '<tr><td colspan="5" class="text-center">Nenhum registro recente.</td></tr>';
                 } else {
                     response.data.forEach(function (lote) {
+                        const qtdFormatada = formatarBR(lote.item_emb_qtd_sec,0);
+
                         html += `
                             <tr>
-                                <td>${lote.lote_completo_calculado}</td>
-                                <td>${lote.prod_descricao}</td>
-                                <td>${lote.item_emb_qtd_sec}</td>
-                                <td>${lote.data_formatada}</td>
-                                <td>
+                                <td class="align-middle font-small">${lote.lote_completo_calculado}</td>
+                                <td class="align-middle font-small">${lote.prod_descricao}</td>
+                                <td class="text-center align-middle font-small">${qtdFormatada}</td>
+                                <td class="text-center align-middle font-small">${lote.data_formatada}</td>
+                                <td class="text-center align-middle">
                                     <button class="btn btn-sm btn-danger btn-estornar-legado" 
                                             data-id="${lote.lote_id}" title="Estornar/Cancelar">
                                         <i class="fas fa-trash"></i>
@@ -3602,7 +3725,7 @@ $(document).ready(function () {
     // LOGICA PARA BAIXA DE LOTES PARA REPROCESSO
 
     // VARIÁVEL GLOBAL PARA GUARDAR A DISTRIBUIÇÃO
-    var distribuicaoBaixa = []; 
+    var distribuicaoBaixa = [];
 
     function abrirModalPicking(saldos, totalAlvo) {
         let html = '';
@@ -3883,4 +4006,44 @@ $(document).ready(function () {
         $('#card-media-fazenda').text(formatarBR(json.mediaFazendaPonderada || 0, 2) + 'g');
         $('#card-media-lab').text(formatarBR(json.mediaLabPonderada || 0, 2) + 'g');
     }
+
+    // -- CALCULO DE UNIDADES EMBALADAS PARA PRODUÇÃO
+
+    // Monitora a seleção do produto no modal de produção
+    $('#item_prod_produto_id_novo').on('select2:select', function (e) {
+        // Pega o peso da embalagem via data-attribute do jQuery (não do e.params.data)
+        const $selectedOption = $(this).find(':selected');
+        const pesoEmb = parseFloat($selectedOption.data('peso-embalagem')) || 0;
+
+        console.log('Produto selecionado, peso embalagem:', pesoEmb); // LOG para debug
+
+        // Guarda o peso em um atributo do próprio campo para usar no cálculo
+        $(this).data('peso-unidade', pesoEmb);
+
+        recalcularUnidadesProducao();
+    });
+
+    // Monitora a digitação no campo de Quilos
+    $('#item_prod_quilos').on('keyup change', function () {
+        recalcularUnidadesProducao();
+    });
+
+    function recalcularUnidadesProducao() {
+        const pesoTotal = parseFloat($('#item_prod_quilos').val()) || 0;
+        const pesoUnidade = parseFloat($('#item_prod_produto_id_novo').data('peso-unidade')) || 0;
+
+        if (pesoUnidade > 0 && pesoTotal > 0) {
+            const unidades = pesoTotal / pesoUnidade;
+
+            // Lógica de arredondamento: >= 0.5 sobe, < 0.5 desce
+            const unidadesArredondadas = Math.round(unidades);
+
+            $('#item_prod_quantidade_novo').val(unidadesArredondadas);
+
+            console.log(`Calculado: ${pesoTotal}kg / ${pesoUnidade}kg = ${unidades} -> Final: ${unidadesArredondadas} und`);
+        } else {
+            $('#item_prod_quantidade_novo').val(0);
+        }
+    }
+
 }); 
