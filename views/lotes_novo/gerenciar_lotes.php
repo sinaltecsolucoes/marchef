@@ -563,6 +563,7 @@ switch ($page) {
 
                         <form id="form-lote-novo-producao">
                             <input type="hidden" id="item_prod_id_novo" name="item_prod_id">
+                            <input type="hidden" id="item_prod_categoria_novo" name="item_prod_categoria">
 
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-5">

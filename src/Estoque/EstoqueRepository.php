@@ -5,14 +5,20 @@ namespace App\Estoque;
 
 use PDO;
 use Exception;
+use App\Core\AuditLoggerService;
+use App\Estoque\MovimentoRepository;
 
 class EstoqueRepository
 {
     private PDO $pdo;
+    private AuditLoggerService $auditLogger;
+    private MovimentoRepository $movimentoRepo;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+        $this->auditLogger = new AuditLoggerService($pdo);
+        $this->movimentoRepo = new MovimentoRepository($pdo);
     }
 
     /**
@@ -233,19 +239,46 @@ class EstoqueRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function processarInventarioCSV($caminhoArquivo, $usuarioId)
+    public function processarInventarioCSV($caminhoArquivo, $usuarioId, $somenteValidar = true)
     {
         $sucessos = 0;
         $falhas = [];
+        $previa = [];
         $mapaLotes = [];
 
         if (($handle = fopen($caminhoArquivo, "r")) !== FALSE) {
-            fgetcsv($handle, 0, ";"); // Aumentado para 0 (sem limite de linha)
+            fgetcsv($handle, 0, ";"); // Pula cabeçalho
 
             while (($linha = fgetcsv($handle, 0, ";")) !== FALSE) {
-                if (empty($linha[0]) || count($linha) < 7) continue;
+                // if (empty($linha[0]) || count($linha) < 7) continue;
+                if (empty($linha[0])) continue;
 
-                $loteTxt    = trim($linha[0]);
+                // Validação Básica de Existência (Antes de agrupar)
+                $fantasia = trim($linha[2]);
+                $codInterno = trim($linha[3]);
+                $nomeEnd = trim($linha[6]);
+
+                $idEntidade = $this->buscarIdPorNomeFantasia($fantasia);
+                $infoProd = $this->buscarInfoProduto($codInterno);
+                $idEnd = $this->buscarIdEndereco($nomeEnd);
+
+                if (!$idEntidade || !$infoProd || !$idEnd) {
+                    $erroMsg = !$idEntidade ? "Fornecedor não encontrado." : (!$infoProd ? "Produto não encontrado." : "Endereço inexistente.");
+                    $falhas[] = ['lote' => $linha[0], 'erro' => $erroMsg];
+                }
+
+                // Agrupamento para a prévia/processamento
+                $mapaLotes[trim($linha[0])]['produtos'][$codInterno]['enderecos'][$nomeEnd] =
+                    ($mapaLotes[trim($linha[0])]['produtos'][$codInterno]['enderecos'][$nomeEnd] ?? 0) + (float)str_replace(',', '.', $linha[5]);
+            }
+            fclose($handle);
+
+            // Se for apenas validação, paramos aqui e retornamos o status
+            if ($somenteValidar) {
+                return ['status' => 'validacao', 'pode_processar' => empty($falhas), 'falhas' => $falhas, 'total_lotes' => count($mapaLotes)];
+            }
+
+            /*      $loteTxt    = trim($linha[0]);
                 $dataFab    = trim($linha[1]);
                 $fantasia   = trim($linha[2]);
                 $codInterno = trim($linha[3]);
@@ -257,7 +290,7 @@ class EstoqueRepository
                 $mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] =
                     ($mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] ?? 0) + $qtdSec;
             }
-            fclose($handle);
+            fclose($handle);*/
 
             foreach ($mapaLotes as $loteCompleto => $dadosLote) {
                 try {
@@ -306,12 +339,34 @@ class EstoqueRepository
                         // 3. ESTOQUE (Endereçamento)
                         foreach ($dadosProduto['enderecos'] as $nomeEndereco => $qtdNoEndereco) {
                             $idEnd = $this->buscarIdEndereco($nomeEndereco);
-                            if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não localizado.");
+
+                            // if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não localizado.");
 
                             $sqlEst = "INSERT INTO tbl_estoque_alocacoes (alocacao_endereco_id, alocacao_lote_item_id, alocacao_usuario_id, alocacao_quantidade, alocacao_data) VALUES (?, ?, ?, ?, NOW())";
                             $this->pdo->prepare($sqlEst)->execute([$idEnd, $embId, $usuarioId, $qtdNoEndereco]);
+
+                            // REGISTRO NO KARDEX (Método que você enviou)
+                            $this->movimentoRepo->registrar(
+                                'ENTRADA_INVENTARIO',
+                                $embId,
+                                $qtdNoEndereco,
+                                $usuarioId,
+                                null,
+                                $idEnd,
+                                "Carga Inicial via Inventário CSV"
+                            );
                         }
                     }
+
+                    // LOG DE AUDITORIA (Método que você enviou)
+                    $this->auditLogger->log(
+                        'CREATE',
+                        $loteId,
+                        'tbl_lotes_novo_header',
+                        null,
+                        ['lote' => $loteCompleto],
+                        "Inventário via CSV processado."
+                    );
 
                     $this->pdo->commit();
                     $sucessos++;
@@ -321,7 +376,7 @@ class EstoqueRepository
                 }
             }
         }
-        return ['sucessos' => $sucessos, 'falhas' => $falhas];
+        return ['status' => 'sucesso', 'sucessos' => $sucessos, 'falhas' => $falhas];
     }
 
 

@@ -428,6 +428,7 @@ $(document).ready(function () {
                         $(option).data('validade-meses', produto.prod_validade_meses);
                         $(option).data('peso-embalagem', produto.prod_peso_embalagem);
                         $(option).data('codigo-interno', produto.prod_codigo_interno);
+                        $(option).data('categoria', produto.prod_categoria);
                         $selectProduto.append(option);
                     });
                     $selectProduto.trigger('change');
@@ -2599,11 +2600,17 @@ $(document).ready(function () {
         // Pega o peso da embalagem do data-attribute
         const $selectedOption = $(this).find(':selected');
         const pesoEmb = parseFloat($selectedOption.data('peso-embalagem')) || 0;
+        let categoria = $selectedOption.data('categoria') || null;
 
-        console.log('Produto alterado, peso embalagem:', pesoEmb); // LOG para debug
+        console.log('Produto alterado, peso embalagem:', pesoEmb, 'Categoria:', categoria); // LOG para debug
 
         // Guarda o peso para o cálculo
+      //  $(this).data('peso-unidade', pesoEmb);
+        // Guarda o peso em um atributo do próprio campo para usar no cálculo
+        $('#item_prod_categoria_novo').val(categoria);
         $(this).data('peso-unidade', pesoEmb);
+        $(this).data('categoria', categoria);
+
 
         preencherValidadeAutomatica(
             $(this),
@@ -3485,7 +3492,7 @@ $(document).ready(function () {
                     html = '<tr><td colspan="5" class="text-center">Nenhum registro recente.</td></tr>';
                 } else {
                     response.data.forEach(function (lote) {
-                        const qtdFormatada = formatarBR(lote.item_emb_qtd_sec,0);
+                        const qtdFormatada = formatarBR(lote.item_emb_qtd_sec, 0);
 
                         html += `
                             <tr>
@@ -3952,9 +3959,18 @@ $(document).ready(function () {
     // 1. Ao selecionar o produto, preenchemos o peso médio visualmente
     $('#select-produto-origem').on('select2:select', function (e) {
         const data = e.params.data;
+
+        // 1. Pega o Peso
         let pesoPadrao = parseFloat(data.prod_peso_embalagem) || 0;
 
-        console.log("Produto Selecionado:", data.text, "| Peso Padrão:", pesoPadrao);
+        // 2. Pega a Categoria (seguindo a mesma lógica)
+        let categoria = data.prod_categoria || null;
+
+        console.log("Produto:", data.text, "| Peso:", pesoPadrao, "| Categoria:", categoria);
+
+        // 3. Guarda no "cache" do elemento para o cálculo usar depois
+        $(this).data('peso-unidade', pesoPadrao);
+        $(this).data('categoria', categoria);
 
         if (pesoPadrao === 0) {
             notificacaoErro('Atenção', 'Este produto não tem peso de embalagem definido no cadastro. O cálculo automático não funcionará.');
@@ -4013,12 +4029,17 @@ $(document).ready(function () {
     $('#item_prod_produto_id_novo').on('select2:select', function (e) {
         // Pega o peso da embalagem via data-attribute do jQuery (não do e.params.data)
         const $selectedOption = $(this).find(':selected');
-        const pesoEmb = parseFloat($selectedOption.data('peso-embalagem')) || 0;
 
-        console.log('Produto selecionado, peso embalagem:', pesoEmb); // LOG para debug
+        // Captura o peso e a categoria dos data-attributes da option
+        const pesoEmb = parseFloat($selectedOption.data('peso-embalagem')) || 0;
+        const categoria = $selectedOption.data('categoria') || null;
+
+        console.log('Produto:', $selectedOption.text(), '| Peso:', pesoEmb, '| Cat:', categoria); // LOG para debug
 
         // Guarda o peso em um atributo do próprio campo para usar no cálculo
+        $('#item_prod_categoria_novo').val(categoria);
         $(this).data('peso-unidade', pesoEmb);
+        $(this).data('categoria', categoria);
 
         recalcularUnidadesProducao();
     });
@@ -4031,13 +4052,28 @@ $(document).ready(function () {
     function recalcularUnidadesProducao() {
         const pesoTotal = parseFloat($('#item_prod_quilos').val()) || 0;
         const pesoUnidade = parseFloat($('#item_prod_produto_id_novo').data('peso-unidade')) || 0;
+        const categoria = $('#item_prod_produto_id_novo').data('categoria');
 
         if (pesoUnidade > 0 && pesoTotal > 0) {
-            const unidades = pesoTotal / pesoUnidade;
+            let pesoAjustado = pesoTotal;
+
+            // Aplica o divisor conforme a categoria informada
+            if (categoria === 'A1') {
+                pesoAjustado = pesoTotal / 0.9;
+            } else if (categoria === 'A2') {
+                pesoAjustado = pesoTotal / 0.85;
+            } else if (categoria === 'A3') {
+                pesoAjustado = pesoTotal / 0.8;
+            }
+            // Se for NULL ou outro valor, pesoAjustado continua sendo o pesoTotal (divisão por 1)
+
+            // Divide o peso bruto real pelo peso da embalagem primária
+            const unidades = pesoAjustado / pesoUnidade;
 
             // Lógica de arredondamento: >= 0.5 sobe, < 0.5 desce
             const unidadesArredondadas = Math.round(unidades);
 
+            // Alimenta o campo readonly de quantidade (und)
             $('#item_prod_quantidade_novo').val(unidadesArredondadas);
 
             console.log(`Calculado: ${pesoTotal}kg / ${pesoUnidade}kg = ${unidades} -> Final: ${unidadesArredondadas} und`);

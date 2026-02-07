@@ -458,7 +458,8 @@ class ProdutoRepository
                 p_sec.prod_descricao,
                 p_sec.prod_descricao AS text,  
                 p_sec.prod_validade_meses, 
-                p_sec.prod_peso_embalagem, 
+                p_sec.prod_peso_embalagem,
+                p_sec.prod_categoria, 
                 p_sec.prod_codigo_interno,
                 IF(p_prim.prod_peso_embalagem > 0, p_sec.prod_peso_embalagem / p_prim.prod_peso_embalagem, 0) AS prod_unidades_primarias_calculado
             FROM tbl_produtos AS p_sec
