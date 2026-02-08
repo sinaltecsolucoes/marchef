@@ -250,12 +250,14 @@ class EstoqueRepository
             fgetcsv($handle, 0, ";"); // Pula cabeçalho
 
             while (($linha = fgetcsv($handle, 0, ";")) !== FALSE) {
-                // if (empty($linha[0]) || count($linha) < 7) continue;
-                if (empty($linha[0])) continue;
+                if (empty($linha[0]) || count($linha) < 7) continue;
 
                 // Validação Básica de Existência (Antes de agrupar)
+                $loteTxt = trim($linha[0]);
+                $dataFab = trim($linha[1]);
                 $fantasia = trim($linha[2]);
                 $codInterno = trim($linha[3]);
+                $qtdSec = (float)str_replace(',', '.', $linha[5]);
                 $nomeEnd = trim($linha[6]);
 
                 $idEntidade = $this->buscarIdPorNomeFantasia($fantasia);
@@ -267,9 +269,11 @@ class EstoqueRepository
                     $falhas[] = ['lote' => $linha[0], 'erro' => $erroMsg];
                 }
 
-                // Agrupamento para a prévia/processamento
-                $mapaLotes[trim($linha[0])]['produtos'][$codInterno]['enderecos'][$nomeEnd] =
-                    ($mapaLotes[trim($linha[0])]['produtos'][$codInterno]['enderecos'][$nomeEnd] ?? 0) + (float)str_replace(',', '.', $linha[5]);
+                $mapaLotes[$loteTxt]['info'] = ['data' => $dataFab, 'fantasia' => $fantasia];
+
+                // Soma as quantidades por produto e endereço
+                $mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$nomeEnd] =
+                    ($mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$nomeEnd] ?? 0) + $qtdSec;
             }
             fclose($handle);
 
@@ -278,21 +282,14 @@ class EstoqueRepository
                 return ['status' => 'validacao', 'pode_processar' => empty($falhas), 'falhas' => $falhas, 'total_lotes' => count($mapaLotes)];
             }
 
-            /*      $loteTxt    = trim($linha[0]);
-                $dataFab    = trim($linha[1]);
-                $fantasia   = trim($linha[2]);
-                $codInterno = trim($linha[3]);
-                // TRATAMENTO: Converte vírgula decimal brasileira para ponto
-                $qtdSec     = (float)str_replace(',', '.', $linha[5]);
-                $endereco   = trim($linha[6]);
-
-                $mapaLotes[$loteTxt]['info'] = ['data' => $dataFab, 'fantasia' => $fantasia];
-                $mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] =
-                    ($mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$endereco] ?? 0) + $qtdSec;
-            }
-            fclose($handle);*/
-
             foreach ($mapaLotes as $loteCompleto => $dadosLote) {
+
+                // Verifica se a chave info existe antes de usar
+                if (!isset($dadosLote['info'])) {
+                    error_log("Aviso: Lote $loteCompleto ignorado por falta de dados de cabeçalho.");
+                    continue;
+                }
+
                 try {
                     // Verificação de segurança: Só inicia se não houver transação aberta
                     if (!$this->pdo->inTransaction()) {
@@ -340,7 +337,17 @@ class EstoqueRepository
                         foreach ($dadosProduto['enderecos'] as $nomeEndereco => $qtdNoEndereco) {
                             $idEnd = $this->buscarIdEndereco($nomeEndereco);
 
-                            // if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não localizado.");
+                            if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não localizado.");
+
+                            // Antes de inserir a alocação, verifique se já existe
+                            $stmtCheck = $this->pdo->prepare(
+                                "SELECT COUNT(*) FROM tbl_estoque_alocacoes 
+                                        WHERE alocacao_endereco_id = ? AND alocacao_lote_item_id = ?"
+                            );
+                            $stmtCheck->execute([$idEnd, $embId]);
+                            if ($stmtCheck->fetchColumn() > 0) {
+                                continue; // Já existe alocação para este item neste endereço, pula
+                            }
 
                             $sqlEst = "INSERT INTO tbl_estoque_alocacoes (alocacao_endereco_id, alocacao_lote_item_id, alocacao_usuario_id, alocacao_quantidade, alocacao_data) VALUES (?, ?, ?, ?, NOW())";
                             $this->pdo->prepare($sqlEst)->execute([$idEnd, $embId, $usuarioId, $qtdNoEndereco]);

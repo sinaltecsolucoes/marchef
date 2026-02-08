@@ -2367,6 +2367,7 @@ class LoteNovoRepository
                         p.prod_marca,
                         p.prod_unidade,
                         p.prod_peso_embalagem,
+                        p.prod_categoria,
                         p.prod_fator_producao AS fator_atual,
                         SUM(lp.item_prod_quantidade) as item_prod_quantidade
                     FROM tbl_lotes_novo_producao lp

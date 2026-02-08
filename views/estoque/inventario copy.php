@@ -11,41 +11,32 @@
     <div class="card-body">
         <div class="alert alert-info">
             <strong>Instruções:</strong> O arquivo CSV deve conter as colunas na ordem:
-            <br><small>Lote Completo; Data Fab.; Nome Fantasia; Cód. Interno; Descrição; Qtd Cx; Endereço.</small>
-        </div>
-
-        <div class="progress mb-4" style="display:none; height: 20px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-                 role="progressbar" style="width: 0%;">0%</div>
+            <small>Lote Completo, Data Fab., Nome Fantasia, Cód. Interno, Descrição, Qtd Cx, Endereço.</small>
         </div>
 
         <form id="form-importar-inventario" enctype="multipart/form-data">
-            <div class="row align-items-end">
+            <div class="row">
                 <div class="col-md-6">
-                    <label class="form-label">Selecione o Arquivo CSV</label>
                     <input type="file" name="arquivo_csv" class="form-control" accept=".csv" required>
                 </div>
                 <div class="col-md-3">
-                    <button type="submit" id="btn-processar" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-upload"></i> Processar Inventário
                     </button>
                 </div>
             </div>
-            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>"> 
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> 
         </form>
     </div>
 </div>
 
 <div id="resultado-importacao" style="display: none;">
-    <div class="card border-danger shadow mb-4">
-        <div class="card-header bg-danger text-white">
-            <h6 class="m-0 font-weight-bold">Itens com Inconsistência (Não serão importados)</h6>
-        </div>
+    <div class="card border-danger mb-4">
+        <div class="card-header bg-danger text-white">Itens NÃO Importados (Falhas)</div>
         <div class="card-body">
-            <p class="text-muted small">Corrija estes itens no seu arquivo e tente novamente. O sistema bloqueia a importação caso existam dados inválidos.</p>
             <table class="table table-sm table-hover" id="tabela-erros">
                 <thead>
-                    <tr class="table-dark">
+                    <tr>
                         <th>Lote</th>
                         <th>Motivo da Falha</th>
                     </tr>

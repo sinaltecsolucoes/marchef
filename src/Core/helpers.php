@@ -105,6 +105,9 @@ function sanitize_upper(array $data): array
         'sit',
         'tipo',
         'marca',
+        'validar_apenas',
+        'true',
+        'false',
 
         // 5. Filtros de Listagem (ESSENCIAIS para os dados aparecerem)
         'filtro_situacao',

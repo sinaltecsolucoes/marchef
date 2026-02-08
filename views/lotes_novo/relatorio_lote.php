@@ -55,14 +55,34 @@ try {
         $pesoUn  = (float)$p['prod_peso_embalagem'];
         $fator   = (float)$p['fator_atual'] / 100;
         $unidade = strtoupper($p['prod_unidade']);
+        $categoria = $p['prod_categoria'];
 
         // 1. Calcula o Peso Real Produzido (Kg)
         $pesoItemProduzido = ($unidade === 'KG') ? $qtd : $qtd * $pesoUn;
         $pesoProduzidoTotal += $pesoItemProduzido; // Soma ao total Geral
 
+        // 2. Define um valor padrão para o Peso Ajustado
+        // Se não entrar em nenhuma categoria, o peso ajustado é o próprio peso beneficiado
+        $pesoAjustado = $pesoItemProduzido;
+
+        // Aplica o divisor conforme a categoria informada
+        if ($categoria === 'A1') {
+            $pesoAjustado = $pesoItemProduzido * 0.9;
+        } else if ($categoria === 'A2') {
+            $pesoAjustado = $pesoItemProduzido * 0.85;
+        } else if ($categoria === 'A3') {
+            $pesoAjustado = $pesoItemProduzido * 0.8;
+        }
+
+        if ($fator > 0) {
+            $pesoBeneficiadoTotal += ($pesoAjustado / $fator);
+        } else {
+            $pesoBeneficiadoTotal += $pesoAjustado;
+        }
+
         // Cálculo do Peso Beneficiado: Peso Produzido / Fator
         // Evita divisão por zero se o fator não tiver sido cadastrado corretamente
-        $pesoBeneficiadoTotal += ($fator > 0) ? $pesoItemProduzido / $fator : 0;
+       // $pesoBeneficiadoTotal += ($fator > 0) ? $pesoItemProduzido / $fator : 0;
     }
 
     // --- CÁLCULOS FINAIS (APROVEITAMENTO) ---
@@ -422,12 +442,27 @@ ob_start();
         <tbody>
             <?php
             foreach ($producao as $p):
+                $categoria = $p['prod_categoria'];
                 $pesoTotalItem = $p['prod_peso_embalagem'] * $p['item_prod_quantidade'];
                 $fator = (float)$p['fator_atual'] / 100;
+
+                // 2. Define um valor padrão para o Peso Ajustado
+                // Se não entrar em nenhuma categoria, o peso ajustado é o próprio peso beneficiado
+                $pesoAjustado = $pesoTotalItem;
+
+                // Aplica o divisor conforme a categoria informada
+                if ($categoria === 'A1') {
+                    $pesoAjustado = $pesoTotalItem * 0.9;
+                } else if ($categoria === 'A2') {
+                    $pesoAjustado = $pesoTotalItem * 0.85;
+                } else if ($categoria === 'A3') {
+                    $pesoAjustado = $pesoTotalItem * 0.8;
+                }
+
                 if ($fator > 0) {
-                    $pesoBeneficiadoItem = $pesoTotalItem / $fator;
+                    $pesoBeneficiadoItem = $pesoAjustado / $fator;
                 } else {
-                    $pesoBeneficiadoItem = 0;
+                    $pesoBeneficiadoItem = $pesoTotalItem;
                 }
 
             ?>

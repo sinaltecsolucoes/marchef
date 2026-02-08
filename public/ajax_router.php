@@ -3442,12 +3442,19 @@ function importarInventario(EstoqueRepository $repo, $usuarioId)
 
         $arquivoTmp = $_FILES['arquivo_csv']['tmp_name'];
 
-        // Chamamos o método do repositório que criamos anteriormente
-        $resultado = $repo->processarInventarioCSV($arquivoTmp, $usuarioId);
+        // CAPTURA: Verifica se é apenas validação ou processamento real
+        // Convertemos a string "true"/"false" do JS para booleano real do PHP
+       // $somenteValidar = isset($_POST['validar_apenas']) && $_POST['validar_apenas'] === 'true';
+        $somenteValidar = isset($_POST['validar_apenas']) && strtoupper($_POST['validar_apenas']) === 'TRUE';
+
+        // Enviamos o terceiro parâmetro para o método do repositório
+        $resultado = $repo->processarInventarioCSV($arquivoTmp, $usuarioId, $somenteValidar);
 
         echo json_encode($resultado);
     } catch (Exception $e) {
         echo json_encode([
+            'status' => 'erro',
+            'pode_processar' => false,
             'sucessos' => 0,
             'falhas' => [['lote' => 'Geral', 'erro' => $e->getMessage()]]
         ]);
