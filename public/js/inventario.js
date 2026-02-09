@@ -1,3 +1,4 @@
+
 $(document).ready(function () {
     // Referências de UI para facilitar a manutenção
     const $form = $('#form-importar-inventario');
@@ -67,8 +68,16 @@ $(document).ready(function () {
                     lidarComProcessamentoFinal(response);
                 }
             },
-            error: function () {
-                Swal.fire('Erro!', 'Ocorreu um erro crítico de comunicação com o servidor.', 'error');
+            error: function (xhr, status, error) {
+                // Isso vai imprimir no console do navegador EXATAMENTE o que o PHP retornou
+                console.group("Erro na Importação - Debug");
+                console.error("Status:", status);
+                console.error("Erro Detectado:", error);
+                console.warn("Resposta bruta do Servidor (O que está quebrando o JSON):");
+                console.log(xhr.responseText); // AQUI ESTÁ O SEGREDO
+                console.groupEnd();
+
+                Swal.fire('Erro!', 'Veja o console (F12) para o erro técnico.', 'error');
             },
             complete: function () {
                 $btnSubmit.html(btnHtmlOriginal).prop('disabled', false);
@@ -77,6 +86,28 @@ $(document).ready(function () {
             }
         });
     }
+
+    /**
+ * Calcula a validade seguindo a regra de arredondamento para o mês seguinte
+ * em caso de estouro de dias.
+ */
+    /* function calcularValidadeArredondandoParaCima(dataFabricacao, mesesValidade) {
+         if (!mesesValidade || mesesValidade <= 0) return '';
+ 
+         const dataCalculada = new Date(dataFabricacao.getTime());
+         const diaOriginal = dataCalculada.getDate();
+ 
+         dataCalculada.setMonth(dataCalculada.getMonth() + parseInt(mesesValidade));
+ 
+         // Se o dia mudou (ex: 31 de Março + 1 mês vira 01 de Maio), arredonda
+         if (dataCalculada.getDate() !== diaOriginal) {
+             dataCalculada.setDate(1);
+             dataCalculada.setMonth(dataCalculada.getMonth() + 1);
+         }
+ 
+         // Retorna formatado para exibição BR
+         return dataCalculada.toLocaleDateString('pt-BR');
+     }*/
 
     /**
      * Trata o retorno do modo de simulação/validação
@@ -103,6 +134,62 @@ $(document).ready(function () {
             exibirTabelaErros(response.falhas, 'Erros de Validação encontrados. Corrija o arquivo antes de processar.');
         }
     }
+
+    /*function lidarComValidacao(response) {
+        if (response.pode_processar) {
+            // --- NOVIDADE: MONTAGEM DE PRÉVIA ---
+            let htmlPrevia = `
+            <div class="alert alert-info">
+                <h5><i class="fas fa-search"></i> Prévia da Importação</h5>
+                <p>Os dados abaixo serão registrados com as validades calculadas:</p>
+                <div class="table-responsive" style="max-height: 300px;">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Lote</th>
+                                <th>Produto</th>
+                                <th>Fabr.</th>
+                                <th class="text-primary">Validade (Calculada)</th>
+                                <th>Qtd</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            // O PHP deve retornar esse array 'previa' no modo de validação
+            response.previa.forEach(item => {
+                htmlPrevia += `
+                <tr>
+                    <td>${item.lote}</td>
+                    <td><small>${item.produto}</small></td>
+                    <td>${item.fabricacao}</td>
+                    <td class="fw-bold text-primary">${item.validade}</td>
+                    <td>${item.quantidade}</td>
+                </tr>`;
+            });
+
+            htmlPrevia += `</tbody></table></div></div>`;
+
+            // Exibe a prévia na mesma div onde aparecem os erros
+            $tabelaErros.closest('div').hide(); // Esconde a tabela de erros padrão
+            $resultadoDiv.html(htmlPrevia).fadeIn();
+
+            // SweetAlert de Confirmação
+            Swal.fire({
+                title: 'Tudo pronto!',
+                html: `Validamos <b>${response.total_lotes}</b> lotes. Confira as datas de validade na tabela abaixo antes de confirmar.`,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar e Importar',
+                cancelButtonText: 'Corrigir Arquivo'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executarImportacao(false);
+                }
+            });
+        } else {
+            exibirTabelaErros(response.falhas, 'Erros de Validação encontrados.');
+        }
+    } */
 
     /**
      * Trata o retorno do processamento real (após o commit no banco)

@@ -3454,6 +3454,7 @@ function importarInventario(EstoqueRepository $repo, $usuarioId)
         // Enviamos o terceiro parâmetro para o método do repositório
         $resultado = $repo->processarInventarioCSV($arquivoTmp, $usuarioId, $somenteValidar);
 
+
         echo json_encode($resultado);
     } catch (Exception $e) {
         echo json_encode([

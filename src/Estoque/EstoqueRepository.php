@@ -4,6 +4,7 @@
 namespace App\Estoque;
 
 use PDO;
+use DateTime;
 use Exception;
 use App\Core\AuditLoggerService;
 use App\Estoque\MovimentoRepository;
@@ -239,7 +240,7 @@ class EstoqueRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function processarInventarioCSV($caminhoArquivo, $usuarioId, $somenteValidar = true)
+   /* public function processarInventarioCSV($caminhoArquivo, $usuarioId, $somenteValidar = true)
     {
         $sucessos = 0;
         $falhas = [];
@@ -306,7 +307,7 @@ class EstoqueRepository
                     $loteId = $this->buscarLoteIdExistente($loteCompleto);
                     if (!$loteId) {
                         $sqlH = "INSERT INTO tbl_lotes_novo_header (lote_numero, lote_data_fabricacao, lote_cliente_id, lote_completo_calculado, lote_status, lote_usuario_id, lote_data_finalizacao) 
-                             VALUES (?, ?, ?, ?, 'FINALIZADO', ?, NOW())";
+                             VALUES (?, ?, ?, ?, 'LOTE_LEGADO', ?, NOW())";
                         $this->pdo->prepare($sqlH)->execute([$numLote, $dataSql, $idEntidade, $loteCompleto,  $usuarioId]);
                         $loteId = $this->pdo->lastInsertId();
                     }
@@ -319,10 +320,14 @@ class EstoqueRepository
                         $pesoTotal = $qtdTotalDoProduto * (float)$infoProd['prod_peso_embalagem'];
 
                         // 2. PRODUÇÃO E EMBALAGEM (Evitar duplicar itens dentro do mesmo lote)
+
+                        $mesesValidade = (int)($infoProd['prod_validade_meses'] ?? 0);
+                        $dataValidade = $this->calcularValidadeArredondandoParaCima($dataSql, $mesesValidade);
+
                         $prodId = $this->verificarItemProducaoExistente($loteId, $infoProd['prod_primario_id']);
                         if (!$prodId) {
-                            $sqlP = "INSERT INTO tbl_lotes_novo_producao (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo) VALUES (?, ?, ?, ?)";
-                            $this->pdo->prepare($sqlP)->execute([$loteId, $infoProd['prod_primario_id'], $pesoTotal, $pesoTotal]);
+                            $sqlP = "INSERT INTO tbl_lotes_novo_producao (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo, item_prod_data_validade) VALUES (?, ?, ?, ?, ?)";
+                            $this->pdo->prepare($sqlP)->execute([$loteId, $infoProd['prod_primario_id'], $pesoTotal, 0,$dataValidade]);
                             $prodId = $this->pdo->lastInsertId();
                         }
 
@@ -384,12 +389,184 @@ class EstoqueRepository
             }
         }
         return ['status' => 'sucesso', 'sucessos' => $sucessos, 'falhas' => $falhas];
-    }
+    } */
 
 
     /** 
      * Função auxiliar para evitar duplicar o lote se ele já estiver no banco
      */
+    public function processarInventarioCSV($caminhoArquivo, $usuarioId, $somenteValidar = true)
+    {
+        set_time_limit(0);
+        $sucessos = 0;
+        $falhas = [];
+        $previa = [];
+        $mapaLotes = [];
+
+        if (($handle = fopen($caminhoArquivo, "r")) !== FALSE) {
+            // 1. Detectar o delimitador (alguns Excel usam ; outros ,)
+            $primeiraLinha = fgets($handle);
+            $delimitador = (strpos($primeiraLinha, ';') !== false) ? ';' : ',';
+            rewind($handle); // Volta para o início
+
+            fgetcsv($handle, 0, $delimitador); // Pula cabeçalho
+
+            while (($linhaRaw = fgetcsv($handle, 0, $delimitador)) !== FALSE) {
+                // 2. Proteção contra linhas vazias no final do arquivo
+                if (empty($linhaRaw) || !isset($linhaRaw[0]) || trim($linhaRaw[0]) == '') continue;
+                if (count($linhaRaw) < 7) continue;
+
+                // 3. Converter de ANSI para UTF-8 (Resolve o problema do formato 2 do Excel)
+                $linha = array_map(function ($campo) {
+                    $campoUtf8 = mb_convert_encoding($campo, 'UTF-8', 'Windows-1252, ISO-8859-1, UTF-8');
+                    return trim($campoUtf8);
+                }, $linhaRaw);
+
+                try {
+
+                    $loteTxt = trim($linha[0]);
+                    $dataFab = trim($linha[1]);
+                    $fantasia = trim($linha[2]);
+                    $codInterno = trim($linha[3]);
+                    $descricao = trim($linha[4]); // Pegamos a descrição para a prévia
+                    $qtdSec = (float)str_replace(',', '.', $linha[5]);
+                    $nomeEnd = trim($linha[6]);
+
+                    $idEntidade = $this->buscarIdPorNomeFantasia($fantasia);
+                    $infoProd = $this->buscarInfoProduto($codInterno);
+                    $idEnd = $this->buscarIdEndereco($nomeEnd);
+
+                    if (!$idEntidade || !$infoProd || !$idEnd) {
+                        $erroMsg = !$idEntidade ? "Entidade '{$fantasia}' não encontrada." : (!$infoProd ? "Produto '{$codInterno}' não encontrado." : "Endereço '{$nomeEnd}' inexistente.");
+                        $falhas[] = ['lote' => $loteTxt, 'erro' => $erroMsg];
+                        continue;
+                    }
+
+                    // Agrupamento para processamento
+                    $mapaLotes[$loteTxt]['info'] = ['data' => $dataFab, 'fantasia' => $fantasia];
+                    $mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$nomeEnd] =
+                        ($mapaLotes[$loteTxt]['produtos'][$codInterno]['enderecos'][$nomeEnd] ?? 0) + $qtdSec;
+
+                    // Se for validação, alimentamos a prévia para o JS
+                    //  if ($somenteValidar && $infoProd) {
+                    if ($somenteValidar) {
+                        // 1. Transformamos a data do CSV (BR) em SQL para o cálculo
+                        $dataSql = $this->formatarDataSQL($dataFab);
+                        $mesesVal = (int)($infoProd['prod_validade_meses'] ?? 0);
+                        $validadeCalculada = $this->calcularValidadeArredondandoParaCima($dataSql, $mesesVal);
+
+                        // 3. Criamos o objeto de data para formatar a exibição na prévia
+                        $dtExibicao = new DateTime($validadeCalculada);
+
+                        $previa[] = [
+                            'lote' => $loteTxt,
+                            'produto' => $codInterno . " - " . $descricao,
+                            'fabricacao' => $dataFab,
+                            'validade' => ($dtExibicao)->format('d/m/Y'),
+                            'quantidade' => $qtdSec . " cx"
+                        ];
+                    }
+                } catch (Exception $e) {
+                    // Se a data falhar, não deixa o PHP morrer, registra o erro na prévia
+                    // $falhas[] = ['lote' => $loteTxt, 'erro' => "Erro no cálculo de data: " . $e->getMessage()];
+                    // Captura qualquer erro de sistema (Throwable captura Erros e Exceptions)
+                    $falhas[] = ['lote' => $linha[0] ?? 'Erro na linha', 'erro' => $e->getMessage()];
+                }
+            }
+
+            fclose($handle);
+
+            // Retorno da Validação (Previa)
+            if ($somenteValidar) {
+                return [
+                    'status' => 'validacao',
+                    'pode_processar' => empty($falhas),
+                    'falhas' => $falhas,
+                    'total_lotes' => count($mapaLotes),
+                    'previa' => $previa
+                ];
+            }
+
+            // --- PROCESSAMENTO REAL (COMMIT) ---
+            foreach ($mapaLotes as $loteCompleto => $dadosLote) {
+                if (!isset($dadosLote['info'])) continue;
+
+                try {
+                    if (!$this->pdo->inTransaction()) {
+                        $this->pdo->beginTransaction();
+                    }
+
+                    $idEntidade = $this->buscarIdPorNomeFantasia($dadosLote['info']['fantasia']);
+                    if (!$idEntidade) throw new Exception("Fornecedor '{$dadosLote['info']['fantasia']}' não cadastrado.");
+
+                    $numLote = (int)preg_replace('/[^0-9]/', '', explode('/', $loteCompleto)[0]);
+                    $dataSql = $this->formatarDataSQL($dadosLote['info']['data']);
+
+                    // 1. HEADER
+                    $loteId = $this->buscarLoteIdExistente($loteCompleto);
+                    if (!$loteId) {
+                        $sqlH = "INSERT INTO tbl_lotes_novo_header (lote_numero, lote_data_fabricacao, lote_cliente_id, lote_completo_calculado, lote_status, lote_usuario_id, lote_data_finalizacao) 
+                             VALUES (?, ?, ?, ?, 'LOTE_LEGADO', ?, NOW())";
+                        $this->pdo->prepare($sqlH)->execute([$numLote, $dataSql, $idEntidade, $loteCompleto, $usuarioId]);
+                        $loteId = $this->pdo->lastInsertId();
+                    }
+
+                    foreach ($dadosLote['produtos'] as $codInterno => $dadosProduto) {
+                        $infoProd = $this->buscarInfoProduto($codInterno);
+                        if (!$infoProd) throw new Exception("Cód. Interno '{$codInterno}' não encontrado.");
+
+                        $qtdTotalDoProduto = array_sum($dadosProduto['enderecos']);
+                        $pesoTotal = $qtdTotalDoProduto * (float)$infoProd['prod_peso_embalagem'];
+
+                        // CALCULO DA VALIDADE (Regra consolidada)
+                        $mesesValidade = (int)($infoProd['prod_validade_meses'] ?? 0);
+                        $dataValidade = $this->calcularValidadeArredondandoParaCima($dataSql, $mesesValidade);
+
+                        // 2. PRODUÇÃO
+                        $prodId = $this->verificarItemProducaoExistente($loteId, $infoProd['prod_primario_id']);
+                        if (!$prodId) {
+                            $sqlP = "INSERT INTO tbl_lotes_novo_producao (item_prod_lote_id, item_prod_produto_id, item_prod_quantidade, item_prod_saldo, item_prod_data_validade) 
+                                 VALUES (?, ?, ?, ?, ?)";
+                            $this->pdo->prepare($sqlP)->execute([$loteId, $infoProd['prod_primario_id'], $pesoTotal, 0, $dataValidade]);
+                            $prodId = $this->pdo->lastInsertId();
+                        }
+
+                        // 3. EMBALAGEM
+                        $embId = $this->verificarItemEmbalagemExistente($loteId, $infoProd['prod_codigo']);
+                        if (!$embId) {
+                            $sqlE = "INSERT INTO tbl_lotes_novo_embalagem (item_emb_lote_id, item_emb_prod_sec_id, item_emb_prod_prim_id, item_emb_qtd_sec, item_emb_qtd_finalizada, item_emb_data_cadastro) 
+                                 VALUES (?, ?, ?, ?, ?, NOW())";
+                            $this->pdo->prepare($sqlE)->execute([$loteId, $infoProd['prod_codigo'], $prodId, $qtdTotalDoProduto, $qtdTotalDoProduto]);
+                            $embId = $this->pdo->lastInsertId();
+                        }
+
+                        // 4. ENDEREÇAMENTO E KARDEX
+                        foreach ($dadosProduto['enderecos'] as $nomeEndereco => $qtdNoEndereco) {
+                            $idEnd = $this->buscarIdEndereco($nomeEndereco);
+                            if (!$idEnd) throw new Exception("Endereço '{$nomeEndereco}' não localizado.");
+
+                            // Alocação
+                            $sqlEst = "INSERT INTO tbl_estoque_alocacoes (alocacao_endereco_id, alocacao_lote_item_id, alocacao_usuario_id, alocacao_quantidade, alocacao_data) 
+                                   VALUES (?, ?, ?, ?, NOW())";
+                            $this->pdo->prepare($sqlEst)->execute([$idEnd, $embId, $usuarioId, $qtdNoEndereco]);
+
+                            // Kardex
+                            $this->movimentoRepo->registrar('ENTRADA_INVENTARIO', $embId, $qtdNoEndereco, $usuarioId, null, $idEnd, "Carga Inicial via Inventário CSV");
+                        }
+                    }
+
+                    $this->auditLogger->log('CREATE', $loteId, 'tbl_lotes_novo_header', null, ['lote' => $loteCompleto], "Inventário via CSV processado.");
+                    $this->pdo->commit();
+                    $sucessos++;
+                } catch (Exception $e) {
+                    if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+                    $falhas[] = ['lote' => $loteCompleto, 'erro' => $e->getMessage()];
+                }
+            }
+        }
+        return ['status' => 'sucesso', 'sucessos' => $sucessos, 'falhas' => $falhas];
+    }
+
     private function buscarLoteIdExistente($loteCompleto)
     {
         $stmt = $this->pdo->prepare("SELECT lote_id FROM tbl_lotes_novo_header WHERE lote_completo_calculado = ? LIMIT 1");
@@ -398,50 +575,18 @@ class EstoqueRepository
     }
 
     // Busca o ID do Cliente pelo Nome Fantasia
-    /*  private function buscarIdPorNomeFantasia($nome)
+    private function buscarIdPorNomeFantasia($nome)
     {
         $sql = "SELECT ent_codigo FROM tbl_entidades WHERE TRIM(UPPER(ent_nome_fantasia)) = TRIM(UPPER(?)) LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$nome]);
         return $stmt->fetchColumn();
-    }*/
-
-    private function buscarIdPorNomeFantasia($nome)
-    {
-        // 1. Limpeza no PHP (Remove espaços extras e converte para maiúsculo)
-        $nome = trim($nome);
-        $nome = mb_strtoupper($nome, 'UTF-8');
-
-        // 2. SQL Robusto:
-        // Usamos COLLATE utf8mb4_general_ci para ignorar acentos e diferença entre ç/c, õ/o.
-        // Isso resolve o caso da "ITAUEIRA CAMARÕES"
-        $sql = "SELECT ent_codigo 
-            FROM tbl_entidades 
-            WHERE (TRIM(ent_nome_fantasia) = ? COLLATE utf8mb4_general_ci)
-               OR (REPLACE(ent_nome_fantasia, ' ', '') = REPLACE(?, ' ', '') COLLATE utf8mb4_general_ci)
-            LIMIT 1";
-
-        $stmt = $this->pdo->prepare($sql);
-
-        // Tentamos a busca com o nome original e com o nome sem espaços (caso haja erro de digitação)
-        $stmt->execute([$nome, $nome]);
-        $id = $stmt->fetchColumn();
-
-        // 3. Fallback: Se ainda não achou (ex: ALMAZ com algum caractere oculto no CSV)
-        if (!$id) {
-            $sqlLike = "SELECT ent_codigo FROM tbl_entidades WHERE ent_nome_fantasia LIKE ? LIMIT 1";
-            $stmtLike = $this->pdo->prepare($sqlLike);
-            $stmtLike->execute(["%$nome%"]);
-            $id = $stmtLike->fetchColumn();
-        }
-
-        return $id;
     }
 
     // Busca IDs do Produto (Secundário e seu Primário vinculado) pelo Código Interno
     private function buscarInfoProduto($codInterno)
     {
-        $sql = "SELECT prod_codigo, prod_primario_id, prod_peso_embalagem 
+        $sql = "SELECT prod_codigo, prod_primario_id, prod_peso_embalagem, prod_validade_meses 
             FROM tbl_produtos 
             WHERE TRIM(prod_codigo_interno) = TRIM(?) 
             AND prod_tipo_embalagem = 'SECUNDARIA' 
@@ -482,5 +627,21 @@ class EstoqueRepository
             return "{$p[2]}-{$p[1]}-{$p[0]}"; // Converte DD/MM/YYYY para YYYY-MM-DD
         }
         return $data;
+    }
+
+    private function calcularValidadeArredondandoParaCima($dataFabricacao, $mesesValidade)
+    {
+        $dt = new DateTime($dataFabricacao);
+        $diaOriginal = (int)$dt->format('d');
+
+        // Adiciona os meses (No PHP, Jan 31 + 1 mês vira Março 02 ou 03)
+        $dt->modify("+$mesesValidade months");
+
+        // Se o dia mudou (houve estouro de mês), arredondamos para o dia 1 do mês subsequente
+        if ((int)$dt->format('d') !== $diaOriginal) {
+            $dt->modify('first day of next month');
+        }
+
+        return $dt->format('Y-m-d');
     }
 }

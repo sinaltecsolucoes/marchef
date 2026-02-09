@@ -126,20 +126,64 @@ class LoteNovoRepository
             throw new Exception("Dados insuficientes para adicionar o item de produção.");
         }
 
+        $loteId = $data['item_prod_lote_id'];
+        $produtoId = $data['item_prod_produto_id'];
         $quantidade = (float) $data['item_prod_quantidade'];
         $quilos = isset($data['item_prod_quilos']) ? (float) $data['item_prod_quilos'] : 0;
+        $validade = $data['item_prod_data_validade'] ?: null;
 
-        // A lógica de negócio principal: o saldo inicial é igual à quantidade produzida.
-        $params = [
-            ':lote_id' => $data['item_prod_lote_id'],
-            ':produto_id' => $data['item_prod_produto_id'],
-            ':quantidade' => $quantidade,
-            ':saldo' => $quantidade, // O saldo inicial é a própria quantidade
-            ':quilos' => $quilos,
-            ':data_validade' => $data['item_prod_data_validade'] ?: null,
-        ];
+        // 1. Verificar se este produto já existe cadastrado NESTE lote
+        $sqlCheck = "SELECT item_prod_id, item_prod_quantidade, item_prod_saldo, item_prod_quilos 
+                 FROM tbl_lotes_novo_producao 
+                 WHERE item_prod_lote_id = :lote_id 
+                 AND item_prod_produto_id = :prod_id";
 
-        $sql = "INSERT INTO tbl_lotes_novo_producao (
+        $stmtCheck = $this->pdo->prepare($sqlCheck);
+        $stmtCheck->execute([
+            ':lote_id' => $loteId,
+            ':prod_id' => $produtoId
+        ]);
+        $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($existente) {
+            // 2. Se existe, fazemos um UPDATE somando os valores ao registro atual
+            $idExistente = (int) $existente['item_prod_id'];
+
+            $sqlUpd = "UPDATE tbl_lotes_novo_producao 
+                   SET item_prod_quantidade = item_prod_quantidade + :nova_qtd,
+                       item_prod_saldo = item_prod_saldo + :novo_saldo,
+                       item_prod_quilos = item_prod_quilos + :novo_peso,
+                       item_prod_data_validade = :data_validade
+                   WHERE item_prod_id = :item_id";
+
+            $paramsUpd = [
+                ':nova_qtd'      => $quantidade,
+                ':novo_saldo'    => $quantidade, // Soma também ao saldo para controle de estoque
+                ':novo_peso'     => $quilos,
+                ':data_validade' => $validade,   // Atualiza a validade para a informada por último
+                ':item_id'       => $idExistente
+            ];
+
+            $stmtUpd = $this->pdo->prepare($sqlUpd);
+            $stmtUpd->execute($paramsUpd);
+
+            // Lógica de Auditoria para o Update
+            $this->auditLogger->log('UPDATE', $idExistente, 'tbl_lotes_novo_producao', $existente, $paramsUpd, "Soma de quantidade produzida (Produto repetido no lote)");
+
+            return $idExistente;
+        } else {
+
+            // 3. Se não existe, insere uma nova linha com o produto
+            $params = [
+                ':lote_id' => $loteId,
+                ':produto_id' => $produtoId,
+                ':quantidade' => $quantidade,
+                ':saldo' => $quantidade, // O saldo inicial é a própria quantidade
+                ':quilos' => $quilos,
+                ':data_validade' => $validade ?: null,
+            ];
+
+            $sql = "INSERT INTO tbl_lotes_novo_producao (
                     item_prod_lote_id, item_prod_produto_id, 
                     item_prod_quantidade, item_prod_saldo,item_prod_quilos,
                     item_prod_data_validade
@@ -148,17 +192,18 @@ class LoteNovoRepository
                     :quantidade, :saldo, :quilos, :data_validade
                 )";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
-        $novoId = (int) $this->pdo->lastInsertId();
+            $novoId = (int) $this->pdo->lastInsertId();
 
-        // Lógica de Auditoria
-        if ($novoId > 0) {
-            $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_producao', null, $params, "");
+            // Lógica de Auditoria
+            if ($novoId > 0) {
+                $this->auditLogger->log('CREATE', $novoId, 'tbl_lotes_novo_producao', null, $params, "");
+            }
+
+            return $novoId;
         }
-
-        return $novoId;
     }
 
     public function adicionarItemEmbalagem(array $data): int
