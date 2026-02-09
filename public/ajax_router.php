@@ -810,15 +810,19 @@ function listarProdutos(ProdutoRepository $repo)
 
 function getProduto(ProdutoRepository $repo)
 {
-    // AJUSTE AQUI: mudamos de 'prod_codigo' para 'id' para casar com o JS
-    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    // Tenta pegar 'prod_codigo', se não vier, tenta pegar 'id'
+    $id = filter_input(INPUT_POST, 'prod_codigo', FILTER_VALIDATE_INT);
+
+    if (!$id) {
+        $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    }
 
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'ID inválido.']);
         return;
     }
 
-    // Aqui ele chama o método find() que você alterou no Repository (com o LEFT JOIN)
+    // Aqui ele chama o método find()
     $produto = $repo->find($id);
 
     if ($produto) {
@@ -3444,7 +3448,7 @@ function importarInventario(EstoqueRepository $repo, $usuarioId)
 
         // CAPTURA: Verifica se é apenas validação ou processamento real
         // Convertemos a string "true"/"false" do JS para booleano real do PHP
-       // $somenteValidar = isset($_POST['validar_apenas']) && $_POST['validar_apenas'] === 'true';
+        // $somenteValidar = isset($_POST['validar_apenas']) && $_POST['validar_apenas'] === 'true';
         $somenteValidar = isset($_POST['validar_apenas']) && strtoupper($_POST['validar_apenas']) === 'TRUE';
 
         // Enviamos o terceiro parâmetro para o método do repositório

@@ -1,3 +1,4 @@
+// public/produtos.js
 $(document).ready(function () {
     // =================================================================
     // Bloco de Configuração e Seletores Globais
@@ -37,7 +38,7 @@ $(document).ready(function () {
                 }
             }
         }
-    }); 
+    });
 
     // =================================================================
     // Funções Auxiliares
@@ -55,7 +56,15 @@ $(document).ready(function () {
         let partes = [];
 
         // 1. Tipo do Produto
-        if (tipo) partes.push(tipo);
+        // if (tipo) partes.push(tipo);
+
+        if (tipo) {
+            if (tipo === 'CAMARAO') {
+                partes.push('CAMARÃO');
+            } else {
+                partes.push(tipo);
+            }
+        }
 
         // 2. Adiciona "CINZA" se for Camarão
         if (tipo === 'CAMARAO') partes.push('CINZA');
@@ -71,6 +80,9 @@ $(document).ready(function () {
                 subtipoFormatado = 'DESCASCADO EVISCERADO';
                 break;
             case 'P&D C/ CAUDA':
+            case 'P&D TAIL ON':
+            case 'P&D TAIL-ON':
+            case 'P&D TAILON':
             case 'PPV C/ CAUDA':
                 subtipoFormatado = 'DESCASCADO EVISCERADO COM CAUDA';
                 break;
@@ -109,13 +121,31 @@ $(document).ready(function () {
     function toggleEmbalagemFields() {
         const tipo = $tipoEmbalagemSelect.val();
         const isSecundaria = (tipo === 'SECUNDARIA');
+        const isMateriaPrima = (tipo === 'MATERIA-PRIMA');
 
         $blocoEmbalagemSecundaria.toggle(isSecundaria);
         $blocoEmbalagemPrimaria.toggle(!isSecundaria);
+        $blocoEmbalagemPrimaria.toggle(!isSecundaria && !isMateriaPrima);
         $blocoEan13.toggle(!isSecundaria);
         $blocoDun14.toggle(isSecundaria);
         $('#asterisco-codigo-interno').toggle(isSecundaria);
         $('#prod_codigo_interno').prop('required', isSecundaria);
+
+        // Campos específicos a serem escondidos para 'MATERIA-PRIMA'
+        const showCamposComuns = !isMateriaPrima;
+        $('#prod_categoria').closest('.col-md-3.mb-3').toggle(showCamposComuns);
+        $('#prod_classe').closest('.col-md-7.mb-3').toggle(showCamposComuns);
+        $('#prod_fator_producao').closest('.col-md-4.mb-3').toggle(showCamposComuns);
+
+        // Limpar campos escondidos ao selecionar 'MATERIA-PRIMA'
+        if (isMateriaPrima) {
+            $('#prod_categoria').val('');
+            $('#prod_classe').val('');
+            $('#prod_fator_producao').val('');
+            $('#prod_peso_embalagem').val('');
+            $('#prod_total_pecas').val('');
+            $('#prod_ean13').val('');
+        }
 
         if (isSecundaria) {
             loadProdutosPrimarios();
@@ -162,6 +192,207 @@ $(document).ready(function () {
         }
     }
 
+    // =================================================================
+    // 1. CARREGAMENTO DE MARCAS PARA O FILTRO
+    // =================================================================
+
+    function carregarFiltroMarcas() {
+        $.ajax({
+            url: 'ajax_router.php?action=getMarcasOptions',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    let html = '';
+                    const isTodosMarcado = $('#marca_todos').is(':checked');
+                    const checkedStr = isTodosMarcado ? 'checked' : '';
+
+                    if (response.data.length === 0) {
+                        html = '<li class="text-muted small text-center py-2">Nenhuma marca cadastrada</li>';
+                    } else {
+                        response.data.forEach(function (marca, index) {
+                            let idSafe = 'marca_' + index;
+                            html += `
+                            <li class="px-2">
+                                <div class="form-check">
+                                    <input class="form-check-input filter-check" type="checkbox" value="${marca}" id="${idSafe}" ${checkedStr}>
+                                    <label class="form-check-label" for="${idSafe}">${marca}</label>
+                                </div>
+                            </li>`;
+                        });
+                    }
+                    $('#lista-marcas-dinamica').html(html);
+
+                    // Inicializa a lógica do dropdown DEPOIS de inserir as marcas
+                    setupDropdownFilterLogic('filter-marca-container', 'dropdownMarca', 'Todas as Marcas');
+                }
+            }
+        });
+    }
+
+    carregarFiltroMarcas();
+
+    // =================================================================
+    // 2. LÓGICA GENÉRICA DOS DROPDOWNS COM CHECKBOX (Select All)
+    // =================================================================
+    function setupDropdownCheckboxes(containerId) {
+        const $container = $('#' + containerId);
+        const $checkAll = $container.find('.check-all');
+
+        // Quando clicar em "Todos"
+        $container.on('change', '.check-all', function () {
+            const isChecked = $(this).is(':checked');
+            // Marca/Desmarca todos os filhos
+            $container.find('.filter-check').prop('checked', isChecked);
+
+            // Recarrega a tabela automaticamente
+            // tableProdutos.ajax.reload(); //Desabilitado nesse momento...use o botão filtrar...kkkkkk
+        });
+
+        // Quando clicar em um Item individual
+        $container.on('change', '.filter-check', function () {
+            const totalItems = $container.find('.filter-check').length;
+            const totalChecked = $container.find('.filter-check:checked').length;
+
+            // Se todos estiverem marcados, marca o "Todos", senão desmarca
+            $checkAll.prop('checked', totalItems === totalChecked);
+
+            // Se nenhum estiver marcado, poderiamos forçar "Todos" ou deixar vazio (que o backend trata como todos)
+            if (totalChecked === 0) {
+                $checkAll.prop('checked', true); // UX: Resetar para todos se o usuário desmarcar tudo
+                // $container.find('.filter-check').prop('checked', true); // remarcar visualmente
+            }
+        });
+    }
+
+    // Aplica a lógica nos 3 filtros
+    setupDropdownCheckboxes('filter-tipo-container');
+    setupDropdownCheckboxes('filter-situacao-container');
+    setupDropdownCheckboxes('filter-marca-container');
+
+    // Função auxiliar para coletar os valores marcados
+    function getSelectedValues(containerId) {
+        const $container = $('#' + containerId);
+        // Verifica se "Todos" está marcado
+        if ($container.find('.check-all').is(':checked')) {
+            return ['TODOS'];
+        }
+
+        // Coleta os individuais
+        let values = [];
+        $container.find('.filter-check:checked').each(function () {
+            values.push($(this).val());
+        });
+
+        // Fallback de segurança: se nada marcado, retorna TODOS
+        return values.length > 0 ? values : ['TODOS'];
+    }
+
+    // --- LÓGICA VISUAL DOS FILTROS DROPDOWN ---
+
+    /**
+     * Função genérica para gerenciar o texto do botão dropdown
+     * Sincronização inicial para evitar delay e texto errado.
+     */
+    function setupDropdownFilterLogic(containerId, buttonId, defaultText) {
+
+        const $container = $('#' + containerId);
+        const $btn = $('#' + buttonId);
+        const $checkAll = $container.find('.check-all');
+        const $items = $container.find('.filter-check');
+
+        // --- SINCRONIZAÇÃO INICIAL ---
+        // Se o botão "Todos" vier marcado do HTML, forçamos todos os filhos a ficarem marcados também.
+        if ($checkAll.is(':checked')) {
+            $items.prop('checked', true);
+        }
+
+        // Chama a atualização de texto logo de cara para corrigir o título do botão
+        atualizarTexto();
+
+        // --- EVENTO 1: CLIQUE NO "MARCAR TODOS" ---
+        $checkAll.on('click', function () {
+            const isChecked = $(this).is(':checked');
+            $items.prop('checked', isChecked);
+            atualizarTexto();
+        });
+
+        // --- EVENTO 2: CLIQUE EM UM ITEM INDIVIDUAL ---
+        $items.on('click', function (e) {
+            const $this = $(this);
+            const wasAllChecked = $checkAll.is(':checked'); // Estado ANTES do clique
+
+            // LÓGICA DE ISOLAMENTO:
+            // Se estava tudo marcado e o usuário clica em um item, ele quer FILTRAR só por aquele.
+            if (wasAllChecked) {
+                e.preventDefault(); // Impede o comportamento padrão para controlarmos manualmente
+
+                // 1. Desmarca tudo
+                $items.prop('checked', false);
+                $checkAll.prop('checked', false);
+
+                // 2. Marca SÓ o que foi clicado
+                $this.prop('checked', true);
+            }
+
+            // SE NÃO ESTAVA TUDO MARCADO (Seleção parcial):
+            // Deixa o navegador marcar/desmarcar nativamente e só conferimos se "encheu" a lista.
+
+            // Verifica status final para atualizar o pai
+            const total = $items.length;
+            const checkedCount = $items.filter(':checked').length;
+
+            $checkAll.prop('checked', total === checkedCount);
+
+            atualizarTexto();
+        });
+
+        function atualizarTexto() {
+            const $checked = $items.filter(':checked');
+            const count = $checked.length;
+            const total = $items.length;
+
+            // 1. NENHUM SELECIONADO
+            if (count === 0) {
+                $btn.text("Nenhum Selecionado");
+                $btn.attr('title', "Selecione pelo menos uma opção");
+                $btn.removeClass('btn-secondary text-white').addClass('btn-outline-secondary');
+            }
+            // 2. TODOS SELECIONADOS
+            else if (count === total) {
+                $btn.text(defaultText);
+                $btn.attr('title', defaultText);
+                $btn.removeClass('btn-secondary text-white').addClass('btn-outline-secondary');
+            }
+            // 3. SELEÇÃO PARCIAL
+            else {
+                $btn.removeClass('btn-outline-secondary').addClass('btn-secondary text-white');
+
+                if (count <= 3) {
+                    let labels = [];
+                    $checked.each(function () {
+                        labels.push($(this).next('label').text().trim());
+                    });
+                    $btn.text(labels.join(', '));
+                    $btn.attr('title', labels.join(', '));
+                } else {
+                    $btn.text(count + ' selecionados');
+                }
+            }
+        }
+
+
+        // Inicializa texto ao carregar
+        atualizarTexto();
+    }
+
+    // --- INICIALIZAÇÃO DA LÓGICA ---
+    $(document).ready(function () {
+        // Aplica a lógica para cada filtro
+        setupDropdownFilterLogic('filter-tipo-container', 'dropdownTipo', 'Todos Tipos');
+        setupDropdownFilterLogic('filter-situacao-container', 'dropdownSituacao', 'Todas Situações');
+    });
+
     // Controla o texto do switch Ativo/Inativo
     $modalProduto.on('change', '#prod_situacao', function () {
         const isChecked = $(this).is(':checked');
@@ -178,8 +409,9 @@ $(document).ready(function () {
             "url": "ajax_router.php?action=listarProdutos",
             "type": "POST",
             "data": function (d) {
-                d.filtro_situacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
-                d.filtro_tipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
+                d.filtro_situacao = getSelectedValues('filter-situacao-container');
+                d.filtro_tipo = getSelectedValues('filter-tipo-container');
+                d.filtro_marcas = getSelectedValues('filter-marca-container');
             }
         },
         "responsive": true,
@@ -196,6 +428,11 @@ $(document).ready(function () {
             {
                 "data": "prod_descricao",
                 "className": "align-middle font-small"
+            },
+            {
+                "data": "prod_marca",
+                "className": "text-center align-middle font-small",
+                "defaultContent": "-"
             },
             {
                 "data": "prod_classe",
@@ -232,8 +469,15 @@ $(document).ready(function () {
         "language": { "url": BASE_URL + "/libs/DataTables-1.10.23/Portuguese-Brasil.json" }
     });
 
-    $('input[name="filtro_situacao"]').on('change', () => tableProdutos.ajax.reload());
-    $('input[name="filtro_tipo"]').on('change', () => tableProdutos.ajax.reload());
+    // Botão "Aplicar Filtros" (o pequeno botão verde no menu)
+    $('#btn-aplicar-filtros').on('click', function () {
+        tableProdutos.ajax.reload();
+    });
+
+    // Recarregar tabela ao fechar o dropdown
+    $('.dropdown').on('hidden.bs.dropdown', function () {
+        // tableProdutos.ajax.reload(); // Desativado, se quiser, clique em Filtrar...kkkk
+    });
 
     $tipoEmbalagemSelect.on('change', toggleEmbalagemFields);
     $pesoEmbalagemSecundariaInput.on('keyup', calcularUnidades);
@@ -309,12 +553,12 @@ $(document).ready(function () {
             if (response.success) {
                 $modalProduto.modal('hide');
                 tableProdutos.ajax.reload(null, false);
-                notificacaoSucesso('Sucesso!', response.message); // << REATORADO
+                notificacaoSucesso('Sucesso!', response.message);
             } else {
-                notificacaoErro('Erro ao Salvar', response.message); // << REATORADO
+                notificacaoErro('Erro ao Salvar', response.message);
             }
         }).fail(function () {
-            // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); // << REATORADO
+            // notificacaoErro('Erro de Comunicação', 'Não foi possível salvar o produto.'); 
         });
     });
 
@@ -462,22 +706,24 @@ $(document).ready(function () {
         });
     });
 
-    // Evento do Botão de Imprimir Relatório
+    // =================================================================
+    // 4. RELATÓRIO
+    // =================================================================
     $('#btn-imprimir-relatorio').on('click', function () {
-        // 1. Filtro de Situação
-        // let filtroSituacao = $('input[name="filtro_situacao"]:checked').val();
-        let filtroSituacao = $('input[name="filtro_situacao"]:checked').val() || 'Todos';
+        // Pega os arrays
+        let sit = getSelectedValues('filter-situacao-container');
+        let tipo = getSelectedValues('filter-tipo-container');
+        let marca = getSelectedValues('filter-marca-container');
+        let search = $('.dataTables_filter input').val() || '';
 
-        // 2. Filtro de Tipo
-        // let filtroTipo = $('input[name="filtro_tipo"]:checked').val();
-        let filtroTipo = $('input[name="filtro_tipo"]:checked').val() || 'Todos';
-
-        // 3. Termo de Busca
-        let termoBusca = $('.dataTables_filter input').val() || '';
-
-        // 4. Monta a URL com todos os parâmetros
-        let urlRelatorio = `index.php?page=relatorio_produtos&filtro=${filtroSituacao}&tipo=${filtroTipo}&search=${encodeURIComponent(termoBusca)}`;
+        // Transforma arrays em strings separadas por vírgula para passar na URL
+        let urlRelatorio = `index.php?page=relatorio_produtos` +
+            `&filtro=${sit.join(',')}` +
+            `&tipo=${tipo.join(',')}` +
+            `&marcas=${encodeURIComponent(marca.join(','))}` +
+            `&search=${encodeURIComponent(search)}`;
 
         window.open(urlRelatorio, '_blank');
+
     });
 });

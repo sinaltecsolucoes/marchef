@@ -362,15 +362,15 @@ fieldset[disabled] label {
 }
 
 /* Deixa o cursor como mãozinha ao passar na linha da tabela */
-/*#tabela-produtos tbody tr {
+#tabela-produtos tbody tr {
     cursor: pointer;
     transition: background-color 0.2s;
-}*/
+}
 
 /* Efeito de hover para destacar a linha */
-/* #tabela-produtos tbody tr:hover {
+#tabela-produtos tbody tr:hover {
     background-color: #f1f1f1;
-}*/
+}
 
 /* Quando o container estiver em modo leitura, esconde todos os botões de ação dentro dele */
 .disable-actions .btn-adicionar-produto,

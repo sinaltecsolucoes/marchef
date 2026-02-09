@@ -93,7 +93,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
     </div>
 </div>
 
-
+<!-- Listagem de Entidades (Exibida de acordo com a página) -->
 <div class="card shadow mb-4 card-custom">
     <div class="card-header py-3">
         <h6 class="m-0 font-weight-bold text-primary">Registros de <?php echo $titulo; ?></h6>
@@ -119,6 +119,7 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
     </div>
 </div>
 
+<!-- Modal para Adicionar/Editar Entidade -->
 <div class="modal fade" id="modal-adicionar-entidade" tabindex="-1" aria-labelledby="modal-adicionar-entidade-label"
     aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -139,7 +140,9 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                     </li>
                 </ul>
 
+
                 <div class="tab-content mt-3" id="entidadeTabContent">
+                    <!-- Aba para Cadastro de Dados Principais -->
                     <div class="tab-pane fade show active" id="dados-pane" role="tabpanel">
                         <form id="form-entidade" class="mt-3">
                             <input type="hidden" id="ent-codigo" name="ent_codigo">
@@ -317,6 +320,8 @@ $descricaoSubtitulo = $subtitulo[$pageType] ?? '';
                             </div>
                         </form>
                     </div>
+
+                    <!-- Aba para Cadastro de Endereços Adicionais -->
                     <div class="tab-pane fade" id="enderecos-pane" role="tabpanel">
                         <div class="row">
                             <div class="col-12 mb-3">

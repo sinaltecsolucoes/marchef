@@ -830,7 +830,6 @@ $(document).ready(function () {
     // =================================================================
 
     // Detecta clique na linha da tabela
-    // Detecta clique na linha da tabela
     $('#tabela-produtos tbody').on('click', 'tr', function (e) {
         if ($(e.target).closest('button, a, .btn').length) {
             return;

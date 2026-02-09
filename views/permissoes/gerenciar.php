@@ -38,6 +38,7 @@ $paginas_e_acoes_disponiveis = [
     'Páginas Módulo Estoque' => [
         'estoque'                 => 'Estoque de Produtos (Lista Geral)',
         'visao_estoque_enderecos' => 'Estoque de Produtos por Endereços',
+        'inventario'              => 'Importação de Estoque via Arquivo CSV',
     ],
 
     'Páginas Módulo Carregamento / Expedição' => [

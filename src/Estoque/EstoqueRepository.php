@@ -398,12 +398,44 @@ class EstoqueRepository
     }
 
     // Busca o ID do Cliente pelo Nome Fantasia
-    private function buscarIdPorNomeFantasia($nome)
+    /*  private function buscarIdPorNomeFantasia($nome)
     {
         $sql = "SELECT ent_codigo FROM tbl_entidades WHERE TRIM(UPPER(ent_nome_fantasia)) = TRIM(UPPER(?)) LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$nome]);
         return $stmt->fetchColumn();
+    }*/
+
+    private function buscarIdPorNomeFantasia($nome)
+    {
+        // 1. Limpeza no PHP (Remove espaços extras e converte para maiúsculo)
+        $nome = trim($nome);
+        $nome = mb_strtoupper($nome, 'UTF-8');
+
+        // 2. SQL Robusto:
+        // Usamos COLLATE utf8mb4_general_ci para ignorar acentos e diferença entre ç/c, õ/o.
+        // Isso resolve o caso da "ITAUEIRA CAMARÕES"
+        $sql = "SELECT ent_codigo 
+            FROM tbl_entidades 
+            WHERE (TRIM(ent_nome_fantasia) = ? COLLATE utf8mb4_general_ci)
+               OR (REPLACE(ent_nome_fantasia, ' ', '') = REPLACE(?, ' ', '') COLLATE utf8mb4_general_ci)
+            LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        // Tentamos a busca com o nome original e com o nome sem espaços (caso haja erro de digitação)
+        $stmt->execute([$nome, $nome]);
+        $id = $stmt->fetchColumn();
+
+        // 3. Fallback: Se ainda não achou (ex: ALMAZ com algum caractere oculto no CSV)
+        if (!$id) {
+            $sqlLike = "SELECT ent_codigo FROM tbl_entidades WHERE ent_nome_fantasia LIKE ? LIMIT 1";
+            $stmtLike = $this->pdo->prepare($sqlLike);
+            $stmtLike->execute(["%$nome%"]);
+            $id = $stmtLike->fetchColumn();
+        }
+
+        return $id;
     }
 
     // Busca IDs do Produto (Secundário e seu Primário vinculado) pelo Código Interno
