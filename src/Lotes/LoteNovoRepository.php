@@ -2255,7 +2255,7 @@ class LoteNovoRepository
     {
         $sql = "SELECT lote_id AS id, lote_completo_calculado AS text 
                 FROM tbl_lotes_novo_header 
-                WHERE lote_status IN ('FINALIZADO','LOTE_LEGADO')";
+                WHERE lote_status IN ('FINALIZADO','LOTE_LEGADO','PARCIALMENTE FINALIZADO')";
         //ORDER BY lote_data_finalizacao DESC LIMIT 50";
         $params = [];
         if (!empty($term)) {

@@ -219,6 +219,12 @@ switch ($page) {
                                             <label class="form-check-label font-small" for="sit-aberto">ABERTO</label>
                                         </div>
                                     </li>
+                                     <li class="p-1">
+                                        <div class="form-check text-info">
+                                            <input class="form-check-input check-situacao-item" type="checkbox" value="PARCIALMENTE FINALIZADO" id="sit-parcial" checked>
+                                            <label class="form-check-label font-small" for="sit-parcial">PARCIAL</label>
+                                        </div>
+                                    </li>
                                     <li class="p-1">
                                         <div class="form-check text-success">
                                             <input class="form-check-input check-situacao-item" type="checkbox" value="FINALIZADO" id="sit-finalizado" checked>
@@ -835,7 +841,6 @@ switch ($page) {
         </div>
     </div>
 </div>
-
 
 <div class="modal fade" id="modal-historico-legado" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-xl">

@@ -830,7 +830,7 @@ class CarregamentoRepository
     /**
      * Baixa o estoque físico (WMS) e registra a SAÍDA no Kardex.
      */
-    private function processarSaidaEstoque(int $carregamentoId, int $usuarioId): void
+    /* private function processarSaidaEstoque(int $carregamentoId, int $usuarioId): void
     {
         // Busca os itens cruzando com a Ordem de Expedição para saber DE QUAL ENDEREÇO (alocação) baixar
         $sql = "SELECT 
@@ -881,6 +881,82 @@ class CarregamentoRepository
 
             // C. Atualiza status do Item da OE para ATENDIDO
             $this->pdo->prepare("UPDATE tbl_ordens_expedicao_itens SET oei_status = 'ATENDIDO' WHERE oei_alocacao_id = ?")->execute([$alocacaoId]);
+        }
+    } */
+
+    /**
+     * Baixa o estoque físico (WMS) e registra a SAÍDA no Kardex.
+     * Atualizado para diferenciar saídas de REPROCESSO.
+     */
+    private function processarSaidaEstoque(int $carregamentoId, int $usuarioId): void
+    {
+        // 1. Busca os itens cruzando com a Ordem de Expedição e o cabeçalho da OE para saber o tipo de operação
+        $sql = "SELECT 
+                ci.car_item_quantidade,
+                oei.oei_alocacao_id,       
+                oei.oei_id,
+                al.alocacao_lote_item_id,   
+                oeh.oe_tipo_operacao,
+                oeh.oe_numero
+            FROM tbl_carregamento_itens ci
+            JOIN tbl_ordens_expedicao_itens oei ON ci.car_item_oe_item_id = oei.oei_id
+            JOIN tbl_ordens_expedicao_pedidos oep ON oei.oei_pedido_id = oep.oep_id
+            JOIN tbl_ordens_expedicao_header oeh ON oep.oep_ordem_id = oeh.oe_id
+            JOIN tbl_estoque_alocacoes al ON oei.oei_alocacao_id = al.alocacao_id
+            WHERE ci.car_item_carregamento_id = ?";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$carregamentoId]);
+        $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($itens as $item) {
+            $qtdSair = (float)$item['car_item_quantidade'];
+            $alocacaoId = (int)$item['oei_alocacao_id'];
+            $loteItemId = (int)$item['alocacao_lote_item_id'];
+            $tipoOperacao = $item['oe_tipo_operacao']; // 'SAIDA' ou 'REPROCESSO'
+            $numeroOE = $item['oe_numero'];
+
+            // A. BAIXA NO ESTOQUE FÍSICO (WMS)
+            $stmtSaldo = $this->pdo->prepare("SELECT alocacao_quantidade FROM tbl_estoque_alocacoes WHERE alocacao_id = ?");
+            $stmtSaldo->execute([$alocacaoId]);
+            $qtdAtual = (float)$stmtSaldo->fetchColumn();
+
+            $novoSaldo = $qtdAtual - $qtdSair;
+
+            if ($novoSaldo <= 0.001) {
+                // Esvaziou o endereço: apaga a alocação
+                $this->pdo->prepare("DELETE FROM tbl_estoque_alocacoes WHERE alocacao_id = ?")->execute([$alocacaoId]);
+            } else {
+                // Sobrou saldo: atualiza
+                $this->pdo->prepare("UPDATE tbl_estoque_alocacoes SET alocacao_quantidade = ? WHERE alocacao_id = ?")
+                    ->execute([$novoSaldo, $alocacaoId]);
+            }
+
+            // B. DEFINIÇÃO DA REGRA DE NEGÓCIO PARA O KARDEX
+            // Se for reprocesso, usamos um tipo de movimento específico e uma descrição clara
+            if ($tipoOperacao === 'REPROCESSO') {
+                $movimentoKardex = 'SAIDA_REPROCESSO';
+                $observacaoKardex = "Saída p/ Reprocesso (OE: {$numeroOE} | Saída: #{$carregamentoId})";
+            } else {
+                $movimentoKardex = 'SAIDA';
+                $observacaoKardex = "Expedição Carregamento #{$carregamentoId} (OE: {$numeroOE})";
+            }
+
+            // C. REGISTRA NO KARDEX
+            $this->movimentoRepo->registrar(
+                $movimentoKardex,
+                $loteItemId,
+                $qtdSair,
+                $usuarioId,
+                $alocacaoId, // Origem (Saiu daqui)
+                null,        // Destino (Nulo pois saiu do sistema para consumo/venda)
+                $observacaoKardex,
+                $carregamentoId
+            );
+
+            // D. Atualiza status do Item da OE para ATENDIDO
+            $this->pdo->prepare("UPDATE tbl_ordens_expedicao_itens SET oei_status = 'ATENDIDO' WHERE oei_id = ?")
+                ->execute([$item['oei_id']]);
         }
     }
 
