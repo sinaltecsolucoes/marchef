@@ -1609,6 +1609,10 @@ $(document).ready(function () {
             }
         });
 
+        // --- LOG DE SAÍDA ---
+        console.log("DEBUG JS - Lote ID:", loteId);
+        console.log("DEBUG JS - Itens:", itensParaFinalizar);
+
         if (itensParaFinalizar.length === 0) {
             notificacaoAlerta('Nenhum item selecionado', 'Por favor, informe a quantidade para pelo menos um item.');
             return;
@@ -1622,11 +1626,12 @@ $(document).ready(function () {
             type: 'POST',
             data: {
                 lote_id: loteId,
-                itens: JSON.stringify(itensParaFinalizar), // Enviamos o array como uma string JSON
+                itens: itensParaFinalizar, // Enviamos o array como uma string JSON
                 csrf_token: csrfToken
             },
             dataType: 'json'
         }).done(function (response) {
+            console.log("DEBUG JS - Resposta do Servidor:", response);
             if (response.success) {
                 bootstrap.Modal.getInstance($modal[0]).hide();
                 notificacaoSucesso('Sucesso!', response.message);
@@ -1637,6 +1642,10 @@ $(document).ready(function () {
         }).always(function () {
             // Restaura o botão ao estado original
             $('#btn-confirmar-finalizacao').prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i>Confirmar Finalização');
+        }).fail(function (jqXHR) {
+            // Se der erro 400, o .fail captura e mostra o que o PHP rejeitou
+            console.error("DEBUG JS - Erro Crítico:", jqXHR.responseJSON);
+            notificacaoErro('Erro Crítico', jqXHR.responseJSON.message || 'Erro na requisição.');
         });
     });
 
@@ -1880,7 +1889,8 @@ $(document).ready(function () {
 
     // Botão: MANTER PARCIAL (Amarelo)
     $('#btn-decisao-parcial').on('click', function () {
-        const loteId = $('#btn-acao-finalizar').data('lote-id');
+        //const loteId = $('#btn-acao-finalizar').data('lote-id');
+        const loteId = $('#modal-finalizar-lote').data('lote-id');
         enviarStatusFinalizacao(loteId, 'PARCIALMENTE FINALIZADO');
     });
 
@@ -2605,7 +2615,7 @@ $(document).ready(function () {
         console.log('Produto alterado, peso embalagem:', pesoEmb, 'Categoria:', categoria); // LOG para debug
 
         // Guarda o peso para o cálculo
-      //  $(this).data('peso-unidade', pesoEmb);
+        //  $(this).data('peso-unidade', pesoEmb);
         // Guarda o peso em um atributo do próprio campo para usar no cálculo
         $('#item_prod_categoria_novo').val(categoria);
         $(this).data('peso-unidade', pesoEmb);

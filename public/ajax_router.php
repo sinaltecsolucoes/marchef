@@ -1536,16 +1536,40 @@ function atualizarItemProducaoNovo(LoteNovoRepository $repo)
 
 function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
 {
-    $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+    // --- LOG DE ENTRADA BRUTO ---
+    error_log("======= DEBUG PHP - INICIO DA REQUISIÇÃO =======");
+    error_log("POST RECEBIDO: " . print_r($_POST, true));
 
+    //$loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
+
+    $loteId = $_POST['lote_id'] ?? null;
     // Decodifica o JSON vindo do JavaScript
-    $itensJson = $_POST['itens'] ?? '[]';
-    $itens = json_decode($itensJson, true);
+    //$itensJson = $_POST['itens'] ?? '[]';
+    //$itens = json_decode($itensJson, true);
+    $itens = $_POST['itens'] ?? null;
+
+    error_log("Lote ID capturado: " . var_export($loteId, true));
+    error_log("Itens capturados: " . var_export($itens, true));
+
+    // Validação técnica detalhada
+    if (!$loteId) {
+        error_log("FALHA: Lote ID ausente ou zero.");
+    }
+    if (!is_array($itens)) {
+        error_log("FALHA: Itens não é um array. Tipo recebido: " . gettype($itens));
+    }
 
     // Validação extra: Se o JSON for inválido, $itens será null
     if (!$loteId || !is_array($itens)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Dados inválidos. Verifique os itens selecionados.']);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos. Verifique os itens selecionados.',
+            'debug_php' => [ // Isso ajudará a ver o erro no console do navegador
+                'lote_id' => $loteId,
+                'itens_tipo' => gettype($itens)
+            ]
+        ]);
         return;
     }
 
@@ -1557,9 +1581,11 @@ function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
 
         // $repo->finalizeParcialmente($loteId, $itens, $usuarioId);
         $repo->finalizarLoteParcialmente($loteId, $itens, $usuarioId);
-        echo json_encode(['success' => true, 'message' => 'Lote finalizado com sucesso e estoque atualizado!']);
+        error_log("SUCESSO: Finalização processada no repositório.");
+        echo json_encode(['success' => true, 'message' => 'Lote finalizado parcialmente, continue produzindo!']);
     } catch (Exception $e) {
-        http_response_code(400); // 400 é melhor que 500 para erros de regra de negócio
+        error_log("ERRO NO REPOSITÓRIO: " . $e->getMessage());
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
