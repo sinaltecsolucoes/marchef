@@ -1222,6 +1222,9 @@ function finalizarLote(LoteRepository $repo)
 
 function finalizarLoteParcialmente(LoteRepository $repo)
 {
+    // LOG DE DEPURAÇÃO: Verifique o arquivo de erro do PHP para ver o que está chegando
+    error_log("Dados recebidos no Router: " . print_r($_POST, true));
+
     // Validação básica dos dados recebidos do JavaScript
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
     $itens = $_POST['itens'] ?? [];
@@ -1536,6 +1539,10 @@ function atualizarItemProducaoNovo(LoteNovoRepository $repo)
 
 function finalizarLoteParcialmenteNovo(LoteNovoRepository $repo)
 {
+
+ // LOG DE DEPURAÇÃO: Verifique o arquivo de erro do PHP para ver o que está chegando
+    error_log("Dados recebidos no Router: " . print_r($_POST, true));
+    
     $loteId = filter_input(INPUT_POST, 'lote_id', FILTER_VALIDATE_INT);
 
     // Decodifica o JSON vindo do JavaScript
@@ -2395,7 +2402,7 @@ function salvarReprocessoGerandoOE(LoteNovoRepository $repo)
  * e passa para o LabelService para fazer o trabalho pesado.
  */
 
-function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
+/* f0unction imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
 {
     try {
         // 1. Validação
@@ -2494,6 +2501,124 @@ function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
     } catch (Throwable $e) { // Throwable pega tanto Exception quanto Error (erros fatais)
         error_log($e->getTraceAsString());
         echo json_encode(['success' => false, 'message' => 'Erro no servidor: ' . $e->getMessage()]);
+    }
+} */
+
+function imprimirEtiquetaLoteItem(PDO $pdo, $labelService)
+{
+    try {
+        // 1. Validação
+        $itemId = filter_input(INPUT_POST, 'itemId', FILTER_VALIDATE_INT);
+        $itemType = $_POST['itemType'] ?? '';
+        $clienteId = filter_input(INPUT_POST, 'clienteId', FILTER_VALIDATE_INT);
+
+        // Tratamento para clienteId false/null
+        if (!$clienteId) $clienteId = null;
+
+        if (!$itemId || !in_array($itemType, ['producao', 'embalagem'])) {
+            throw new Exception("Dados inválidos (ID ou Tipo) para gerar etiqueta.");
+        }
+
+        // 2. Chama o serviço 
+        $labelData = $labelService->gerarZplParaItemLote($itemId, $itemType, $clienteId);
+
+        if ($labelData === null || empty($labelData['zpl'])) {
+            throw new Exception('O serviço retornou ZPL vazio. Verifique logs anteriores.');
+        }
+
+        $zpl = $labelData['zpl'];
+        $filename = $labelData['filename'];
+
+        // =================================================================
+        // LÓGICA DINÂMICA: Detectar tamanho baseado no ZPL
+        // =================================================================
+
+        $dpi = 203;
+        $dpmm = 8;
+
+        if (preg_match('/\^PW(\d+)/', $zpl, $matchLargura)) {
+            $larguraDots = (int)$matchLargura[1];
+        } else {
+            $larguraDots = 718; // fallback
+        }
+
+        if (preg_match('/\^LL(\d+)/', $zpl, $matchAltura)) {
+            $alturaDots = (int)$matchAltura[1];
+        } else {
+            $alturaDots = 479; // fallback
+        }
+
+        $larguraInches = number_format($larguraDots / $dpi, 2, '.', '');
+        $alturaInches  = number_format($alturaDots / $dpi, 2, '.', '');
+
+        error_log("Tamanho Detectado: {$larguraDots}x{$alturaDots} dots -> {$larguraInches}x{$alturaInches} pol");
+
+        $apiUrl = "http://api.labelary.com/v1/printers/{$dpmm}dpmm/labels/{$larguraInches}x{$alturaInches}/0/";
+        // =================================================================
+
+        // 3. Conversão na API Labelary
+        $curl = curl_init($apiUrl);
+        curl_setopt_array($curl, [
+            CURLOPT_POST            => true,
+            CURLOPT_POSTFIELDS      => $zpl,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_TIMEOUT         => 15,               // 15 segundos de timeout
+            CURLOPT_CONNECTTIMEOUT  => 10,
+            CURLOPT_HTTPHEADER      => ['Accept: application/pdf'],
+            CURLOPT_FOLLOWLOCATION  => true,
+        ]);
+
+        $pdfContent = curl_exec($curl);
+        $httpCode   = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curlError  = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($pdfContent === false || $httpCode != 200) {
+            throw new Exception(
+                'Erro ao converter na API Labelary. ' .
+                    'Código HTTP: ' . $httpCode . ' | ' .
+                    'Erro cURL: ' . ($curlError ?: 'Nenhum detalhe disponível')
+            );
+        }
+
+        // 4. Salvar Arquivo
+        $tempDir = __DIR__ . '/temp_labels/';
+        if (!is_dir($tempDir)) {
+            if (!mkdir($tempDir, 0775, true)) {
+                throw new Exception("Falha ao criar pasta de etiquetas temporárias. Verifique permissões.");
+            }
+        }
+
+        $filePath = $tempDir . $filename;
+        if (file_put_contents($filePath, $pdfContent) === false) {
+            throw new Exception("Falha ao salvar o arquivo PDF no disco. Verifique permissões.");
+        }
+
+        $publicUrl = 'temp_labels/' . $filename;
+
+        echo json_encode([
+            'success'   => true,
+            'pdfUrl'    => $publicUrl,
+            'fileName'  => $filename
+        ]);
+    } catch (Throwable $e) {
+        // Log detalhado em arquivo dedicado
+        $logFile = __DIR__ . '/debug_etiqueta_error.log';
+        $logMessage = date('Y-m-d H:i:s') . " - EXCEÇÃO EM imprimirEtiquetaLoteItem\n" .
+            "Mensagem: " . $e->getMessage() . "\n" .
+            "Arquivo: " . $e->getFile() . " (linha: " . $e->getLine() . ")\n" .
+            "Trace:\n" . $e->getTraceAsString() . "\n" .
+            "ZPL gerado (primeiros 2000 chars):\n" . substr($zpl ?? 'N/A - ZPL não gerado', 0, 2000) . "\n\n";
+
+        file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
+
+        // Resposta JSON para o frontend
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Erro no servidor ao gerar etiqueta: ' . $e->getMessage()
+        ]);
     }
 }
 

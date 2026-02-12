@@ -138,7 +138,7 @@ class LabelService
         return $result ?: null;
     }
 
-    private function substituirPlaceholders(string $zpl, array $dados): string
+    /*   private function substituirPlaceholders(string $zpl, array $dados): string
     {
         // 1. Mapa de conversão de caracteres acentuados para Hex ZPL
         $mapaAcentos = [
@@ -193,9 +193,7 @@ class LabelService
         $dadosQrCode = $this->buildGs1DataString($dados, $dadosBarras1D);
 
         // --- LÓGICA DE CAMPOS COMPOSTOS ---
-        /*  $partesClasse = array_filter([$dados['prod_classificacao'], $dados['prod_classe']]);
-          $linhaProdutoClasse = implode(' ', $partesClasse);*/
-
+       
         // Removemos a barra '/' da classificação caso ela exista
         $classificacaoLimpa = isset($dados['prod_classificacao'])
             ? str_replace('/', '', $dados['prod_classificacao'])
@@ -270,6 +268,235 @@ class LabelService
             '12345678' => $dadosBarras1D ?? '',
             // O '10qrcode' será tratado abaixo com lógica especial de posicionamento
         ];
+
+        // 1. Aplica substituições normais primeiro
+        $zpl = str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
+
+        // 4. LIMPEZA AUTOMÁTICA: 
+        // Se o Zebra Designer inseriu o ">;" antes do dado que acabamos de trocar,
+        // nós o removemos agora para garantir que o dígito não suma.
+        $zpl = str_replace('^FD>;' . $dadosBarras1D, '^FD' . $dadosBarras1D, $zpl);
+
+        // 2. CORREÇÃO DE POSICIONAMENTO DO QR CODE (Troca FT por FO)
+        // Procura a linha que define o QR Code (que contém o placeholder '10qrcode') e usa comando ^FT
+        if (preg_match('/\^FT(\d+),(\d+)(.*?)10qrcode/', $zpl, $matches)) {
+            $x = $matches[1];
+            $y = $matches[2];
+            $meio_do_comando = $matches[3]; // Pega o trecho entre a coordenada e o placeholder (ex: ^BQN,2,10^FH\^FDLA,>)
+            $string_original = $matches[0];
+
+            // Nova string: ^FO[X],[Y_CALCULADO]...10qrcode
+            $string_nova = "^FO{$x},{$y}{$meio_do_comando}10qrcode";
+
+            // Substitui no arquivo ZPL apenas essa ocorrência
+            $zpl = str_replace($string_original, $string_nova, $zpl);
+        }
+
+        // 3. Finalmente, injeta os dados do QR Code no placeholder (agora posicionado corretamente)
+        $zpl = str_replace('10qrcode', $dadosQrCode, $zpl);
+
+        return $zpl;
+    } */
+
+    private function substituirPlaceholders(string $zpl, array $dados): string
+    {
+        // 1. Mapa de conversão de caracteres acentuados para Hex ZPL
+        $mapaAcentos = [
+            '\C7' => 'Ã',
+            '\A7' => '°',
+            '\B5' => 'Á',
+            '\A0' => 'á',
+            '\90' => 'É',
+            '\E9' => 'Ú',
+            '\E3' => 'Ó',
+
+        ];
+
+        // 2. TRADUÇÃO DO TEMPLATE: 
+        // Antes de substituir os placeholders, limpamos o ZPL que veio do banco
+        // para que o usuário veja "Espécie" em vez de "Esp\E9cie"
+        $zpl = str_replace(array_keys($mapaAcentos), array_values($mapaAcentos), $zpl);
+
+        if (strpos($zpl, '^CI28') === false) {
+            $zpl = str_replace('^XA', '^XA^CI28', $zpl);
+        }
+
+        // --- LÓGICA DE FONTE DINÂMICA ---
+        $nomeProduto = $dados['prod_descricao'] ?? '';
+        $tamanhoNome = strlen($nomeProduto);
+        if ($tamanhoNome <= 30)
+            $comandoFonte = '^A0N,40,40';
+        elseif ($tamanhoNome <= 45)
+            $comandoFonte = '^A0N,32,32';
+        else
+            $comandoFonte = '^A0N,28,28';
+
+        // --- LÓGICA DE CÓDIGOS DE BARRAS (EAN vs DUN) ---
+        $tipoEmbalagem = $dados['prod_tipo_embalagem'] ?? 'INDEFINIDO';
+        $eanDb = $dados['prod_ean13'] ?? '';
+        $dunDb = $dados['prod_dun14'] ?? '';
+
+        // Seleção Lógica
+        if ($tipoEmbalagem === 'SECUNDARIA') {
+            $codBarraBruto = $dunDb;
+        } else {
+            $codBarraBruto = $eanDb;
+        }
+
+        // Higienização
+        $dadosBarras1D = trim((string) $codBarraBruto);
+        if (empty($dadosBarras1D)) {
+            $dadosBarras1D = '00000000000000'; // Valor padrão para evitar erro visual
+        }
+
+        // Gera a string de dados GS1 para o QR Code
+        $dadosQrCode = $this->buildGs1DataString($dados, $dadosBarras1D);
+
+        // Removemos a barra '/' da classificação caso ela exista
+        $classificacaoLimpa = isset($dados['prod_classificacao'])
+            ? str_replace('/', '', $dados['prod_classificacao'])
+            : '';
+
+        // Montamos o array usando a variável limpa
+        $partesClasse = array_filter([$classificacaoLimpa, $dados['prod_classe']]);
+        $linhaProdutoClasse = implode(' ', $partesClasse);
+
+        $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
+        $especie = ($dados['prod_especie'] ?? '');
+        $nomeEspecie = "Espécie: " . $especie;
+        $nomeOrigem = "Origem: " . ($dados['prod_origem'] ?? '');
+        $origem = ($dados['prod_origem'] ?? '');
+
+        $linhaClassificacao = "CLASSIFICAÇÃO: " . $this->buildClassificationLine($dados);
+        $linhaDescricao = "CLASSIFICAÇÃO: " . $this->construirLinhaClassificacao($dados);
+        $linhaConteudo = $this->construirFraseConteudo($dados);
+
+        $linhaLote = "LOTE: " . ($dados['lote_num_completo'] ?? '');
+        $codigoInternoProduto = "COD.: " . ($dados['prod_codigo_interno'] ?? '');
+
+        $dataFab = isset($dados['lote_data_fabricacao']) ? "FAB.:" . date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
+        $dataVal = isset($dados['lote_item_data_val']) ? "VAL.:" . date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
+        $fabricacao = isset($dados['lote_data_fabricacao']) ?  date('d/m/Y', strtotime($dados['lote_data_fabricacao'])) : '';
+        $validade = isset($dados['lote_item_data_val']) ?  date('d/m/Y', strtotime($dados['lote_item_data_val'])) : '';
+        $linhaFabEValidade = "FAB.: {$dataFab}        VAL.: {$dataVal}";
+
+        $pesoFormatado = str_replace('.', ',', (string) ((float) ($dados['prod_peso_embalagem'] ?? 0)));
+        $linhaPesoLiquido = "PESO LÍQUIDO: " . $pesoFormatado . "kg";
+
+        $partesEndereco = array_filter([($dados['end_logradouro'] ?? '') . ', ' . ($dados['end_numero'] ?? ''), $dados['end_complemento'] ?? '', $dados['end_bairro'] ?? '']);
+        $linhaEndereco = implode(' - ', $partesEndereco);
+
+        $linhaCidadeUfCep = ($dados['end_cidade'] ?? '') . ' / ' . ($dados['end_uf'] ?? '') . '     CEP: ' . $this->formatCep($dados['end_cep'] ?? '');
+        $linhaCnpjIe = "CNPJ: " . $this->formatCnpj($dados['ent_cnpj'] ?? '') . "     I.E.: " . ($dados['ent_inscricao_estadual'] ?? '');
+
+        // --- MAPA COMPLETO DE PLACEHOLDERS ---
+        $placeholders = [
+            // Simples
+            'nomeProduto' => $nomeProduto,
+            '{produto_cod_interno}' => $dados['prod_codigo'] ?? '',
+            'codigoProduto' => $codigoInternoProduto,
+            'numeroLote' => $dados['lote_num_completo'] ?? '',
+            'cliente_nome' => $dados['ent_razao_social'] ?? '',
+            'nomeCliente' => $dados['ent_razao_social'] ?? '',
+            'nomeFantasia' => $dados['ent_nome_fantasia'] ?? '',
+            '{data_fabricacao}' => $dataFab,
+            '{data_validade}' => $dataVal,
+            'fabricacaoLote' => $dataFab,
+            'validadeLote' => $dataVal,
+            'fabricacao' => $fabricacao,
+            'validade' => $validade,
+            '{quantidade}' => $dados['lote_item_qtd'] ?? '',
+            '{categoria}' => $dados['prod_categoria'] ?? '',
+
+            // Compostos e de Negócio
+            '{fonte_produto_nome}' => $comandoFonte,
+            'linhaProduto' => $linhaProdutoClasse,
+            'linhaEspecie' => $linhaEspecieOrigem,
+            'nomeEspecie' => $nomeEspecie,
+            'especie' => $especie,            
+            'origem' => $origem,
+            'nomeOrigem' => $nomeOrigem,
+            'linhaClassificacao' => $linhaClassificacao,
+            'linhaDescricao' => $linhaDescricao,
+            'linhaPecas' => $linhaConteudo,
+            '{linha_lote_completo}' => $linhaLote,
+            'linhaLote' => $linhaLote,
+            'linhaDatas' => $linhaFabEValidade,
+            'linhaPeso' => $linhaPesoLiquido,
+            '{linha_cliente_endereco}' => $linhaEndereco,
+            'enderecoCliente' => $linhaEndereco,
+            '{linha_cliente_cidade_uf_cep}' => $linhaCidadeUfCep,
+            'cidadeCliente' => $linhaCidadeUfCep,
+            '{linha_cliente_cnpj_ie}' => $linhaCnpjIe,
+            'cnpjCliente' => $linhaCnpjIe,
+
+            // Códigos de Barras
+            '12345678' => $dadosBarras1D ?? '',
+            // O '10qrcode' será tratado abaixo com lógica especial de posicionamento
+        ];
+
+        // --- NOVA LÓGICA: EMBUTIR FONTE ITÁLICA E SUBSTITUIR FONTE NO PLACEHOLDER ESPECÍFICO ---
+        $fontePath = __DIR__ . '/fonts/ArialItalic.ttf';
+        $fonteBinario = false;
+
+        if (file_exists($fontePath) && is_readable($fontePath)) {
+            $fonteBinario = file_get_contents($fontePath);
+        } else {
+            error_log("Fonte itálica não encontrada ou inacessível: $fontePath");
+        }
+
+        if ($fonteBinario !== false) {
+            // Converte binário para hex string (upper case, sem hifens)
+            $fonteHex = strtoupper(bin2hex($fonteBinario));
+            $tamanhoBytes = strlen($fonteBinario);
+
+            // Embutir com ~DU (para fonts, hex-encoded)
+            $duCommand = "~DUR:ArialItalic.ttf,$tamanhoBytes,$fonteHex";
+
+            if (strpos($zpl, '~DUR:ArialItalic.ttf') === false) {
+                // Insere após ^XA de forma segura
+                $zpl = preg_replace('/\^XA/', "^XA$duCommand", $zpl, 1);
+                error_log("DEBUG ZPL COM ITÁLICO: " . strpos($zpl, 'ArialItalic.ttf') !== false ? 'SUCESSO NA TROCA' : 'FALHA NA TROCA');
+            }
+        } else {
+            error_log("Falha ao ler binário da fonte itálica. Usando fonte padrão.");
+        }
+
+        // Identifica e modifica o campo com o placeholder 'especie' (genérico)
+        $fonteItalica = 'R:ArialItalic.ttf'; // Use R: para RAM (temporário); E: para Flash se persistente
+
+        // Regex aprimorada para detectar o campo 'especie'
+        // 1. (\^FT\d+,\d+) -> Posição
+        // 2. (\^A[A-Z0-9].*?) -> Comando de fonte (pega ^A0B,31,31 por exemplo)
+        // 3. (\^FH.*?)? -> Campo Hex opcional
+        // 4. (\^FD\s*especie\^FS) -> O placeholder com ou sem espaço
+        $pattern = '/(\^FT\d+,\d+)(\^A[A-Z0-9].*?)(\^FH\\\\)?(\^FD\s*especie\^FS)/i';
+
+        if (preg_match($pattern, $zpl, $matches)) {
+            $posicao = $matches[1];
+            $fonteAtual = $matches[2];
+            $fh = $matches[3];
+            $fdEfs = $matches[4];
+
+            // Extrai orientação, altura e largura da fonte original para manter o layout
+            // Procura por: ^A + Nome da Fonte + Orientação + , + Altura + , + Largura
+            if (preg_match('/\^A.([NROB]),(\d+),(\d+)/i', $fonteAtual, $params)) {
+                $orientacao = $params[1];
+                $altura = $params[2];
+                $largura = $params[3];
+            } else {
+                $orientacao = 'B';
+                $altura = '31';
+                $largura = '31';
+            }
+
+            $novaFonte = "^A@{$orientacao},{$altura},{$largura},{$fonteItalica}";
+            $novaLinha = "{$posicao}{$novaFonte}{$fh}{$fdEfs}";
+
+            $zpl = preg_replace($pattern, $novaLinha, $zpl);
+        } else {
+            error_log("Placeholder 'especie' não encontrado no ZPL para aplicar itálico.");
+        }
 
         // 1. Aplica substituições normais primeiro
         $zpl = str_replace(array_keys($placeholders), array_values($placeholders), $zpl);
