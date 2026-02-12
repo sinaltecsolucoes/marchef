@@ -341,7 +341,7 @@ class EnderecoRepository
                 $sql = "INSERT INTO tbl_estoque_alocacoes
                                 (alocacao_endereco_id, alocacao_lote_item_id,
                                  alocacao_quantidade, alocacao_data,
-                                 alocacao_usario_id)
+                                 alocacao_usuario_id)
                                 VALUE 
                                 (:endereco_id, :lote_item_id,
                                  :quantidade, NOW(), :usuario_id)";

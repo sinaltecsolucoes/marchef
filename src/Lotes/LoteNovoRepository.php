@@ -3289,16 +3289,19 @@ class LoteNovoRepository
             }
 
             // 3. VERIFICA SE JÁ EXISTE PEDIDO NA OE (AGRUPAMENTO POR PEDIDO)
-            $descPedido = "REPROCESSO " . $lotePaiNum;
+            // $descPedido = "REPROCESSO " . $lotePaiNum;
+            $descPedido = "PEDIDO: REPROCESSO " . $lotePaiNum;
+            $clienteInternoId = 9;
             $sqlBuscaPedido = "SELECT oep_id FROM tbl_ordens_expedicao_pedidos 
                    WHERE oep_ordem_id = :oe_id 
                    AND oep_numero_pedido = :desc_pedido 
-                   AND oep_cliente_id = 9 
+                   AND oep_cliente_id = :cliente_id 
                    LIMIT 1";
             $stmtBuscaPedido = $this->pdo->prepare($sqlBuscaPedido);
             $stmtBuscaPedido->execute([
                 ':oe_id' => $oeId,
-                ':desc_pedido' => $descPedido
+                ':desc_pedido' => $descPedido,
+                'cliente_id' => $clienteInternoId
             ]);
             $pedidoExistente = $stmtBuscaPedido->fetch(PDO::FETCH_ASSOC);
 
@@ -3310,27 +3313,31 @@ class LoteNovoRepository
                 $sqlPedido = "INSERT INTO tbl_ordens_expedicao_pedidos 
         (oep_ordem_id, oep_cliente_id, oep_numero_pedido) 
         VALUES 
-        (:oe_id, 1, :desc_pedido)";  // Cliente fixo como 1 (INTERNO)
+        (:oe_id, :cliente_id, :desc_pedido)";  // Cliente fixo como 9 (INTERNO)
 
                 $stmtP = $this->pdo->prepare($sqlPedido);
                 $stmtP->execute([
                     ':oe_id' => $oeId,
-                    ':desc_pedido' => $descPedido
+                    ':desc_pedido' => $descPedido,
+                    ':cliente_id' => $clienteInternoId
                 ]);
                 $pedidoId = $this->pdo->lastInsertId();
             }
 
             // 4. RESERVA AUTOMÁTICA (Busca Alocações)
             // Faz o Join para achar onde o lote está guardado
+            $produtoEscolhidoId = $dadosRecebimento['item_receb_produto_id'];
+
             $sqlEstoque = "SELECT a.alocacao_id, a.alocacao_quantidade 
                            FROM tbl_estoque_alocacoes a
                            JOIN tbl_lotes_novo_embalagem e ON a.alocacao_lote_item_id = e.item_emb_id
-                           WHERE e.item_emb_lote_id = :lote_id 
+                           WHERE e.item_emb_lote_id = :lote_id
+                             AND e.item_emb_prod_sec_id = :prod_id 
                              AND a.alocacao_quantidade > 0
                            ORDER BY a.alocacao_data ASC";
 
             $stmtEstoque = $this->pdo->prepare($sqlEstoque);
-            $stmtEstoque->execute([':lote_id' => $loteOrigemId]);
+            $stmtEstoque->execute([':lote_id' => $loteOrigemId, ':prod_id' => $produtoEscolhidoId]);
             $alocacoes = $stmtEstoque->fetchAll(PDO::FETCH_ASSOC);
 
             $totalEstoque = array_sum(array_column($alocacoes, 'alocacao_quantidade'));
