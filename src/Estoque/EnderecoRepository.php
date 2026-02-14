@@ -628,7 +628,7 @@ class EnderecoRepository
             JOIN tbl_produtos p ON lne.item_emb_prod_sec_id = p.prod_codigo
             JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
             LEFT JOIN tbl_estoque_alocacoes a ON lne.item_emb_id = a.alocacao_lote_item_id
-            WHERE lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO') {$sqlWhereTerm} 
+            WHERE lnh.lote_status IN ('FINALIZADO', 'PARCIALMENTE FINALIZADO', 'EM ANDAMENTO') {$sqlWhereTerm} 
             GROUP BY lne.item_emb_id HAVING total_produzido > ja_alocado
             ORDER BY lnh.lote_completo_calculado, p.prod_descricao";
 

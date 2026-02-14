@@ -361,6 +361,28 @@ class LabelService
         $partesClasse = array_filter([$classificacaoLimpa, $dados['prod_classe']]);
         $linhaProdutoClasse = implode(' ', $partesClasse);
 
+        // --- LÓGICA DE SEPARAÇÃO DA CLASSE BASEADA NA FUNÇÃO JS ---
+        $classeOriginal = $dados['prod_classe'] ?? '';
+        $array1 = $classeOriginal;
+        $array2 = '';
+
+        if (!empty($classeOriginal)) {
+            // Definimos os termos que servem de "âncora" para a primeira parte
+            // A ideia é: TIPO + CINZA + DESCASCADO (se houver)
+
+            // Esta Regex busca o termo "DESCASCADO" ou o termo após "CINZA "
+            $padrao = '/^(.*?CINZA\s+\S+)/i';
+
+            if (preg_match($padrao, $classeOriginal, $matches)) {
+                $pontoDeCorte = $matches[1];
+
+                $posicaoFim = strpos($classeOriginal, $pontoDeCorte) + strlen($pontoDeCorte);
+
+                $array1 = trim(substr($classeOriginal, 0, $posicaoFim));
+                $array2 = trim(substr($classeOriginal, $posicaoFim));
+            }
+        }
+
         $linhaEspecieOrigem = "Espécie: " . ($dados['prod_especie'] ?? '') . "     Origem: " . ($dados['prod_origem'] ?? '');
         $especie = ($dados['prod_especie'] ?? '');
         $nomeEspecie = "Espécie: " . $especie;
@@ -409,11 +431,13 @@ class LabelService
             '{categoria}' => $dados['prod_categoria'] ?? '',
 
             // Compostos e de Negócio
+            'classeParte1' => $array1, // Ex: CAMARÃO CINZA DESCASCADO
+            'classeParte2' => $array2, // Ex: EVISCERADO COM CAUDA COZIDO CONGELADO
             '{fonte_produto_nome}' => $comandoFonte,
             'linhaProduto' => $linhaProdutoClasse,
             'linhaEspecie' => $linhaEspecieOrigem,
             'nomeEspecie' => $nomeEspecie,
-            'especie' => $especie,            
+            'especie' => $especie,
             'origem' => $origem,
             'nomeOrigem' => $nomeOrigem,
             'linhaClassificacao' => $linhaClassificacao,

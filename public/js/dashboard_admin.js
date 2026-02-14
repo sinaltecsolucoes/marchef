@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     console.log('Dashboard Admin JS carregado com sucesso!');
 
+    // Converte float 1234.56 para "1.234,56" (ou com 3 casas se precisar)
+    function floatToBr(val, decimais = 2) {
+        if (val === '' || val === null || val === undefined) return '';
+        return parseFloat(val).toLocaleString('pt-BR', {
+            minimumFractionDigits: decimais,
+            maximumFractionDigits: decimais
+        });
+    }
+
     // --- Funções de Renderização de HTML ---
 
     function renderKpiCards(data) {
@@ -185,8 +194,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         tableHtml += `
                         <tr>
                             <td>${camara.camara_nome}</td>
-                            <td class="text-end">${parseFloat(camara.total_caixas).toFixed(3)}</td>
-                            <td class="text-end">${parseFloat(camara.total_quilos).toFixed(3)}</td>
+                            <td class="text-end">${floatToBr(camara.total_caixas,3)}</td>
+                            <td class="text-end">${floatToBr(camara.total_quilos,3)}</td>
                         </tr>
                     `;
                     });

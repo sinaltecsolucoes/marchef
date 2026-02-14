@@ -1423,6 +1423,8 @@ class CarregamentoRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /*
+
     public function validarQrCode(string $qrCodeContent): array
     {
         $codigoProduto = null;
@@ -1479,6 +1481,81 @@ class CarregamentoRepository
             }
         } catch (\PDOException $e) {
             return ['success' => false, 'message' => 'Erro de SQL: ' . $e->getMessage()];
+        }
+    }*/
+
+
+
+    public function validarQrCode(string $qrCodeContent): array
+    {
+        $codigoProduto = null;
+        $lote = null;
+
+        // Explicação da Regex:
+        // 241(.*?) - Captura o código interno (D31-I10510D)
+        // 10(.*?)  - Captura o lote (0131/26-9 4145)
+        // 11(\d{6}) - Captura a data de fabricação (260210) como âncora de parada
+
+        // Usamos o padrão de busca de tags fixas para evitar que o '10' do produto seja confundido com a tag '10'
+       // $pattern = '/241(D31-I\d{4}\d?D?)10(.*?)(?=11\d{6})11(\d{6})/';
+        $pattern = '/241(.*)10(.+?)(?=11\d{6}15\d{6})/';
+
+        // Caso o código interno mude de formato, uma regex mais genérica e segura:
+        // Procura o 241, depois tenta achar o 10 que está antes do 11 (data)
+       // $patternGenerico = '/241(.+)10(.+)11\d{6}/U';
+
+       /* if (preg_match($patternGenerico, $qrCodeContent, $matches)) {
+            // trim() é essencial aqui para limpar possíveis espaços invisíveis vindos do scanner
+            $codigoProduto = trim($matches[1]);
+            $lote = trim($matches[2]);
+        }*/
+
+        if (preg_match($pattern, $qrCodeContent, $matches)) {
+        $codigoProduto = trim($matches[1]);
+        $lote = trim($matches[2]);
+    }
+
+        if (!$codigoProduto || !$lote) {
+            return ['success' => false, 'message' => 'Não foi possível isolar Cód. Produto e Lote. Verifique o padrão do QR Code.'];
+        }
+
+        // Consulta SQL corrigida para bater exatamente com os dados capturados
+        $sql = "SELECT 
+                lne.item_emb_id as lote_item_id,
+                p.prod_descricao,
+                p.prod_codigo as produtoId, 
+                lnh.lote_id as loteIdHeader 
+            FROM tbl_produtos p
+            JOIN tbl_lotes_novo_embalagem lne ON p.prod_codigo = lne.item_emb_prod_sec_id
+            JOIN tbl_lotes_novo_header lnh ON lne.item_emb_lote_id = lnh.lote_id
+            WHERE p.prod_codigo_interno = :codigo_produto
+            AND lnh.lote_completo_calculado = :lote
+            LIMIT 1";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':codigo_produto' => $codigoProduto, ':lote' => $lote]);
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($item) {
+                return [
+                    'success' => true,
+                    'message' => 'Item validado com sucesso.',
+                    'produto' => $item['prod_descricao'],
+                    'lote' => $lote,
+                    'lote_item_id' => $item['lote_item_id'],
+                    'produtoId' => $item['produtoId'],
+                    'loteIdHeader' => $item['loteIdHeader']
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Produto ou Lote não encontrados.',
+                    'debug' => "Buscado Prod: [$codigoProduto] e Lote: [$lote]"
+                ];
+            }
+        } catch (\PDOException $e) {
+            return ['success' => false, 'message' => 'Erro de banco de dados: ' . $e->getMessage()];
         }
     }
 
